@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 型チェック
+        run: pnpm typecheck
+      - name: 記号カタログの生成（記号定義の整合性チェックを兼ねる）
+        run: pnpm catalog
+      - name: カタログが最新か確認
+        run: git diff --exit-code docs/symbol-catalog.html
