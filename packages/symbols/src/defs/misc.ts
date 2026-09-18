@@ -7,6 +7,32 @@ export const DASH_DOT = '9 3 2 3';
 /** 進相設備・電源設備・外枠・結線要素 */
 export const miscSymbols: SymbolDef[] = [
   {
+    id: 'sr',
+    abbr: 'SR',
+    nameJa: '直列リアクトル',
+    category: 'compensation',
+    tags: ['リアクトル', '進相設備'],
+    box: { w: 44, h: 56 },
+    shapes: [
+      vline(22, 0, 16),
+      rect(7, 10, 30, 36),
+      path('M 22 16 A 6 6 0 0 0 22 24 A 6 6 0 0 0 22 32 A 6 6 0 0 0 22 40'),
+      vline(22, 40, 56),
+    ],
+    ports: [
+      { id: 'in', x: 22, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 22, y: 56, dir: 'down', role: 'line' },
+    ],
+    fields: [
+      { key: 'phase', label: '相', type: 'text', defaultValue: '3φ' },
+      { key: 'capacity', label: '容量', type: 'number', unit: 'kvar' },
+      { key: 'ratedVoltage', label: '定格電圧', type: 'text', unit: 'V' },
+    ],
+    status: 'confirmed',
+    statusNote: '見本図面のとおり、四角の中にコイルを描く形にしました。',
+    note: 'コンデンサ「あり」の場合に、直列接続されるパターンとされないパターンがある。記載例「SR 3φ6.38kvar 243V」。',
+  },
+  {
     id: 'sc',
     abbr: 'SC',
     nameJa: '進相コンデンサ',

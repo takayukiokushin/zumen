@@ -22,5 +22,9 @@ jobs:
         run: pnpm typecheck
       - name: 記号カタログの生成（記号定義の整合性チェックを兼ねる）
         run: pnpm catalog
-      - name: カタログが最新か確認
-        run: git diff --exit-code docs/symbol-catalog.html
+      - name: ナレッジベース（質問定義・構成ルール）の検証
+        run: pnpm check
+      - name: 検証用の作図テストを生成
+        run: pnpm sample
+      - name: 生成物が最新か確認
+        run: git diff --exit-code docs/symbol-catalog.html docs/sample-drawing.svg

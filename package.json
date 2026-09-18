@@ -8,7 +8,8 @@
   "scripts": {
     "catalog": "node --experimental-strip-types scripts/build-catalog.ts",
     "typecheck": "tsc -b",
-    "sample": "node --experimental-strip-types scripts/build-sample-drawing.ts"
+    "sample": "node --experimental-strip-types scripts/build-sample-drawing.ts",
+    "check": "node --experimental-strip-types scripts/check-knowledge.ts"
   },
   "engines": {
     "node": ">=22.6.0"
