@@ -1,6 +1,20 @@
 import type { SymbolDef } from '../types.ts';
 import { circle, hline, rect, text, vline } from '../shape.ts';
 
+/** 計器（低圧側。図面に記載することはほぼないが、データとしては保持する） */
+const meter = (id: string, label: string, nameJa: string, size = 11): SymbolDef => ({
+  id,
+  abbr: label,
+  nameJa,
+  category: 'instrument',
+  tags: ['計器', '低圧'],
+  box: { w: 36, h: 32 },
+  shapes: [hline(16, 0, 6), circle(19, 16, 13), text(19, 16, label, { size })],
+  ports: [{ id: 'in', x: 0, y: 16, dir: 'left', role: 'secondary' }],
+  status: 'confirmed',
+  statusNote: 'この形でOK。低圧設備のため図面に記載することはほぼないが、データとしては保持する。',
+});
+
 /** 計器用変成器・計器 */
 export const instrumentSymbols: SymbolDef[] = [
   {
@@ -36,6 +50,8 @@ export const instrumentSymbols: SymbolDef[] = [
         defaultValue: 'pole',
       },
     ],
+    status: 'awaiting-sample',
+    statusNote: '少し異なるとのこと。代表図面の到着後に修正します。',
     note: '電気設備内に入る場合の挿入位置は、PFS形ならケーブルとLBSの間、CB形ならケーブルとDSの間。',
   },
   {
@@ -52,6 +68,8 @@ export const instrumentSymbols: SymbolDef[] = [
       { id: 'sec', x: 44, y: 20, dir: 'right', role: 'secondary', label: 'OCRへ' },
     ],
     fields: [{ key: 'ratio', label: '変流比', type: 'text', help: '例: 100/5A' }],
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に確認・修正します。',
     note: 'CB形では、VCBのすぐ下にCT、その次にOCRが入る。',
   },
   {
@@ -68,8 +86,9 @@ export const instrumentSymbols: SymbolDef[] = [
       { id: 'out', x: 22, y: 40, dir: 'down', role: 'line' },
       { id: 'sec', x: 44, y: 20, dir: 'right', role: 'control', label: 'GR/DGRへ' },
     ],
+    status: 'awaiting-sample',
+    statusNote: '記号が少し異なるとのこと。指定をいただき次第、描き直します。',
     note: 'GR方式・DGR方式のPASに入る。',
-    review: 'CTと同一形状（円）で、区別は文字（ZCT）のみとしている。図面上もこの扱いで問題ないか確認したい。',
   },
   {
     id: 'vt',
@@ -93,36 +112,18 @@ export const instrumentSymbols: SymbolDef[] = [
       { id: 'sec', x: 44, y: 22, dir: 'right', role: 'secondary', label: '計器へ' },
     ],
     fields: [{ key: 'ratio', label: '変圧比', type: 'text', help: '例: 6600/110V' }],
+    status: 'awaiting-sample',
+    statusNote: '記号が少し異なるとのこと。指定をいただき次第、描き直します。',
     note: 'CB形ではDSの次に並列接続（直列ではない）。PAS内蔵のパターンもある。',
   },
+  meter('meter-wh', 'Wh', '電力量計', 10),
+  meter('meter-a', 'A', '電流計'),
+  meter('meter-v', 'V', '電圧計'),
   {
-    id: 'meter-wh',
-    abbr: 'Wh',
-    nameJa: '電力量計',
-    category: 'instrument',
-    tags: ['計器', '課金'],
-    box: { w: 36, h: 32 },
-    shapes: [hline(16, 0, 6), circle(19, 16, 13), text(19, 16, 'Wh', { size: 10 })],
-    ports: [{ id: 'in', x: 0, y: 16, dir: 'left', role: 'secondary' }],
-  },
-  {
-    id: 'meter-a',
-    abbr: 'A',
-    nameJa: '電流計',
-    category: 'instrument',
-    tags: ['計器'],
-    box: { w: 36, h: 32 },
-    shapes: [hline(16, 0, 6), circle(19, 16, 13), text(19, 16, 'A', { size: 11 })],
-    ports: [{ id: 'in', x: 0, y: 16, dir: 'left', role: 'secondary' }],
-  },
-  {
-    id: 'meter-v',
-    abbr: 'V',
-    nameJa: '電圧計',
-    category: 'instrument',
-    tags: ['計器'],
-    box: { w: 36, h: 32 },
-    shapes: [hline(16, 0, 6), circle(19, 16, 13), text(19, 16, 'V', { size: 11 })],
-    ports: [{ id: 'in', x: 0, y: 16, dir: 'left', role: 'secondary' }],
+    ...meter('meter-pf', 'cosθ', '位相計（力率計）', 8),
+    tags: ['計器', '低圧', '力率', '位相'],
+    status: 'open-question',
+    statusNote: '新規追加。丸の中に cosθ と表記しています。この表記でよいかご確認ください。',
+    review: '丸の中の表記を「cosθ」としています。図面での実際の表記（COSθ / cosφ 等）をご確認ください。',
   },
 ];

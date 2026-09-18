@@ -5,6 +5,8 @@ import { circle, hline, poly, rect, vline, line, contact } from '../shape.ts';
 export const incomingSymbols: SymbolDef[] = [
   {
     id: 'pole-utility',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: '電柱',
     nameJa: '電柱（電力会社所有）',
     category: 'incoming',
@@ -23,6 +25,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'pole-customer',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: '客柱',
     nameJa: 'お客様電柱',
     category: 'incoming',
@@ -40,6 +44,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'cabinet',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'CAB',
     nameJa: 'キャビネット',
     nameFormal: '地上設置金属製ボックス',
@@ -56,6 +62,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'incoming-point',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: '引込点',
     nameJa: '引込点',
     category: 'incoming',
@@ -70,6 +78,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'mold-discon',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'MDS',
     nameJa: 'モールドディスコン',
     category: 'incoming',
@@ -93,6 +103,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'tee-shelter',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'TS',
     nameJa: '三極連動ティー型シェルター',
     category: 'incoming',
@@ -114,6 +126,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'cable-head',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'CH',
     nameJa: '高圧ケーブル端末',
     nameFormal: 'ケーブル終端接続部',
@@ -133,6 +147,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'boundary-both',
+    status: 'awaiting-sample',
+    statusNote: '記載文言は確定済み。横線の引き方は代表図面の到着後に確認します。',
     abbr: '分界点',
     nameJa: '財産・責任分界点（3点一致）',
     category: 'boundary',
@@ -148,6 +164,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'boundary-property',
+    status: 'awaiting-sample',
+    statusNote: '記載文言は確定済み。横線の引き方は代表図面の到着後に確認します。',
     abbr: '財産',
     nameJa: '財産分界点（3点不一致のとき）',
     category: 'boundary',
@@ -163,6 +181,8 @@ export const incomingSymbols: SymbolDef[] = [
   },
   {
     id: 'boundary-safety',
+    status: 'awaiting-sample',
+    statusNote: '記載文言は確定済み。横線の引き方は代表図面の到着後に確認します。',
     abbr: '責任',
     nameJa: '責任分界点（3点不一致のとき）',
     category: 'boundary',

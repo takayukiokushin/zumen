@@ -241,6 +241,14 @@ export function formatAreaLabel(area: SubstationArea): string {
 }
 
 /**
+ * 受電設備エリアの外枠（一点鎖線の四角）を描くかどうか。
+ * 2箇所以上あるときだけ囲う。1箇所しかない場合に全体を囲うと、かえって分かりにくくなる。
+ */
+export function shouldDrawAreaFrames(areas: readonly SubstationArea[]): boolean {
+  return areas.length >= 2;
+}
+
+/**
  * 設備容量から主遮断装置の形式を判定する。
  * 300kVA以下ならPFS形を採用可能、301kVA以上はCB形でなければならない。
  * 例外（高圧マンションの電柱上構成）は容量からは判定できないため、質問で確認する。

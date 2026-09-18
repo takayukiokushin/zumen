@@ -26,6 +26,20 @@ export const CATEGORY_LABEL: Record<SymbolCategory, string> = {
   wiring: '結線要素',
 };
 
+/**
+ * 記号の確認状態。レビューの進捗をカタログ上で追えるようにする。
+ *  confirmed        … 現場の確認で「これでOK」となったもの
+ *  awaiting-sample  … 代表図面（見本）の到着待ちで、これから修正するもの
+ *  open-question    … テキストでも図面でも指示がなく、こちらから確認が必要なもの
+ */
+export type SymbolStatus = 'confirmed' | 'awaiting-sample' | 'open-question';
+
+export const STATUS_LABEL: Record<SymbolStatus, string> = {
+  confirmed: '確定',
+  'awaiting-sample': '見本待ち',
+  'open-question': '要確認',
+};
+
 /** 接続点（ポート）の役割 */
 export type PortRole =
   | 'line'       // 主回路
@@ -95,8 +109,14 @@ export interface SymbolDef {
   note?: string;
   /** 別表記（同じ機器の描き方違い）のとき、基準となる記号ID */
   altOf?: string;
+  /** 現場レビューの確認状態 */
+  status: SymbolStatus;
+  /** 確認状態の補足（何を待っているか、何がOKになったか） */
+  statusNote?: string;
   /** レビュー時に確認したい点（カタログに表示される） */
   review?: string;
+  /** 既定で図面に描かない記号（指示があったときだけ配置する） */
+  optional?: boolean;
 }
 
 /** 記号定義のバリデーション（ポートが枠内にあるか等の単純な整合性確認） */

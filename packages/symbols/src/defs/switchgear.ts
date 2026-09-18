@@ -26,6 +26,8 @@ const RATED_VOLTAGE = {
 export const switchgearSymbols: SymbolDef[] = [
   {
     id: 'as',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'AS',
     nameJa: 'エアースイッチ',
     nameFormal: '気中開閉器（電力会社側）',
@@ -41,6 +43,8 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'ds',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'DS',
     nameJa: '断路器（ディスコン）',
     category: 'switchgear',
@@ -60,6 +64,8 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'lbs',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'LBS',
     nameJa: '高圧負荷開閉器',
     category: 'switchgear',
@@ -79,6 +85,8 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'lbs-pf',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'LBS(PF付)',
     nameJa: '限流ヒューズ付高圧負荷開閉器',
     category: 'switchgear',
@@ -102,6 +110,8 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'pf',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'PF',
     nameJa: '限流ヒューズ',
     category: 'switchgear',
@@ -116,6 +126,8 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'pc',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'PC',
     nameJa: '高圧カットアウト',
     category: 'switchgear',
@@ -136,6 +148,8 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'vcb',
+    status: 'confirmed',
+    statusNote: '×印付き開閉器（JIS式）を採用。この形でOK。',
     abbr: 'VCB',
     nameJa: '真空遮断器',
     category: 'switchgear',
@@ -153,25 +167,11 @@ export const switchgearSymbols: SymbolDef[] = [
       { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
     ],
     note: 'CB形の主遮断装置。設備容量301kVA以上では必須。すぐ下にCTが入る。',
-    review: '×印付き開閉器（JIS式）で描いている。角型（□）表記を使っている図面もあるため要確認。',
-  },
-  {
-    id: 'vcb-box',
-    abbr: 'VCB',
-    nameJa: '真空遮断器（角型・別表記）',
-    category: 'switchgear',
-    altOf: 'vcb',
-    tags: ['CB形', '主遮断装置', '別表記'],
-    box: { w: 40, h: 44 },
-    shapes: [vline(20, 0, 14), rect(12, 14, 16, 16), vline(20, 30, 44)],
-    ports: [
-      { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
-    ],
-    note: 'VCBを四角で表す描き方。どちらを標準にするか確認のうえ、一方に統一する。',
   },
   {
     id: 'pas',
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に描き直します。',
     abbr: 'PAS',
     nameJa: '区分開閉器（高圧気中開閉器）',
     category: 'switchgear',

@@ -1,5 +1,8 @@
 import type { SymbolDef } from '../types.ts';
-import { circle, dot, hline, line, path, poly, rect, text, vline } from '../shape.ts';
+import { circle, hline, line, path, poly, rect, text, vline } from '../shape.ts';
+
+/** 一点鎖線（受電設備エリアの外枠に使う） */
+export const DASH_DOT = '9 3 2 3';
 
 /** 進相設備・電源設備・外枠・結線要素 */
 export const miscSymbols: SymbolDef[] = [
@@ -16,6 +19,8 @@ export const miscSymbols: SymbolDef[] = [
       { id: 'out', x: 20, y: 40, dir: 'down', role: 'line' },
     ],
     fields: [{ key: 'capacity', label: '容量', type: 'number', unit: 'kvar' }],
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に確認・修正します。',
     note: '変圧器と並列に入るパターンがある。台数は1台〜複数台。',
   },
   {
@@ -35,6 +40,8 @@ export const miscSymbols: SymbolDef[] = [
       { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
     ],
     fields: [{ key: 'capacity', label: '容量', type: 'number', unit: 'kvar' }],
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に確認・修正します。',
     note: 'コンデンサ「あり」の場合に、直列接続されるパターンとされないパターンがある。',
   },
   {
@@ -68,6 +75,8 @@ export const miscSymbols: SymbolDef[] = [
       { key: 'capacity', label: '容量', type: 'number', unit: 'kVA' },
       { key: 'place', label: '設置場所', type: 'text', help: '非常用発電機の場合は図面に明記する' },
     ],
+    status: 'confirmed',
+    statusNote: 'このマークでOK。',
   },
   {
     id: 'pv',
@@ -90,6 +99,8 @@ export const miscSymbols: SymbolDef[] = [
       { key: 'capacity', label: '設備規模', type: 'number', unit: 'kW' },
       { key: 'pcsCount', label: 'PCS台数', type: 'number', unit: '台' },
     ],
+    status: 'awaiting-sample',
+    statusNote: '代表図面の到着後に確認・修正します。',
     note: '太陽光発電設備の規模（大きさ）を単線結線図に情報として載せる。',
   },
   {
@@ -113,6 +124,8 @@ export const miscSymbols: SymbolDef[] = [
       { key: 'gridPoleNo', label: '連携する電柱番号', type: 'text' },
       { key: 'demandSite', label: '需要場所名', type: 'text' },
     ],
+    status: 'awaiting-sample',
+    statusNote: '系統用蓄電所の図面をいただいてから、それを参考に作成します。',
     note: '構成はほぼ固定で、変更点は連携する電柱番号や需要場所名程度。',
   },
   {
@@ -128,17 +141,9 @@ export const miscSymbols: SymbolDef[] = [
       { id: 'r', x: 80, y: 6, dir: 'right', role: 'line' },
       { id: 'in', x: 40, y: 0, dir: 'up', role: 'line' },
     ],
-    note: 'LBS/OCRから変圧器へ分岐する箇所などで使用する。',
-  },
-  {
-    id: 'junction',
-    abbr: '●',
-    nameJa: '接続点（分岐点）',
-    category: 'wiring',
-    tags: ['分岐', '接続'],
-    box: { w: 12, h: 12 },
-    shapes: [dot(6, 6)],
-    ports: [{ id: 'c', x: 6, y: 6, dir: 'down', role: 'line' }],
+    status: 'confirmed',
+    statusNote: 'このままでOK。',
+    note: '線と線の交点に点（接続点マーク）は置かない。',
   },
   {
     id: 'substation-area',
@@ -147,7 +152,7 @@ export const miscSymbols: SymbolDef[] = [
     category: 'enclosure',
     tags: ['キュービクル', '電気室', 'オープンフレーム式'],
     box: { w: 120, h: 80 },
-    shapes: [rect(0, 0, 120, 80, { dash: '6 4' })],
+    shapes: [rect(0, 0, 120, 80, { dash: DASH_DOT })],
     ports: [],
     fields: [
       {
@@ -177,6 +182,9 @@ export const miscSymbols: SymbolDef[] = [
       { key: 'detail', label: '場所の補足', type: 'text', help: '例: 駐車場横' },
     ],
     defaultLabel: '電気室（1階、屋内）',
-    note: '1プロジェクト内に複数の受電設備エリアが存在しうる。エリアごとに形態と設置場所のラベルを持たせる。',
+    status: 'open-question',
+    statusNote: '一点鎖線で実装しました。線種のご確認をお願いします。',
+    review: '「点破線」を一点鎖線として実装しています。実際の図面の線種をご確認ください。',
+    note: '受電設備が2箇所以上ある場合のみ、各エリアをこの枠で囲う。1箇所しかない場合は全体を囲わない（かえって分かりにくくなるため）。',
   },
 ];

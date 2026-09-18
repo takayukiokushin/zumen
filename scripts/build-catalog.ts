@@ -10,7 +10,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { SYMBOLS, symbolToSvg, validateAll } from '../packages/symbols/src/index.ts';
-import { CATEGORY_LABEL } from '../packages/symbols/src/types.ts';
+import { CATEGORY_LABEL, STATUS_LABEL } from '../packages/symbols/src/types.ts';
 import type { SymbolCategory, SymbolDef } from '../packages/symbols/src/types.ts';
 
 const esc = (s: string): string =>
@@ -33,7 +33,9 @@ const grouped = ORDER.map((c) => ({
   items: SYMBOLS.filter((s) => s.category === c),
 })).filter((g) => g.items.length > 0);
 
-const reviewItems = SYMBOLS.filter((s) => s.review);
+const confirmed = SYMBOLS.filter((s) => s.status === 'confirmed');
+const awaiting = SYMBOLS.filter((s) => s.status === 'awaiting-sample');
+const openQuestions = SYMBOLS.filter((s) => s.status === 'open-question');
 
 const fieldChip = (label: string, extra?: string): string =>
   `<span class="chip">${esc(label)}${extra ? `<i>${esc(extra)}</i>` : ''}</span>`;
@@ -47,13 +49,15 @@ function card(def: SymbolDef): string {
     .join('');
   const slots = (def.slots ?? []).map((s) => fieldChip(s.label)).join('');
   return `
-      <article class="card${def.review ? ' card--flag' : ''}" id="sym-${def.id}" data-search="${esc(tags)}">
+      <article class="card card--${def.status}" id="sym-${def.id}" data-search="${esc(tags)}" data-status="${def.status}">
         <div class="tile">${symbolToSvg(def, { padding: 8, scale: 1.7, showPorts: true })}</div>
         <div class="card-body">
           <div class="card-head">
             <span class="abbr">${esc(def.abbr)}</span>
             <h3>${esc(def.nameJa)}</h3>
+            <span class="badge badge--${def.status}">${esc(STATUS_LABEL[def.status])}</span>
           </div>
+          ${def.optional ? '<p class="optional">既定では図面に描かない（指示があったときだけ配置）</p>' : ''}
           ${def.nameFormal ? `<p class="formal">${esc(def.nameFormal)}</p>` : ''}
           <p class="idline"><code>${esc(def.id)}</code> ・ 接続点 ${def.ports.length}${
             def.altOf ? ` ・ <span class="alt">${esc(def.altOf)} の別表記</span>` : ''
@@ -61,6 +65,7 @@ function card(def: SymbolDef): string {
           ${def.defaultLabel ? `<p class="deflabel">既定の記載文言：<b>${esc(def.defaultLabel)}</b></p>` : ''}
           ${fields ? `<div class="chips"><span class="chips-label">入力項目</span>${fields}</div>` : ''}
           ${slots ? `<div class="chips"><span class="chips-label">内蔵スロット</span>${slots}</div>` : ''}
+          ${def.statusNote ? `<p class="statusnote">${esc(def.statusNote)}</p>` : ''}
           ${def.note ? `<p class="note">${esc(def.note)}</p>` : ''}
           ${def.review ? `<p class="flag"><span>要確認</span>${esc(def.review)}</p>` : ''}
         </div>
@@ -84,11 +89,22 @@ const chips = grouped
   .map((g) => `<a class="navchip" href="#cat-${g.category}">${esc(g.label)}<i>${g.items.length}</i></a>`)
   .join('');
 
-const reviewList = reviewItems
+const questionList = openQuestions
   .map(
     (s) =>
-      `<li><a href="#sym-${s.id}"><b>${esc(s.abbr)}</b> ${esc(s.nameJa)}</a><span>${esc(s.review ?? '')}</span></li>`,
+      `<li><a href="#sym-${s.id}"><b>${esc(s.abbr)}</b> ${esc(s.nameJa)}</a><span>${esc(s.review ?? s.statusNote ?? '')}</span></li>`,
   )
+  .join('');
+
+const awaitingList = grouped
+  .map((g) => {
+    const items = g.items.filter((s) => s.status === 'awaiting-sample');
+    if (!items.length) return '';
+    const links = items
+      .map((s) => `<a href="#sym-${s.id}">${esc(s.abbr === s.nameJa ? s.abbr : `${s.abbr}（${s.nameJa}）`)}</a>`)
+      .join('');
+    return `<div class="await-row"><span class="await-cat">${esc(g.label)}</span><span class="await-items">${links}</span></div>`;
+  })
   .join('');
 
 const STYLE = `
@@ -106,6 +122,10 @@ const STYLE = `
       --flag: #9c4320;
       --flag-soft: #f6e3d9;
       --grid: #dfe6e2;
+      --ok: #2f6b45;
+      --ok-soft: #dfeee4;
+      --wait: #7a6320;
+      --wait-soft: #f2eacd;
       --shadow: 0 1px 2px rgba(22, 26, 24, .06);
     }
     @media (prefers-color-scheme: dark) {
@@ -123,6 +143,10 @@ const STYLE = `
         --accent-soft: #332c15;
         --flag: #e08a5f;
         --flag-soft: #33201a;
+        --ok: #7fc39a;
+        --ok-soft: #1c2c23;
+        --wait: #cfb468;
+        --wait-soft: #2c2718;
         --shadow: 0 1px 2px rgba(0,0,0,.4);
       }
     }
@@ -140,6 +164,10 @@ const STYLE = `
       --accent-soft: #332c15;
       --flag: #e08a5f;
       --flag-soft: #33201a;
+      --ok: #7fc39a;
+      --ok-soft: #1c2c23;
+      --wait: #cfb468;
+      --wait-soft: #2c2718;
       --shadow: 0 1px 2px rgba(0,0,0,.4);
     }
     * { box-sizing: border-box; }
@@ -181,6 +209,12 @@ const STYLE = `
     .review-box li a { color: var(--ink); text-decoration-color: var(--accent); text-underline-offset: 3px; }
     .review-box li a b { font-family: "IBM Plex Mono", monospace; color: var(--accent); margin-right: 6px; }
     .review-box li span { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+    .await-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--rule-soft); }
+    .await-row:first-child { border-top: 0; }
+    .await-cat { flex: 0 0 auto; min-width: 11em; font-size: 11.5px; color: var(--muted); }
+    .await-items { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+    .await-items a { font-size: 12.5px; color: var(--ink-2); text-decoration-color: var(--rule); text-underline-offset: 3px; }
+    .await-items a:hover { color: var(--ink); text-decoration-color: var(--accent); }
 
     .controls {
       position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
@@ -217,7 +251,13 @@ const STYLE = `
 
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 18px; }
     .card { background: var(--card); border: 1px solid var(--rule); box-shadow: var(--shadow); display: flex; flex-direction: column; scroll-margin-top: 100px; }
-    .card--flag { border-color: color-mix(in srgb, var(--flag) 45%, var(--rule)); }
+    .card--open-question { border-color: color-mix(in srgb, var(--flag) 45%, var(--rule)); }
+    .badge { font-size: 10.5px; letter-spacing: .06em; padding: 1px 7px; border-radius: 999px; margin-left: auto; white-space: nowrap; }
+    .badge--confirmed { background: var(--ok-soft); color: var(--ok); }
+    .badge--awaiting-sample { background: var(--wait-soft); color: var(--wait); }
+    .badge--open-question { background: var(--flag-soft); color: var(--flag); }
+    .optional { margin: 0; font-size: 11.5px; color: var(--muted); }
+    .statusnote { margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
     .tile {
       display: grid; place-items: center; min-height: 160px; padding: 14px;
       background-color: var(--tile);
@@ -302,8 +342,9 @@ const BODY = `<title>単線結線図 記号カタログ</title>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
       <div class="stat"><b>${SYMBOLS.length}</b><span>記号</span></div>
-      <div class="stat"><b>${grouped.length}</b><span>カテゴリ</span></div>
-      <div class="stat"><b>${reviewItems.length}</b><span>要確認</span></div>
+      <div class="stat"><b>${confirmed.length}</b><span>確定</span></div>
+      <div class="stat"><b>${awaiting.length}</b><span>見本待ち</span></div>
+      <div class="stat"><b>${openQuestions.length}</b><span>要確認</span></div>
     </div>
     <div class="callout">
       <p><b>すべて独自に描き起こしています。</b>JIS C 0617 等の規格書の図版は複製せず、規格の仕様（形状・比率・意味）を参照して作図しています。</p>
@@ -312,9 +353,15 @@ const BODY = `<title>単線結線図 記号カタログ</title>
   </header>
 
   <div class="review-box">
-    <h2>まずご確認いただきたい点</h2>
-    <p>形が実際の図面と違いそうな記号です。ここだけ見ていただければ、あとはこちらで直せます。</p>
-    <ol>${reviewList}</ol>
+    <h2>ご確認をお願いしたい点</h2>
+    <p>テキストでも図面でも指示がなく、判断がつかないものです。</p>
+    <ol>${questionList}</ol>
+  </div>
+
+  <div class="review-box">
+    <h2>代表図面の到着待ち（${awaiting.length}件）</h2>
+    <p>いただいた図面を見てから描き直す記号です。この一覧に載っていないもの＝いただいた指示で確定したものになります。</p>
+    ${awaitingList}
   </div>
 
   <div class="controls">
@@ -349,7 +396,9 @@ ${BODY}
 const outDocs = resolve(import.meta.dirname, '../docs/symbol-catalog.html');
 mkdirSync(dirname(outDocs), { recursive: true });
 writeFileSync(outDocs, standalone, 'utf8');
-console.log(`生成: ${outDocs} (${SYMBOLS.length}記号 / 要確認 ${reviewItems.length}件)`);
+console.log(
+  `生成: ${outDocs} (${SYMBOLS.length}記号 / 確定 ${confirmed.length} / 見本待ち ${awaiting.length} / 要確認 ${openQuestions.length})`,
+);
 
 if (process.env.ARTIFACT_OUT) {
   const out = resolve(process.env.ARTIFACT_OUT);

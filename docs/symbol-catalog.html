@@ -22,6 +22,10 @@
       --flag: #9c4320;
       --flag-soft: #f6e3d9;
       --grid: #dfe6e2;
+      --ok: #2f6b45;
+      --ok-soft: #dfeee4;
+      --wait: #7a6320;
+      --wait-soft: #f2eacd;
       --shadow: 0 1px 2px rgba(22, 26, 24, .06);
     }
     @media (prefers-color-scheme: dark) {
@@ -39,6 +43,10 @@
         --accent-soft: #332c15;
         --flag: #e08a5f;
         --flag-soft: #33201a;
+        --ok: #7fc39a;
+        --ok-soft: #1c2c23;
+        --wait: #cfb468;
+        --wait-soft: #2c2718;
         --shadow: 0 1px 2px rgba(0,0,0,.4);
       }
     }
@@ -56,6 +64,10 @@
       --accent-soft: #332c15;
       --flag: #e08a5f;
       --flag-soft: #33201a;
+      --ok: #7fc39a;
+      --ok-soft: #1c2c23;
+      --wait: #cfb468;
+      --wait-soft: #2c2718;
       --shadow: 0 1px 2px rgba(0,0,0,.4);
     }
     * { box-sizing: border-box; }
@@ -97,6 +109,12 @@
     .review-box li a { color: var(--ink); text-decoration-color: var(--accent); text-underline-offset: 3px; }
     .review-box li a b { font-family: "IBM Plex Mono", monospace; color: var(--accent); margin-right: 6px; }
     .review-box li span { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+    .await-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--rule-soft); }
+    .await-row:first-child { border-top: 0; }
+    .await-cat { flex: 0 0 auto; min-width: 11em; font-size: 11.5px; color: var(--muted); }
+    .await-items { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+    .await-items a { font-size: 12.5px; color: var(--ink-2); text-decoration-color: var(--rule); text-underline-offset: 3px; }
+    .await-items a:hover { color: var(--ink); text-decoration-color: var(--accent); }
 
     .controls {
       position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
@@ -133,7 +151,13 @@
 
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 18px; }
     .card { background: var(--card); border: 1px solid var(--rule); box-shadow: var(--shadow); display: flex; flex-direction: column; scroll-margin-top: 100px; }
-    .card--flag { border-color: color-mix(in srgb, var(--flag) 45%, var(--rule)); }
+    .card--open-question { border-color: color-mix(in srgb, var(--flag) 45%, var(--rule)); }
+    .badge { font-size: 10.5px; letter-spacing: .06em; padding: 1px 7px; border-radius: 999px; margin-left: auto; white-space: nowrap; }
+    .badge--confirmed { background: var(--ok-soft); color: var(--ok); }
+    .badge--awaiting-sample { background: var(--wait-soft); color: var(--wait); }
+    .badge--open-question { background: var(--flag-soft); color: var(--flag); }
+    .optional { margin: 0; font-size: 11.5px; color: var(--muted); }
+    .statusnote { margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
     .tile {
       display: grid; place-items: center; min-height: 160px; padding: 14px;
       background-color: var(--tile);
@@ -174,9 +198,10 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>49</b><span>記号</span></div>
-      <div class="stat"><b>10</b><span>カテゴリ</span></div>
-      <div class="stat"><b>9</b><span>要確認</span></div>
+      <div class="stat"><b>58</b><span>記号</span></div>
+      <div class="stat"><b>27</b><span>確定</span></div>
+      <div class="stat"><b>28</b><span>見本待ち</span></div>
+      <div class="stat"><b>3</b><span>要確認</span></div>
     </div>
     <div class="callout">
       <p><b>すべて独自に描き起こしています。</b>JIS C 0617 等の規格書の図版は複製せず、規格の仕様（形状・比率・意味）を参照して作図しています。</p>
@@ -185,9 +210,15 @@
   </header>
 
   <div class="review-box">
-    <h2>まずご確認いただきたい点</h2>
-    <p>形が実際の図面と違いそうな記号です。ここだけ見ていただければ、あとはこちらで直せます。</p>
-    <ol><li><a href="#sym-pole-utility"><b>電柱</b> 電柱（電力会社所有）</a><span>電柱の描き方（腕金付きの柱／円のみ／点線枠＋文字）は現場の図面に合わせて要調整。</span></li><li><a href="#sym-mold-discon"><b>MDS</b> モールドディスコン</a><span>断路器記号を箱に入れた表現にしている。実際の図面での描き方を確認したい。</span></li><li><a href="#sym-tee-shelter"><b>TS</b> 三極連動ティー型シェルター</a><span>「ティー型」をT字で表現している。実際の図記号を確認したい。</span></li><li><a href="#sym-pc"><b>PC</b> 高圧カットアウト</a><span>ヒューズ記号＋斜線で表現している。実際の図面での高圧カットアウトの描き方を確認したい。</span></li><li><a href="#sym-vcb"><b>VCB</b> 真空遮断器</a><span>×印付き開閉器（JIS式）で描いている。角型（□）表記を使っている図面もあるため要確認。</span></li><li><a href="#sym-zct"><b>ZCT</b> 零相変流器</a><span>CTと同一形状（円）で、区別は文字（ZCT）のみとしている。図面上もこの扱いで問題ないか確認したい。</span></li><li><a href="#sym-zpd"><b>ZPD</b> 零相電圧検出装置</a><span>コンデンサ分圧＋接地の形で描いている。実際の図面での描き方を確認したい。</span></li><li><a href="#sym-tr-scott"><b>T</b> スコット変圧器（スコット結線）</a><span>M座/T座の描き分けを簡略化している。実際の図面での表現を確認したい。</span></li><li><a href="#sym-tr-1p-parallel"><b>T</b> 単相変圧器 並行運転（倍容量）</a><span>V-V結線と図形が同一のため、図面上どう描き分けているか確認したい（注記のみで区別か）。</span></li></ol>
+    <h2>ご確認をお願いしたい点</h2>
+    <p>テキストでも図面でも指示がなく、判断がつかないものです。</p>
+    <ol><li><a href="#sym-meter-pf"><b>cosθ</b> 位相計（力率計）</a><span>丸の中の表記を「cosθ」としています。図面での実際の表記（COSθ / cosφ 等）をご確認ください。</span></li><li><a href="#sym-relay-dsr"><b>DSR</b> 方向短絡継電器</a><span>DSR の正式名称が未確定です。</span></li><li><a href="#sym-substation-area"><b>AREA</b> 受電設備エリア（外枠）</a><span>「点破線」を一点鎖線として実装しています。実際の図面の線種をご確認ください。</span></li></ol>
+  </div>
+
+  <div class="review-box">
+    <h2>代表図面の到着待ち（28件）</h2>
+    <p>いただいた図面を見てから描き直す記号です。この一覧に載っていないもの＝いただいた指示で確定したものになります。</p>
+    <div class="await-row"><span class="await-cat">引込元・引込点</span><span class="await-items"><a href="#sym-pole-utility">電柱（電柱（電力会社所有））</a><a href="#sym-pole-customer">客柱（お客様電柱）</a><a href="#sym-cabinet">CAB（キャビネット）</a><a href="#sym-incoming-point">引込点</a><a href="#sym-mold-discon">MDS（モールドディスコン）</a><a href="#sym-tee-shelter">TS（三極連動ティー型シェルター）</a><a href="#sym-cable-head">CH（高圧ケーブル端末）</a></span></div><div class="await-row"><span class="await-cat">責任分界点</span><span class="await-items"><a href="#sym-boundary-both">分界点（財産・責任分界点（3点一致））</a><a href="#sym-boundary-property">財産（財産分界点（3点不一致のとき））</a><a href="#sym-boundary-safety">責任（責任分界点（3点不一致のとき））</a></span></div><div class="await-row"><span class="await-cat">開閉器・遮断器</span><span class="await-items"><a href="#sym-as">AS（エアースイッチ）</a><a href="#sym-ds">DS（断路器（ディスコン））</a><a href="#sym-lbs">LBS（高圧負荷開閉器）</a><a href="#sym-lbs-pf">LBS(PF付)（限流ヒューズ付高圧負荷開閉器）</a><a href="#sym-pf">PF（限流ヒューズ）</a><a href="#sym-pc">PC（高圧カットアウト）</a><a href="#sym-pas">PAS（区分開閉器（高圧気中開閉器））</a></span></div><div class="await-row"><span class="await-cat">計器用変成器・計器</span><span class="await-items"><a href="#sym-vct">VCT（計器用変圧変流器（電力会社の計器用変成器））</a><a href="#sym-ct">CT（計器用変流器）</a><a href="#sym-zct">ZCT（零相変流器）</a><a href="#sym-vt">VT（計器用変圧器）</a></span></div><div class="await-row"><span class="await-cat">保護継電器・避雷器・接地</span><span class="await-items"><a href="#sym-zpd">ZPD（零相電圧検出装置）</a></span></div><div class="await-row"><span class="await-cat">変圧器</span><span class="await-items"><a href="#sym-tr-1p">T（単相変圧器）</a><a href="#sym-tr-scott">T（スコット変圧器（低圧））</a></span></div><div class="await-row"><span class="await-cat">進相設備</span><span class="await-items"><a href="#sym-sc">SC（進相コンデンサ）</a><a href="#sym-sr">SR（直列リアクトル）</a></span></div><div class="await-row"><span class="await-cat">発電機・太陽光・蓄電池</span><span class="await-items"><a href="#sym-pv">PV（太陽光発電設備）</a><a href="#sym-battery">BATT（蓄電池（系統用蓄電所））</a></span></div>
   </div>
 
   <div class="controls">
@@ -198,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>7</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>3</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>9</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>7</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>6</i></a><a class="navchip" href="#cat-transformer">変圧器<i>9</i></a><a class="navchip" href="#cat-compensation">進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>3</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>1</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>7</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>3</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>8</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>8</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>17</i></a><a class="navchip" href="#cat-transformer">変圧器<i>8</i></a><a class="navchip" href="#cat-compensation">進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>3</i></a><a class="navchip" href="#cat-wiring">結線要素<i>1</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>1</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -209,7 +240,7 @@
         <span class="count">7</span>
       </header>
       <div class="grid">
-      <article class="card card--flag" id="sym-pole-utility" data-search="電柱（電力会社所有）  電柱 pole-utility 引込元 電力会社 パターンa">
+      <article class="card card--awaiting-sample" id="sym-pole-utility" data-search="電柱（電力会社所有）  電柱 pole-utility 引込元 電力会社 パターンa" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="102" height="102" role="img" aria-label="電柱（電力会社所有）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="12" y1="4" x2="12" y2="44" stroke-width="1.6" />
@@ -225,17 +256,20 @@
           <div class="card-head">
             <span class="abbr">電柱</span>
             <h3>電柱（電力会社所有）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>pole-utility</code> ・ 接続点 1</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">電柱番号</span></div>
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">引込元パターンA。電力会社所有の電柱。</p>
           <p class="flag"><span>要確認</span>電柱の描き方（腕金付きの柱／円のみ／点線枠＋文字）は現場の図面に合わせて要調整。</p>
         </div>
       </article>
-      <article class="card" id="sym-pole-customer" data-search="お客様電柱  客柱 pole-customer 需要家 pas 電柱上">
+      <article class="card card--awaiting-sample" id="sym-pole-customer" data-search="お客様電柱  客柱 pole-customer 需要家 pas 電柱上" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="102" height="102" role="img" aria-label="お客様電柱">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="12" y1="4" x2="12" y2="44" stroke-width="1.6" />
@@ -251,17 +285,20 @@
           <div class="card-head">
             <span class="abbr">客柱</span>
             <h3>お客様電柱</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>pole-customer</code> ・ 接続点 1</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">電柱番号</span></div>
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">PASは電柱上に設置するため、図面上「お客様電柱」として描かれる場合がある。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-cabinet" data-search="キャビネット 地上設置金属製ボックス cab cabinet 引込元 パターンb 地上">
+      <article class="card card--awaiting-sample" id="sym-cabinet" data-search="キャビネット 地上設置金属製ボックス cab cabinet 引込元 パターンb 地上" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="102" height="102" role="img" aria-label="キャビネット">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <rect x="6" y="8" width="30" height="28" fill="none" stroke-width="1" />
@@ -276,17 +313,20 @@
           <div class="card-head">
             <span class="abbr">CAB</span>
             <h3>キャビネット</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           <p class="formal">地上設置金属製ボックス</p>
           <p class="idline"><code>cabinet</code> ・ 接続点 1</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">引込元パターンB。電力会社との連携点になる場合あり。中身はモールドディスコン／三極連動ティー型シェルター。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-incoming-point" data-search="引込点  引込点 incoming-point 引込 受電点">
+      <article class="card card--awaiting-sample" id="sym-incoming-point" data-search="引込点  引込点 incoming-point 引込 受電点" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="引込点">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="16" stroke-width="1" />
@@ -302,17 +342,20 @@
           <div class="card-head">
             <span class="abbr">引込点</span>
             <h3>引込点</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>incoming-point</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">3点一致（約99%）の場合、この直下とPASの間に分界点の横線を引く。</p>
           
         </div>
       </article>
-      <article class="card card--flag" id="sym-mold-discon" data-search="モールドディスコン  mds mold-discon キャビネット パターンa">
+      <article class="card card--awaiting-sample" id="sym-mold-discon" data-search="モールドディスコン  mds mold-discon キャビネット パターンa" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 64" width="102" height="108.8" role="img" aria-label="モールドディスコン">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="10" stroke-width="1" />
@@ -332,17 +375,20 @@
           <div class="card-head">
             <span class="abbr">MDS</span>
             <h3>モールドディスコン</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>mold-discon</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">キャビネット内パターンA。</p>
           <p class="flag"><span>要確認</span>断路器記号を箱に入れた表現にしている。実際の図面での描き方を確認したい。</p>
         </div>
       </article>
-      <article class="card card--flag" id="sym-tee-shelter" data-search="三極連動ティー型シェルター  ts tee-shelter キャビネット パターンb">
+      <article class="card card--awaiting-sample" id="sym-tee-shelter" data-search="三極連動ティー型シェルター  ts tee-shelter キャビネット パターンb" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 64" width="102" height="108.8" role="img" aria-label="三極連動ティー型シェルター">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="10" stroke-width="1" />
@@ -360,17 +406,20 @@
           <div class="card-head">
             <span class="abbr">TS</span>
             <h3>三極連動ティー型シェルター</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>tee-shelter</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">キャビネット内パターンB。</p>
           <p class="flag"><span>要確認</span>「ティー型」をT字で表現している。実際の図記号を確認したい。</p>
         </div>
       </article>
-      <article class="card" id="sym-cable-head" data-search="高圧ケーブル端末 ケーブル終端接続部 ch cable-head 受電点 ケーブルヘッド 端末処理">
+      <article class="card card--awaiting-sample" id="sym-cable-head" data-search="高圧ケーブル端末 ケーブル終端接続部 ch cable-head 受電点 ケーブルヘッド 端末処理" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="高圧ケーブル端末">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
@@ -386,12 +435,15 @@
           <div class="card-head">
             <span class="abbr">CH</span>
             <h3>高圧ケーブル端末</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           <p class="formal">ケーブル終端接続部</p>
           <p class="idline"><code>cable-head</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">電気設備側の引込点は、図面上まずこの高圧ケーブル端末が該当する。</p>
           
         </div>
@@ -403,7 +455,7 @@
         <span class="count">3</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-boundary-both" data-search="財産・責任分界点（3点一致）  分界点 boundary-both 3点一致 分界点">
+      <article class="card card--awaiting-sample" id="sym-boundary-both" data-search="財産・責任分界点（3点一致）  分界点 boundary-both 3点一致 分界点" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="136" height="68" role="img" aria-label="財産・責任分界点（3点一致）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="32" y1="0" x2="32" y2="24" stroke-width="1" />
@@ -418,17 +470,20 @@
           <div class="card-head">
             <span class="abbr">分界点</span>
             <h3>財産・責任分界点（3点一致）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>boundary-both</code> ・ 接続点 2</p>
           <p class="deflabel">既定の記載文言：<b>財産・責任分界点</b></p>
           
           
+          <p class="statusnote">記載文言は確定済み。横線の引き方は代表図面の到着後に確認します。</p>
           <p class="note">3点一致（全体の約99%）。引込点の図記号とPASの間に横線を引き、この文言を記載する。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-boundary-property" data-search="財産分界点（3点不一致のとき）  財産 boundary-property 3点不一致 分界点">
+      <article class="card card--awaiting-sample" id="sym-boundary-property" data-search="財産分界点（3点不一致のとき）  財産 boundary-property 3点不一致 分界点" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="136" height="68" role="img" aria-label="財産分界点（3点不一致のとき）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="32" y1="0" x2="32" y2="24" stroke-width="1" />
@@ -443,17 +498,20 @@
           <div class="card-head">
             <span class="abbr">財産</span>
             <h3>財産分界点（3点不一致のとき）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>boundary-property</code> ・ 接続点 2</p>
           <p class="deflabel">既定の記載文言：<b>財産分界点</b></p>
           
           
+          <p class="statusnote">記載文言は確定済み。横線の引き方は代表図面の到着後に確認します。</p>
           <p class="note">3点不一致（全体の約1%）。引込点と同一地点に財産分界点を記載する。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-boundary-safety" data-search="責任分界点（3点不一致のとき）  責任 boundary-safety 3点不一致 分界点 lbs vcb">
+      <article class="card card--awaiting-sample" id="sym-boundary-safety" data-search="責任分界点（3点不一致のとき）  責任 boundary-safety 3点不一致 分界点 lbs vcb" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="136" height="68" role="img" aria-label="責任分界点（3点不一致のとき）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="32" y1="0" x2="32" y2="24" stroke-width="1" />
@@ -468,12 +526,15 @@
           <div class="card-head">
             <span class="abbr">責任</span>
             <h3>責任分界点（3点不一致のとき）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>boundary-safety</code> ・ 接続点 2</p>
           <p class="deflabel">既定の記載文言：<b>責任分界点</b></p>
           
           
+          <p class="statusnote">記載文言は確定済み。横線の引き方は代表図面の到着後に確認します。</p>
           <p class="note">3点不一致のとき、該当するLBSまたはVCBの図記号の中央に横線を引いて記載する（このパターンの約99%はLBSかVCB）。</p>
           
         </div>
@@ -482,10 +543,10 @@
     <section class="group" id="cat-switchgear" data-cat="switchgear">
       <header class="group-head">
         <h2>開閉器・遮断器</h2>
-        <span class="count">9</span>
+        <span class="count">8</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-as" data-search="エアースイッチ 気中開閉器（電力会社側） as as 電力会社 引込元">
+      <article class="card card--awaiting-sample" id="sym-as" data-search="エアースイッチ 気中開閉器（電力会社側） as as 電力会社 引込元" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="エアースイッチ">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
@@ -503,17 +564,20 @@
           <div class="card-head">
             <span class="abbr">AS</span>
             <h3>エアースイッチ</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           <p class="formal">気中開閉器（電力会社側）</p>
           <p class="idline"><code>as</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">電柱パターンのとき、引込元〜責任分界点の間に入る場合がある（電力会社側の機器）。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-ds" data-search="断路器（ディスコン）  ds ds cb形 ディスコン 受電設備">
+      <article class="card card--awaiting-sample" id="sym-ds" data-search="断路器（ディスコン）  ds ds cb形 ディスコン 受電設備" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="断路器（ディスコン）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
@@ -532,17 +596,20 @@
           <div class="card-head">
             <span class="abbr">DS</span>
             <h3>断路器（ディスコン）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>ds</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">CB形の基本構成で、高圧ケーブル端末の次に入る。DSの次にVTが並列接続、VCBが直列接続される。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-lbs" data-search="高圧負荷開閉器  lbs lbs pfs形 主遮断装置 責任分界点">
+      <article class="card card--awaiting-sample" id="sym-lbs" data-search="高圧負荷開閉器  lbs lbs pfs形 主遮断装置 責任分界点" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="高圧負荷開閉器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
@@ -561,17 +628,20 @@
           <div class="card-head">
             <span class="abbr">LBS</span>
             <h3>高圧負荷開閉器</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>lbs</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">3点不一致のとき、この記号の中央に横線を引いて「責任分界点」と記載することがある。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-lbs-pf" data-search="限流ヒューズ付高圧負荷開閉器  lbs(pf付) lbs-pf pfs形 主遮断装置 pf・s形">
+      <article class="card card--awaiting-sample" id="sym-lbs-pf" data-search="限流ヒューズ付高圧負荷開閉器  lbs(pf付) lbs-pf pfs形 主遮断装置 pf・s形" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 84" width="95.2" height="142.79999999999998" role="img" aria-label="限流ヒューズ付高圧負荷開閉器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
@@ -591,17 +661,20 @@
           <div class="card-head">
             <span class="abbr">LBS(PF付)</span>
             <h3>限流ヒューズ付高圧負荷開閉器</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>lbs-pf</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">ヒューズ定格電流<i>A</i></span></div>
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">PFS形（PF・S形）の主遮断装置。設備容量300kVA以下で採用可能。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-pf" data-search="限流ヒューズ  pf pf ヒューズ">
+      <article class="card card--awaiting-sample" id="sym-pf" data-search="限流ヒューズ  pf pf ヒューズ" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="限流ヒューズ">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="40" stroke-width="1" />
@@ -616,17 +689,20 @@
           <div class="card-head">
             <span class="abbr">PF</span>
             <h3>限流ヒューズ</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>pf</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電流<i>A</i></span></div>
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           
           
         </div>
       </article>
-      <article class="card card--flag" id="sym-pc" data-search="高圧カットアウト  pc pc カットアウトスイッチ 変圧器一次側">
+      <article class="card card--awaiting-sample" id="sym-pc" data-search="高圧カットアウト  pc pc カットアウトスイッチ 変圧器一次側" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="高圧カットアウト">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="44" stroke-width="1" />
@@ -642,17 +718,20 @@
           <div class="card-head">
             <span class="abbr">PC</span>
             <h3>高圧カットアウト</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>pc</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">ヒューズ定格電流<i>A</i></span></div>
           
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">変圧器の手前に入るパターン、PAS〜VCT間のLAの上部に入るパターンがある。</p>
           <p class="flag"><span>要確認</span>ヒューズ記号＋斜線で表現している。実際の図面での高圧カットアウトの描き方を確認したい。</p>
         </div>
       </article>
-      <article class="card card--flag" id="sym-vcb" data-search="真空遮断器  vcb vcb cb形 主遮断装置 責任分界点">
+      <article class="card card--confirmed" id="sym-vcb" data-search="真空遮断器  vcb vcb cb形 主遮断装置 責任分界点" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="真空遮断器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
@@ -671,43 +750,20 @@
           <div class="card-head">
             <span class="abbr">VCB</span>
             <h3>真空遮断器</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>vcb</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">×印付き開閉器（JIS式）を採用。この形でOK。</p>
           <p class="note">CB形の主遮断装置。設備容量301kVA以上では必須。すぐ下にCTが入る。</p>
-          <p class="flag"><span>要確認</span>×印付き開閉器（JIS式）で描いている。角型（□）表記を使っている図面もあるため要確認。</p>
-        </div>
-      </article>
-      <article class="card" id="sym-vcb-box" data-search="真空遮断器（角型・別表記）  vcb vcb-box cb形 主遮断装置 別表記">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="真空遮断器（角型・別表記）">
-  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="20" y1="0" x2="20" y2="14" stroke-width="1" />
-    <rect x="12" y="14" width="16" height="16" fill="none" stroke-width="1" />
-    <line x1="20" y1="30" x2="20" y2="44" stroke-width="1" />
-    <g class="ports">
-      <circle cx="20" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="20" cy="44" r="2.2" fill="currentColor" stroke="none" class="port" />
-    </g>
-  </g>
-</svg></div>
-        <div class="card-body">
-          <div class="card-head">
-            <span class="abbr">VCB</span>
-            <h3>真空遮断器（角型・別表記）</h3>
-          </div>
-          
-          <p class="idline"><code>vcb-box</code> ・ 接続点 2 ・ <span class="alt">vcb の別表記</span></p>
-          
-          
-          
-          <p class="note">VCBを四角で表す描き方。どちらを標準にするか確認のうえ、一方に統一する。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-pas" data-search="区分開閉器（高圧気中開閉器）  pas pas 区分開閉器 電柱上 gr dgr">
+      <article class="card card--awaiting-sample" id="sym-pas" data-search="区分開閉器（高圧気中開閉器）  pas pas 区分開閉器 電柱上 gr dgr" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72" width="108.8" height="122.39999999999999" role="img" aria-label="区分開閉器（高圧気中開閉器）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="24" y1="0" x2="24" y2="18" stroke-width="1" />
@@ -727,12 +783,15 @@
           <div class="card-head">
             <span class="abbr">PAS</span>
             <h3>区分開閉器（高圧気中開閉器）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>pas</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">制御装置の種類<i>3択</i></span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
           <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">ZPD（DGR方式のとき内蔵）</span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
+          <p class="statusnote">代表図面の到着後に描き直します。</p>
           <p class="note">内蔵機器（ZCT/ZPD/VT/LA）は個別の記号として持ち、この点線枠の中に配置する方式にしている（新しい内蔵機器が増えてもデータ追加のみで対応できる）。</p>
           
         </div>
@@ -741,10 +800,10 @@
     <section class="group" id="cat-instrument" data-cat="instrument">
       <header class="group-head">
         <h2>計器用変成器・計器</h2>
-        <span class="count">7</span>
+        <span class="count">8</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-vct" data-search="計器用変圧変流器（電力会社の計器用変成器）  vct vct 電力会社 課金用 電柱上 キュービクル内">
+      <article class="card card--awaiting-sample" id="sym-vct" data-search="計器用変圧変流器（電力会社の計器用変成器）  vct vct 電力会社 課金用 電柱上 キュービクル内" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72" width="108.8" height="122.39999999999999" role="img" aria-label="計器用変圧変流器（電力会社の計器用変成器）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="24" y1="0" x2="24" y2="56" stroke-width="1" />
@@ -765,17 +824,20 @@
           <div class="card-head">
             <span class="abbr">VCT</span>
             <h3>計器用変圧変流器（電力会社の計器用変成器）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>vct</code> ・ 接続点 3</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">VCTの位置<i>2択</i></span></div>
           
+          <p class="statusnote">少し異なるとのこと。代表図面の到着後に修正します。</p>
           <p class="note">電気設備内に入る場合の挿入位置は、PFS形ならケーブルとLBSの間、CB形ならケーブルとDSの間。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-ct" data-search="計器用変流器  ct ct cb形 ocr">
+      <article class="card card--awaiting-sample" id="sym-ct" data-search="計器用変流器  ct ct cb形 ocr" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 56" width="102" height="95.2" role="img" aria-label="計器用変流器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="40" stroke-width="1" />
@@ -792,17 +854,20 @@
           <div class="card-head">
             <span class="abbr">CT</span>
             <h3>計器用変流器</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>ct</code> ・ 接続点 3</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">変流比</span></div>
           
+          <p class="statusnote">代表図面の到着後に確認・修正します。</p>
           <p class="note">CB形では、VCBのすぐ下にCT、その次にOCRが入る。</p>
           
         </div>
       </article>
-      <article class="card card--flag" id="sym-zct" data-search="零相変流器 ゼロカーレントトランスフォーマー zct zct pas gr dgr 地絡">
+      <article class="card card--awaiting-sample" id="sym-zct" data-search="零相変流器 ゼロカーレントトランスフォーマー zct zct pas gr dgr 地絡" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 56" width="102" height="95.2" role="img" aria-label="零相変流器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="40" stroke-width="1" />
@@ -819,17 +884,20 @@
           <div class="card-head">
             <span class="abbr">ZCT</span>
             <h3>零相変流器</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           <p class="formal">ゼロカーレントトランスフォーマー</p>
           <p class="idline"><code>zct</code> ・ 接続点 3</p>
           
           
           
+          <p class="statusnote">記号が少し異なるとのこと。指定をいただき次第、描き直します。</p>
           <p class="note">GR方式・DGR方式のPASに入る。</p>
-          <p class="flag"><span>要確認</span>CTと同一形状（円）で、区別は文字（ZCT）のみとしている。図面上もこの扱いで問題ないか確認したい。</p>
+          
         </div>
       </article>
-      <article class="card" id="sym-vt" data-search="計器用変圧器 ボルテージトランスフォーマー vt vt cb形 ds pas内蔵">
+      <article class="card card--awaiting-sample" id="sym-vt" data-search="計器用変圧器 ボルテージトランスフォーマー vt vt cb形 ds pas内蔵" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 72" width="102" height="122.39999999999999" role="img" aria-label="計器用変圧器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="10" stroke-width="1" />
@@ -849,17 +917,20 @@
           <div class="card-head">
             <span class="abbr">VT</span>
             <h3>計器用変圧器</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           <p class="formal">ボルテージトランスフォーマー</p>
           <p class="idline"><code>vt</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">変圧比</span></div>
           
+          <p class="statusnote">記号が少し異なるとのこと。指定をいただき次第、描き直します。</p>
           <p class="note">CB形ではDSの次に並列接続（直列ではない）。PAS内蔵のパターンもある。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-meter-wh" data-search="電力量計  wh meter-wh 計器 課金">
+      <article class="card card--confirmed" id="sym-meter-wh" data-search="電力量計  wh meter-wh 計器 低圧" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 48" width="88.39999999999999" height="81.6" role="img" aria-label="電力量計">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="0" y1="16" x2="6" y2="16" stroke-width="1" />
@@ -874,17 +945,20 @@
           <div class="card-head">
             <span class="abbr">Wh</span>
             <h3>電力量計</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>meter-wh</code> ・ 接続点 1</p>
           
           
           
+          <p class="statusnote">この形でOK。低圧設備のため図面に記載することはほぼないが、データとしては保持する。</p>
           
           
         </div>
       </article>
-      <article class="card" id="sym-meter-a" data-search="電流計  a meter-a 計器">
+      <article class="card card--confirmed" id="sym-meter-a" data-search="電流計  a meter-a 計器 低圧" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 48" width="88.39999999999999" height="81.6" role="img" aria-label="電流計">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="0" y1="16" x2="6" y2="16" stroke-width="1" />
@@ -899,17 +973,20 @@
           <div class="card-head">
             <span class="abbr">A</span>
             <h3>電流計</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>meter-a</code> ・ 接続点 1</p>
           
           
           
+          <p class="statusnote">この形でOK。低圧設備のため図面に記載することはほぼないが、データとしては保持する。</p>
           
           
         </div>
       </article>
-      <article class="card" id="sym-meter-v" data-search="電圧計  v meter-v 計器">
+      <article class="card card--confirmed" id="sym-meter-v" data-search="電圧計  v meter-v 計器 低圧" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 48" width="88.39999999999999" height="81.6" role="img" aria-label="電圧計">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="0" y1="16" x2="6" y2="16" stroke-width="1" />
@@ -924,29 +1001,60 @@
           <div class="card-head">
             <span class="abbr">V</span>
             <h3>電圧計</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>meter-v</code> ・ 接続点 1</p>
           
           
           
+          <p class="statusnote">この形でOK。低圧設備のため図面に記載することはほぼないが、データとしては保持する。</p>
           
           
+        </div>
+      </article>
+      <article class="card card--open-question" id="sym-meter-pf" data-search="位相計（力率計）  cosθ meter-pf 計器 低圧 力率 位相" data-status="open-question">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 48" width="88.39999999999999" height="81.6" role="img" aria-label="位相計（力率計）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="16" x2="6" y2="16" stroke-width="1" />
+    <circle cx="19" cy="16" r="13" fill="none" stroke-width="1" />
+    <text x="19" y="16" font-size="8" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">cosθ</text>
+    <g class="ports">
+      <circle cx="0" cy="16" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">cosθ</span>
+            <h3>位相計（力率計）</h3>
+            <span class="badge badge--open-question">要確認</span>
+          </div>
+          
+          
+          <p class="idline"><code>meter-pf</code> ・ 接続点 1</p>
+          
+          
+          
+          <p class="statusnote">新規追加。丸の中に cosθ と表記しています。この表記でよいかご確認ください。</p>
+          
+          <p class="flag"><span>要確認</span>丸の中の表記を「cosθ」としています。図面での実際の表記（COSθ / cosφ 等）をご確認ください。</p>
         </div>
       </article></div>
     </section>
     <section class="group" id="cat-protection" data-cat="protection">
       <header class="group-head">
         <h2>保護継電器・避雷器・接地</h2>
-        <span class="count">6</span>
+        <span class="count">17</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-ocr" data-search="過電流継電器  ocr ocr cb形 保護継電器 ct">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="過電流継電器">
+      <article class="card card--confirmed" id="sym-relay-ocr" data-search="過電流継電器  ocr relay-ocr 保護継電器 ocr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="過電流継電器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="0" y1="20" x2="9" y2="20" stroke-width="1" />
-    <circle cx="20" cy="20" r="11" fill="none" stroke-width="1" />
-    <text x="20" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" font-style="italic" fill="currentColor" stroke="none">I&gt;</text>
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">OCR</text>
     <g class="ports">
       <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
@@ -956,22 +1064,25 @@
           <div class="card-head">
             <span class="abbr">OCR</span>
             <h3>過電流継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
           
-          <p class="idline"><code>ocr</code> ・ 接続点 1</p>
           
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">電流タップ<i>A</i></span><span class="chip">時限タップ</span></div>
+          <p class="idline"><code>relay-ocr</code> ・ 接続点 1</p>
           
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
           <p class="note">CB形の基本構成で、CTの次に入る。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-gr" data-search="地絡継電器（無方向性）  gr gr pas 地絡 zct">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="地絡継電器（無方向性）">
+      <article class="card card--confirmed" id="sym-relay-gr" data-search="地絡継電器（無方向性）  gr relay-gr 保護継電器 gr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="地絡継電器（無方向性）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="0" y1="20" x2="9" y2="20" stroke-width="1" />
-    <circle cx="20" cy="20" r="11" fill="none" stroke-width="1" />
-    <text x="20" y="20" font-size="9" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">GR</text>
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">GR</text>
     <g class="ports">
       <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
@@ -981,22 +1092,25 @@
           <div class="card-head">
             <span class="abbr">GR</span>
             <h3>地絡継電器（無方向性）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
           
-          <p class="idline"><code>gr</code> ・ 接続点 1</p>
           
+          <p class="idline"><code>relay-gr</code> ・ 接続点 1</p>
           
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
           
-          <p class="note">GR方式。ZCTが入る。</p>
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          <p class="note">GR方式のPASに入る。ZCTが必要。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-dgr" data-search="地絡方向継電器（方向性）  dgr dgr pas 地絡 zct zpd">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="地絡方向継電器（方向性）">
+      <article class="card card--confirmed" id="sym-relay-dgr" data-search="地絡方向継電器（方向性）  dgr relay-dgr 保護継電器 dgr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="地絡方向継電器（方向性）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="0" y1="20" x2="9" y2="20" stroke-width="1" />
-    <circle cx="20" cy="20" r="11" fill="none" stroke-width="1" />
-    <text x="20" y="20" font-size="8" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">DGR</text>
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">DGR</text>
     <g class="ports">
       <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
@@ -1006,17 +1120,328 @@
           <div class="card-head">
             <span class="abbr">DGR</span>
             <h3>地絡方向継電器（方向性）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
           
-          <p class="idline"><code>dgr</code> ・ 接続点 1</p>
           
+          <p class="idline"><code>relay-dgr</code> ・ 接続点 1</p>
           
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
           
-          <p class="note">DGR方式。ZCTに加えZPDが入る。GRの上位互換。</p>
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          <p class="note">DGR方式のPASに入る。ZCTに加えZPDが必要。GRの上位互換。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-la" data-search="避雷器  la la pas内蔵 雷">
+      <article class="card card--confirmed" id="sym-relay-ocgr" data-search="地絡過電流継電器  ocgr relay-ocgr 保護継電器 ocgr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="地絡過電流継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="9.5" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">OCGR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">OCGR</span>
+            <h3>地絡過電流継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-ocgr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-ovgr" data-search="地絡過電圧継電器  ovgr relay-ovgr 保護継電器 ovgr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="地絡過電圧継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="9.5" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">OVGR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">OVGR</span>
+            <h3>地絡過電圧継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-ovgr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-uvr" data-search="不足電圧継電器  uvr relay-uvr 保護継電器 uvr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="不足電圧継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">UVR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">UVR</span>
+            <h3>不足電圧継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-uvr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-ovr" data-search="過電圧継電器  ovr relay-ovr 保護継電器 ovr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="過電圧継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">OVR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">OVR</span>
+            <h3>過電圧継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-ovr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-ufr" data-search="不足周波数継電器  ufr relay-ufr 保護継電器 ufr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="不足周波数継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">UFR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">UFR</span>
+            <h3>不足周波数継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-ufr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-ofr" data-search="過周波数継電器  ofr relay-ofr 保護継電器 ofr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="過周波数継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">OFR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">OFR</span>
+            <h3>過周波数継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-ofr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-rpr" data-search="逆電力継電器  rpr relay-rpr 保護継電器 rpr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="逆電力継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">RPR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">RPR</span>
+            <h3>逆電力継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-rpr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-upr" data-search="不足電力継電器  upr relay-upr 保護継電器 upr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="不足電力継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">UPR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">UPR</span>
+            <h3>不足電力継電器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-upr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--open-question" id="sym-relay-dsr" data-search="方向短絡継電器  dsr relay-dsr 保護継電器 dsr" data-status="open-question">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="方向短絡継電器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">DSR</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">DSR</span>
+            <h3>方向短絡継電器</h3>
+            <span class="badge badge--open-question">要確認</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-dsr</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          <p class="note">正式名称の確認をお願いします。</p>
+          <p class="flag"><span>要確認</span>DSR の正式名称が未確定です。</p>
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-2e" data-search="電動機保護継電器（2要素：過負荷・欠相）  2e relay-2e 保護継電器 2e" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="電動機保護継電器（2要素：過負荷・欠相）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">2E</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">2E</span>
+            <h3>電動機保護継電器（2要素：過負荷・欠相）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-2e</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-relay-3e" data-search="電動機保護継電器（3要素：過負荷・欠相・反相）  3e relay-3e 保護継電器 3e" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 56" width="112.2" height="95.2" role="img" aria-label="電動機保護継電器（3要素：過負荷・欠相・反相）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="20" x2="11" y2="20" stroke-width="1" />
+    <rect x="11" y="8" width="34" height="24" fill="none" stroke-width="1" />
+    <text x="28" y="20" font-size="11" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">3E</text>
+    <g class="ports">
+      <circle cx="0" cy="20" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">3E</span>
+            <h3>電動機保護継電器（3要素：過負荷・欠相・反相）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>relay-3e</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
+          
+          <p class="statusnote">長方形の中に継電器の種類を記載する形に統一。</p>
+          
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-la" data-search="避雷器  la la pas内蔵 雷" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 64" width="95.2" height="108.8" role="img" aria-label="避雷器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="10" stroke-width="1" />
@@ -1036,17 +1461,20 @@
           <div class="card-head">
             <span class="abbr">LA</span>
             <h3>避雷器</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>la</code> ・ 接続点 1</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span></div>
           
+          <p class="statusnote">この形でOK。</p>
           <p class="note">PAS内蔵のパターンのほか、PAS内にLAが入っていない場合にPAS〜VCT間に単独で入るパターンがある（その上部にPCが入ることも）。</p>
           
         </div>
       </article>
-      <article class="card card--flag" id="sym-zpd" data-search="零相電圧検出装置 ゼロポテンシャルデバイス（ユーザー呼称） zpd zpd pas dgr 零相電圧">
+      <article class="card card--awaiting-sample" id="sym-zpd" data-search="零相電圧検出装置 ゼロポテンシャルデバイス（ユーザー呼称） zpd zpd pas dgr 零相電圧" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="108.8" height="108.8" role="img" aria-label="零相電圧検出装置">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="48" stroke-width="1" />
@@ -1068,17 +1496,20 @@
           <div class="card-head">
             <span class="abbr">ZPD</span>
             <h3>零相電圧検出装置</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           <p class="formal">ゼロポテンシャルデバイス（ユーザー呼称）</p>
           <p class="idline"><code>zpd</code> ・ 接続点 2</p>
           
           
           
+          <p class="statusnote">修正が必要。代表図面の到着後に描き直します。</p>
           <p class="note">DGR方式のときZCTに加えて入る。</p>
-          <p class="flag"><span>要確認</span>コンデンサ分圧＋接地の形で描いている。実際の図面での描き方を確認したい。</p>
+          
         </div>
       </article>
-      <article class="card" id="sym-earth" data-search="接地  e earth アース 接地">
+      <article class="card card--confirmed" id="sym-earth" data-search="接地  e earth アース 接地" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 36" width="74.8" height="61.199999999999996" role="img" aria-label="接地">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="14" y1="0" x2="14" y2="8" stroke-width="1" />
@@ -1094,12 +1525,15 @@
           <div class="card-head">
             <span class="abbr">E</span>
             <h3>接地</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>earth</code> ・ 接続点 1</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">接地種別<i>4択</i></span><span class="chip">接地抵抗値<i>Ω</i></span></div>
           
+          <p class="statusnote">この形でOK。</p>
           
           
         </div>
@@ -1108,10 +1542,10 @@
     <section class="group" id="cat-transformer" data-cat="transformer">
       <header class="group-head">
         <h2>変圧器</h2>
-        <span class="count">9</span>
+        <span class="count">8</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-tr-1p" data-search="単相変圧器  t tr-1p 変圧器 単相">
+      <article class="card card--awaiting-sample" id="sym-tr-1p" data-search="単相変圧器  t tr-1p 変圧器 単相" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 68" width="102" height="115.6" role="img" aria-label="単相変圧器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="6" stroke-width="1" />
@@ -1128,17 +1562,20 @@
           <div class="card-head">
             <span class="abbr">T</span>
             <h3>単相変圧器</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>tr-1p</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
           
+          <p class="statusnote">単相変圧器の図記号は見本をいただいてから修正します。</p>
           <p class="note">単相用は基本的に1種類のみ（結線方式のバリエーションなし）。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-tr-3p-yy" data-search="三相変圧器（y-y結線）  t tr-3p-yy 変圧器 三相 y-y結線">
+      <article class="card card--confirmed" id="sym-tr-3p-yy" data-search="三相変圧器（y-y結線）  t tr-3p-yy 変圧器 三相 y-y結線" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 68" width="102" height="115.6" role="img" aria-label="三相変圧器（Y-Y結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="6" stroke-width="1" />
@@ -1161,17 +1598,20 @@
           <div class="card-head">
             <span class="abbr">T</span>
             <h3>三相変圧器（Y-Y結線）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>tr-3p-yy</code> ・ 接続点 2</p>
           
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span><span class="chip">構成</span></div>
           
+          <p class="statusnote">三相変圧器の図記号はこの形でOK。</p>
           <p class="note">使用用途によって巻線の結線方式が異なる。基本は Y-Y / Δ-Δ / Y-Δ / Δ-Y の4種類。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-tr-3p-dd" data-search="三相変圧器（δ-δ結線）  t tr-3p-dd 変圧器 三相 δ-δ結線">
+      <article class="card card--confirmed" id="sym-tr-3p-dd" data-search="三相変圧器（δ-δ結線）  t tr-3p-dd 変圧器 三相 δ-δ結線" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 68" width="102" height="115.6" role="img" aria-label="三相変圧器（Δ-Δ結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="6" stroke-width="1" />
@@ -1190,17 +1630,20 @@
           <div class="card-head">
             <span class="abbr">T</span>
             <h3>三相変圧器（Δ-Δ結線）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>tr-3p-dd</code> ・ 接続点 2</p>
           
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span><span class="chip">構成</span></div>
           
-          <p class="note">使用用途によって巻線の結線方式が異なる。基本は Y-Y / Δ-Δ / Y-Δ / Δ-Y の4種類。</p>
+          <p class="statusnote">三相変圧器の図記号はこの形でOK。</p>
+          <p class="note">単相変圧器3台で構成するΔ-Δ結線も、専用の図記号を作らずこの記号を使い、構成欄に「単相変圧器×3」と記載する。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-tr-3p-yd" data-search="三相変圧器（y-δ結線）  t tr-3p-yd 変圧器 三相 y-δ結線">
+      <article class="card card--confirmed" id="sym-tr-3p-yd" data-search="三相変圧器（y-δ結線）  t tr-3p-yd 変圧器 三相 y-δ結線" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 68" width="102" height="115.6" role="img" aria-label="三相変圧器（Y-Δ結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="6" stroke-width="1" />
@@ -1221,17 +1664,20 @@
           <div class="card-head">
             <span class="abbr">T</span>
             <h3>三相変圧器（Y-Δ結線）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>tr-3p-yd</code> ・ 接続点 2</p>
           
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span><span class="chip">構成</span></div>
           
+          <p class="statusnote">三相変圧器の図記号はこの形でOK。</p>
           <p class="note">使用用途によって巻線の結線方式が異なる。基本は Y-Y / Δ-Δ / Y-Δ / Δ-Y の4種類。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-tr-3p-dy" data-search="三相変圧器（δ-y結線）  t tr-3p-dy 変圧器 三相 δ-y結線">
+      <article class="card card--confirmed" id="sym-tr-3p-dy" data-search="三相変圧器（δ-y結線）  t tr-3p-dy 変圧器 三相 δ-y結線" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 68" width="102" height="115.6" role="img" aria-label="三相変圧器（Δ-Y結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="22" y1="0" x2="22" y2="6" stroke-width="1" />
@@ -1252,125 +1698,52 @@
           <div class="card-head">
             <span class="abbr">T</span>
             <h3>三相変圧器（Δ-Y結線）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>tr-3p-dy</code> ・ 接続点 2</p>
           
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span><span class="chip">構成</span></div>
           
+          <p class="statusnote">三相変圧器の図記号はこの形でOK。</p>
           <p class="note">使用用途によって巻線の結線方式が異なる。基本は Y-Y / Δ-Δ / Y-Δ / Δ-Y の4種類。</p>
           
         </div>
       </article>
-      <article class="card card--flag" id="sym-tr-scott" data-search="スコット変圧器（スコット結線）  t tr-scott 変圧器 スコット 単相三線">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 76" width="129.2" height="129.2" role="img" aria-label="スコット変圧器（スコット結線）">
+      <article class="card card--confirmed" id="sym-tr-vv" data-search="三相変圧器（v結線）  t tr-vv 変圧器 v結線 単相2台" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 68" width="102" height="115.6" role="img" aria-label="三相変圧器（V結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="30" y1="0" x2="30" y2="6" stroke-width="1" />
-    <circle cx="30" cy="15" r="9" fill="none" stroke-width="1" />
-    <line x1="24" y1="11" x2="36" y2="11" stroke-width="1" />
-    <line x1="30" y1="11" x2="30" y2="21" stroke-width="1" />
-    <line x1="30" y1="24" x2="18" y2="29" stroke-width="1" />
-    <line x1="30" y1="24" x2="42" y2="29" stroke-width="1" />
-    <circle cx="16" cy="37" r="8" fill="none" stroke-width="1" />
-    <circle cx="44" cy="37" r="8" fill="none" stroke-width="1" />
-    <line x1="16" y1="45" x2="16" y2="60" stroke-width="1" />
-    <line x1="44" y1="45" x2="44" y2="60" stroke-width="1" />
+    <line x1="22" y1="0" x2="22" y2="6" stroke-width="1" />
+    <circle cx="22" cy="15" r="9" fill="none" stroke-width="1" />
+    <circle cx="22" cy="29" r="9" fill="none" stroke-width="1" />
+    <text x="22" y="15" font-size="10" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">V</text>
+    <text x="22" y="29" font-size="10" text-anchor="middle" dominant-baseline="central" fill="currentColor" stroke="none">V</text>
+    <line x1="22" y1="38" x2="22" y2="52" stroke-width="1" />
     <g class="ports">
-      <circle cx="30" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="16" cy="60" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="44" cy="60" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="22" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="22" cy="52" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
         <div class="card-body">
           <div class="card-head">
             <span class="abbr">T</span>
-            <h3>スコット変圧器（スコット結線）</h3>
+            <h3>三相変圧器（V結線）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
           
-          <p class="idline"><code>tr-scott</code> ・ 接続点 3</p>
-          
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
-          
-          <p class="note">三相交流から2種類の単相三線式を取り出す結線方式。三相回路のアンバランスを防ぎつつ単相電源を取得する用途。</p>
-          <p class="flag"><span>要確認</span>M座/T座の描き分けを簡略化している。実際の図面での表現を確認したい。</p>
-        </div>
-      </article>
-      <article class="card" id="sym-tr-vv" data-search="v-v結線（単相変圧器2台）  t tr-vv 変圧器 v-v 単相2台">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 72" width="149.6" height="122.39999999999999" role="img" aria-label="V-V結線（単相変圧器2台）">
-  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="36" y1="0" x2="36" y2="8" stroke-width="1" />
-    <line x1="20" y1="8" x2="52" y2="8" stroke-width="1" />
-    <line x1="20" y1="8" x2="20" y2="11" stroke-width="1" />
-    <line x1="52" y1="8" x2="52" y2="11" stroke-width="1" />
-    <circle cx="20" cy="20" r="9" fill="none" stroke-width="1" />
-    <circle cx="20" cy="32" r="9" fill="none" stroke-width="1" />
-    <circle cx="52" cy="20" r="9" fill="none" stroke-width="1" />
-    <circle cx="52" cy="32" r="9" fill="none" stroke-width="1" />
-    <line x1="20" y1="41" x2="20" y2="48" stroke-width="1" />
-    <line x1="52" y1="41" x2="52" y2="48" stroke-width="1" />
-    <line x1="20" y1="48" x2="52" y2="48" stroke-width="1" />
-    <line x1="36" y1="48" x2="36" y2="56" stroke-width="1" />
-    <g class="ports">
-      <circle cx="36" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="36" cy="56" r="2.2" fill="currentColor" stroke="none" class="port" />
-    </g>
-  </g>
-</svg></div>
-        <div class="card-body">
-          <div class="card-head">
-            <span class="abbr">T</span>
-            <h3>V-V結線（単相変圧器2台）</h3>
-          </div>
           
           <p class="idline"><code>tr-vv</code> ・ 接続点 2</p>
           
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">1台目の容量<i>kVA</i></span><span class="chip">2台目の容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span><span class="chip">構成</span></div>
           
-          <p class="note">単相変圧器を2台接続して三相を構成する。</p>
-          
-        </div>
-      </article>
-      <article class="card" id="sym-tr-dd-3units" data-search="δ-δ結線（単相変圧器3台）  t tr-dd-3units 変圧器 デルタ 単相3台">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 72" width="204" height="122.39999999999999" role="img" aria-label="Δ-Δ結線（単相変圧器3台）">
-  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="52" y1="0" x2="52" y2="8" stroke-width="1" />
-    <line x1="20" y1="8" x2="84" y2="8" stroke-width="1" />
-    <line x1="20" y1="8" x2="20" y2="11" stroke-width="1" />
-    <line x1="52" y1="8" x2="52" y2="11" stroke-width="1" />
-    <line x1="84" y1="8" x2="84" y2="11" stroke-width="1" />
-    <circle cx="20" cy="20" r="9" fill="none" stroke-width="1" />
-    <circle cx="20" cy="32" r="9" fill="none" stroke-width="1" />
-    <circle cx="52" cy="20" r="9" fill="none" stroke-width="1" />
-    <circle cx="52" cy="32" r="9" fill="none" stroke-width="1" />
-    <circle cx="84" cy="20" r="9" fill="none" stroke-width="1" />
-    <circle cx="84" cy="32" r="9" fill="none" stroke-width="1" />
-    <line x1="20" y1="41" x2="20" y2="48" stroke-width="1" />
-    <line x1="52" y1="41" x2="52" y2="48" stroke-width="1" />
-    <line x1="84" y1="41" x2="84" y2="48" stroke-width="1" />
-    <line x1="20" y1="48" x2="84" y2="48" stroke-width="1" />
-    <line x1="52" y1="48" x2="52" y2="56" stroke-width="1" />
-    <g class="ports">
-      <circle cx="52" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="52" cy="56" r="2.2" fill="currentColor" stroke="none" class="port" />
-    </g>
-  </g>
-</svg></div>
-        <div class="card-body">
-          <div class="card-head">
-            <span class="abbr">T</span>
-            <h3>Δ-Δ結線（単相変圧器3台）</h3>
-          </div>
-          
-          <p class="idline"><code>tr-dd-3units</code> ・ 接続点 2</p>
-          
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
-          
-          <p class="note">単相変圧器3台を組み合わせてΔ-Δ結線とするパターン（三相変圧器単体のΔ-Δ結線とは別物）。</p>
+          <p class="statusnote">丸を縦に2つ並べ、それぞれの中にVを記載する形でOK。</p>
+          <p class="note">単相変圧器2台で三相を構成する。2台の定格容量が異なる場合があるため、容量は2台分を別々に記載する（例: 50kVA、30kVA）。</p>
           
         </div>
       </article>
-      <article class="card card--flag" id="sym-tr-1p-parallel" data-search="単相変圧器 並行運転（倍容量）  t tr-1p-parallel 変圧器 単相 並行運転">
+      <article class="card card--confirmed" id="sym-tr-1p-parallel" data-search="単相変圧器 並行運転（倍容量）  t tr-1p-parallel 変圧器 単相 並行運転" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 72" width="149.6" height="122.39999999999999" role="img" aria-label="単相変圧器 並行運転（倍容量）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="36" y1="0" x2="36" y2="8" stroke-width="1" />
@@ -1395,14 +1768,54 @@
           <div class="card-head">
             <span class="abbr">T</span>
             <h3>単相変圧器 並行運転（倍容量）</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>tr-1p-parallel</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
           
+          <p class="statusnote">並行運転の構成はこの図でOK（単相変圧器そのものの図記号は見本待ち）。</p>
           <p class="note">単相変圧器2台を並行運転させ、倍容量の単相変圧器として使用するパターン。</p>
-          <p class="flag"><span>要確認</span>V-V結線と図形が同一のため、図面上どう描き分けているか確認したい（注記のみで区別か）。</p>
+          
+        </div>
+      </article>
+      <article class="card card--awaiting-sample" id="sym-tr-scott" data-search="スコット変圧器（低圧）  t tr-scott 変圧器 スコット 単相三線 低圧" data-status="awaiting-sample">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 76" width="129.2" height="129.2" role="img" aria-label="スコット変圧器（低圧）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="30" y1="0" x2="30" y2="6" stroke-width="1" />
+    <circle cx="30" cy="15" r="9" fill="none" stroke-width="1" />
+    <line x1="24" y1="11" x2="36" y2="11" stroke-width="1" />
+    <line x1="30" y1="11" x2="30" y2="21" stroke-width="1" />
+    <line x1="30" y1="24" x2="18" y2="29" stroke-width="1" />
+    <line x1="30" y1="24" x2="42" y2="29" stroke-width="1" />
+    <circle cx="16" cy="37" r="8" fill="none" stroke-width="1" />
+    <circle cx="44" cy="37" r="8" fill="none" stroke-width="1" />
+    <line x1="16" y1="45" x2="16" y2="60" stroke-width="1" />
+    <line x1="44" y1="45" x2="44" y2="60" stroke-width="1" />
+    <g class="ports">
+      <circle cx="30" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="16" cy="60" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="44" cy="60" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">T</span>
+            <h3>スコット変圧器（低圧）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
+          </div>
+          <p class="optional">既定では図面に描かない（指示があったときだけ配置）</p>
+          
+          <p class="idline"><code>tr-scott</code> ・ 接続点 3</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kVA</i></span><span class="chip">二次電圧<i>V</i></span></div>
+          
+          <p class="statusnote">図記号は見本待ち。既定では図面に描かず、「低圧スコット変圧器」と指示されたときだけ配置します。</p>
+          <p class="note">ほとんどが低圧から低圧への変換のため、通常は単線結線図に記載しない。任意で記載する場合のみ使用する。</p>
+          
         </div>
       </article></div>
     </section>
@@ -1412,7 +1825,7 @@
         <span class="count">2</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-sc" data-search="進相コンデンサ  sc sc コンデンサ 進相設備 力率改善">
+      <article class="card card--awaiting-sample" id="sym-sc" data-search="進相コンデンサ  sc sc コンデンサ 進相設備 力率改善" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="進相コンデンサ">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="16" stroke-width="1" />
@@ -1429,17 +1842,20 @@
           <div class="card-head">
             <span class="abbr">SC</span>
             <h3>進相コンデンサ</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>sc</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kvar</i></span></div>
           
+          <p class="statusnote">代表図面の到着後に確認・修正します。</p>
           <p class="note">変圧器と並列に入るパターンがある。台数は1台〜複数台。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-sr" data-search="直列リアクトル  sr sr リアクトル 進相設備">
+      <article class="card card--awaiting-sample" id="sym-sr" data-search="直列リアクトル  sr sr リアクトル 進相設備" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="直列リアクトル">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="10" stroke-width="1" />
@@ -1455,12 +1871,15 @@
           <div class="card-head">
             <span class="abbr">SR</span>
             <h3>直列リアクトル</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>sr</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">容量<i>kvar</i></span></div>
           
+          <p class="statusnote">代表図面の到着後に確認・修正します。</p>
           <p class="note">コンデンサ「あり」の場合に、直列接続されるパターンとされないパターンがある。</p>
           
         </div>
@@ -1472,7 +1891,7 @@
         <span class="count">3</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-generator" data-search="発電機  g generator 発電機 非常用 常用">
+      <article class="card card--confirmed" id="sym-generator" data-search="発電機  g generator 発電機 非常用 常用" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="発電機">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="10" stroke-width="1" />
@@ -1487,17 +1906,20 @@
           <div class="card-head">
             <span class="abbr">G</span>
             <h3>発電機</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>generator</code> ・ 接続点 1</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">電圧区分<i>2択</i></span><span class="chip">用途区分<i>2択</i></span><span class="chip">容量<i>kVA</i></span><span class="chip">設置場所</span></div>
           
+          <p class="statusnote">このマークでOK。</p>
           
           
         </div>
       </article>
-      <article class="card" id="sym-pv" data-search="太陽光発電設備  pv pv 太陽光 発電所 再エネ">
+      <article class="card card--awaiting-sample" id="sym-pv" data-search="太陽光発電設備  pv pv 太陽光 発電所 再エネ" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="102" height="102" role="img" aria-label="太陽光発電設備">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <rect x="10" y="14" width="26" height="18" fill="none" stroke-width="1" />
@@ -1516,17 +1938,20 @@
           <div class="card-head">
             <span class="abbr">PV</span>
             <h3>太陽光発電設備</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>pv</code> ・ 接続点 1</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">設備規模<i>kW</i></span><span class="chip">PCS台数<i>台</i></span></div>
           
+          <p class="statusnote">代表図面の到着後に確認・修正します。</p>
           <p class="note">太陽光発電設備の規模（大きさ）を単線結線図に情報として載せる。</p>
           
         </div>
       </article>
-      <article class="card" id="sym-battery" data-search="蓄電池（系統用蓄電所）  batt battery 蓄電 系統用蓄電所">
+      <article class="card card--awaiting-sample" id="sym-battery" data-search="蓄電池（系統用蓄電所）  batt battery 蓄電 系統用蓄電所" data-status="awaiting-sample">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="蓄電池（系統用蓄電所）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
@@ -1544,12 +1969,15 @@
           <div class="card-head">
             <span class="abbr">BATT</span>
             <h3>蓄電池（系統用蓄電所）</h3>
+            <span class="badge badge--awaiting-sample">見本待ち</span>
           </div>
+          
           
           <p class="idline"><code>battery</code> ・ 接続点 1</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">蓄電ユニット規模<i>kWh</i></span><span class="chip">連携する電柱番号</span><span class="chip">需要場所名</span></div>
           
+          <p class="statusnote">系統用蓄電所の図面をいただいてから、それを参考に作成します。</p>
           <p class="note">構成はほぼ固定で、変更点は連携する電柱番号や需要場所名程度。</p>
           
         </div>
@@ -1558,10 +1986,10 @@
     <section class="group" id="cat-wiring" data-cat="wiring">
       <header class="group-head">
         <h2>結線要素</h2>
-        <span class="count">2</span>
+        <span class="count">1</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-bus" data-search="母線  母線 bus 母線 分岐">
+      <article class="card card--confirmed" id="sym-bus" data-search="母線  母線 bus 母線 分岐" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 28" width="163.2" height="47.6" role="img" aria-label="母線">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="0" y1="6" x2="80" y2="6" stroke-width="3" />
@@ -1576,36 +2004,16 @@
           <div class="card-head">
             <span class="abbr">母線</span>
             <h3>母線</h3>
+            <span class="badge badge--confirmed">確定</span>
           </div>
+          
           
           <p class="idline"><code>bus</code> ・ 接続点 3</p>
           
           
           
-          <p class="note">LBS/OCRから変圧器へ分岐する箇所などで使用する。</p>
-          
-        </div>
-      </article>
-      <article class="card" id="sym-junction" data-search="接続点（分岐点）  ● junction 分岐 接続">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" width="47.6" height="47.6" role="img" aria-label="接続点（分岐点）">
-  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="6" cy="6" r="2.2" fill="currentColor" stroke-width="1" />
-    <g class="ports">
-      <circle cx="6" cy="6" r="2.2" fill="currentColor" stroke="none" class="port" />
-    </g>
-  </g>
-</svg></div>
-        <div class="card-body">
-          <div class="card-head">
-            <span class="abbr">●</span>
-            <h3>接続点（分岐点）</h3>
-          </div>
-          
-          <p class="idline"><code>junction</code> ・ 接続点 1</p>
-          
-          
-          
-          
+          <p class="statusnote">このままでOK。</p>
+          <p class="note">線と線の交点に点（接続点マーク）は置かない。</p>
           
         </div>
       </article></div>
@@ -1616,10 +2024,10 @@
         <span class="count">1</span>
       </header>
       <div class="grid">
-      <article class="card" id="sym-substation-area" data-search="受電設備エリア（外枠）  area substation-area キュービクル 電気室 オープンフレーム式">
+      <article class="card card--open-question" id="sym-substation-area" data-search="受電設備エリア（外枠）  area substation-area キュービクル 電気室 オープンフレーム式" data-status="open-question">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 136 96" width="231.2" height="163.2" role="img" aria-label="受電設備エリア（外枠）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="0" y="0" width="120" height="80" fill="none" stroke-width="1" stroke-dasharray="6 4" />
+    <rect x="0" y="0" width="120" height="80" fill="none" stroke-width="1" stroke-dasharray="9 3 2 3" />
     <g class="ports">
     </g>
   </g>
@@ -1628,14 +2036,17 @@
           <div class="card-head">
             <span class="abbr">AREA</span>
             <h3>受電設備エリア（外枠）</h3>
+            <span class="badge badge--open-question">要確認</span>
           </div>
+          
           
           <p class="idline"><code>substation-area</code> ・ 接続点 0</p>
           <p class="deflabel">既定の記載文言：<b>電気室（1階、屋内）</b></p>
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">形態<i>3択</i></span><span class="chip">設置場所<i>4択</i></span><span class="chip">階層</span><span class="chip">場所の補足</span></div>
           
-          <p class="note">1プロジェクト内に複数の受電設備エリアが存在しうる。エリアごとに形態と設置場所のラベルを持たせる。</p>
-          
+          <p class="statusnote">一点鎖線で実装しました。線種のご確認をお願いします。</p>
+          <p class="note">受電設備が2箇所以上ある場合のみ、各エリアをこの枠で囲う。1箇所しかない場合は全体を囲わない（かえって分かりにくくなるため）。</p>
+          <p class="flag"><span>要確認</span>「点破線」を一点鎖線として実装しています。実際の図面の線種をご確認ください。</p>
         </div>
       </article></div>
     </section>
