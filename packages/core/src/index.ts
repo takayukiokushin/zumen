@@ -106,6 +106,13 @@ export function formatCableSpec(spec: CableSpec): string[] {
   return lines;
 }
 
+/**
+ * ケーブルの線種。埋設（埋ケ）のみ点線で描き、架空（架ケ）は実線で描く。
+ */
+export function cableLineStyle(spec: CableSpec): 'dashed' | 'solid' {
+  return spec.installation === 'buried' ? 'dashed' : 'solid';
+}
+
 /* ------------------------------------------------------------------ */
 /* 受電設備エリア                                                       */
 /* ------------------------------------------------------------------ */

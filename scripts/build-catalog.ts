@@ -35,7 +35,7 @@ const grouped = ORDER.map((c) => ({
 
 const confirmed = SYMBOLS.filter((s) => s.status === 'confirmed');
 const awaiting = SYMBOLS.filter((s) => s.status === 'awaiting-sample');
-const openQuestions = SYMBOLS.filter((s) => s.status === 'open-question');
+const openQuestions = SYMBOLS.filter((s) => s.status === 'open-question' || s.review);
 
 const fieldChip = (label: string, extra?: string): string =>
   `<span class="chip">${esc(label)}${extra ? `<i>${esc(extra)}</i>` : ''}</span>`;

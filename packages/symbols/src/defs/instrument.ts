@@ -1,5 +1,5 @@
 import type { SymbolDef } from '../types.ts';
-import { circle, hline, line, rect, text, vline } from '../shape.ts';
+import { circle, hline, line, path, rect, text, vline } from '../shape.ts';
 
 /** 計器（低圧側。図面に記載することはほぼないが、データとしては保持する） */
 const meter = (id: string, label: string, nameJa: string, size = 11): SymbolDef => ({
@@ -62,6 +62,54 @@ export const instrumentSymbols: SymbolDef[] = [
     nameJa: '計器用変流器',
     category: 'instrument',
     tags: ['CB形', 'OCR'],
+    box: { w: 56, h: 44 },
+    shapes: [
+      vline(24, 0, 44),
+      hline(14, 16, 40),
+      hline(30, 16, 40),
+      hline(22, 16, 56),
+      path('M 16 14 A 4 4 0 0 0 16 22'),
+      path('M 16 22 A 4 4 0 0 0 16 30'),
+    ],
+    ports: [
+      { id: 'in', x: 24, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 24, y: 44, dir: 'down', role: 'line' },
+      { id: 'sec', x: 56, y: 22, dir: 'right', role: 'secondary', label: '試験端子・OCRへ' },
+    ],
+    fields: [{ key: 'ratio', label: '変流比', type: 'text', help: '図面の記載例: 300A/5A' }],
+    status: 'confirmed',
+    statusNote: '実図面のとおり、導体に巻いたコイルの形にしました。',
+    note: 'CB形では、VCBのすぐ下にCT、その次に試験端子を挟んでOCRが入る。',
+  },
+  {
+    id: 'test-terminal',
+    abbr: 'TT',
+    nameJa: '試験端子',
+    category: 'instrument',
+    tags: ['CT二次', '試験', '端子'],
+    box: { w: 52, h: 22 },
+    shapes: [
+      hline(11, 0, 6),
+      rect(6, 4, 40, 14, { rx: 7 }),
+      circle(15, 11, 4),
+      circle(37, 11, 4),
+      hline(11, 46, 52),
+    ],
+    ports: [
+      { id: 'in', x: 0, y: 11, dir: 'left', role: 'secondary' },
+      { id: 'out', x: 52, y: 11, dir: 'right', role: 'secondary' },
+    ],
+    status: 'confirmed',
+    statusNote: '実図面でCTとOCRの間に入っていた端子を記号にしました。',
+    note: 'CTの二次側に入る。',
+  },
+  {
+    id: 'zct',
+    abbr: 'ZCT',
+    nameJa: '零相変流器',
+    nameFormal: 'ゼロカーレントトランスフォーマー',
+    category: 'instrument',
+    tags: ['PAS', 'GR', 'DGR', '地絡'],
     box: { w: 52, h: 44 },
     shapes: [
       vline(20, 0, 44),
@@ -73,40 +121,11 @@ export const instrumentSymbols: SymbolDef[] = [
     ports: [
       { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
       { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
-      { id: 'sec', x: 52, y: 22, dir: 'right', role: 'secondary', label: 'OCRへ' },
-    ],
-    fields: [
-      { key: 'count', label: '個数', type: 'number', unit: '個', defaultValue: 3, help: '斜線の横に記載する数' },
-      { key: 'ratio', label: '変流比', type: 'text', help: '例: 100/5A' },
-    ],
-    status: 'open-question',
-    statusNote: '見本図面（円＋斜線＋3）をCTとして写しました。',
-    review: 'この記号はCTでしょうか、それともZCTでしょうか。斜線の横の「3」は個数（3相分）という理解で合っていますか。',
-    note: 'CB形では、VCBのすぐ下にCT、その次にOCRが入る。',
-  },
-  {
-    id: 'zct',
-    abbr: 'ZCT',
-    nameJa: '零相変流器',
-    nameFormal: 'ゼロカーレントトランスフォーマー',
-    category: 'instrument',
-    tags: ['PAS', 'GR', 'DGR', '地絡'],
-    box: { w: 44, h: 40 },
-    shapes: [
-      vline(22, 0, 40),
-      circle(22, 20, 9),
-      line(15.5, 26.5, 28.5, 13.5),
-      hline(20, 31, 44),
-    ],
-    ports: [
-      { id: 'in', x: 22, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 22, y: 40, dir: 'down', role: 'line' },
-      { id: 'sec', x: 44, y: 20, dir: 'right', role: 'control', label: 'GR/DGRへ' },
+      { id: 'sec', x: 52, y: 22, dir: 'right', role: 'control', label: 'GR/DGRへ' },
     ],
     status: 'confirmed',
-    statusNote: '見本図面のとおり、円の中に斜線を入れる形にしました。',
-    note: 'GR方式・DGR方式のPASに入る。',
-    review: '見本図面ではZCTの下に接地記号が付いていました。これはZCT記号の一部（常に描く）でしょうか。',
+    statusNote: '見本図面のとおり、円の中に斜線と「3」を入れる形にしました。',
+    note: '「3」は個数ではなく、3本の電線を1個のZCTで検出していることを表す。PAS内蔵のZCTにも同じく「3」を記載する。ZCT自体に接地記号は付けない。',
   },
   {
     id: 'vt',

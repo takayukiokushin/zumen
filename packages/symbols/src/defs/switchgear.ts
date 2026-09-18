@@ -1,5 +1,5 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
-import { blade, contact, hline, line, rect, spindle, vline } from '../shape.ts';
+import { blade, contact, hline, line, rect, tiltedBar, vline } from '../shape.ts';
 
 /** 遮断器を表す×印 */
 const crossMark = (x: number, y: number, s = 3.6) => [
@@ -26,18 +26,50 @@ export const switchgearSymbols: SymbolDef[] = [
     id: 'as',
     abbr: 'AS',
     nameJa: 'エアースイッチ',
-    nameFormal: '気中開閉器（電力会社側）',
+    nameFormal: '気中開閉器',
     category: 'switchgear',
-    tags: ['電力会社', '引込元'],
-    box: { w: 40, h: 44 },
-    shapes: [vline(20, 0, 12), ...blade(20, 12, 30), vline(20, 30, 44)],
-    ports: [
-      { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
+    tags: ['電力会社', '引込元', '屋側'],
+    box: { w: 56, h: 72 },
+    shapes: [
+      vline(28, 0, 10),
+      rect(6, 10, 44, 52),
+      vline(28, 10, 26),
+      hline(26, 20, 36),
+      contact(28, 31, 4),
+      line(28, 54, 16, 38),
+      vline(28, 54, 72),
     ],
-    status: 'awaiting-sample',
-    statusNote: '見本待ち。',
-    note: '電柱パターンのとき、引込元〜責任分界点の間に入る場合がある（電力会社側の機器）。',
+    ports: [
+      { id: 'in', x: 28, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 28, y: 72, dir: 'down', role: 'line' },
+    ],
+    fields: [RATED_VOLTAGE, RATED_CURRENT, { key: 'place', label: '設置場所', type: 'text', help: '図面の記載例: 屋側' }],
+    status: 'confirmed',
+    statusNote: '見本図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃にしました。',
+    note: '記載例「屋側 / AS / 7200V200A」。電柱パターンのとき、引込元〜責任分界点の間に入る場合がある。',
+  },
+  {
+    id: 'mccb',
+    abbr: 'MCCB',
+    nameJa: '配線用遮断器',
+    category: 'switchgear',
+    tags: ['低圧', '遮断器', 'PCS'],
+    box: { w: 44, h: 52 },
+    shapes: [
+      vline(16, 0, 12),
+      line(10, 6, 24, 20),
+      line(24, 6, 10, 20),
+      line(16, 38, 28, 18),
+      vline(16, 38, 52),
+    ],
+    ports: [
+      { id: 'in', x: 16, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 16, y: 52, dir: 'down', role: 'line' },
+    ],
+    fields: [RATED_CURRENT],
+    status: 'confirmed',
+    statusNote: '実図面のとおり、×印＋可動刃。低圧側の分岐に使う。',
+    note: '記載例「MCCB 225A」。',
   },
   {
     id: 'ds',
@@ -81,9 +113,8 @@ export const switchgearSymbols: SymbolDef[] = [
       { id: 'out', x: 24, y: 62, dir: 'down', role: 'line' },
     ],
     fields: [RATED_VOLTAGE, RATED_CURRENT],
-    status: 'open-question',
-    statusNote: 'PF付LBSの見本図面から、ヒューズを外した形として描きました。',
-    review: 'ヒューズなしのLBSもこの形（上部に横バー＋丸、斜めの可動刃）でよいかご確認ください。',
+    status: 'confirmed',
+    statusNote: 'PF付LBSからヒューズの形だけを除いた形で確定。上の丸は負荷開閉器であることを表すためLBSにのみ付き、下の丸は付けません。',
     note: '3点不一致のとき、この記号の中央に横線を引いて「責任分界点」と記載することがある。',
   },
   {
@@ -98,7 +129,7 @@ export const switchgearSymbols: SymbolDef[] = [
       hline(8, 15, 33),
       contact(24, 14.5, 5.5),
       line(24, 62, 12, 26),
-      spindle(22.1, 56.3, 13.9, 31.7, 5),
+      tiltedBar(22.1, 56.3, 13.9, 31.7, 5),
       vline(24, 62, 78),
     ],
     ports: [
@@ -112,7 +143,7 @@ export const switchgearSymbols: SymbolDef[] = [
       { key: 'fuseSpec', label: 'ヒューズ定格', type: 'text', help: '図面の記載例: 7200V G50A T40A' },
     ],
     status: 'confirmed',
-    statusNote: '見本図面のとおり、上部に横バー＋丸、斜めの可動刃の上に紡錘形のヒューズを描く形にしました。',
+    statusNote: '見本図面のとおり、上部に横バー＋丸（負荷開閉器の印）、左上がりの可動刃の上に傾けた長方形のヒューズを描く形にしました。',
     note: 'PFS形（PF・S形）の主遮断装置。設備容量300kVA以下で採用可能。記載例「LBS 7200V 200A PF×3 7200V G50A T40A」。',
   },
   {
@@ -138,16 +169,25 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '高圧カットアウト',
     category: 'switchgear',
     tags: ['カットアウトスイッチ', '変圧器一次側'],
-    box: { w: 40, h: 44 },
-    shapes: [vline(20, 0, 44), rect(13, 12, 14, 18), line(13, 30, 27, 12)],
-    ports: [
-      { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
+    box: { w: 48, h: 72 },
+    shapes: [
+      vline(26, 0, 14),
+      line(26, 62, 10, 14),
+      tiltedBar(23.5, 54.5, 12.5, 21.5, 5.5),
+      vline(26, 62, 72),
     ],
-    fields: [{ key: 'fuseRating', label: 'ヒューズ定格電流', type: 'number', unit: 'A' }],
-    status: 'awaiting-sample',
-    statusNote: '見本待ち。',
-    note: '変圧器の手前に入るパターン、PAS〜VCT間のLAの上部に入るパターンがある。',
+    ports: [
+      { id: 'in', x: 26, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 26, y: 72, dir: 'down', role: 'line' },
+    ],
+    fields: [
+      RATED_VOLTAGE,
+      RATED_CURRENT,
+      { key: 'fuseCount', label: 'ヒューズ本数', type: 'number', unit: '本', defaultValue: 2, help: '図面の記載例: F×2' },
+    ],
+    status: 'confirmed',
+    statusNote: '見本図面のとおり、左上がりの可動刃の上に傾けた長方形のヒューズ。上下とも丸・横バーは付けません。',
+    note: '変圧器の手前に入るパターン、PAS〜VCT間のLAの上部に入るパターンがある。記載例「PC 7200V 50A F×2」。',
   },
   {
     id: 'vcb',
@@ -159,8 +199,8 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(20, 0, 12),
       ...crossMark(20, 12),
-      contact(20, 30),
-      line(20, 28.2, 31, 14),
+      contact(20, 30, 4),
+      line(20, 26, 34, 14),
       vline(20, 30, 44),
     ],
     ports: [
@@ -168,7 +208,8 @@ export const switchgearSymbols: SymbolDef[] = [
       { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
     ],
     status: 'confirmed',
-    statusNote: '×印付き開閉器（JIS式）を採用。この形でOK。',
+    statusNote: '×印付き開閉器（JIS式）。可動刃は右上がり、下に丸（可動接点）を付けます。上の丸は付けません。',
+    review: 'いただいた実図面では、励突抑制開閉器のVCBが「長方形＋中に丸2つ」で描かれていました。あれは励突抑制開閉器の特別な表記で、通常のVCBはこの×印付きでよいでしょうか。',
     note: 'CB形の主遮断装置。設備容量301kVA以上では必須。すぐ下にCTが入る。',
   },
   {
@@ -177,23 +218,24 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '区分開閉器（高圧気中開閉器）',
     category: 'switchgear',
     tags: ['区分開閉器', '電柱上', 'GR', 'DGR'],
-    box: { w: 56, h: 66 },
+    box: { w: 56, h: 72 },
     shapes: [
       vline(28, 0, 10),
-      rect(6, 10, 44, 46),
-      vline(28, 10, 30),
-      line(28, 48, 17, 32),
-      vline(28, 48, 66),
+      rect(6, 10, 44, 52),
+      vline(28, 10, 26),
+      hline(26, 20, 36),
+      contact(28, 31, 4),
+      line(28, 54, 16, 38),
+      vline(28, 54, 72),
     ],
     ports: [
       { id: 'in', x: 28, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 28, y: 66, dir: 'down', role: 'line' },
+      { id: 'out', x: 28, y: 72, dir: 'down', role: 'line' },
     ],
     slots: [
-      { id: 'zct', x: 28, y: 20, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
-      { id: 'vt', x: 40, y: 50, label: 'VT内蔵', accepts: ['vt'] },
-      { id: 'la', x: 13, y: 48, label: 'LA内蔵', accepts: ['la'] },
-      { id: 'zpd', x: 42, y: 34, label: 'ZPD（DGR方式で内蔵VTがないとき）', accepts: ['zpd'] },
+      { id: 'zct', x: 28, y: 18, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
+      { id: 'vt', x: 40, y: 58, label: 'VT内蔵', accepts: ['vt'] },
+      { id: 'la', x: 14, y: 58, label: 'LA内蔵', accepts: ['la'] },
     ],
     fields: [
       RATED_VOLTAGE,
@@ -225,7 +267,7 @@ export const switchgearSymbols: SymbolDef[] = [
       { key: 'builtinLa', label: 'LA内蔵', type: 'boolean', defaultValue: false },
     ],
     status: 'confirmed',
-    statusNote: '見本図面のとおり実線の四角にしました。内蔵機器（ZCT/VT/LA）は個別の記号として枠内に配置します。',
-    note: '記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。',
+    statusNote: '実際の図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃にしました。内蔵機器（ZCT/VT/LA）は枠内に配置します。',
+    note: '記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。',
   },
 ];

@@ -159,6 +159,24 @@ export const spindle = (
   return poly(pts.flat(), { close: true, fill: 'none' });
 };
 
+/**
+ * 傾いた長方形（LBS・PCの可動刃の上に描くヒューズの形）。
+ * (x1,y1)-(x2,y2) を長辺の中心軸とする幅 2w の長方形を返す。
+ */
+export const tiltedBar = (
+  x1: number, y1: number, x2: number, y2: number, w = 5,
+): PolyShape => {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const px = (-dy / len) * w;
+  const py = (dx / len) * w;
+  return poly(
+    [x1 + px, y1 + py, x2 + px, y2 + py, x2 - px, y2 - py, x1 - px, y1 - py],
+    { close: true, fill: 'none' },
+  );
+};
+
 /** 巻線結線マーク: スター(Y)結線 */
 export const starMark = (cx: number, cy: number, r = 5): Shape[] => {
   const pt = (deg: number): [number, number] => {
