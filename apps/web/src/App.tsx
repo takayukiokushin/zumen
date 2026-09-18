@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from './session/api.ts';
-import type { User } from './session/api.ts';
+import { api, LockedError } from './session/api.ts';
+import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
 import { HearingForm } from './HearingForm.tsx';
@@ -30,6 +30,9 @@ export function App() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** 他の人が編集中のときの、その人の情報。閲覧のみになる */
+  const [lockedBy, setLockedBy] = useState<Lock | null>(null);
+  const readOnly = lockedBy !== null;
 
   useEffect(() => {
     api
@@ -46,6 +49,33 @@ export function App() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [dirty]);
 
+  /** 編集中であることを伝え続ける。途切れると数分で他の人が編集できるようになる */
+  useEffect(() => {
+    if (!projectId || readOnly) return;
+    const beat = () => {
+      api.takeLock(projectId).catch((e) => {
+        // 誰かに編集を引き継がれた場合はここで気づく
+        if (e instanceof LockedError) setLockedBy(e.lock);
+      });
+    };
+    const timer = setInterval(beat, 60_000);
+    return () => clearInterval(timer);
+  }, [projectId, readOnly]);
+
+  /** 画面を閉じるときは編集中の印を外す（他の人が待たされないように） */
+  useEffect(() => {
+    if (!projectId || readOnly) return;
+    const release = () => {
+      void fetch(`/api/projects/${projectId}/lock`, {
+        method: 'DELETE',
+        credentials: 'include',
+        keepalive: true,
+      }).catch(() => undefined);
+    };
+    window.addEventListener('pagehide', release);
+    return () => window.removeEventListener('pagehide', release);
+  }, [projectId, readOnly]);
+
   const effective = useMemo<Answers>(() => ({ ...DEFAULTS, ...answers }), [answers]);
 
   const updateAnswers = useCallback((next: Answers | ((prev: Answers) => Answers)) => {
@@ -53,8 +83,14 @@ export function App() {
     setDirty(true);
   }, []);
 
-  const openProject = async (id: string) => {
+  /** 開いている案件から離れるとき、編集中の印を外しておく */
+  const leaveCurrent = async () => {
+    if (projectId && !readOnly) await api.releaseLock(projectId).catch(() => undefined);
+  };
+
+  const openProject = async (id: string, force = false) => {
     try {
+      await leaveCurrent();
       const p = await api.getProject(id);
       setProjectId(p.id);
       setProjectName(p.name);
@@ -63,6 +99,13 @@ export function App() {
       setDirty(false);
       setSavedAt(null);
       setError(null);
+      try {
+        await api.takeLock(id, force);
+        setLockedBy(null);
+      } catch (e) {
+        if (!(e instanceof LockedError)) throw e;
+        setLockedBy(e.lock);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '案件を開けませんでした。');
     }
@@ -70,6 +113,7 @@ export function App() {
 
   const newProject = async (name: string) => {
     try {
+      await leaveCurrent();
       const { id } = await api.createProject(name);
       setProjectId(id);
       setProjectName(name || '無題の案件');
@@ -77,6 +121,7 @@ export function App() {
       setDrawing(null);
       setDirty(false);
       setError(null);
+      setLockedBy(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : '案件を作れませんでした。');
     }
@@ -91,6 +136,7 @@ export function App() {
       setSavedAt(r.updatedAt);
       setDirty(false);
     } catch (e) {
+      if (e instanceof LockedError) setLockedBy(e.lock);
       setError(e instanceof Error ? e.message : '保存できませんでした。');
     } finally {
       setSaving(false);
@@ -131,7 +177,9 @@ export function App() {
           setDirty(true);
         }}
         onSave={() => void save()}
+        readOnly={readOnly}
         onLogout={() => {
+          void leaveCurrent();
           void api.logout();
           setUser(null);
         }}
@@ -139,6 +187,34 @@ export function App() {
 
       {error && <p className="bar-error">{error}</p>}
 
+      {lockedBy && (
+        <p className="bar-lock">
+          <b>{lockedBy.userName}さんが編集中です。</b>
+          この案件はいま閲覧のみです（{new Date(lockedBy.since).toLocaleTimeString('ja-JP')} から）。
+          {dirty && <b className="warn">この画面の未保存の変更は保存できません。</b>}
+          <button
+            type="button"
+            onClick={() => {
+              const warning = dirty
+                ? 'この画面の未保存の変更は破棄され、保存されている内容を読み直します。\n'
+                : '';
+              if (
+                window.confirm(
+                  `${lockedBy.userName}さんから編集を引き継ぎます。\n` +
+                    warning +
+                    `${lockedBy.userName}さんの未保存の変更も失われます。よろしいですか。`,
+                )
+              ) {
+                void openProject(projectId!, true);
+              }
+            }}
+          >
+            編集を引き継ぐ
+          </button>
+        </p>
+      )}
+
+      <Shield readOnly={readOnly}>
       {!projectId ? (
         <p className="empty-state">
           上の「案件を選ぶ」から案件を開くか、新しい案件をつくってください。
@@ -165,6 +241,21 @@ export function App() {
           <CompositionPreview answers={effective} />
         </div>
       )}
+      </Shield>
     </>
+  );
+}
+
+/**
+ * 閲覧のみのときに、中の入力欄やボタンをまとめて使えなくする覆い。
+ * fieldset の disabled は中の入力欄すべてに効くので、画面ごとに手当てしなくて済む。
+ * display:contents にしてあるので、見た目の並びは変わらない。
+ */
+function Shield({ readOnly, children }: { readOnly: boolean; children: React.ReactNode }) {
+  if (!readOnly) return <>{children}</>;
+  return (
+    <fieldset className="shield" disabled>
+      {children}
+    </fieldset>
   );
 }

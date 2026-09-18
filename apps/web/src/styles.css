@@ -217,3 +217,15 @@ table.picked tr.uncertain { background: var(--accent-soft); }
 .bar-error { margin: 0; padding: 8px 16px; background: var(--need-soft); color: var(--need); font-size: 12.5px; }
 .empty-state { padding: 60px 20px; text-align: center; color: var(--muted); font-size: 14px; }
 body:has(.projectbar) .app, body:has(.projectbar) .editor, body:has(.projectbar) .analyze { height: calc(100% - 45px - 37px); }
+
+/* ---- 他の人が編集中のときの覆い ---- */
+.bar-lock { margin: 0; padding: 7px 16px; background: var(--accent-soft); border-bottom: 1px solid var(--accent);
+  font-size: 12.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bar-lock .warn { color: var(--need); }
+.bar-lock button { padding: 4px 11px; background: #fff; border: 1px solid var(--accent); border-radius: 2px;
+  cursor: pointer; font-size: 12.5px; }
+/* 中身の並びを変えずに、入力欄とボタンだけまとめて止める */
+.shield { display: contents; }
+.shield .canvas, .shield .canvas-wrap { pointer-events: none; }
+.shield .app, .shield .editor { opacity: .9; }
+.picker-menu .editing { color: var(--accent); font-weight: 600; }

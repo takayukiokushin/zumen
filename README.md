@@ -25,6 +25,7 @@
 | 8 | PDF/PNG出力 | 完了 |
 | 9 | AI解析（手書きメモの読み取り・確認画面） | 完了 |
 | 10 | サーバー保管・ログイン・案件管理 | 完了 |
+| 10b | 同時編集の排他（編集中は他の人は閲覧のみ） | 完了 |
 | 11 | Electron配布（mac / Windows） | 完了（コード署名は未設定） |
 
 ## 構成
@@ -80,6 +81,7 @@ pnpm check       # 質問定義・構成ルールの検証（実図面との一�
 pnpm catalog     # docs/symbol-catalog.html を再生成
 pnpm sample      # docs/sample-drawing.svg を再生成
 pnpm start       # 画面をビルドしてサーバーを起動（実際に使うとき）
+                 # ダブルクリックで起動するなら start-server.command / .bat
 ```
 
 ## デスクトップ版（Electron）

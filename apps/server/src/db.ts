@@ -44,7 +44,10 @@ db.exec(`
     -- ヒアリングの回答
     answers    TEXT NOT NULL DEFAULT '{}',
     -- 編集した図面（未編集なら null）
-    drawing    TEXT
+    drawing    TEXT,
+    -- 編集中の人（誰も編集していなければ null）
+    locked_by  TEXT,
+    locked_at  TEXT
   );
 
   CREATE TABLE IF NOT EXISTS project_files (
@@ -59,5 +62,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_files_project ON project_files(project_id);
 `);
+
+/**
+ * 後から足した列を、既に使っているデータベースにも入れる。
+ * 同じ列を二度足そうとすると失敗するので、無ければ足す形にしている。
+ */
+function addColumnIfMissing(table: string, column: string, type: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (cols.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+}
+
+addColumnIfMissing('projects', 'locked_by', 'TEXT');
+addColumnIfMissing('projects', 'locked_at', 'TEXT');
 
 export const now = (): string => new Date().toISOString();

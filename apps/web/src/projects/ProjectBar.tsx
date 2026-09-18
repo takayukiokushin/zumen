@@ -10,6 +10,8 @@ interface Props {
   dirty: boolean;
   saving: boolean;
   savedAt: string | null;
+  /** 他の人が編集中で、閲覧のみになっているか */
+  readOnly: boolean;
   onOpen: (id: string) => void;
   onNew: (name: string) => void;
   onRename: (name: string) => void;
@@ -19,7 +21,7 @@ interface Props {
 
 /** 案件の切り替え・保存と、ログイン状態を出す帯 */
 export function ProjectBar(props: Props) {
-  const { user, projectId, projectName, dirty, saving, savedAt } = props;
+  const { user, projectId, projectName, dirty, saving, savedAt, readOnly } = props;
   const [list, setList] = useState<ProjectSummary[] | null>(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,17 +59,32 @@ export function ProjectBar(props: Props) {
 
       {projectId && (
         <>
-          <button type="button" onClick={() => {
-            const name = window.prompt('案件の名前', projectName);
-            if (name) props.onRename(name);
-          }}>
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => {
+              const name = window.prompt('案件の名前', projectName);
+              if (name) props.onRename(name);
+            }}
+          >
             名前を変える
           </button>
-          <button type="button" className={dirty ? 'need-save' : ''} onClick={props.onSave} disabled={saving || !dirty}>
+          <button
+            type="button"
+            className={dirty ? 'need-save' : ''}
+            onClick={props.onSave}
+            disabled={saving || !dirty || readOnly}
+          >
             {saving ? '保存中…' : dirty ? '保存する' : '保存済み'}
           </button>
           <span className="saved">
-            {dirty ? '未保存の変更があります' : savedAt ? `${new Date(savedAt).toLocaleTimeString('ja-JP')} に保存` : ''}
+            {readOnly
+              ? '閲覧のみ'
+              : dirty
+                ? '未保存の変更があります'
+                : savedAt
+                  ? `${new Date(savedAt).toLocaleTimeString('ja-JP')} に保存`
+                  : ''}
           </span>
         </>
       )}
@@ -103,9 +120,16 @@ export function ProjectBar(props: Props) {
                     <span>
                       {new Date(p.updated_at).toLocaleString('ja-JP')}
                       {p.file_count > 0 && ` ・写真${p.file_count}枚`}
+                      {p.lock && <b className="editing">　{p.lock.userName}さんが編集中</b>}
                     </span>
                   </button>
-                  <button type="button" className="del" onClick={() => void remove(p)} aria-label={`${p.name}を削除`}>
+                  <button
+                    type="button"
+                    className="del"
+                    disabled={p.lock !== null}
+                    onClick={() => void remove(p)}
+                    aria-label={`${p.name}を削除`}
+                  >
                     削除
                   </button>
                 </li>
