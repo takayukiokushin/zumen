@@ -123,3 +123,19 @@ body:has(.tabbar) .app { height: calc(100% - 45px); }
 .palette .thumb { display: grid; place-items: center; height: 46px; color: var(--ink); }
 .palette .thumb svg { max-width: 100%; max-height: 44px; }
 .palette .cap { font-size: 9.5px; color: var(--muted); }
+.canvas .handle { fill: #fff; stroke: var(--accent); stroke-width: 1.5; cursor: pointer; }
+.canvas .handle:hover { fill: var(--accent-soft); }
+.canvas .preview { stroke: var(--accent); stroke-dasharray: 4 3; pointer-events: none; }
+.tools button.on { background: var(--accent-soft); border-color: var(--accent); }
+.mode-hint { font-size: 12px; color: var(--accent); margin-left: 6px; }
+
+/* ---- 印刷（ブラウザの「PDFとして保存」で提出用のPDFになる） ---- */
+.print-root { display: none; }
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  html, body, #root { margin: 0; padding: 0; height: auto; background: #fff; }
+  .tabbar, .editor-bar, .editor-body, .app, .mode-hint { display: none !important; }
+  .editor { display: block; height: auto; }
+  .print-root { display: block; }
+  .print-root svg { display: block; width: 210mm; height: 296mm; }
+}

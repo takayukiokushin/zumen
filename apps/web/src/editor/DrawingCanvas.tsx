@@ -9,14 +9,23 @@ interface Props {
   onSelect: (id: string | null) => void;
   /** ドラッグが終わったときに一度だけ呼ぶ（元に戻すの単位をドラッグ1回にするため） */
   onMoveEnd: (id: string, dx: number, dy: number) => void;
+  /** 線の端を動かして伸縮したとき */
+  onWireEnd: (id: string, end: 1 | 2, dx: number, dy: number) => void;
+  /** 線を引き終えたとき */
+  onAddWire: (x1: number, y1: number, x2: number, y2: number) => void;
+  /** 'wire' のときは2点をクリックして線を引く */
+  mode: 'select' | 'wire';
   zoom: number;
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, zoom }: Props) {
+export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
+  const [drag, setDrag] = useState<{ id: string; end?: 1 | 2; dx: number; dy: number } | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
+  /** 線を引いている途中の始点と、いまのカーソル位置 */
+  const [wireStart, setWireStart] = useState<{ x: number; y: number } | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   const b = docBounds(doc);
   const pad = 40;
@@ -33,6 +42,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, zoom }: Pr
   };
 
   const onPointerDown = (e: React.PointerEvent, it: DocItem) => {
+    if (mode === 'wire') return;
     e.stopPropagation();
     onSelect(it.id);
     if (it.kind === 'frame') return;
@@ -42,20 +52,41 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, zoom }: Pr
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    if (mode === 'wire' && wireStart) setCursor(toDrawing(e));
     if (!drag || !start.current) return;
     const p = toDrawing(e);
-    setDrag({ id: drag.id, dx: p.x - start.current.x, dy: p.y - start.current.y });
+    setDrag({ ...drag, dx: p.x - start.current.x, dy: p.y - start.current.y });
   };
 
   const onPointerUp = () => {
     if (drag && (Math.abs(drag.dx) > 0.5 || Math.abs(drag.dy) > 0.5)) {
-      onMoveEnd(drag.id, Math.round(drag.dx), Math.round(drag.dy));
+      if (drag.end) onWireEnd(drag.id, drag.end, drag.dx, drag.dy);
+      else onMoveEnd(drag.id, drag.dx, drag.dy);
     }
     setDrag(null);
     start.current = null;
   };
 
-  const offset = (id: string) => (drag && drag.id === id ? { x: drag.dx, y: drag.dy } : { x: 0, y: 0 });
+  /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
+  const onCanvasDown = (e: React.PointerEvent) => {
+    if (mode !== 'wire') {
+      onSelect(null);
+      return;
+    }
+    const p = toDrawing(e);
+    if (!wireStart) {
+      setWireStart(p);
+      setCursor(p);
+    } else {
+      onAddWire(wireStart.x, wireStart.y, p.x, p.y);
+      setWireStart(null);
+      setCursor(null);
+    }
+  };
+
+  const offset = (id: string) => (drag && drag.id === id && !drag.end ? { x: drag.dx, y: drag.dy } : { x: 0, y: 0 });
+
+  const selectedWire = doc.items.find((i) => i.id === selectedId && i.kind === 'wire');
 
   return (
     <svg
@@ -63,7 +94,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, zoom }: Pr
       className="canvas"
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
-      onPointerDown={() => onSelect(null)}
+      onPointerDown={onCanvasDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -150,6 +181,42 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, zoom }: Pr
             </g>
           );
         })}
+
+        {selectedWire && selectedWire.kind === 'wire' && mode === 'select' && (
+          <>
+            {([1, 2] as const).map((end) => {
+              const hx = end === 1 ? selectedWire.x1 : selectedWire.x2;
+              const hy = end === 1 ? selectedWire.y1 : selectedWire.y2;
+              const d = drag && drag.id === selectedWire.id && drag.end === end ? drag : null;
+              return (
+                <circle
+                  key={end}
+                  className="handle"
+                  cx={hx + (d?.dx ?? 0)}
+                  cy={hy + (d?.dy ?? 0)}
+                  r={4}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    (e.target as Element).setPointerCapture?.(e.pointerId);
+                    start.current = toDrawing(e);
+                    setDrag({ id: selectedWire.id, end, dx: 0, dy: 0 });
+                  }}
+                />
+              );
+            })}
+          </>
+        )}
+
+        {mode === 'wire' && wireStart && cursor && (
+          <line
+            className="preview"
+            x1={wireStart.x}
+            y1={wireStart.y}
+            x2={Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? wireStart.x : cursor.x}
+            y2={Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? cursor.y : wireStart.y}
+            strokeWidth={1}
+          />
+        )}
 
         {selectedId &&
           (() => {

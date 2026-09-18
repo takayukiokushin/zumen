@@ -65,6 +65,15 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
     );
   }
 
+  for (const t2 of drawing.texts ?? []) {
+    const tspans = t2.lines
+      .map((l, i) => `<tspan x="${round(t2.x)}" dy="${i === 0 ? 0 : 10}">${esc(l)}</tspan>`)
+      .join('');
+    body.push(
+      `    <text x="${round(t2.x)}" y="${round(t2.y)}" font-size="8" text-anchor="${t2.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
+    );
+  }
+
   for (const s of drawing.symbols) {
     const def = getSymbol(s.symbolId);
     const cx = def.box.w / 2;

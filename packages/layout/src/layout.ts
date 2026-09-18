@@ -37,10 +37,19 @@ export interface FrameMark {
   label?: string;
 }
 
+export interface DrawingText {
+  x: number;
+  y: number;
+  lines: string[];
+  anchor: 'start' | 'middle' | 'end';
+}
+
 export interface DrawingLayout {
   symbols: PlacedSymbol[];
   wires: Wire[];
   frames: FrameMark[];
+  /** 手で追加した注記 */
+  texts?: DrawingText[];
   /** 作図内容の外形 */
   bounds: { x0: number; y0: number; x1: number; y1: number };
 }
@@ -309,4 +318,15 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   for (const f of frames) ext(f.x, f.y - 14, f.x + f.w, f.y + 26);
 
   return { symbols, wires, frames, bounds: { x0, y0, x1, y1 } };
+}
+
+/** 図面の格子の刻み。移動・伸縮はこの単位に吸着させる */
+export const GRID = 2;
+
+/** 格子に吸着させる */
+export const snap = (v: number): number => Math.round(v / GRID) * GRID;
+
+/** 線を縦か横のどちらかに揃える（斜めにしない） */
+export function straighten(x1: number, y1: number, x2: number, y2: number): [number, number, number, number] {
+  return Math.abs(x2 - x1) <= Math.abs(y2 - y1) ? [x1, y1, x1, y2] : [x1, y1, x2, y1];
 }
