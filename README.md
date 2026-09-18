@@ -10,7 +10,7 @@
 
 ## 現在の状態
 
-フェーズ1（MVP）の実装順序 3 まで完了。記号ライブラリのレビュー待ち。
+フェーズ1（MVP）の実装順序 1〜11 が一通り完了。
 
 | # | 内容 | 状態 |
 |---|---|---|
@@ -24,13 +24,14 @@
 | 8 | PDF/PNG出力 | 完了 |
 | 9 | AI解析（手書きメモの読み取り・確認画面） | 完了 |
 | 10 | サーバー保管・ログイン・案件管理 | 完了 |
-| 11 | Electron配布（mac / Windows） | 未着手 |
+| 11 | Electron配布（mac / Windows） | 完了（アイコン・署名は未設定） |
 
 ## 構成
 
 ```
 apps/web           画面（スケッチ読み取り・事前ヒアリング・図面の編集）
 apps/server        サーバー（案件の保管・ログイン・解析の中継。APIキーはここにだけ置く）
+apps/desktop       デスクトップ版（Electron。社内サーバーに接続して同じ画面を使う）
 packages/core      ドメインモデル（Project / SubstationArea / Equipment / Connection …）
 packages/symbols   記号マスタ。図形プリミティブ・記号定義・SVG生成
 packages/knowledge 質問定義と構成ルール（条件式つきのデータ）
@@ -78,6 +79,34 @@ pnpm check       # 質問定義・構成ルールの検証（実図面との一�
 pnpm catalog     # docs/symbol-catalog.html を再生成
 pnpm sample      # docs/sample-drawing.svg を再生成
 ```
+
+## デスクトップ版（Electron）
+
+デスクトップ版は画面を作り直したものではなく、**社内サーバーの画面をそのまま表示する薄い殻**。
+Web版と機能差が出ないようにしてある。
+
+- 初回起動時に接続先（社内サーバーのURL）を入力する。設定は端末のユーザーデータに保存される
+- メニューから「接続先を変える」でいつでも変更できる
+- 「ファイル > PDFとして保存」でA4のPDFを書き出せる（`⌘P` / `Ctrl+P` は印刷）
+- APIキーは端末に一切置かない。解析はサーバー経由のまま
+
+サーバーは `apps/web` のビルド結果も配信するので、ブラウザでも同じURLでそのまま使える。
+
+```sh
+pnpm build                    # apps/web を apps/server が配信できる形にビルド
+pnpm dev:server               # サーバーを起動（既定 http://127.0.0.1:8787）
+pnpm desktop                  # デスクトップ版を起動（開発用）
+
+pnpm dist:mac                 # macOS用 dmg を作る（macOS上で実行）
+pnpm dist:win                 # Windows用インストーラを作る（Windows上で実行）
+```
+
+インストーラの作成は**その OS 上で実行する必要がある**（macのdmgはmacで、Windowsのexeは
+Windowsで作る）。また、現時点では以下が未設定：
+
+- アプリのアイコン（`apps/desktop/build/icon.icns` / `icon.ico` を置けば自動で使われる）
+- macOSのコード署名・公証、Windowsのコード署名
+  （未署名でも社内配布は可能だが、初回起動時に警告が出る）
 
 ## 位置づけ
 

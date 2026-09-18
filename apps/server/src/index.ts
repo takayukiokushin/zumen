@@ -1,4 +1,8 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { analyze } from './analyze.ts';
 import { currentUser, login, logout, requireAuth } from './auth.ts';
@@ -66,6 +70,22 @@ app.post('/api/analyze', requireAuth, async (c) => {
   }
 });
 
+/* ---------------- 画面の配信 ---------------- */
+
+/**
+ * ビルドした画面をこのサーバーから配る。
+ * デスクトップ版はこのサーバーの住所を開くだけでよくなる（画面を直しても入れ直し不要）。
+ */
+// 画面のビルド結果。既定はこのファイルから見た apps/web/dist（起動ディレクトリに依存させない）
+const webDist = process.env.WEB_DIST
+  ? resolve(process.env.WEB_DIST)
+  : fileURLToPath(new URL('../../web/dist', import.meta.url));
+const hasWeb = existsSync(resolve(webDist, 'index.html'));
+if (hasWeb) {
+  app.use('/assets/*', serveStatic({ root: webDist, rewriteRequestPath: (p) => p }));
+  app.use('/*', serveStatic({ root: webDist, rewriteRequestPath: () => '/index.html' }));
+}
+
 const port = Number(process.env.PORT ?? 8787);
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`サーバーを起動しました: http://127.0.0.1:${info.port}`);
@@ -74,6 +94,9 @@ serve({ fetch: app.fetch, port }, (info) => {
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn('※ ANTHROPIC_API_KEY が設定されていないため、スケッチの読み取りは使えません。');
+  }
+  if (!hasWeb) {
+    console.warn(`※ 画面のビルドが見つかりません（${webDist}）。'pnpm build' を実行してください。`);
   }
 });
 

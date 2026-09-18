@@ -1,0 +1,30 @@
+appId: jp.co.fuji-elex.zumen
+productName: 単線結線図作成
+copyright: 株式会社フジエレックス
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - static/**/*
+  - package.json
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # 署名・公証は配布前に設定する（未設定でも社内配布は可能）
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  language: '1041'

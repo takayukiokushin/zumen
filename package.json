@@ -12,7 +12,10 @@
     "check": "node --experimental-strip-types scripts/check-knowledge.ts",
     "dev": "pnpm --filter @zumen/web dev",
     "build": "pnpm --filter @zumen/web build",
-    "dev:server": "pnpm --filter @zumen/server dev"
+    "dev:server": "pnpm --filter @zumen/server dev",
+    "desktop": "pnpm --filter @zumen/desktop start",
+    "dist:mac": "pnpm --filter @zumen/desktop dist:mac",
+    "dist:win": "pnpm --filter @zumen/desktop dist:win"
   },
   "engines": {
     "node": ">=22.6.0"

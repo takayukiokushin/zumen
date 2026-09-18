@@ -10,4 +10,5 @@ out/
 coverage/
 *.tsbuildinfo
 apps/web/dist/
+apps/desktop/release/
 data/

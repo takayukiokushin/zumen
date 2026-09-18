@@ -1,0 +1,19 @@
+{
+  "name": "@zumen/desktop",
+  "version": "0.0.1",
+  "private": true,
+  "description": "単線結線図作成",
+  "author": "株式会社フジエレックス",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "pnpm build && electron .",
+    "dist:mac": "pnpm build && electron-builder --mac",
+    "dist:win": "pnpm build && electron-builder --win",
+    "dist": "pnpm build && electron-builder --mac --win"
+  },
+  "devDependencies": {
+    "electron": "^44.4.2",
+    "electron-builder": "^26.15.3"
+  }
+}
