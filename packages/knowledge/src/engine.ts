@@ -2,7 +2,7 @@ import type { Answers, Value } from './condition.ts';
 import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
 import { QUESTIONS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
-import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, TRANSFORMER, UPSTREAM } from './composition.ts';
+import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
 
 /* ------------------------------------------------------------------ */
@@ -62,7 +62,7 @@ export function suggestMainBreakerForm(totalKva: number): 'pfs' | 'cb' | null {
 export const DRIVER_QUESTION_IDS: ReadonlySet<string> = (() => {
   const ids = new Set<string>();
   for (const q of QUESTIONS) for (const k of referencedKeys(q.showIf)) ids.add(k);
-  for (const p of [...UPSTREAM, ...Object.values(CHAIN_BY_FORM).flat(), ...DOWNSTREAM, ...TRANSFORMER, ...EXTRAS]) {
+  for (const p of [...UPSTREAM, ...Object.values(CHAIN_BY_FORM).flat(), ...DOWNSTREAM, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]) {
     for (const k of referencedKeys(p.when)) ids.add(k);
     if (p.repeatCountKey) ids.add(p.repeatCountKey);
   }
@@ -176,6 +176,8 @@ export interface PlacedItem {
   connectFrom?: string[];
   /** 文字を記号のどちら側に書くか */
   labelSide?: 'left' | 'right';
+  /** 低圧の回線のとき、何本目か（0始まり） */
+  lane?: number;
   note?: string;
 }
 
@@ -208,6 +210,7 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
     ...DOWNSTREAM,
     ...TRANSFORMER,
     ...EXTRAS,
+    ...FEEDERS,
   ];
 
   const out: PlacedItem[] = [];
@@ -234,6 +237,7 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
         dashedAfter: evaluate(p.dashedAfter, a) && p.dashedAfter !== undefined,
         connectFrom: p.connectFrom,
         labelSide: p.labelSide,
+        lane: p.kind === 'feeder' ? i : undefined,
         note: p.note,
       });
     }

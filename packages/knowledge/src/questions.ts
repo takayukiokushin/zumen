@@ -60,6 +60,7 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount' },
   { id: 'receiving', label: '受電設備の構成' },
   { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount' },
+  { id: 'feeder', label: '低圧側の分岐', description: '変圧器の下の母線から出る回線', repeatCountKey: 'feederCount' },
   { id: 'compensation', label: '進相設備' },
   { id: 'special', label: '特殊設備' },
   { id: 'title', label: '表題欄' },
@@ -522,6 +523,48 @@ export const QUESTIONS: Question[] = [
   { id: 'trComposition', group: 'transformer', label: '構成', type: 'text', placeholder: '単相変圧器×3', showIf: { key: 'trConnection', in: ['tr-3p-dd', 'tr-vv'] }, ask: 'always' },
   { id: 'trHasPc', group: 'transformer', label: '変圧器の手前にPC（高圧カットアウト）が入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'trHasLbs', group: 'transformer', label: '変圧器の手前にLBSが入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
+
+  /* ---------------- 低圧側の分岐 ---------------- */
+  {
+    id: 'feederCount',
+    group: 'feeder',
+    label: '低圧側の分岐回線数',
+    type: 'number',
+    defaultValue: 0,
+    ask: 'ai-uncertain',
+    help: '変圧器の下の母線から出る回線の数。無ければ0',
+  },
+  { id: 'feederName', group: 'feeder', label: '回線名', type: 'text', placeholder: 'PCSNo1〜No5', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain' },
+  { id: 'feederBreaker', group: 'feeder', label: '遮断器の定格', type: 'text', placeholder: 'MCCB225A', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain' },
+  {
+    id: 'feederDevice',
+    group: 'feeder',
+    label: '回線の先の機器',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし（負荷へ）' },
+      { value: 'pcs', label: 'PCS' },
+    ],
+    defaultValue: 'none',
+    showIf: { key: 'feederCount', gt: 0 },
+    ask: 'ai-uncertain',
+  },
+  { id: 'feederDeviceCapacity', group: 'feeder', label: 'PCSの容量', type: 'text', placeholder: '100kW×5', showIf: { key: 'feederDevice', eq: 'pcs' }, ask: 'ai-uncertain' },
+  {
+    id: 'feederSource',
+    group: 'feeder',
+    label: 'PCSの先',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし' },
+      { value: 'pv', label: '太陽電池パネル' },
+      { value: 'battery', label: '蓄電池ユニット' },
+    ],
+    defaultValue: 'none',
+    showIf: { key: 'feederDevice', eq: 'pcs' },
+    ask: 'ai-uncertain',
+  },
+  { id: 'feederSourceLabel', group: 'feeder', label: '先の機器の表記', type: 'text', placeholder: '蓄電池ユニットNo.1', showIf: { key: 'feederSource', ne: 'none' }, ask: 'ai-uncertain' },
 
   /* ---------------- 進相設備 ---------------- */
   { id: 'hasCapacitor', group: 'compensation', label: 'コンデンサ設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },

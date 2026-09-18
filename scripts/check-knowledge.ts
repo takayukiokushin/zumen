@@ -21,7 +21,7 @@ import {
   withDerived,
 } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
-import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, TRANSFORMER, UPSTREAM } from '../packages/knowledge/src/composition.ts';
+import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from '../packages/knowledge/src/composition.ts';
 import { layout } from '../packages/layout/src/index.ts';
 
 let failed = 0;
@@ -48,6 +48,7 @@ const allPlacements = [
   ...DOWNSTREAM,
   ...TRANSFORMER,
   ...EXTRAS,
+  ...FEEDERS,
 ];
 for (const p of allPlacements) {
   if (!p.symbolId.includes('{') && !findSymbol(p.symbolId)) {
@@ -138,7 +139,7 @@ console.log(`  設備容量300kVAからの提案: ${suggestMainBreakerForm(300)}
 const composition = buildComposition(answers);
 console.log(`\n  組み立てた構成（${composition.length}件）:`);
 for (const item of composition) {
-  const kind = { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠' }[item.kind];
+  const kind = { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', feeder: '回線' }[item.kind];
   const label = item.label.length ? `  「${item.label.join(' / ')}」` : '';
   const parent = item.parent ? ` → ${item.parent}.${item.slot}` : '';
   console.log(`    ${kind.padEnd(4, '　')} ${item.symbolId.padEnd(16)}${parent}${label}`);

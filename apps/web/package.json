@@ -13,7 +13,8 @@
     "react-dom": "^19.0.0",
     "@zumen/knowledge": "workspace:*",
     "@zumen/symbols": "workspace:*",
-    "@zumen/core": "workspace:*"
+    "@zumen/core": "workspace:*",
+    "@zumen/layout": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

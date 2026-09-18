@@ -8,6 +8,7 @@ const KIND_LABEL: Record<string, string> = {
   'branch-right': '右分岐',
   inside: '内蔵',
   frame: '枠',
+  feeder: '回線',
 };
 
 /**

@@ -63,6 +63,13 @@ export const SAMPLE_ANSWERS: Answers = {
   trConnection: 'tr-3p-dy',
   trCapacity: 300,
   trVoltage: '6600V/440-254V',
+
+  feederCount: 2,
+  feederName: 'PCSNo1〜No5',
+  feederBreaker: 'MCCB225A',
+  feederDevice: 'pcs',
+  feederDeviceCapacity: '50kW×2',
+  feederSource: 'pv',
 };
 
 const composition = buildComposition(SAMPLE_ANSWERS);

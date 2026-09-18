@@ -17,7 +17,9 @@ export type PlacementKind =
   /** 親の記号の中（slot）に入る */
   | 'inside'
   /** 主回路を囲む枠（キュービクルの範囲など） */
-  | 'frame';
+  | 'frame'
+  /** 低圧母線から下へ出る回線（回線ごとに縦に並べる） */
+  | 'feeder';
 
 export interface Placement {
   role: string;
@@ -288,6 +290,42 @@ export const TRANSFORMER: Placement[] = [
     labelTemplate: ['{trUsage}', 'Tr', '{trCapacityLine}', '{trVoltage}', '{trComposition}'],
     props: { usage: 'trUsage', capacity: 'trCapacity', voltage: 'trVoltage', composition: 'trComposition' },
     repeatCountKey: 'transformerCount',
+  },
+];
+
+/** 低圧母線から下へ出る回線（回線数ぶん横に並べる） */
+export const FEEDERS: Placement[] = [
+  {
+    role: 'feeder-breaker',
+    symbolId: 'mccb',
+    kind: 'feeder',
+    when: { key: 'feederCount', gt: 0 },
+    repeatCountKey: 'feederCount',
+    labelTemplate: ['{feederName}', '{feederBreaker}'],
+  },
+  {
+    role: 'feeder-pcs',
+    symbolId: 'pcs',
+    kind: 'feeder',
+    when: { all: [{ key: 'feederCount', gt: 0 }, { key: 'feederDevice', eq: 'pcs' }] },
+    repeatCountKey: 'feederCount',
+    labelTemplate: ['{feederDeviceCapacity}'],
+  },
+  {
+    role: 'feeder-source',
+    symbolId: 'pv',
+    kind: 'feeder',
+    when: { all: [{ key: 'feederCount', gt: 0 }, { key: 'feederSource', eq: 'pv' }] },
+    repeatCountKey: 'feederCount',
+    labelTemplate: ['{feederSourceLabel}'],
+  },
+  {
+    role: 'feeder-source',
+    symbolId: 'battery-unit',
+    kind: 'feeder',
+    when: { all: [{ key: 'feederCount', gt: 0 }, { key: 'feederSource', eq: 'battery' }] },
+    repeatCountKey: 'feederCount',
+    labelTemplate: ['{feederSourceLabel}'],
   },
 ];
 

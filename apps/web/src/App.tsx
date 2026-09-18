@@ -3,6 +3,7 @@ import { DRIVER_QUESTION_IDS, evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, 
 import type { Answers, Question, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
+import { Editor } from './editor/Editor.tsx';
 
 /**
  * 事前ヒアリングのフォーム。
@@ -26,6 +27,11 @@ const isOptionalDetail = (q: Question, typed: Answers, key: string): boolean =>
   typed[key] === undefined;
 
 export function App() {
+  const [tab, setTab] = useState<'hearing' | 'drawing'>('hearing');
+  return <Shell tab={tab} setTab={setTab} />;
+}
+
+function Shell({ tab, setTab }: { tab: 'hearing' | 'drawing'; setTab: (t: 'hearing' | 'drawing') => void }) {
   /** 利用者が実際に入力した回答だけを持つ */
   const [answers, setAnswers] = useState<Answers>({});
   const [showAll, setShowAll] = useState(false);
@@ -84,6 +90,19 @@ export function App() {
   }).filter((s): s is NonNullable<typeof s> => s !== null);
 
   return (
+    <>
+      <div className="tabbar">
+        <strong>単線結線図作成</strong>
+        <button type="button" aria-pressed={tab === 'hearing'} onClick={() => setTab('hearing')}>
+          事前ヒアリング
+        </button>
+        <button type="button" aria-pressed={tab === 'drawing'} onClick={() => setTab('drawing')}>
+          図面
+        </button>
+      </div>
+      {tab === 'drawing' ? (
+        <Editor answers={effective} />
+      ) : (
     <div className="app">
       <nav className="nav">
         <h1>事前ヒアリング</h1>
@@ -146,6 +165,8 @@ export function App() {
 
       <CompositionPreview answers={effective} />
     </div>
+      )}
+    </>
   );
 }
 

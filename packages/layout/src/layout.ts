@@ -19,7 +19,7 @@ export interface PlacedSymbol {
   y: number;
   rotate: number;
   label: string[];
-  labelAt: { x: number; y: number; anchor: 'start' | 'end' };
+  labelAt: { x: number; y: number; anchor: 'start' | 'middle' | 'end' };
 }
 
 export interface Wire {
@@ -55,6 +55,8 @@ const BRANCH_OFFSET = 34;
 const LABEL_GAP = 10;
 /** 枠の左右の広がり */
 const FRAME_HALF = 200;
+/** 低圧の回線どうしの間隔 */
+const LANE_GAP = 120;
 
 const portOf = (def: SymbolDef, ...ids: string[]): Port | undefined => {
   for (const id of ids) {
@@ -111,9 +113,17 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     return sym;
   };
 
+  /** 低圧母線から出る回線は、主回路を描き終えてからまとめて並べる */
+  const feeders: PlacedItem[] = [];
+
   for (const item of items) {
     const def = findSymbol(item.symbolId);
     if (!def) continue;
+
+    if (item.kind === 'feeder') {
+      feeders.push(item);
+      continue;
+    }
 
     /* ---- キュービクルなどの枠 ---- */
     if (item.kind === 'frame') {
@@ -240,6 +250,35 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     const bottom = sym.y + (rotate ? def.box.w : def.box.h) + (sym.label.length ? sym.label.length * 10 + 12 : 0);
     pendingGap = Math.max(GAP, bottom - spineY + 10);
     lastBranch = { role: item.role, dir, sym, def };
+  }
+
+  /* ---- 低圧母線と、そこから下へ出る回線 ---- */
+  if (feeders.length > 0) {
+    const laneCount = Math.max(...feeders.map((f) => f.lane ?? 0)) + 1;
+    const busY = spineY + GAP;
+    wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: busY });
+    const laneX = (i: number) => SPINE + (i - (laneCount - 1) / 2) * LANE_GAP;
+    wires.push({ x1: laneX(0), y1: busY, x2: laneX(laneCount - 1), y2: busY });
+
+    for (let lane = 0; lane < laneCount; lane++) {
+      let ly = busY;
+      const inLane = feeders.filter((f) => (f.lane ?? 0) === lane);
+      for (const [i, item] of inLane.entries()) {
+        const def = getSymbol(item.symbolId);
+        const entry = portOf(def, 'in') ?? portOf(def, 'out')!;
+        const exit = portOf(def, 'out');
+        const x = laneX(lane) - entry.x;
+        const yy = ly + (i === 0 ? 0 : GAP) - entry.y;
+        if (i > 0) wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: yy + entry.y });
+        const side = i === 0 ? 'right' : 'right';
+        const sym = add(item, def, x, yy, 0, side);
+        if (i > 0) {
+          // 2つ目以降は記号の下に中央揃えで文字を書く
+          sym.labelAt = { x: laneX(lane) + def.box.w / 2 - entry.x, y: yy + def.box.h + 12, anchor: 'middle' };
+        }
+        ly = exit ? yy + exit.y : yy + def.box.h;
+      }
+    }
   }
 
   // 外形を求める

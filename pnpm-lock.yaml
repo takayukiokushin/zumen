@@ -23,6 +23,9 @@ importers:
       '@zumen/knowledge':
         specifier: workspace:*
         version: link:../../packages/knowledge
+      '@zumen/layout':
+        specifier: workspace:*
+        version: link:../../packages/layout
       '@zumen/symbols':
         specifier: workspace:*
         version: link:../../packages/symbols
