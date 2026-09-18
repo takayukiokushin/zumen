@@ -51,6 +51,17 @@ export const instrumentSymbols: SymbolDef[] = [
         ],
         defaultValue: 'pole',
       },
+      {
+        key: 'count',
+        label: '台数',
+        type: 'select',
+        options: [
+          { value: '1', label: '1台' },
+          { value: '2', label: '2台（受電用＋発電量計量用）' },
+        ],
+        defaultValue: '1',
+        help: '2台の場合は縦に並べて描く',
+      },
     ],
     status: 'confirmed',
     statusNote: '見本図面のとおり、実線の箱の中に上段：VT（二重丸）、下段：CT（単円）を配置しました。',

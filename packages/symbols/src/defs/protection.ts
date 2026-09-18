@@ -1,6 +1,7 @@
 import type { SymbolDef } from '../types.ts';
 import { arrowDown, circle, earth, hline, rect, text, vline } from '../shape.ts';
 
+
 /**
  * 保護継電器の種類マスタ。
  *
@@ -41,18 +42,20 @@ const relay = (t: RelayType): SymbolDef => ({
   nameJa: t.nameJa,
   category: 'protection',
   tags: ['保護継電器', t.code],
-  box: { w: 50, h: 40 },
+  box: { w: 38, h: 24 },
   shapes: [
-    hline(20, 0, 11),
-    rect(11, 8, 34, 24),
-    text(28, 20, t.code, { size: t.code.length >= 4 ? 9 : 10.5, tracking: 1.6 }),
+    rect(0, 0, 38, 24),
+    text(19, 12, t.code, { size: t.code.length >= 4 ? 9 : 10.5, tracking: 1.6 }),
   ],
-  ports: [{ id: 'in', x: 0, y: 20, dir: 'left', role: 'secondary' }],
+  ports: [
+    { id: 'l', x: 0, y: 12, dir: 'left', role: 'secondary' },
+    { id: 'r', x: 38, y: 12, dir: 'right', role: 'secondary' },
+  ],
   fields: [
     { key: 'tap', label: '整定値・タップ', type: 'text' },
   ],
   status: t.needsConfirm ? 'open-question' : 'confirmed',
-  statusNote: '長方形の中に継電器の種類を記載する形に統一。',
+  statusNote: '長方形の中に継電器の種類を記載する。枠の外には何も書かない。引出線は結線側で引くため、記号は枠のみ。',
   note: t.note,
   review: t.needsConfirm ? `${t.code} の正式名称が未確定です。` : undefined,
 });
