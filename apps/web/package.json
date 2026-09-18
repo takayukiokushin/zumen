@@ -14,7 +14,8 @@
     "@zumen/knowledge": "workspace:*",
     "@zumen/symbols": "workspace:*",
     "@zumen/core": "workspace:*",
-    "@zumen/layout": "workspace:*"
+    "@zumen/layout": "workspace:*",
+    "@zumen/ai": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

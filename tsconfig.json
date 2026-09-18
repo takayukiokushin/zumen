@@ -2,7 +2,8 @@
   "extends": "./tsconfig.base.json",
   "include": [
     "packages/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "apps/server/**/*.ts"
   ],
   "exclude": [
     "**/node_modules",

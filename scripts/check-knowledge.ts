@@ -23,6 +23,7 @@ import {
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from '../packages/knowledge/src/composition.ts';
 import { layout } from '../packages/layout/src/index.ts';
+import { buildAnalysisSchema, buildReview, buildSystemPrompt } from '../packages/ai/src/index.ts';
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -196,6 +197,42 @@ for (const [name, ans] of [
   if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) fail(`${name}: 作図範囲が求まりません`);
   console.log(`  ${name}: 記号${d.symbols.length}個 / 線${d.wires.length}本 / 範囲 ${w.toFixed(0)}×${h.toFixed(0)}`);
 }
+
+/* ---------- 6. AI解析の受け口 ---------- */
+console.log('\n■ AI解析');
+const schema = buildAnalysisSchema() as { properties: { answers: { properties: Record<string, unknown> } } };
+const schemaKeys = Object.keys(schema.properties.answers.properties);
+if (schemaKeys.length !== QUESTIONS.length) {
+  fail(`スキーマの項目数（${schemaKeys.length}）が質問数（${QUESTIONS.length}）と合いません`);
+}
+for (const q of QUESTIONS) {
+  if (!schemaKeys.includes(q.id)) fail(`スキーマに質問 ${q.id} がありません`);
+}
+console.log(`  読み取り用スキーマ: ${schemaKeys.length}項目`);
+
+const prompt = buildSystemPrompt();
+for (const must of ['7200V', '6600V', 'PFS形', '300kVA', 'たたき台']) {
+  if (!prompt.includes(must)) fail(`指示文に「${must}」の説明がありません`);
+}
+console.log(`  指示文: ${prompt.length}文字（記号と質問の一覧を含む）`);
+
+/* 矛盾した読み取り結果を弾けるか */
+const bad = buildReview(
+  {
+    answers: { mainBreakerForm: 'pfs', trCapacity: 500, transformerCount: 1, hasPas: 'yes', pasControl: 'dgr' },
+    uncertain: ['mainBreakerForm'],
+    evidence: { mainBreakerForm: 'メモに「LBS」と記載' },
+    notes: [],
+    questions: [],
+  },
+  {},
+);
+const hasCapacityError = bad.some((r) => r.level === 'error' && r.questionId === 'mainBreakerForm');
+const hasDgrError = bad.some((r) => r.level === 'error' && r.label.includes('零相電圧'));
+if (!hasCapacityError) fail('500kVAでPFS形という矛盾を検出できませんでした');
+if (!hasDgrError) fail('DGRなのに零相電圧源が無い矛盾を検出できませんでした');
+console.log(`  矛盾の検出: ${bad.filter((r) => r.level === 'error').length}件のエラー / 全${bad.length}件の確認事項`);
+for (const r of bad.filter((x) => x.level === 'error')) console.log(`    ${r.label}: ${r.message}`);
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

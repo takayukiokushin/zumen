@@ -4,6 +4,7 @@ import type { Answers, Question, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
+import { Analyze } from './analyze/Analyze.tsx';
 
 /**
  * 事前ヒアリングのフォーム。
@@ -26,12 +27,14 @@ const isOptionalDetail = (q: Question, typed: Answers, key: string): boolean =>
   q.defaultValue !== undefined &&
   typed[key] === undefined;
 
+type Tab = 'analyze' | 'hearing' | 'drawing';
+
 export function App() {
-  const [tab, setTab] = useState<'hearing' | 'drawing'>('hearing');
+  const [tab, setTab] = useState<Tab>('hearing');
   return <Shell tab={tab} setTab={setTab} />;
 }
 
-function Shell({ tab, setTab }: { tab: 'hearing' | 'drawing'; setTab: (t: 'hearing' | 'drawing') => void }) {
+function Shell({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   /** 利用者が実際に入力した回答だけを持つ */
   const [answers, setAnswers] = useState<Answers>({});
   const [showAll, setShowAll] = useState(false);
@@ -93,6 +96,9 @@ function Shell({ tab, setTab }: { tab: 'hearing' | 'drawing'; setTab: (t: 'heari
     <>
       <div className="tabbar">
         <strong>単線結線図作成</strong>
+        <button type="button" aria-pressed={tab === 'analyze'} onClick={() => setTab('analyze')}>
+          スケッチ読み取り
+        </button>
         <button type="button" aria-pressed={tab === 'hearing'} onClick={() => setTab('hearing')}>
           事前ヒアリング
         </button>
@@ -102,6 +108,12 @@ function Shell({ tab, setTab }: { tab: 'hearing' | 'drawing'; setTab: (t: 'heari
       </div>
       {tab === 'drawing' ? (
         <Editor answers={effective} />
+      ) : tab === 'analyze' ? (
+        <Analyze
+          answers={effective}
+          onApply={(patch) => setAnswers((prev) => ({ ...prev, ...patch }))}
+          onGoToHearing={() => setTab('hearing')}
+        />
       ) : (
     <div className="app">
       <nav className="nav">

@@ -24,6 +24,8 @@ jobs:
         run: npx tsc --noEmit -p apps/web/tsconfig.json
       - name: 画面のビルド
         run: pnpm build
+      - name: サーバーの型チェック
+        run: npx tsc --noEmit -p tsconfig.json
       - name: 記号カタログの生成（記号定義の整合性チェックを兼ねる）
         run: pnpm catalog
       - name: ナレッジベース（質問定義・構成ルール）の検証

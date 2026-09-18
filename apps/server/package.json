@@ -1,0 +1,17 @@
+{
+  "name": "@zumen/server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-strip-types --watch src/index.ts",
+    "start": "node --experimental-strip-types src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
+    "@hono/node-server": "^1.13.7",
+    "@zumen/ai": "workspace:*",
+    "@zumen/knowledge": "workspace:*",
+    "hono": "^4.6.14"
+  }
+}

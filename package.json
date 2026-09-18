@@ -11,7 +11,8 @@
     "sample": "node --experimental-strip-types scripts/build-sample-drawing.ts",
     "check": "node --experimental-strip-types scripts/check-knowledge.ts",
     "dev": "pnpm --filter @zumen/web dev",
-    "build": "pnpm --filter @zumen/web build"
+    "build": "pnpm --filter @zumen/web build",
+    "dev:server": "pnpm --filter @zumen/server dev"
   },
   "engines": {
     "node": ">=22.6.0"
