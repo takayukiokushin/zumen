@@ -47,20 +47,26 @@ export function referencedKeys(cond: Condition | undefined, out: Set<string> = n
   return out;
 }
 
-/** 「{questionId}」を回答で置き換える。値が無ければその行ごと落とす */
+/**
+ * 「{questionId}」を回答で置き換える。
+ * 差し込みの値が1つでも無い行は、その行ごと落とす（「7200VA」のような中途半端な
+ * 文字が図面に出ないようにするため）。差し込みの無い行はそのまま残す。
+ */
 export function fillTemplate(lines: string[], answers: Answers): string[] {
-  return lines
-    .map((line) => {
-      let missing = false;
-      const filled = line.replace(/\{([\w.]+)\}/g, (_, key: string) => {
-        const v = answers[key];
-        if (v === undefined || v === null || v === '') {
-          missing = true;
-          return '';
-        }
-        return String(v);
-      });
-      return missing && /^\s*$/.test(filled.replace(/[^\w一-龯ぁ-んァ-ヶ]/g, '')) ? null : filled.trim();
-    })
-    .filter((l): l is string => l !== null && l !== '');
+  const out: string[] = [];
+  for (const line of lines) {
+    let missing = false;
+    const filled = line.replace(/\{([\w.]+)\}/g, (_, key: string) => {
+      const v = answers[key];
+      if (v === undefined || v === null || v === '') {
+        missing = true;
+        return '';
+      }
+      return String(v);
+    });
+    if (missing) continue;
+    const trimmed = filled.trim();
+    if (trimmed) out.push(trimmed);
+  }
+  return out;
 }

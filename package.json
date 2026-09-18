@@ -9,7 +9,9 @@
     "catalog": "node --experimental-strip-types scripts/build-catalog.ts",
     "typecheck": "tsc -b",
     "sample": "node --experimental-strip-types scripts/build-sample-drawing.ts",
-    "check": "node --experimental-strip-types scripts/check-knowledge.ts"
+    "check": "node --experimental-strip-types scripts/check-knowledge.ts",
+    "dev": "pnpm --filter @zumen/web dev",
+    "build": "pnpm --filter @zumen/web build"
   },
   "engines": {
     "node": ">=22.6.0"

@@ -16,14 +16,18 @@
 |---|---|---|
 | 1 | モノレポ基盤・ドキュメント・CI | 完了 |
 | 2 | ドメインモデル | 完了 |
-| 3 | 記号ライブラリ（独自SVG 49種）＋ カタログ | 完了（レビュー待ち） |
-| 4〜11 | ルール定義・ヒアリング・作図・編集・出力・AI解析・サーバー・配布 | 未着手 |
+| 3 | 記号ライブラリ（独自SVG 62種）＋ カタログ | 完了（全記号確定） |
+| 4 | ナレッジベースのルール・質問定義（質問73件・構成ルール38件） | 完了 |
+| 5 | ヒアリングフォーム | 完了 |
+| 6〜11 | 作図・編集・出力・AI解析・サーバー・配布 | 未着手 |
 
 ## 構成
 
 ```
+apps/web           画面（事前ヒアリングのフォーム）
 packages/core      ドメインモデル（Project / SubstationArea / Equipment / Connection …）
 packages/symbols   記号マスタ。図形プリミティブ・記号定義・SVG生成
+packages/knowledge 質問定義と構成ルール（条件式つきのデータ）
 docs/              仕様書・ナレッジベース・生成された記号カタログ
 scripts/           カタログ生成などの補助スクリプト
 ```
@@ -47,8 +51,11 @@ Node.js 22.6 以上（TypeScriptの型ストリップを使用）と pnpm が必
 
 ```sh
 pnpm install
+pnpm dev         # ヒアリングフォームの画面を起動
 pnpm typecheck   # 型チェック
+pnpm check       # 質問定義・構成ルールの検証（実図面との一致確認を含む）
 pnpm catalog     # docs/symbol-catalog.html を再生成
+pnpm sample      # docs/sample-drawing.svg を再生成
 ```
 
 ## 位置づけ

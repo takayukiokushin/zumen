@@ -79,7 +79,7 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'pas',
     kind: 'series',
     when: { key: 'hasPas', eq: 'yes' },
-    labelTemplate: ['PAS', '{pasRatedVoltage}V{pasRatedCurrent}A', '{pasBuiltinText}'],
+    labelTemplate: ['PAS', '{pasRatingText}', '{pasBuiltinText}'],
     props: { ratedVoltage: 'pasRatedVoltage', ratedCurrent: 'pasRatedCurrent', control: 'pasControl' },
   },
   {

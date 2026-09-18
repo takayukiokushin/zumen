@@ -1,5 +1,5 @@
 import type { Answers, Value } from './condition.ts';
-import { evaluate, fillTemplate } from './condition.ts';
+import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
 import { QUESTIONS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
 import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, TRANSFORMER, UPSTREAM } from './composition.ts';
@@ -55,6 +55,21 @@ export function suggestMainBreakerForm(totalKva: number): 'pfs' | 'cb' | null {
   return totalKva <= 300 ? 'pfs' : 'cb';
 }
 
+/**
+ * 他の質問の表示条件や、構成の分岐・繰り返し件数が参照している質問。
+ * これらは答えが変わると図面の中身が変わるため、画面で畳んではいけない。
+ */
+export const DRIVER_QUESTION_IDS: ReadonlySet<string> = (() => {
+  const ids = new Set<string>();
+  for (const q of QUESTIONS) for (const k of referencedKeys(q.showIf)) ids.add(k);
+  for (const p of [...UPSTREAM, ...Object.values(CHAIN_BY_FORM).flat(), ...DOWNSTREAM, ...TRANSFORMER, ...EXTRAS]) {
+    for (const k of referencedKeys(p.when)) ids.add(k);
+    if (p.repeatCountKey) ids.add(p.repeatCountKey);
+  }
+  for (const g of QUESTION_GROUPS) if (g.repeatCountKey) ids.add(g.repeatCountKey);
+  return ids;
+})();
+
 /* ------------------------------------------------------------------ */
 /* 回答から導出する値（図面の文字に使う）                                 */
 /* ------------------------------------------------------------------ */
@@ -70,6 +85,12 @@ export function withDerived(answers: Answers): Answers {
   if (answers.pasBuiltinVt === 'yes') builtin.push('VT');
   if (answers.pasBuiltinLa === 'yes') builtin.push('LA');
   d.pasBuiltinText = builtin.length ? `${builtin.join(',')}内蔵型` : '';
+
+  // PASの定格（例: 7200V300A）。片方しか分からないときは分かる方だけ書く
+  d.pasRatingText = [
+    answers.pasRatedVoltage ? `${answers.pasRatedVoltage}V` : '',
+    answers.pasRatedCurrent ? `${answers.pasRatedCurrent}A` : '',
+  ].join('');
 
   // ケーブルの注記（3行目：定格電圧 断面積 長さ。長さ不明は「- m」）
   d.cableInstallationLabel = CABLE_INSTALLATION_LABEL[String(answers.cableInstallation)] ?? '';
@@ -150,6 +171,25 @@ export interface PlacedItem {
   note?: string;
 }
 
+/**
+ * 繰り返し入力するグループ（受電設備エリア・変圧器）の n 件目のキー。
+ * 1件目は基本のキーのままにして、2件目以降だけ接尾辞を付ける。
+ */
+export function indexedKey(id: string, index: number): string {
+  return index === 0 ? id : `${id}__${index + 1}`;
+}
+
+/** n 件目の回答として見た集まりを作る（2件目以降のキーで上書きする） */
+export function viewAt(answers: Answers, index: number): Answers {
+  if (index === 0) return answers;
+  const suffix = `__${index + 1}`;
+  const out: Answers = { ...answers };
+  for (const [k, v] of Object.entries(answers)) {
+    if (k.endsWith(suffix)) out[k.slice(0, -suffix.length)] = v;
+  }
+  return out;
+}
+
 /** 回答から、上流→下流の順に並んだ機器の一覧を作る */
 export function buildComposition(rawAnswers: Answers): PlacedItem[] {
   const answers = withDerived(rawAnswers);
@@ -167,7 +207,9 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
     if (!evaluate(p.when, answers)) continue;
     const count = p.repeatCountKey ? Math.max(1, Number(answers[p.repeatCountKey] ?? 1)) : 1;
     for (let i = 0; i < count; i++) {
-      const symbolId = p.symbolId.replace(/\{([\w.]+)\}/g, (_, k: string) => String(answers[k] ?? ''));
+      // 2件目以降は、そのぶんの回答で文字と入力値を組み立てる
+      const a = p.repeatCountKey && i > 0 ? withDerived(viewAt(rawAnswers, i)) : answers;
+      const symbolId = p.symbolId.replace(/\{([\w.]+)\}/g, (_, k: string) => String(a[k] ?? ''));
       if (!symbolId) continue;
       out.push({
         id: count > 1 ? `${p.role}-${i + 1}` : p.role,
@@ -176,9 +218,9 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
         kind: p.kind,
         parent: p.parent,
         slot: p.slot,
-        label: p.labelTemplate ? fillTemplate(p.labelTemplate, answers) : [],
+        label: p.labelTemplate ? fillTemplate(p.labelTemplate, a) : [],
         props: Object.fromEntries(
-          Object.entries(p.props ?? {}).map(([field, key]) => [field, answers[key]]),
+          Object.entries(p.props ?? {}).map(([field, key]) => [field, a[key]]),
         ),
         note: p.note,
       });

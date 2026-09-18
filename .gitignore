@@ -9,3 +9,4 @@ out/
 !.env.example
 coverage/
 *.tsbuildinfo
+apps/web/dist/
