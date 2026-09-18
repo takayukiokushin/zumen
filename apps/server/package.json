@@ -8,7 +8,8 @@
     "start": "node --experimental-strip-types src/index.ts",
     "user:add": "node --experimental-strip-types src/cli.ts add",
     "user:passwd": "node --experimental-strip-types src/cli.ts passwd",
-    "user:list": "node --experimental-strip-types src/cli.ts list"
+    "user:list": "node --experimental-strip-types src/cli.ts list",
+    "backup": "node --experimental-strip-types src/cli.ts backup"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

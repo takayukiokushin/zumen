@@ -1,4 +1,5 @@
 import { createUser, listUsers, setPassword } from './auth.ts';
+import { backup, sourceDir } from './backup.ts';
 
 /**
  * 利用者を追加・変更するための小さなコマンド。
@@ -6,6 +7,7 @@ import { createUser, listUsers, setPassword } from './auth.ts';
  *   pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>
  *   pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
  *   pnpm --filter @zumen/server user:list
+ *   pnpm --filter @zumen/server backup <保存先フォルダ>
  */
 const [command, ...args] = process.argv.slice(2);
 
@@ -32,8 +34,17 @@ try {
       console.log(users.length ? users.map((u) => `  ${u.id}\t${u.name}`).join('\n') : '  （まだ誰も登録されていません）');
       break;
     }
+    case 'backup': {
+      const [dest] = args;
+      if (!dest) throw new Error('使い方: backup <保存先フォルダ>');
+      const r = backup(dest);
+      console.log(`控えを作りました: ${r.dir}`);
+      console.log(`  元の場所: ${sourceDir}`);
+      console.log(`  案件のデータ: ${(r.bytes / 1024).toFixed(0)}KB / 写真: ${r.fileCount}枚`);
+      break;
+    }
     default:
-      console.log('使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / list');
+      console.log('使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / list / backup <保存先>');
       process.exit(1);
   }
 } catch (e) {

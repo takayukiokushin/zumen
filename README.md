@@ -82,6 +82,8 @@ pnpm catalog     # docs/symbol-catalog.html を再生成
 pnpm sample      # docs/sample-drawing.svg を再生成
 pnpm start       # 画面をビルドしてサーバーを起動（実際に使うとき）
                  # ダブルクリックで起動するなら start-server.command / .bat
+                 # ログイン時に自動で立ち上げるなら install-autostart.command / .bat
+pnpm --filter @zumen/server backup <保存先>   # 案件の控えを取る
 ```
 
 ## デスクトップ版（Electron）

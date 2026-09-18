@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem Windows：このファイルをダブルクリックするとサーバーが立ち上がる。
 rem 終わるときはこのウィンドウで Ctrl + C を押すか、ウィンドウを閉じる。
 cd /d "%~dp0"

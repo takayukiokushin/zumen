@@ -6,6 +6,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { analyze } from './analyze.ts';
+import { startAutoBackup } from './backup.ts';
 import { currentUser, login, logout, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
 import { projects } from './projects.ts';
@@ -109,6 +110,7 @@ serve({ fetch: app.fetch, port }, (info) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn('※ ANTHROPIC_API_KEY が設定されていないため、スケッチの読み取りは使えません。');
   }
+  startAutoBackup();
   if (!hasWeb) {
     console.warn(`※ 画面のビルドが見つかりません（${webDist}）。'pnpm build' を実行してください。`);
   }

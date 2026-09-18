@@ -1,0 +1,4 @@
+# Windows用のバッチファイルは、Windowsの改行のまま配る
+*.bat text eol=crlf
+# macOS用の起動ファイルは、Unixの改行のまま配る
+*.command text eol=lf
