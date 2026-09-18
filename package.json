@@ -13,6 +13,7 @@
     "dev": "pnpm --filter @zumen/web dev",
     "build": "pnpm --filter @zumen/web build",
     "dev:server": "pnpm --filter @zumen/server dev",
+    "start": "pnpm build && pnpm --filter @zumen/server start",
     "desktop": "pnpm --filter @zumen/desktop start",
     "dist:mac": "pnpm --filter @zumen/desktop dist:mac",
     "dist:win": "pnpm --filter @zumen/desktop dist:win"

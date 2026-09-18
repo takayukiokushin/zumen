@@ -4,11 +4,12 @@ copyright: 株式会社フジエレックス
 
 directories:
   output: release
-  buildResources: build
+  buildResources: build  # icon.png からmac用icns・Windows用icoが自動生成される
 
 files:
   - dist/**/*
   - static/**/*
+  - build/icon.png
   - package.json
 
 mac:

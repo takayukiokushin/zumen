@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, dialog, shell } from 'electron';
 import type { MenuItemConstructorOptions } from 'electron';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadSettings, normalizeServerUrl, saveSettings } from './settings.js';
 
@@ -32,6 +32,7 @@ async function askServerUrl(parent?: BrowserWindow): Promise<string | null> {
     height: 260,
     resizable: false,
     title: '接続先の設定',
+    icon: windowIcon,
     parent,
     modal: Boolean(parent),
     webPreferences: { preload: join(__dirname, 'preload.js'), contextIsolation: true },
@@ -146,6 +147,10 @@ async function changeServer(): Promise<void> {
   if (url && win) await win.loadURL(url);
 }
 
+/** ウィンドウ用のアイコン。mac/Windowsは同梱のアイコンが使われるので、主にLinuxと開発時のため。 */
+const iconPath = join(__dirname, '../build/icon.png');
+const windowIcon = existsSync(iconPath) ? iconPath : undefined;
+
 function createWindow(url: string): void {
   const saved = loadSettings().window;
   win = new BrowserWindow({
@@ -156,6 +161,7 @@ function createWindow(url: string): void {
     minWidth: 900,
     minHeight: 600,
     title: '単線結線図作成',
+    icon: windowIcon,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   if (saved?.maximized) win.maximize();

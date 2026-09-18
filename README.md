@@ -4,6 +4,7 @@
 現地のラフスケッチ（写真・PDF）とヒアリング回答から図面のたたき台を生成し、
 編集してPDF/PNGで出力する。
 
+- **導入手順（インストールのしかた）**：[docs/install.md](docs/install.md)
 - 仕様書：[docs/spec.md](docs/spec.md)
 - 記号ナレッジベース（現場知識）：[docs/knowledge-base.md](docs/knowledge-base.md)
 - 記号カタログ（生成物）：[docs/symbol-catalog.html](docs/symbol-catalog.html)
@@ -24,7 +25,7 @@
 | 8 | PDF/PNG出力 | 完了 |
 | 9 | AI解析（手書きメモの読み取り・確認画面） | 完了 |
 | 10 | サーバー保管・ログイン・案件管理 | 完了 |
-| 11 | Electron配布（mac / Windows） | 完了（アイコン・署名は未設定） |
+| 11 | Electron配布（mac / Windows） | 完了（コード署名は未設定） |
 
 ## 構成
 
@@ -78,6 +79,7 @@ pnpm typecheck   # 型チェック
 pnpm check       # 質問定義・構成ルールの検証（実図面との一致確認を含む）
 pnpm catalog     # docs/symbol-catalog.html を再生成
 pnpm sample      # docs/sample-drawing.svg を再生成
+pnpm start       # 画面をビルドしてサーバーを起動（実際に使うとき）
 ```
 
 ## デスクトップ版（Electron）
@@ -104,9 +106,12 @@ pnpm dist:win                 # Windows用インストーラを作る（Windows�
 インストーラの作成は**その OS 上で実行する必要がある**（macのdmgはmacで、Windowsのexeは
 Windowsで作る）。また、現時点では以下が未設定：
 
-- アプリのアイコン（`apps/desktop/build/icon.icns` / `icon.ico` を置けば自動で使われる）
 - macOSのコード署名・公証、Windowsのコード署名
-  （未署名でも社内配布は可能だが、初回起動時に警告が出る）
+  （未署名でも社内配布は可能だが、初回起動時に警告が出る）。
+  費用と手順は [docs/install.md](docs/install.md) の「4. コード署名について」を参照
+
+アイコンは `apps/desktop/build/icon.png`（「単結」／IPAゴシック）。
+electron-builder がここから mac用 `.icns` と Windows用 `.ico` を作る。
 
 ## 位置づけ
 

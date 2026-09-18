@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- アプリアイコンの原図。実際に使われるのは icon.png（1024×1024）。
+     ここから作り直す場合は IPAゴシックで描画すること（漢字の字形が変わるため他のフォントに逃がさない）。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="#161a18"/>
+  <g fill="#ffffff" font-family="IPAGothic, 'IPAゴシック', sans-serif" font-size="400"
+     text-anchor="middle">
+    <text x="512" y="470">単</text>
+    <text x="512" y="850">結</text>
+  </g>
+</svg>

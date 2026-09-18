@@ -1,12 +1,17 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * 保存先。社内数名での利用のため、Node標準のSQLiteをそのまま使う。
  * データはサーバー側にだけ置き、利用者の端末には残さない。
  */
-export const DATA_DIR = resolve(process.env.DATA_DIR ?? './data');
+// 既定の置き場所はこのファイルから見たリポジトリ直下の data/。
+// 起動ディレクトリによって保存先が変わると案件が行方不明になるため、cwdには依存させない。
+export const DATA_DIR = process.env.DATA_DIR
+  ? resolve(process.env.DATA_DIR)
+  : fileURLToPath(new URL('../../../data/', import.meta.url));
 export const FILES_DIR = resolve(DATA_DIR, 'files');
 
 mkdirSync(FILES_DIR, { recursive: true });

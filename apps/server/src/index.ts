@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -86,9 +87,20 @@ if (hasWeb) {
   app.use('/*', serveStatic({ root: webDist, rewriteRequestPath: () => '/index.html' }));
 }
 
+/** 社内の他のパソコンから繋ぐときの住所を案内するために、この機械のLAN側アドレスを拾う。 */
+function lanAddresses(): string[] {
+  return Object.values(networkInterfaces())
+    .flatMap((list) => list ?? [])
+    .filter((n) => n.family === 'IPv4' && !n.internal)
+    .map((n) => n.address);
+}
+
 const port = Number(process.env.PORT ?? 8787);
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`サーバーを起動しました: http://127.0.0.1:${info.port}`);
+  for (const address of lanAddresses()) {
+    console.log(`  社内の他のパソコンからは: http://${address}:${info.port}`);
+  }
   if (listUsers().length === 0) {
     console.warn('※ 利用者が登録されていません。`pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>` で追加してください。');
   }
