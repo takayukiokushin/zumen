@@ -108,10 +108,16 @@ Windowsで作る）。また、現時点では以下が未設定：
 
 - macOSのコード署名・公証、Windowsのコード署名
   （未署名でも社内配布は可能だが、初回起動時に警告が出る）。
-  費用と手順は [docs/install.md](docs/install.md) の「4. コード署名について」を参照
+  費用と手順は [docs/install.md](docs/install.md) の「5. コード署名について」を参照。
+  社内利用のみのため当面は署名しない方針
 
-アイコンは `apps/desktop/build/icon.png`（「単結」／IPAゴシック）。
-electron-builder がここから mac用 `.icns` と Windows用 `.ico` を作る。
+アイコンは「単結」をIPAゴシックで縦2段、地はオレンジ（`#d97757`）。
+デスクトップ版は `apps/desktop/build/icon.png`（electron-builder が mac用 `.icns` と
+Windows用 `.ico` を自動生成）、ブラウザ版は `apps/web/public/` の各サイズ。
+
+ブラウザ版は `manifest.webmanifest` を持たせてあるので、Chrome / Edge の
+「ページをアプリとしてインストール」でデスクトップから直接起動できる。
+インストーラを配らずに済むぶん、こちらのほうが手軽（→ [docs/install.md](docs/install.md) の 3-1.）。
 
 ## 位置づけ
 

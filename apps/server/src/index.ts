@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -83,8 +83,10 @@ const webDist = process.env.WEB_DIST
   : fileURLToPath(new URL('../../web/dist', import.meta.url));
 const hasWeb = existsSync(resolve(webDist, 'index.html'));
 if (hasWeb) {
-  app.use('/assets/*', serveStatic({ root: webDist, rewriteRequestPath: (p) => p }));
-  app.use('/*', serveStatic({ root: webDist, rewriteRequestPath: () => '/index.html' }));
+  // まず実体のあるファイル（アイコン・manifest・assets）を返し、
+  // 無ければ画面本体を返す（画面側で住所を見て表示を切り替えるため）。
+  app.use('/*', serveStatic({ root: webDist }));
+  app.get('*', (c) => c.html(readFileSync(resolve(webDist, 'index.html'), 'utf8')));
 }
 
 /** 社内の他のパソコンから繋ぐときの住所を案内するために、この機械のLAN側アドレスを拾う。 */
