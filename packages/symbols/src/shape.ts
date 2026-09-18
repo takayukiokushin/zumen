@@ -62,6 +62,8 @@ export interface TextShape {
   vAlign?: 'middle' | 'baseline';
   italic?: boolean;
   bold?: boolean;
+  /** 字間（図面では継電器の文字を「U V R」のように空けて書く） */
+  tracking?: number;
 }
 
 export type Shape =
@@ -135,6 +137,28 @@ export const earth = (x: number, y: number, scale = 1): Shape[] => [
 export const arrowDown = (x: number, yTip: number, size = 3.2): PolyShape =>
   poly([x - size, yTip - size * 1.6, x, yTip, x + size, yTip - size * 1.6], { close: true, fill: 'solid' });
 
+/**
+ * 紡錘形（限流ヒューズをLBSの可動刃の上に描くときの形）。
+ * (x1,y1)-(x2,y2) を軸とする細長い六角形を返す。
+ */
+export const spindle = (
+  x1: number, y1: number, x2: number, y2: number, w = 5,
+): PolyShape => {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const px = -uy;
+  const py = ux;
+  const at = (t: number, side: number): [number, number] => [
+    x1 + ux * len * t + px * w * side,
+    y1 + uy * len * t + py * w * side,
+  ];
+  const pts = [at(0, 0), at(0.24, 1), at(0.76, 1), at(1, 0), at(0.76, -1), at(0.24, -1)];
+  return poly(pts.flat(), { close: true, fill: 'none' });
+};
+
 /** 巻線結線マーク: スター(Y)結線 */
 export const starMark = (cx: number, cy: number, r = 5): Shape[] => {
   const pt = (deg: number): [number, number] => {
@@ -204,7 +228,9 @@ export function shapeToSvg(s: Shape): string {
         s.anchor ?? 'middle'
       }" dominant-baseline="${s.vAlign === 'baseline' ? 'auto' : 'central'}"${
         s.italic ? ' font-style="italic"' : ''
-      }${s.bold ? ' font-weight="600"' : ''} fill="currentColor" stroke="none">${esc(s.s)}</text>`;
+      }${s.bold ? ' font-weight="600"' : ''}${
+        s.tracking ? ` letter-spacing="${n(s.tracking)}"` : ''
+      } fill="currentColor" stroke="none">${esc(s.s)}</text>`;
   }
 }
 

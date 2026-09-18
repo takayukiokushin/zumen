@@ -1,5 +1,5 @@
 import type { SymbolDef } from '../types.ts';
-import { arrowDown, earth, hline, rect, text, vline } from '../shape.ts';
+import { arrowDown, circle, earth, hline, rect, text, vline } from '../shape.ts';
 
 /**
  * 保護継電器の種類マスタ。
@@ -45,7 +45,7 @@ const relay = (t: RelayType): SymbolDef => ({
   shapes: [
     hline(20, 0, 11),
     rect(11, 8, 34, 24),
-    text(28, 20, t.code, { size: t.code.length >= 4 ? 9.5 : 11 }),
+    text(28, 20, t.code, { size: t.code.length >= 4 ? 9 : 10.5, tracking: 1.6 }),
   ],
   ports: [{ id: 'in', x: 0, y: 20, dir: 'left', role: 'secondary' }],
   fields: [
@@ -86,24 +86,26 @@ export const protectionSymbols: SymbolDef[] = [
     nameJa: '零相電圧検出装置',
     nameFormal: 'ゼロポテンシャルデバイス（ユーザー呼称）',
     category: 'protection',
-    tags: ['PAS', 'DGR', '零相電圧'],
-    box: { w: 48, h: 48 },
+    tags: ['PAS', 'DGR', 'OVGR', '零相電圧'],
+    box: { w: 100, h: 70 },
     shapes: [
-      vline(20, 0, 48),
-      hline(20, 20, 34),
-      vline(34, 20, 26),
-      hline(26, 27, 41),
-      hline(30, 27, 41),
-      vline(34, 30, 36),
-      ...earth(34, 36),
+      vline(30, 0, 22),
+      rect(14, 12, 76, 32),
+      hline(22, 18, 42),
+      hline(30, 18, 42),
+      vline(30, 30, 58),
+      ...earth(30, 58),
+      hline(26, 0, 55),
+      circle(64, 26, 9),
+      circle(76, 26, 9),
     ],
     ports: [
-      { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 20, y: 48, dir: 'down', role: 'line' },
+      { id: 'in', x: 30, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 0, y: 26, dir: 'left', role: 'control', label: 'OVGR/DGRへ' },
     ],
-    status: 'awaiting-sample',
-    statusNote: '修正が必要。代表図面の到着後に描き直します。',
-    note: 'DGR方式のときZCTに加えて入る。',
+    status: 'confirmed',
+    statusNote: '見本図面のとおり、箱の中にコンデンサ（2枚の板）と変圧器（二重丸）、下に接地を描く形にしました。',
+    note: 'DGR方式で零相電圧が必要なときに入る。見本図面ではOVGRへ接続されていた。',
   },
   {
     id: 'earth',

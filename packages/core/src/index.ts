@@ -87,15 +87,23 @@ export interface CableSpec {
   lengthM?: number;
 }
 
-/** 図面に記載するケーブル諸元の文字列を組み立てる（長さ不明は「- m」） */
-export function formatCableSpec(spec: CableSpec): string {
-  const parts: string[] = [];
-  if (spec.installation) parts.push(CABLE_INSTALLATION_LABEL[spec.installation]);
-  if (spec.structure) parts.push(spec.structure);
-  if (spec.ratedVoltage) parts.push(`${spec.ratedVoltage}V`);
-  if (spec.crossSection) parts.push(`${spec.crossSection}mm²`);
-  parts.push(spec.lengthM == null ? '- m' : `${spec.lengthM}m`);
-  return parts.join(' ');
+/**
+ * 図面に記載するケーブル諸元を組み立てる。見本図面にならい3行で書く。
+ *   1行目: 付設方法（埋ケ／架ケ）
+ *   2行目: 構造（CV／CVT）
+ *   3行目: 定格電圧 断面積 長さ（例: 6600V 100mm2 20m。長さ不明なら「- m」）
+ */
+export function formatCableSpec(spec: CableSpec): string[] {
+  const lines: string[] = [];
+  if (spec.installation) lines.push(CABLE_INSTALLATION_LABEL[spec.installation]);
+  if (spec.structure) lines.push(spec.structure);
+  const third = [
+    spec.ratedVoltage ? `${spec.ratedVoltage}V` : undefined,
+    spec.crossSection ? `${spec.crossSection}mm2` : undefined,
+    spec.lengthM == null ? '- m' : `${spec.lengthM}m`,
+  ].filter(Boolean);
+  lines.push(third.join(' '));
+  return lines;
 }
 
 /* ------------------------------------------------------------------ */
