@@ -23,13 +23,14 @@
 | 7 | 編集機能（追加・削除・差し替え・移動・結線・注記・元に戻す） | 完了 |
 | 8 | PDF/PNG出力 | 完了 |
 | 9 | AI解析（手書きメモの読み取り・確認画面） | 完了 |
-| 10〜11 | サーバー保管・Electron配布 | 未着手 |
+| 10 | サーバー保管・ログイン・案件管理 | 完了 |
+| 11 | Electron配布（mac / Windows） | 未着手 |
 
 ## 構成
 
 ```
 apps/web           画面（スケッチ読み取り・事前ヒアリング・図面の編集）
-apps/server        解析用の中継サーバー（Claude APIキーはここにだけ置く）
+apps/server        サーバー（案件の保管・ログイン・解析の中継。APIキーはここにだけ置く）
 packages/core      ドメインモデル（Project / SubstationArea / Equipment / Connection …）
 packages/symbols   記号マスタ。図形プリミティブ・記号定義・SVG生成
 packages/knowledge 質問定義と構成ルール（条件式つきのデータ）
@@ -56,8 +57,17 @@ scripts/           カタログ生成などの補助スクリプト
 
 Node.js 22.6 以上（TypeScriptの型ストリップを使用）と pnpm が必要。
 
-解析を使う場合は、`.env.example` を参考に `ANTHROPIC_API_KEY` を設定して
-解析サーバーを起動する（キーはサーバーにだけ置き、端末には配らない）。
+`.env.example` を参考に `ANTHROPIC_API_KEY` を設定してサーバーを起動する
+（キーはサーバーにだけ置き、端末には配らない）。案件・回答・図面・現地写真は
+すべてサーバー側の SQLite（`data/zumen.db`）と `data/files/` に保管される。
+
+利用者はサーバー側で登録する。
+
+```sh
+pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>   # 追加
+pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード> # パスワード変更
+pnpm --filter @zumen/server user:list                          # 一覧
+```
 
 ```sh
 pnpm install

@@ -10,3 +10,4 @@ out/
 coverage/
 *.tsbuildinfo
 apps/web/dist/
+data/

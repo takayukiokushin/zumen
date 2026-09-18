@@ -1,48 +1,79 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { analyze } from './analyze.ts';
+import { currentUser, login, logout, requireAuth } from './auth.ts';
+import type { User } from './auth.ts';
+import { projects } from './projects.ts';
+import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
 
 /**
- * 解析用の中継サーバー。
- * Claude APIキーはこのサーバーにだけ置き、利用者の端末には配らない。
+ * 案件の保管と解析を行うサーバー。
+ * Claude APIキーはここにだけ置き、利用者の端末やブラウザには配らない。
  */
-const app = new Hono();
+const app = new Hono<{ Variables: { user: User } }>();
 
-app.get('/api/health', (c) => c.json({ ok: true, hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY) }));
+app.get('/api/health', (c) =>
+  c.json({ ok: true, hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY), userCount: listUsers().length }),
+);
 
-app.post('/api/analyze', async (c) => {
+/* ---------------- ログイン ---------------- */
+
+app.post('/api/auth/login', async (c) => {
+  const { userId, password } = (await c.req.json().catch(() => ({}))) as {
+    userId?: string;
+    password?: string;
+  };
+  if (!userId || !password) return c.json({ error: 'IDとパスワードを入力してください。' }, 400);
+  const user = login(c, userId, password);
+  if (!user) return c.json({ error: 'IDまたはパスワードが違います。' }, 401);
+  return c.json({ user });
+});
+
+app.post('/api/auth/logout', (c) => {
+  logout(c);
+  return c.json({ ok: true });
+});
+
+app.get('/api/auth/me', (c) => {
+  const user = currentUser(c);
+  return user ? c.json({ user }) : c.json({ user: null }, 200);
+});
+
+/* ---------------- 案件 ---------------- */
+
+app.route('/api/projects', projects);
+
+/* ---------------- 解析 ---------------- */
+
+app.post('/api/analyze', requireAuth, async (c) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return c.json({ error: 'サーバーにAPIキーが設定されていません（ANTHROPIC_API_KEY）。' }, 503);
   }
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'リクエストの形式が不正です。' }, 400);
-  }
-  const { images, answers } = (body ?? {}) as {
+  const body = (await c.req.json().catch(() => null)) as {
     images?: { mediaType: string; data: string }[];
     answers?: Answers;
-  };
-  if (!images?.length) return c.json({ error: '画像が添付されていません。' }, 400);
-  if (images.length > 10) return c.json({ error: '画像は一度に10枚までです。' }, 400);
+  } | null;
+  if (!body) return c.json({ error: 'リクエストの形式が不正です。' }, 400);
+  if (!body.images?.length) return c.json({ error: '画像が添付されていません。' }, 400);
+  if (body.images.length > 10) return c.json({ error: '画像は一度に10枚までです。' }, 400);
 
   try {
-    const result = await analyze(images, answers ?? {});
-    return c.json(result);
+    return c.json(await analyze(body.images, body.answers ?? {}));
   } catch (e) {
     console.error('解析に失敗しました', e);
-    const message = e instanceof Error ? e.message : '解析に失敗しました。';
-    return c.json({ error: message }, 502);
+    return c.json({ error: e instanceof Error ? e.message : '解析に失敗しました。' }, 502);
   }
 });
 
 const port = Number(process.env.PORT ?? 8787);
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`解析サーバーを起動しました: http://127.0.0.1:${info.port}`);
+  console.log(`サーバーを起動しました: http://127.0.0.1:${info.port}`);
+  if (listUsers().length === 0) {
+    console.warn('※ 利用者が登録されていません。`pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>` で追加してください。');
+  }
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn('※ ANTHROPIC_API_KEY が設定されていないため、解析は使えません。');
+    console.warn('※ ANTHROPIC_API_KEY が設定されていないため、スケッチの読み取りは使えません。');
   }
 });
 

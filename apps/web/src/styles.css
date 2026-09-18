@@ -178,3 +178,42 @@ table.picked th { font-size: 11.5px; color: var(--muted); font-weight: 400; }
 table.picked tr.uncertain { background: var(--accent-soft); }
 .warn-tag { font-size: 10px; color: var(--accent); margin-left: 6px; }
 .notes { margin: 0; padding-left: 1.2em; font-size: 13px; display: grid; gap: 6px; }
+
+/* ---- ログイン ---- */
+.booting { padding: 40px; text-align: center; color: var(--muted); }
+.login { display: grid; place-items: center; min-height: 100%; padding: 40px 16px; }
+.login .panel { background: var(--panel); border: 1px solid var(--rule); padding: 28px 30px; width: 100%; max-width: 360px;
+  display: flex; flex-direction: column; gap: 6px; }
+.login h1 { margin: 0 0 2px; font-size: 18px; }
+.login .hint { margin: 0 0 14px; font-size: 12.5px; color: var(--muted); }
+.login label { font-size: 12px; color: var(--ink-2); margin-top: 8px; }
+.login input { padding: 8px 10px; border: 1px solid var(--rule); border-radius: 2px; background: #fff; }
+.login button { margin-top: 16px; }
+
+/* ---- 案件の帯 ---- */
+.projectbar { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 7px 16px; background: var(--paper); border-bottom: 1px solid var(--rule); font-size: 12.5px; }
+.projectbar button { padding: 5px 11px; background: #fff; border: 1px solid var(--rule); border-radius: 2px; cursor: pointer; font-size: 12.5px; }
+.projectbar button:disabled { color: var(--muted); cursor: default; }
+.projectbar button.need-save { background: var(--accent-soft); border-color: var(--accent); }
+.projectbar .picker { font-weight: 600; }
+.projectbar .caret { margin-left: 6px; color: var(--muted); }
+.projectbar .saved { color: var(--muted); font-size: 11.5px; }
+.projectbar .spacer { flex: 1; }
+.projectbar .who { color: var(--ink-2); }
+.picker-menu { position: absolute; top: 100%; left: 12px; z-index: 20; width: min(440px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--rule); box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 8px; }
+.picker-menu .new { width: 100%; text-align: left; margin-bottom: 6px; }
+.picker-menu ul { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.picker-menu li { display: flex; gap: 6px; align-items: stretch; }
+.picker-menu li > button:first-child { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left;
+  border: 0; background: transparent; padding: 8px 10px; }
+.picker-menu li:hover > button:first-child { background: var(--paper); }
+.picker-menu li.current > button:first-child { background: var(--accent-soft); }
+.picker-menu li span { font-size: 11px; color: var(--muted); }
+.picker-menu .del { border: 0; background: transparent; color: var(--muted); }
+.picker-menu .del:hover { color: var(--need); }
+.picker-menu .hint { margin: 8px 10px; font-size: 12px; color: var(--muted); }
+.bar-error { margin: 0; padding: 8px 16px; background: var(--need-soft); color: var(--need); font-size: 12.5px; }
+.empty-state { padding: 60px 20px; text-align: center; color: var(--muted); font-size: 14px; }
+body:has(.projectbar) .app, body:has(.projectbar) .editor, body:has(.projectbar) .analyze { height: calc(100% - 45px - 37px); }

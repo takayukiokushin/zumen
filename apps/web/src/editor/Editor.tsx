@@ -22,9 +22,17 @@ const undo = (h: History): History =>
 const redo = (h: History): History =>
   h.future.length === 0 ? h : { past: [...h.past, h.present], present: h.future[0]!, future: h.future.slice(1) };
 
-export function Editor({ answers }: { answers: Answers }) {
+interface EditorProps {
+  answers: Answers;
+  /** 保存してあった図面（無ければ回答から自動生成する） */
+  initialDoc?: Doc | null;
+  /** 図面が変わったときに知らせる（保存のため） */
+  onDocChange?: (doc: Doc) => void;
+}
+
+export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const generated = useMemo(() => fromLayout(layout(buildComposition(answers), answers)), [answers]);
-  const [history, setHistory] = useState<History>({ past: [], present: generated, future: [] });
+  const [history, setHistory] = useState<History>({ past: [], present: initialDoc ?? generated, future: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
@@ -44,7 +52,13 @@ export function Editor({ answers }: { answers: Answers }) {
   const sheetSvg = useMemo(() => buildSheetSvg(doc, sheetTitle), [doc, sheetTitle.title, sheetTitle.footer]);
   const selectedSymbol = selected?.kind === 'symbol' ? (selected as DocSymbol) : null;
 
-  const apply = useCallback((next: Doc) => setHistory((h) => commit(h, next)), []);
+  const apply = useCallback(
+    (next: Doc) => {
+      setHistory((h) => commit(h, next));
+      onDocChange?.(next);
+    },
+    [onDocChange],
+  );
 
   /** ヒアリングの回答から作り直す（編集内容は履歴に残るので元に戻せる） */
   const regenerate = () => {
@@ -58,7 +72,11 @@ export function Editor({ answers }: { answers: Answers }) {
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        setHistory((h) => (e.shiftKey ? redo(h) : undo(h)));
+        setHistory((h) => {
+          const n = e.shiftKey ? redo(h) : undo(h);
+          onDocChange?.(n.present);
+          return n;
+        });
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         e.preventDefault();
         apply(removeItem(doc, selectedId));
@@ -87,10 +105,18 @@ export function Editor({ answers }: { answers: Answers }) {
     <div className="editor">
       <div className="editor-bar">
         <div className="tools">
-          <button type="button" onClick={() => setHistory(undo)} disabled={history.past.length === 0}>
+          <button
+            type="button"
+            onClick={() => setHistory((h) => { const n = undo(h); onDocChange?.(n.present); return n; })}
+            disabled={history.past.length === 0}
+          >
             元に戻す
           </button>
-          <button type="button" onClick={() => setHistory(redo)} disabled={history.future.length === 0}>
+          <button
+            type="button"
+            onClick={() => setHistory((h) => { const n = redo(h); onDocChange?.(n.present); return n; })}
+            disabled={history.future.length === 0}
+          >
             やり直す
           </button>
           <span className="sep" />

@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "node --experimental-strip-types --watch src/index.ts",
-    "start": "node --experimental-strip-types src/index.ts"
+    "start": "node --experimental-strip-types src/index.ts",
+    "user:add": "node --experimental-strip-types src/cli.ts add",
+    "user:passwd": "node --experimental-strip-types src/cli.ts passwd",
+    "user:list": "node --experimental-strip-types src/cli.ts list"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

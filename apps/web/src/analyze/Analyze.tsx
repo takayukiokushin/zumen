@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { QUESTIONS } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult, ReviewItem } from '@zumen/ai';
+import { api } from '../session/api.ts';
 
 interface Props {
   answers: Answers;
+  /** 読み取りに使った写真を案件に残すため */
+  projectId: string;
   onApply: (patch: Answers) => void;
   onGoToHearing: () => void;
 }
@@ -45,7 +48,7 @@ function toBase64(file: File): Promise<string> {
  * 読み取り結果はそのまま採用せず、必ずこの画面で人が選んでから反映する
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
-export function Analyze({ answers, onApply, onGoToHearing }: Props) {
+export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
   const [images, setImages] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +87,12 @@ export function Analyze({ answers, onApply, onGoToHearing }: Props) {
       setChosen(
         Object.fromEntries(Object.keys((json.result as AnalysisResult).answers).map((k) => [k, !uncertain.has(k)])),
       );
+      // 読み取りに使った写真は案件に残しておく（後から見返せるように）
+      for (const img of images) {
+        await api
+          .uploadFile(projectId, { fileName: img.file.name, mediaType: img.mediaType, data: img.data })
+          .catch(() => undefined);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '解析に失敗しました。');
     } finally {
