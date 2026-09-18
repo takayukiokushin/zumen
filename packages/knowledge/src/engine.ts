@@ -168,6 +168,14 @@ export interface PlacedItem {
   label: string[];
   /** 記号の入力項目の値 */
   props: Record<string, Value>;
+  /** この機器の下に空ける間隔 */
+  gapAfter?: number;
+  /** この機器の下の線を点線で描くか */
+  dashedAfter?: boolean;
+  /** 二次側から結線してくる機器のロール */
+  connectFrom?: string[];
+  /** 文字を記号のどちら側に書くか */
+  labelSide?: 'left' | 'right';
   note?: string;
 }
 
@@ -222,6 +230,10 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
         props: Object.fromEntries(
           Object.entries(p.props ?? {}).map(([field, key]) => [field, a[key]]),
         ),
+        gapAfter: p.gapAfter,
+        dashedAfter: evaluate(p.dashedAfter, a) && p.dashedAfter !== undefined,
+        connectFrom: p.connectFrom,
+        labelSide: p.labelSide,
         note: p.note,
       });
     }

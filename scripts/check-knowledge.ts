@@ -22,6 +22,7 @@ import {
 } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, TRANSFORMER, UPSTREAM } from '../packages/knowledge/src/composition.ts';
+import { layout } from '../packages/layout/src/index.ts';
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -112,6 +113,8 @@ const answers: Answers = {
   lbsRatedCurrent: 200,
   lbsFuseCount: 3,
   lbsFuseSpec: '7200V 50A 40kA',
+  hasSiteVt: 'yes',
+  hasSiteCt: 'yes',
   ctRatio: '40A/5A',
   vtRatio: '6600/110V',
   hasZpd: 'yes',
@@ -135,7 +138,7 @@ console.log(`  設備容量300kVAからの提案: ${suggestMainBreakerForm(300)}
 const composition = buildComposition(answers);
 console.log(`\n  組み立てた構成（${composition.length}件）:`);
 for (const item of composition) {
-  const kind = { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵' }[item.kind];
+  const kind = { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠' }[item.kind];
   const label = item.label.length ? `  「${item.label.join(' / ')}」` : '';
   const parent = item.parent ? ` → ${item.parent}.${item.slot}` : '';
   console.log(`    ${kind.padEnd(4, '　')} ${item.symbolId.padEnd(16)}${parent}${label}`);
@@ -178,6 +181,20 @@ const cbSeries = cbComposition.filter((i) => i.kind === 'series').map((i) => i.s
 console.log(`    ${cbSeries.join(' → ')}`);
 if (!cbSeries.includes('ds') || !cbSeries.includes('vcb')) fail('CB形なのにDS/VCBが入っていません');
 if (!cbComposition.some((i) => i.symbolId === 'relay-ocr')) fail('CB形なのにOCRが入っていません');
+
+/* ---------- 5. 自動レイアウトが動くか ---------- */
+console.log('\n■ 自動レイアウト');
+for (const [name, ans] of [
+  ['PFS形', answers],
+  ['CB形', { ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 600A 12.5kA' }],
+  ['PAS・VCT・ZPDなし', { ...answers, hasPas: 'no', vctLocation: 'pole', vctCount: 1, hasZpd: 'no', hasSiteVt: 'no', hasSiteCt: 'no' }],
+] as const) {
+  const d = layout(buildComposition(ans as Answers), ans as Answers);
+  const w = d.bounds.x1 - d.bounds.x0;
+  const h = d.bounds.y1 - d.bounds.y0;
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) fail(`${name}: 作図範囲が求まりません`);
+  console.log(`  ${name}: 記号${d.symbols.length}個 / 線${d.wires.length}本 / 範囲 ${w.toFixed(0)}×${h.toFixed(0)}`);
+}
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

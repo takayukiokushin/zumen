@@ -7,6 +7,7 @@ const KIND_LABEL: Record<string, string> = {
   'branch-left': '左分岐',
   'branch-right': '右分岐',
   inside: '内蔵',
+  frame: '枠',
 };
 
 /**

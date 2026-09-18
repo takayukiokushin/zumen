@@ -15,7 +15,9 @@ export type PlacementKind =
   /** 主回路から右へ分岐する */
   | 'branch-right'
   /** 親の記号の中（slot）に入る */
-  | 'inside';
+  | 'inside'
+  /** 主回路を囲む枠（キュービクルの範囲など） */
+  | 'frame';
 
 export interface Placement {
   role: string;
@@ -31,6 +33,14 @@ export interface Placement {
   props?: Record<string, string>;
   /** 同じ機器を繰り返す件数を持つ質問ID */
   repeatCountKey?: string;
+  /** この機器の下に空ける間隔（既定より広げたいとき） */
+  gapAfter?: number;
+  /** この機器の下の線を点線にする条件（埋設ケーブルなど） */
+  dashedAfter?: Condition;
+  /** 二次側から結線してくる機器のロール（継電器など） */
+  connectFrom?: string[];
+  /** 文字を記号のどちら側に書くか（既定は右） */
+  labelSide?: 'left' | 'right';
   note?: string;
 }
 
@@ -61,6 +71,7 @@ export const UPSTREAM: Placement[] = [
   { role: 'incoming-point', symbolId: 'incoming-point', kind: 'series' },
   {
     role: 'boundary',
+    labelSide: 'left',
     symbolId: 'boundary-both',
     kind: 'series',
     when: { key: 'boundaryPattern', eq: 'coincident' },
@@ -69,6 +80,7 @@ export const UPSTREAM: Placement[] = [
   },
   {
     role: 'boundary-property',
+    labelSide: 'left',
     symbolId: 'boundary-property',
     kind: 'series',
     when: { key: 'boundaryPattern', eq: 'split' },
@@ -112,12 +124,14 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'relay-gr',
     kind: 'branch-right',
     when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasControl', eq: 'gr' }] },
+    connectFrom: ['pas-zct'],
   },
   {
     role: 'pas-relay',
     symbolId: 'relay-dgr',
     kind: 'branch-right',
     when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasControl', eq: 'dgr' }] },
+    connectFrom: ['pas-zct', 'pas-vt'],
   },
   {
     role: 'vct-pole',
@@ -132,7 +146,16 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'cable-head',
     kind: 'series',
     labelTemplate: ['{cableInstallationLabel}', '{cableStructure}', '{cableSpecLine}'],
+    gapAfter: 56,
+    dashedAfter: { key: 'cableInstallation', eq: 'buried' },
     note: '埋設（埋ケ）のときはケーブルの線を点線で描く',
+  },
+  {
+    role: 'area-frame',
+    symbolId: 'enclosure-cubicle',
+    kind: 'frame',
+    labelTemplate: ['{areaLabel}'],
+    note: 'この枠から下がキュービクル（電気室）の中',
   },
   {
     role: 'cable-head-site',
@@ -187,7 +210,7 @@ export const DOWNSTREAM: Placement[] = [
     role: 'ct',
     symbolId: 'ct',
     kind: 'series',
-    when: { key: 'ctRatio', answered: true },
+    when: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
     labelTemplate: ['CT', '{ctRatio}'],
     props: { ratio: 'ctRatio' },
   },
@@ -195,27 +218,28 @@ export const DOWNSTREAM: Placement[] = [
     role: 'ct-test-terminal',
     symbolId: 'test-terminal',
     kind: 'branch-right',
-    when: { all: [{ key: 'ctRatio', answered: true }, { key: 'mainBreakerForm', eq: 'cb' }] },
+    when: { key: 'mainBreakerForm', eq: 'cb' },
   },
   {
     role: 'ocr',
     symbolId: 'relay-ocr',
     kind: 'branch-right',
     when: { key: 'mainBreakerForm', eq: 'cb' },
+    connectFrom: ['ct-test-terminal'],
     note: 'CB形では CT の次に OCR が入る',
   },
   {
     role: 'site-vt-pf',
     symbolId: 'pf',
     kind: 'branch-right',
-    when: { key: 'mainBreakerForm', eq: 'pfs' },
+    when: { all: [{ key: 'mainBreakerForm', eq: 'pfs' }, { key: 'hasSiteVt', eq: 'yes' }] },
     labelTemplate: ['VT＋PF', '{vtRatio}'],
   },
   {
     role: 'site-vt',
     symbolId: 'vt',
     kind: 'branch-right',
-    when: { key: 'mainBreakerForm', eq: 'pfs' },
+    when: { all: [{ key: 'mainBreakerForm', eq: 'pfs' }, { key: 'hasSiteVt', eq: 'yes' }] },
     props: { ratio: 'vtRatio' },
   },
   {
@@ -230,6 +254,7 @@ export const DOWNSTREAM: Placement[] = [
     symbolId: 'relay-ovgr',
     kind: 'branch-left',
     when: { key: 'hasZpd', eq: 'yes' },
+    connectFrom: ['zpd'],
   },
   {
     role: 'site-la',

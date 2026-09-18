@@ -50,6 +50,15 @@ importers:
 
   packages/knowledge: {}
 
+  packages/layout:
+    dependencies:
+      '@zumen/knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
+      '@zumen/symbols':
+        specifier: workspace:*
+        version: link:../symbols
+
   packages/symbols: {}
 
 packages:
