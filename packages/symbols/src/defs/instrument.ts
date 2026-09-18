@@ -160,10 +160,8 @@ export const instrumentSymbols: SymbolDef[] = [
   meter('meter-a', 'A', '電流計'),
   meter('meter-v', 'V', '電圧計'),
   {
-    ...meter('meter-pf', 'cosθ', '位相計（力率計）', 8),
+    ...meter('meter-pf', 'COSθ', '位相計（力率計）', 7.5),
     tags: ['計器', '低圧', '力率', '位相'],
-    status: 'open-question',
-    statusNote: '新規追加。丸の中に cosθ と表記しています。この表記でよいかご確認ください。',
-    review: '丸の中の表記を「cosθ」としています。図面での実際の表記（COSθ / cosφ 等）をご確認ください。',
+    statusNote: '丸の中に COSθ と表記する形で確定。低圧設備のため図面に記載することはほぼないが、データとしては保持する。',
   },
 ];

@@ -9,10 +9,10 @@
  */
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { getSymbol, shapesToSvg } from '../packages/symbols/src/index.ts';
+import { FONT_FAMILY, getSymbol, shapesToSvg } from '../packages/symbols/src/index.ts';
 
-/** 日本語は中国語フォントに落ちると字形が変わるため、明示的に日本語フォントを指定する */
-const FONT = "IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif";
+/** 図面の文字はすべて記号ライブラリと同じゴシック体で統一する */
+const FONT = FONT_FAMILY;
 
 const parts: string[] = [];
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

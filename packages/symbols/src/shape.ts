@@ -205,6 +205,13 @@ export const deltaMark = (cx: number, cy: number, r = 5.4): PolyShape => {
 /* SVG文字列化（React非依存。カタログ生成・PDF出力でも同じ関数を使う）      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * 図面の文字はすべてゴシック体で統一する。
+ * 日本語フォントを明示しないと環境によって中国語フォントに落ち、漢字の字形が変わる。
+ */
+export const FONT_FAMILY =
+  "IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif";
+
 const n = (v: number): string => (Math.round(v * 1000) / 1000).toString();
 
 const esc = (s: string): string =>
@@ -246,7 +253,7 @@ export function shapeToSvg(s: Shape): string {
         s.anchor ?? 'middle'
       }" dominant-baseline="${s.vAlign === 'baseline' ? 'auto' : 'central'}"${
         s.italic ? ' font-style="italic"' : ''
-      }${s.bold ? ' font-weight="600"' : ''}${
+      }${s.bold ? ' font-weight="600"' : ''} font-family="${FONT_FAMILY}"${
         s.tracking ? ` letter-spacing="${n(s.tracking)}"` : ''
       } fill="currentColor" stroke="none">${esc(s.s)}</text>`;
   }

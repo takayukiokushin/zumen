@@ -30,7 +30,7 @@ export const RELAY_TYPES: RelayType[] = [
   { code: 'OFR', nameJa: '過周波数継電器' },
   { code: 'RPR', nameJa: '逆電力継電器' },
   { code: 'UPR', nameJa: '不足電力継電器' },
-  { code: 'DSR', nameJa: '方向短絡継電器', needsConfirm: true, note: '正式名称の確認をお願いします。' },
+  { code: 'DSR', nameJa: '短絡方向継電器', note: '使用頻度は極めて低い。' },
   { code: '2E', nameJa: '電動機保護継電器（2要素：過負荷・欠相）' },
   { code: '3E', nameJa: '電動機保護継電器（3要素：過負荷・欠相・反相）' },
 ];
