@@ -19,6 +19,28 @@ export interface AnalyzeResponse {
 
 const SUPPORTED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
+/** claude-opus-5 の単価（100万トークンあたりの米ドル）。改定されたら直す。 */
+const PRICE_PER_MTOK = { input: 5, cacheWrite: 6.25, cacheRead: 0.5, output: 25 };
+
+/**
+ * 1件あたりいくらかかったかをログに残す。
+ * 実際の運用費を見積もるための材料で、料金の請求とは関係ない。
+ */
+function logUsage(usage: Anthropic.Usage, imageCount: number): void {
+  const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+  const cacheRead = usage.cache_read_input_tokens ?? 0;
+  const usd =
+    (usage.input_tokens * PRICE_PER_MTOK.input +
+      cacheWrite * PRICE_PER_MTOK.cacheWrite +
+      cacheRead * PRICE_PER_MTOK.cacheRead +
+      usage.output_tokens * PRICE_PER_MTOK.output) /
+    1_000_000;
+  console.log(
+    `解析: 画像${imageCount}枚 / 入力${usage.input_tokens}（キャッシュ 書込${cacheWrite}・読込${cacheRead}）` +
+      ` / 出力${usage.output_tokens} / 約$${usd.toFixed(3)}`,
+  );
+}
+
 /**
  * 手書きメモを読み取って、ヒアリング項目を埋める。
  *
@@ -51,6 +73,8 @@ export async function analyze(images: SketchImage[], answers: Answers): Promise<
     },
     messages: [{ role: 'user', content }],
   });
+
+  logUsage(response.usage, images.length);
 
   if (response.stop_reason === 'refusal') {
     throw new Error('解析を実行できませんでした。別の画像でお試しください。');
