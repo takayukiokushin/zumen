@@ -118,14 +118,27 @@ export function checkConsistency(a: Answers): ReviewItem[] {
     });
   }
 
-  // GR・DGRはZCTが要る（記号は構成ルールが自動で入れるため、制御装置なしとの取り違えを見る）
+  // GR・DGRはZCTが要る（記号は構成ルールが自動で入れるため、SOGなしとの取り違えを見る）
   if (a.hasPas === 'yes' && a.pasControl === 'none' && a.hasZpd === 'yes') {
     items.push({
       level: 'confirm',
       questionId: 'pasControl',
-      label: 'PASの制御装置',
+      label: 'PASのSOG',
       value: 'なし',
-      message: 'ZPDがあるのに制御装置が「なし」になっています。GRかDGRではありませんか。',
+      message: 'ZPDがあるのにSOGが「なし」になっています。GRかDGRではありませんか。',
+    });
+  }
+
+  // SOGが無いPASにVTは入らない
+  if (a.hasPas === 'yes' && a.pasControl === 'none' && a.pasBuiltinVt === 'yes') {
+    items.push({
+      level: 'error',
+      questionId: 'pasControl',
+      label: 'PASの内蔵VT',
+      value: 'SOGなし・VT内蔵あり',
+      message:
+        'SOGが無いPASにVTは内蔵されません。SOG（GRまたはDGR）があるか、' +
+        'VTは内蔵されていないかのどちらかです。',
     });
   }
 

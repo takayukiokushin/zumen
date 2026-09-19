@@ -210,7 +210,7 @@ export const QUESTIONS: Question[] = [
   {
     id: 'pasControl',
     group: 'pas',
-    label: '制御装置の種類は？',
+    label: 'SOG（制御装置）は？',
     type: 'select',
     options: [
       { value: 'none', label: 'なし' },
@@ -220,7 +220,9 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'dgr',
     showIf: { key: 'hasPas', eq: 'yes' },
     ask: 'ai-uncertain',
-    help: 'GRはZCTが入る。DGRはZCTに加えて零相電圧（内蔵VTまたはZPD）が必要',
+    help:
+      'SOGがあればZCTが内蔵される（GRはZCTのみ、DGRはZCTに加えて零相電圧＝内蔵VTかZPDが必要）。' +
+      'SOGが無ければVTとZCTは入らない。LAはSOGの有無に関わらず入ることがある',
   },
   {
     id: 'pasBuiltinVt',
@@ -229,7 +231,8 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     options: YES_NO,
     defaultValue: 'yes',
-    showIf: { key: 'hasPas', eq: 'yes' },
+    // SOGが無ければVTは入らないので、聞く必要そのものが無い
+    showIf: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasControl', in: ['gr', 'dgr'] }] },
     ask: 'ai-uncertain',
   },
   {
@@ -241,6 +244,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'yes',
     showIf: { key: 'hasPas', eq: 'yes' },
     ask: 'ai-uncertain',
+    help: 'SOGが無いPASでも内蔵されていることがある',
   },
   {
     id: 'pasRatedVoltage',

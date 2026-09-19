@@ -184,6 +184,41 @@ console.log(`    ${cbSeries.join(' → ')}`);
 if (!cbSeries.includes('ds') || !cbSeries.includes('vcb')) fail('CB形なのにDS/VCBが入っていません');
 if (!cbComposition.some((i) => i.symbolId === 'relay-ocr')) fail('CB形なのにOCRが入っていません');
 
+/* ---------- 4b. PASの内蔵機器（SOGの有無で決まる） ---------- */
+console.log('\n■ PASの内蔵機器');
+{
+  /** そのPASに内蔵される記号を並べる */
+  const builtin = (control: string, vt: string, la: string): string[] => {
+    const a: Answers = { ...answers, hasPas: 'yes', pasControl: control, pasBuiltinVt: vt, pasBuiltinLa: la };
+    return buildComposition(a)
+      .filter((i) => i.kind === 'inside' && i.parent === 'pas')
+      .map((i) => i.symbolId);
+  };
+  /** 図面のPASに添える文字（例: VT,LA内蔵型） */
+  const text = (control: string, vt: string, la: string): string =>
+    String(withDerived({ ...answers, hasPas: 'yes', pasControl: control, pasBuiltinVt: vt, pasBuiltinLa: la }).pasBuiltinText);
+
+  const cases: [string, string, string, string, string[]][] = [
+    ['SOGなし・VTなし・LAなし', 'none', 'no', 'no', []],
+    ['SOGなし・LAのみ', 'none', 'no', 'yes', ['la']],
+    ['SOGなし（VT内蔵と読み違えても無視する）', 'none', 'yes', 'yes', ['la']],
+    ['GR・VTなし・LAなし', 'gr', 'no', 'no', ['zct']],
+    ['GR・LAのみ', 'gr', 'no', 'yes', ['zct', 'la']],
+    ['DGR・VTのみ', 'dgr', 'yes', 'no', ['zct', 'vt']],
+    ['DGR・VTとLA', 'dgr', 'yes', 'yes', ['zct', 'vt', 'la']],
+  ];
+  for (const [name, control, vt, la, want] of cases) {
+    const got = builtin(control, vt, la);
+    const ok = got.length === want.length && want.every((w) => got.includes(w));
+    console.log(`  ${ok ? ' ' : '✗'} ${name}: ${got.join('・') || 'なし'}${text(control, vt, la) ? `（${text(control, vt, la)}）` : ''}`);
+    if (!ok) fail(`PASの内蔵機器が想定と違います（${name}）: 期待 ${want.join('・') || 'なし'} / 実際 ${got.join('・') || 'なし'}`);
+  }
+  // SOGが無ければVTの質問そのものを出さない
+  const asked = visibleQuestions({ ...answers, hasPas: 'yes', pasControl: 'none' }).map((q) => q.id);
+  if (asked.includes('pasBuiltinVt')) fail('SOGが無いのにVT内蔵の質問が出ています');
+  if (!asked.includes('pasBuiltinLa')) fail('SOGが無くてもLA内蔵は聞く必要があります');
+}
+
 /* ---------- 5. 自動レイアウトが動くか ---------- */
 console.log('\n■ 自動レイアウト');
 for (const [name, ans] of [
@@ -231,6 +266,20 @@ const hasCapacityError = bad.some((r) => r.level === 'error' && r.questionId ===
 const hasDgrError = bad.some((r) => r.level === 'error' && r.label.includes('零相電圧'));
 if (!hasCapacityError) fail('500kVAでPFS形という矛盾を検出できませんでした');
 if (!hasDgrError) fail('DGRなのに零相電圧源が無い矛盾を検出できませんでした');
+
+const sogless = buildReview(
+  {
+    answers: { hasPas: 'yes', pasControl: 'none', pasBuiltinVt: 'yes' },
+    uncertain: [],
+    evidence: {},
+    notes: [],
+    questions: [],
+  },
+  {},
+);
+if (!sogless.some((r) => r.level === 'error' && r.label.includes('内蔵VT'))) {
+  fail('SOGが無いPASにVTという矛盾を検出できませんでした');
+}
 console.log(`  矛盾の検出: ${bad.filter((r) => r.level === 'error').length}件のエラー / 全${bad.length}件の確認事項`);
 for (const r of bad.filter((x) => x.level === 'error')) console.log(`    ${r.label}: ${r.message}`);
 

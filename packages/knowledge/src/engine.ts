@@ -80,9 +80,11 @@ const CABLE_INSTALLATION_LABEL: Record<string, string> = { buried: '埋ケ', ove
 export function withDerived(answers: Answers): Answers {
   const d: Answers = { ...answers };
 
-  // PASの内蔵表記（例: VT,LA内蔵型）
+  // PASの内蔵表記（例: VT,LA内蔵型）。
+  // VTはSOG（GR/DGR）があるときだけ入る。回答が残っていても、SOGが無ければ書かない
+  const hasSog = answers.pasControl === 'gr' || answers.pasControl === 'dgr';
   const builtin: string[] = [];
-  if (answers.pasBuiltinVt === 'yes') builtin.push('VT');
+  if (hasSog && answers.pasBuiltinVt === 'yes') builtin.push('VT');
   if (answers.pasBuiltinLa === 'yes') builtin.push('LA');
   d.pasBuiltinText = builtin.length ? `${builtin.join(',')}内蔵型` : '';
 

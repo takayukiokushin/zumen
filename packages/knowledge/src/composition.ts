@@ -97,6 +97,7 @@ export const UPSTREAM: Placement[] = [
     props: { ratedVoltage: 'pasRatedVoltage', ratedCurrent: 'pasRatedCurrent', control: 'pasControl' },
   },
   {
+    // SOG（GR/DGR）があれば、ZCTはPASに内蔵される。無ければ入らない
     role: 'pas-zct',
     symbolId: 'zct',
     kind: 'inside',
@@ -105,12 +106,19 @@ export const UPSTREAM: Placement[] = [
     when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasControl', in: ['gr', 'dgr'] }] },
   },
   {
+    // VTもSOGがあるときだけ。SOGが無いPASにVTは入らない
     role: 'pas-vt',
     symbolId: 'vt',
     kind: 'inside',
     parent: 'pas',
     slot: 'vt',
-    when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasBuiltinVt', eq: 'yes' }] },
+    when: {
+      all: [
+        { key: 'hasPas', eq: 'yes' },
+        { key: 'pasControl', in: ['gr', 'dgr'] },
+        { key: 'pasBuiltinVt', eq: 'yes' },
+      ],
+    },
   },
   {
     role: 'pas-la',
@@ -118,6 +126,7 @@ export const UPSTREAM: Placement[] = [
     kind: 'inside',
     parent: 'pas',
     slot: 'la',
+    // LAはSOGの有無に関わらず内蔵されることがある
     when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasBuiltinLa', eq: 'yes' }] },
     note: 'LAの接地はPAS本体の接地と同じ箇所で施工する',
   },
