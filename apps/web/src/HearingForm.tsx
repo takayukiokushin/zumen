@@ -35,8 +35,11 @@ interface Block {
   need: boolean;
 }
 
-const isOptionalDetail = (q: Question, typed: Answers, key: string): boolean =>
-  !q.required && !DRIVER_QUESTION_IDS.has(q.id) && q.defaultValue !== undefined && typed[key] === undefined;
+const isOptionalDetail = (q: Question, typed: Answers, key: string): boolean => {
+  // 現地のメモから分かる項目は、ヒアリングの段階では畳んでおく
+  if (q.fromSketch && typed[key] === undefined) return true;
+  return !q.required && !DRIVER_QUESTION_IDS.has(q.id) && q.defaultValue !== undefined && typed[key] === undefined;
+};
 
 /** n件目の回答だけを取り出す（表示条件の判定に使う） */
 function pick(answers: Answers, index: number): Answers {

@@ -24,7 +24,13 @@ export type PlacementKind =
    */
   | 'parallel'
   /** 低圧母線から下へ出る回線（回線ごとに縦に並べる） */
-  | 'feeder';
+  | 'feeder'
+  /**
+   * どこにも結線せず、図面の下に置くだけ。
+   * 発電機・太陽光・蓄電池は、変圧器のどこにつながるかが現地のメモで初めて分かるため、
+   * たたき台の段階では線をつながずに置いておき、あとから図面上で結線する。
+   */
+  | 'free';
 
 export interface Placement {
   role: string;
@@ -368,10 +374,11 @@ export const EXTRAS: Placement[] = [
     labelTemplate: ['SC', '{capacitorCapacity}'],
     repeatCountKey: 'capacitorCount',
   },
+  // 発電機・太陽光・蓄電池は結線せずに置く（つなぎ先は現地のメモを見て決める）
   {
     role: 'generator',
     symbolId: 'generator',
-    kind: 'branch-left',
+    kind: 'free',
     when: { key: 'hasGenerator', eq: 'yes' },
     labelTemplate: ['G', '{generatorText}', '{generatorPlace}'],
     props: { usage: 'generatorUsage', place: 'generatorPlace', fuel: 'generatorFuel' },
@@ -380,14 +387,14 @@ export const EXTRAS: Placement[] = [
   {
     role: 'pv',
     symbolId: 'pv',
-    kind: 'series',
+    kind: 'free',
     when: { key: 'hasPv', eq: 'yes' },
     labelTemplate: ['PV', '{pcsText}'],
   },
   {
     role: 'battery',
     symbolId: 'battery-unit',
-    kind: 'series',
+    kind: 'free',
     when: { key: 'hasBattery', eq: 'yes' },
     labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
   },

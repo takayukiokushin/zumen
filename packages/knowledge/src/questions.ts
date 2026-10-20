@@ -44,6 +44,11 @@ export interface Question {
    * 例：「コンデンサ設備はありますか？」は台数ぶん聞く必要がない。
    */
   shared?: boolean;
+  /**
+   * 現地のメモを読み取って初めて分かる項目。
+   * ヒアリングの画面では最初から畳んでおく（「既定値のままでよい質問も表示」で出る）。
+   */
+  fromSketch?: boolean;
 }
 
 export interface QuestionGroup {
@@ -73,7 +78,13 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
   { id: 'receiving', label: '受電設備の構成' },
   { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台' },
-  { id: 'feeder', label: '低圧側の分岐', description: '変圧器の下の母線から出る回線', repeatCountKey: 'feederCount', repeatUnit: '回線' },
+  {
+    id: 'feeder',
+    label: '低圧側の分岐',
+    description: '現地のメモを読み取ると分かるので、ヒアリングでは答えなくてよい',
+    repeatCountKey: 'feederCount',
+    repeatUnit: '回線',
+  },
   { id: 'compensation', label: '進相設備', repeatCountKey: 'capacitorCount', repeatUnit: '台' },
   { id: 'special', label: '特殊設備' },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' } },
@@ -567,9 +578,10 @@ export const QUESTIONS: Question[] = [
     defaultValue: 0,
     ask: 'ai-uncertain',
     help: '変圧器の下の母線から出る回線の数。無ければ0',
+    fromSketch: true,
   },
-  { id: 'feederName', group: 'feeder', label: '回線名', type: 'text', placeholder: 'PCSNo1〜No5', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain' },
-  { id: 'feederBreaker', group: 'feeder', label: '遮断器の定格', type: 'text', placeholder: 'MCCB225A', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain' },
+  { id: 'feederName', group: 'feeder', label: '回線名', type: 'text', placeholder: 'PCSNo1〜No5', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain', fromSketch: true },
+  { id: 'feederBreaker', group: 'feeder', label: '遮断器の定格', type: 'text', placeholder: 'MCCB225A', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain', fromSketch: true },
   {
     id: 'feederDevice',
     group: 'feeder',
@@ -582,8 +594,9 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'none',
     showIf: { key: 'feederCount', gt: 0 },
     ask: 'ai-uncertain',
+    fromSketch: true,
   },
-  { id: 'feederDeviceCapacity', group: 'feeder', label: 'PCSの容量', type: 'text', placeholder: '100kW×5', showIf: { key: 'feederDevice', eq: 'pcs' }, ask: 'ai-uncertain' },
+  { id: 'feederDeviceCapacity', group: 'feeder', label: 'PCSの容量', type: 'text', placeholder: '100kW×5', showIf: { key: 'feederDevice', eq: 'pcs' }, ask: 'ai-uncertain', fromSketch: true },
   {
     id: 'feederSource',
     group: 'feeder',
@@ -597,8 +610,9 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'none',
     showIf: { key: 'feederDevice', eq: 'pcs' },
     ask: 'ai-uncertain',
+    fromSketch: true,
   },
-  { id: 'feederSourceLabel', group: 'feeder', label: '先の機器の表記', type: 'text', placeholder: '蓄電池ユニットNo.1', showIf: { key: 'feederSource', ne: 'none' }, ask: 'ai-uncertain' },
+  { id: 'feederSourceLabel', group: 'feeder', label: '先の機器の表記', type: 'text', placeholder: '蓄電池ユニットNo.1', showIf: { key: 'feederSource', ne: 'none' }, ask: 'ai-uncertain', fromSketch: true },
 
   /* ---------------- 進相設備 ---------------- */
   {

@@ -141,7 +141,7 @@ const composition = buildComposition(answers);
 console.log(`\n  組み立てた構成（${composition.length}件）:`);
 for (const item of composition) {
   const kind =
-    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線' }[
+    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線', free: '独立' }[
       item.kind
     ] ?? item.kind;
   const label = item.label.length ? `  「${item.label.join(' / ')}」` : '';
@@ -155,7 +155,7 @@ const order = composition.filter((i) => i.kind === 'series').map((i) => i.symbol
 // 変圧器は主回路から分岐して並列に入るため、直列の並びには出てこない
 const expected = [
   'pole-utility', 'incoming-point', 'boundary-both', 'pas',
-  'cable-head', 'cable-head', 'vct', 'vct', 'lbs-pf', 'ct', 'pv',
+  'cable-head', 'cable-head', 'vct', 'vct', 'lbs-pf', 'ct',
 ];
 if (JSON.stringify(order) !== JSON.stringify(expected)) {
   fail(`主回路の並びが実図面と一致しません\n      期待: ${expected.join(' → ')}\n      実際: ${order.join(' → ')}`);

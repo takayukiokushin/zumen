@@ -68,6 +68,10 @@ const FRAME_HALF = 200;
 const LANE_GAP = 120;
 /** 高圧母線から下がる列どうしの間隔（記号の脇に文字を書くぶん広めに取る） */
 const PARALLEL_GAP = 160;
+/** 結線せずに置くものを、主回路からどれだけ下に離すか */
+const FREE_GAP = 56;
+/** 結線せずに置くものどうしの間隔 */
+const FREE_SPACING = 170;
 
 const portOf = (def: SymbolDef, ...ids: string[]): Port | undefined => {
   for (const id of ids) {
@@ -128,6 +132,10 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
 
   /** 低圧母線から出る回線は、主回路を描き終えてからまとめて並べる */
   const feeders: PlacedItem[] = [];
+  /** どこにも結線せずに置くもの（発電機・太陽光・蓄電池） */
+  const frees: PlacedItem[] = [];
+  /** 結線せずに置いたものは、受電設備の枠の中に数えない */
+  const freeIds = new Set<string>();
   /** 高圧母線から並列にぶら下がるもの（変圧器・進相設備） */
   const parallels = items.filter((i) => i.kind === 'parallel' && findSymbol(i.symbolId));
   let parallelDrawn = false;
@@ -184,6 +192,10 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
 
     if (item.kind === 'feeder') {
       feeders.push(item);
+      continue;
+    }
+    if (item.kind === 'free') {
+      frees.push(item);
       continue;
     }
     if (item.kind === 'parallel') {
@@ -357,6 +369,27 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     }
   }
 
+  /* ---- 結線せずに置くもの（発電機・太陽光・蓄電池） ---- */
+  if (frees.length > 0) {
+    // 主回路の下に、間を空けて横一列に並べる。
+    // 線はつながない（つなぎ先は現地のメモを見てから、図面の上で結ぶ）
+    let fy = spineY;
+    for (const w of wires) fy = Math.max(fy, w.y1, w.y2);
+    for (const sym of symbols) {
+      const def = getSymbol(sym.symbolId);
+      fy = Math.max(fy, sym.y + def.box.h + (sym.label.length ? sym.label.length * 10 : 0));
+    }
+    fy += FREE_GAP;
+
+    let fx = SPINE - ((frees.length - 1) * FREE_SPACING) / 2;
+    for (const item of frees) {
+      const def = getSymbol(item.symbolId);
+      const sym = add(item, def, fx - def.box.w / 2, fy, 0, 'right');
+      freeIds.add(sym.id);
+      fx += FREE_SPACING;
+    }
+  }
+
   // 外形を求める
   let x0 = Infinity;
   let y0 = Infinity;
@@ -383,10 +416,28 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   }
   for (const w of wires) ext(Math.min(w.x1, w.x2), Math.min(w.y1, w.y2), Math.max(w.x1, w.x2), Math.max(w.y1, w.y2));
 
-  // 枠（受電設備の範囲）は、中身がはみ出さない幅に広げる
+  // 枠（受電設備の範囲）は、中身がはみ出さない幅に広げる。
+  // ただし結線せずに置いたもの（発電機・太陽光など）は受電設備の外なので数えない
+  let fx0 = Infinity;
+  let fx1 = -Infinity;
+  for (const sy of symbols) {
+    if (freeIds.has(sy.id)) continue;
+    const def = getSymbol(sy.symbolId);
+    fx0 = Math.min(fx0, sy.x);
+    fx1 = Math.max(fx1, sy.x + def.box.w);
+    if (sy.label.length) {
+      const w = Math.max(...sy.label.map((l) => l.length)) * 6;
+      fx0 = Math.min(fx0, sy.labelAt.anchor === 'start' ? sy.labelAt.x : sy.labelAt.x - w);
+      fx1 = Math.max(fx1, sy.labelAt.anchor === 'start' ? sy.labelAt.x + w : sy.labelAt.x);
+    }
+  }
+  for (const w of wires) {
+    fx0 = Math.min(fx0, w.x1, w.x2);
+    fx1 = Math.max(fx1, w.x1, w.x2);
+  }
   for (const f of frames) {
-    const left = Math.min(f.x, x0 - 12);
-    const right = Math.max(f.x + f.w, x1 + 12);
+    const left = Math.min(f.x, fx0 - 12);
+    const right = Math.max(f.x + f.w, fx1 + 12);
     f.x = left;
     f.w = right - left;
     ext(f.x, f.y - 14, f.x + f.w, f.y + 26);
