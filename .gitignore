@@ -13,3 +13,4 @@ coverage/
 apps/web/dist/
 apps/desktop/release/
 data/
+test-result.txt
