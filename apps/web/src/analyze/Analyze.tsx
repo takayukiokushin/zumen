@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QUESTIONS } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult, ReviewItem } from '@zumen/ai';
@@ -55,6 +55,15 @@ export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [review, setReview] = useState<ReviewItem[]>([]);
   const [chosen, setChosen] = useState<Record<string, boolean>>({});
+  /** 読み取りが使える状態か（サーバーに利用券が置いてあるか）。未確認のあいだは undefined */
+  const [ready, setReady] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    api
+      .health()
+      .then((h) => setReady(h.hasApiKey))
+      .catch(() => setReady(undefined));
+  }, []);
 
   const pick = async (files: FileList | null) => {
     if (!files) return;
@@ -116,6 +125,26 @@ export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
     <div className="analyze">
       <section className="panel">
         <h2>現地の手書きメモを読み取る</h2>
+
+        {ready === false && (
+          <div className="notready">
+            <b>この機能は、まだ使えるようになっていません。</b>
+            <p>
+              手書きメモの読み取りには、Claude の<b>利用券（APIキー）</b>が要ります。
+              サーバーに利用券を置くと使えるようになります。
+            </p>
+            <p className="how">
+              置き方：サーバーのフォルダにある <code>.env.example</code> を <code>.env</code> という名前で
+              コピーし、<code>ANTHROPIC_API_KEY=</code> の後ろに利用券の文字列を書いて、サーバーを
+              起動し直します。利用券は <code>https://console.anthropic.com/</code> で発行します。
+            </p>
+            <p className="how">
+              <b>利用券が無くても、ほかの機能はすべて使えます。</b>
+              「事前ヒアリング」で質問に答えれば、図面のたたき台はできます。
+            </p>
+          </div>
+        )}
+
         <p className="hint">
           写真やスキャンした画像を選んでください（10枚まで）。読み取った内容は<b>そのまま図面には入りません</b>。
           この画面で確認して、採用するものだけを反映します。

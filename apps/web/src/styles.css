@@ -229,3 +229,12 @@ body:has(.projectbar) .app, body:has(.projectbar) .editor, body:has(.projectbar)
 .shield .canvas, .shield .canvas-wrap { pointer-events: none; }
 .shield .app, .shield .editor { opacity: .9; }
 .picker-menu .editing { color: var(--accent); font-weight: 600; }
+
+/* ---- 手書きメモの読み取りがまだ使えないときの案内 ---- */
+.notready { border: 1px solid var(--need); background: var(--need-soft); border-radius: 3px;
+  padding: 14px 16px; margin: 0 0 16px; font-size: 12.5px; line-height: 1.8; }
+.notready b { color: var(--need); }
+.notready p { margin: 8px 0 0; }
+.notready .how { color: var(--ink); }
+.notready code { background: #fff; border: 1px solid var(--rule); border-radius: 2px;
+  padding: 1px 5px; font-size: 12px; }

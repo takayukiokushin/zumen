@@ -54,7 +54,15 @@ app.route('/api/projects', projects);
 
 app.post('/api/analyze', requireAuth, async (c) => {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return c.json({ error: 'サーバーにAPIキーが設定されていません（ANTHROPIC_API_KEY）。' }, 503);
+    return c.json(
+      {
+        error:
+          '手書きメモの読み取りは、まだ使えるようになっていません。' +
+          'サーバーに Claude の利用券（APIキー）を設定すると使えるようになります。' +
+          '設定のしかたは docs/install.md の「1-4. Claude APIキーを置く」を見てください。',
+      },
+      503,
+    );
   }
   const body = (await c.req.json().catch(() => null)) as {
     images?: { mediaType: string; data: string }[];
