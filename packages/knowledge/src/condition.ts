@@ -31,10 +31,28 @@ export function evaluate(cond: Condition | undefined, answers: Answers): boolean
   if ('eq' in cond) return v === cond.eq;
   if ('ne' in cond) return v !== cond.ne;
   if ('in' in cond) return cond.in.includes(v as Value);
-  if ('gt' in cond) return typeof v === 'number' && v > cond.gt;
-  if ('lte' in cond) return typeof v === 'number' && v <= cond.lte;
+  // 数で比べるものは、「3」のような文字列で入っていても数として見る
+  // （一覧から選ばせる項目は文字列で保存されるため）
+  if ('gt' in cond) {
+    const n = asNumber(v);
+    return n !== null && n > cond.gt;
+  }
+  if ('lte' in cond) {
+    const n = asNumber(v);
+    return n !== null && n <= cond.lte;
+  }
   if ('answered' in cond) return v !== undefined && v !== null && v !== '';
   return true;
+}
+
+/** 数として読めれば数にする。読めなければ null */
+function asNumber(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
 }
 
 /** 条件式が参照している質問IDを列挙する（依存関係の検証に使う） */

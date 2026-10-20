@@ -140,7 +140,10 @@ console.log(`  設備容量300kVAからの提案: ${suggestMainBreakerForm(300)}
 const composition = buildComposition(answers);
 console.log(`\n  組み立てた構成（${composition.length}件）:`);
 for (const item of composition) {
-  const kind = { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', feeder: '回線' }[item.kind];
+  const kind =
+    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線' }[
+      item.kind
+    ] ?? item.kind;
   const label = item.label.length ? `  「${item.label.join(' / ')}」` : '';
   const parent = item.parent ? ` → ${item.parent}.${item.slot}` : '';
   console.log(`    ${kind.padEnd(4, '　')} ${item.symbolId.padEnd(16)}${parent}${label}`);
@@ -149,9 +152,10 @@ for (const item of composition) {
 
 /* 実図面と同じ並びになっているか（主要な機器の順序） */
 const order = composition.filter((i) => i.kind === 'series').map((i) => i.symbolId);
+// 変圧器は主回路から分岐して並列に入るため、直列の並びには出てこない
 const expected = [
   'pole-utility', 'incoming-point', 'boundary-both', 'pas',
-  'cable-head', 'cable-head', 'vct', 'vct', 'lbs-pf', 'ct', 'tr-3p-dy', 'pv',
+  'cable-head', 'cable-head', 'vct', 'vct', 'lbs-pf', 'ct', 'pv',
 ];
 if (JSON.stringify(order) !== JSON.stringify(expected)) {
   fail(`主回路の並びが実図面と一致しません\n      期待: ${expected.join(' → ')}\n      実際: ${order.join(' → ')}`);
@@ -183,6 +187,37 @@ const cbSeries = cbComposition.filter((i) => i.kind === 'series').map((i) => i.s
 console.log(`    ${cbSeries.join(' → ')}`);
 if (!cbSeries.includes('ds') || !cbSeries.includes('vcb')) fail('CB形なのにDS/VCBが入っていません');
 if (!cbComposition.some((i) => i.symbolId === 'relay-ocr')) fail('CB形なのにOCRが入っていません');
+
+/* 変圧器と進相設備は並列に入るか */
+{
+  const parallel = composition.filter((i) => i.kind === 'parallel').map((i) => i.symbolId);
+  if (!parallel.includes('tr-3p-dy')) fail('変圧器が主回路から分岐していません（直列になっています）');
+  console.log(`  高圧母線から並列に入るもの: ${parallel.join(' / ')}`);
+
+  // 変圧器3台＋コンデンサ2台のとき、それぞれが別の列になるか
+  const many = buildComposition({
+    ...answers,
+    transformerCount: '3',
+    hasCapacitor: 'yes',
+    capacitorCount: '2',
+    hasReactor: 'yes',
+  });
+  const lanes = many.filter((i) => i.kind === 'parallel').map((i) => i.lane);
+  const unique = [...new Set(lanes)].sort((a, b) => Number(a) - Number(b));
+  if (unique.length !== 5) {
+    fail(`変圧器3台＋コンデンサ2台で5列になるはずが ${unique.length} 列でした（${unique.join(',')}）`);
+  }
+  console.log(`  変圧器3台＋コンデンサ2台 → ${unique.length}列`);
+
+  // 1台だけのときは、母線を描かずに主回路の上に乗る（実図面と同じ見た目を保つ）
+  const single = layout(buildComposition(answers), answers);
+  const tr = single.symbols.find((x) => x.role === 'transformer');
+  if (!tr) fail('変圧器1台のときに記号が置かれていません');
+  else if (Math.abs(tr.x + 0) > 40 && Math.abs(tr.x) > 40) {
+    // 主回路（x=0付近）から大きく外れていないこと
+    fail(`変圧器1台なのに主回路から離れています（x=${tr.x}）`);
+  }
+}
 
 /* ---------- 4b. PASの内蔵機器（SOGの有無で決まる） ---------- */
 console.log('\n■ PASの内蔵機器');

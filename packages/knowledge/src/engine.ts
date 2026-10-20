@@ -259,9 +259,16 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
     else runs.push([p]);
   }
 
+  // 高圧母線から並列にぶら下がるものは、1台ぶんで1列になる。
+  // 変圧器→進相設備の順に、列を左から詰めていく
+  let parallelLane = 0;
+
   for (const run of runs) {
     const countKey = run[0]!.repeatCountKey;
     const count = countKey ? Math.max(1, Number(answers[countKey] ?? 1)) : 1;
+    const isParallel = run.some((p) => p.kind === 'parallel');
+    const laneBase = parallelLane;
+    if (isParallel) parallelLane += count;
     for (let i = 0; i < count; i++) {
       // 2件目以降は、そのぶんの回答で文字と入力値を組み立てる
       const a = countKey && i > 0 ? withDerived(viewAt(rawAnswers, i)) : answers;
@@ -285,7 +292,7 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
           dashedAfter: evaluate(p.dashedAfter, a) && p.dashedAfter !== undefined,
           connectFrom: p.connectFrom,
           labelSide: p.labelSide,
-          lane: p.kind === 'feeder' ? i : undefined,
+          lane: p.kind === 'feeder' ? i : p.kind === 'parallel' ? laneBase + i : undefined,
           unit: countKey ? i : undefined,
           note: p.note,
         });

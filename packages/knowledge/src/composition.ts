@@ -18,6 +18,11 @@ export type PlacementKind =
   | 'inside'
   /** 主回路を囲む枠（キュービクルの範囲など） */
   | 'frame'
+  /**
+   * 高圧母線から下へ並列にぶら下がる（変圧器・進相設備など）。
+   * 1台だけのときは母線を描かず、主回路にそのまま直列で入る。
+   */
+  | 'parallel'
   /** 低圧母線から下へ出る回線（回線ごとに縦に並べる） */
   | 'feeder';
 
@@ -278,24 +283,28 @@ export const DOWNSTREAM: Placement[] = [
 
 /** 変圧器（台数分くり返す） */
 export const TRANSFORMER: Placement[] = [
+  // 変圧器は主回路から「分岐」して並列に入る（直列ではない）。
+  // PCやLBSが手前に付く場合は、その変圧器と同じ列の上に入る。
   {
     role: 'tr-pc',
     symbolId: 'pc',
-    kind: 'series',
+    kind: 'parallel',
     when: { key: 'trHasPc', eq: 'yes' },
     labelTemplate: ['PC'],
+    repeatCountKey: 'transformerCount',
   },
   {
     role: 'tr-lbs',
     symbolId: 'lbs-pf',
-    kind: 'series',
+    kind: 'parallel',
     when: { key: 'trHasLbs', eq: 'yes' },
     labelTemplate: ['LBS'],
+    repeatCountKey: 'transformerCount',
   },
   {
     role: 'transformer',
     symbolId: '{trConnection}',
-    kind: 'series',
+    kind: 'parallel',
     labelTemplate: ['{trUsage}', 'Tr', '{trCapacityLine}', '{trVoltage}', '{trComposition}'],
     props: { usage: 'trUsage', capacity: 'trCapacity', voltage: 'trVoltage', composition: 'trComposition' },
     repeatCountKey: 'transformerCount',
@@ -342,10 +351,11 @@ export const FEEDERS: Placement[] = [
 export const EXTRAS: Placement[] = [
   // リアクトルの有無はコンデンサごとに決まるので、同じ件数で並べて書く。
   // 隣り合わせにしてあるため SR1→SC1→SR2→SC2 の順に出る
+  // 進相設備は変圧器と並列に入る。1台ごとに「リアクトル→コンデンサ」が1本の列になる
   {
     role: 'reactor',
     symbolId: 'sr',
-    kind: 'branch-right',
+    kind: 'parallel',
     when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'hasReactor', eq: 'yes' }] },
     labelTemplate: ['SR', '{reactorCapacity}'],
     repeatCountKey: 'capacitorCount',
@@ -353,7 +363,7 @@ export const EXTRAS: Placement[] = [
   {
     role: 'capacitor',
     symbolId: 'sc',
-    kind: 'branch-right',
+    kind: 'parallel',
     when: { key: 'hasCapacitor', eq: 'yes' },
     labelTemplate: ['SC', '{capacitorCapacity}'],
     repeatCountKey: 'capacitorCount',

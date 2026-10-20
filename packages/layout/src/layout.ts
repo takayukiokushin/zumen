@@ -66,6 +66,8 @@ const LABEL_GAP = 10;
 const FRAME_HALF = 200;
 /** 低圧の回線どうしの間隔 */
 const LANE_GAP = 120;
+/** 高圧母線から下がる列どうしの間隔（記号の脇に文字を書くぶん広めに取る） */
+const PARALLEL_GAP = 160;
 
 const portOf = (def: SymbolDef, ...ids: string[]): Port | undefined => {
   for (const id of ids) {
@@ -126,6 +128,55 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
 
   /** 低圧母線から出る回線は、主回路を描き終えてからまとめて並べる */
   const feeders: PlacedItem[] = [];
+  /** 高圧母線から並列にぶら下がるもの（変圧器・進相設備） */
+  const parallels = items.filter((i) => i.kind === 'parallel' && findSymbol(i.symbolId));
+  let parallelDrawn = false;
+  /** 低圧の回線をぶら下げる位置（最初の変圧器の下）。無ければ主回路の末端 */
+  let feederAnchorX = SPINE;
+  let feederAnchorY: number | null = null;
+
+  /** 高圧母線を引き、変圧器や進相設備をそこから下へ並列にぶら下げる */
+  function drawParallelSection(): void {
+    if (parallels.length === 0) return;
+
+    const lanes = [...new Set(parallels.map((p) => p.lane ?? 0))].sort((a, b) => a - b);
+    const busY = spineY + GAP;
+    // 1列しかないときは母線を描かず、主回路をそのまま下ろす（1台だけの図面を変えないため）
+    const laneX = (lane: number) =>
+      lanes.length <= 1 ? SPINE : SPINE + (lanes.indexOf(lane) - (lanes.length - 1) / 2) * PARALLEL_GAP;
+
+    wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: busY, dashed: pendingDashed });
+    if (lanes.length > 1) {
+      wires.push({ x1: laneX(lanes[0]!), y1: busY, x2: laneX(lanes.at(-1)!), y2: busY });
+    }
+    pendingDashed = false;
+
+    let deepest = busY;
+    for (const lane of lanes) {
+      let ly = busY;
+      const inLane = parallels.filter((p) => (p.lane ?? 0) === lane);
+      for (const [i, item] of inLane.entries()) {
+        const def = getSymbol(item.symbolId);
+        const entry = portOf(def, 'in') ?? def.ports[0]!;
+        const exit = portOf(def, 'out', 'sec');
+        const x = laneX(lane) - entry.x;
+        const yy = ly + (i === 0 ? GAP : GAP) - entry.y;
+        wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: yy + entry.y });
+        add(item, def, x, yy, 0, 'right');
+        ly = exit ? yy + exit.y : yy + def.box.h;
+      }
+      // 低圧の回線は、1台目の変圧器の真下から出す
+      if (lane === lanes[0]) {
+        feederAnchorX = laneX(lane);
+        feederAnchorY = ly;
+      }
+      deepest = Math.max(deepest, ly);
+    }
+    spineY = deepest;
+    started = true;
+    pendingGap = GAP;
+    lastBranch = null;
+  }
 
   for (const item of items) {
     const def = findSymbol(item.symbolId);
@@ -133,6 +184,14 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
 
     if (item.kind === 'feeder') {
       feeders.push(item);
+      continue;
+    }
+    if (item.kind === 'parallel') {
+      // 最初の1件に出会った時点で、並列の区画をまるごと描く
+      if (!parallelDrawn) {
+        drawParallelSection();
+        parallelDrawn = true;
+      }
       continue;
     }
 
@@ -270,9 +329,11 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   /* ---- 低圧母線と、そこから下へ出る回線 ---- */
   if (feeders.length > 0) {
     const laneCount = Math.max(...feeders.map((f) => f.lane ?? 0)) + 1;
-    const busY = spineY + GAP;
-    wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: busY });
-    const laneX = (i: number) => SPINE + (i - (laneCount - 1) / 2) * LANE_GAP;
+    const from = feederAnchorY ?? spineY;
+    const busY = from + GAP;
+    const base = feederAnchorX;
+    wires.push({ x1: base, y1: from, x2: base, y2: busY });
+    const laneX = (i: number) => base + (i - (laneCount - 1) / 2) * LANE_GAP;
     wires.push({ x1: laneX(0), y1: busY, x2: laneX(laneCount - 1), y2: busY });
 
     for (let lane = 0; lane < laneCount; lane++) {
@@ -321,7 +382,15 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     }
   }
   for (const w of wires) ext(Math.min(w.x1, w.x2), Math.min(w.y1, w.y2), Math.max(w.x1, w.x2), Math.max(w.y1, w.y2));
-  for (const f of frames) ext(f.x, f.y - 14, f.x + f.w, f.y + 26);
+
+  // 枠（受電設備の範囲）は、中身がはみ出さない幅に広げる
+  for (const f of frames) {
+    const left = Math.min(f.x, x0 - 12);
+    const right = Math.max(f.x + f.w, x1 + 12);
+    f.x = left;
+    f.w = right - left;
+    ext(f.x, f.y - 14, f.x + f.w, f.y + 26);
+  }
 
   return { symbols, wires, frames, bounds: { x0, y0, x1, y1 } };
 }
