@@ -6,6 +6,7 @@
 
 - **導入手順（インストールのしかた）**：[docs/install.md](docs/install.md)
 - 仕様書：[docs/spec.md](docs/spec.md)
+- **使ってみての要望・指摘（反映待ちを含む）**：[docs/feedback.md](docs/feedback.md)
 - 記号ナレッジベース（現場知識）：[docs/knowledge-base.md](docs/knowledge-base.md)
 - 記号カタログ（生成物）：[docs/symbol-catalog.html](docs/symbol-catalog.html)
 
