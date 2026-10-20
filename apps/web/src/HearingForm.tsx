@@ -21,6 +21,20 @@ interface Props {
  * 既定値のままでよい質問（必須でなく、まだ触っていないもの）は最初は畳んでおく。
  * ただし図面の中身を左右する質問（分岐・件数を決めるもの）は必ず表示する。
  */
+interface Row {
+  key: string;
+  question: Question;
+}
+
+interface Block {
+  index: number;
+  /** 「1台目」。繰り返しでないときは null */
+  heading: string | null;
+  rows: Row[];
+  answered: number;
+  need: boolean;
+}
+
 const isOptionalDetail = (q: Question, typed: Answers, key: string): boolean =>
   !q.required && !DRIVER_QUESTION_IDS.has(q.id) && q.defaultValue !== undefined && typed[key] === undefined;
 
@@ -59,27 +73,48 @@ export function HearingForm({ answers, effective, onChange }: Props) {
 
     const countKey = group.repeatCountKey;
     const count = countKey ? Math.max(1, Number(effective[countKey] ?? 1)) : 1;
-    const countQuestion = countKey ? groupQuestions.find((q) => q.id === countKey) : undefined;
-    const repeated = groupQuestions.filter((q) => q.id !== countKey);
+    // 件数そのものと、件数に関わらず1回だけ聞く質問は、繰り返しの外に出す
+    const leading = groupQuestions.filter((q) => q.id === countKey || q.shared);
+    const repeated = groupQuestions.filter((q) => q.id !== countKey && !q.shared);
 
-    const rows: { key: string; question?: Question; heading?: string }[] = [];
-    if (countQuestion) rows.push({ key: countQuestion.id, question: countQuestion });
-    for (let i = 0; i < count; i++) {
-      if (count > 1) rows.push({ key: `${group.id}-head-${i}`, heading: `${group.label} ${i + 1}件目` });
-      for (const q of repeated) {
-        if (i > 0 && !evaluate(q.showIf, { ...effective, ...pick(effective, i) })) continue;
-        rows.push({ key: indexedKey(q.id, i), question: q });
-      }
+    const keep = (key: string, q: Question) => showAll || !isOptionalDetail(q, answers, key);
+    let hiddenCount = 0;
+
+    const lead: Row[] = [];
+    for (const q of leading) {
+      if (keep(q.id, q)) lead.push({ key: q.id, question: q });
+      else hiddenCount++;
     }
 
-    const shown = rows.filter((r) => !r.question || showAll || !isOptionalDetail(r.question, answers, r.key));
+    /** 1台目・2台目…のまとまり。count が1なら見出しの無い1つだけ */
+    const blocks: Block[] = [];
+    for (let i = 0; i < count; i++) {
+      const rows: Row[] = [];
+      for (const q of repeated) {
+        if (i > 0 && !evaluate(q.showIf, { ...effective, ...pick(effective, i) })) continue;
+        const key = indexedKey(q.id, i);
+        if (keep(key, q)) rows.push({ key, question: q });
+        else hiddenCount++;
+      }
+      if (rows.length === 0) continue;
+      blocks.push({
+        index: i,
+        heading: count > 1 ? `${i + 1}${group.repeatUnit ?? '件'}目` : null,
+        rows,
+        answered: rows.filter((r) => effective[r.key] !== undefined).length,
+        need: rows.some((r) => r.question.required && effective[r.key] === undefined),
+      });
+    }
+
+    const all = [...lead, ...blocks.flatMap((b) => b.rows)];
     return {
       group,
-      rows: shown,
-      hiddenCount: rows.length - shown.length,
-      answered: rows.filter((r) => r.question && effective[r.key] !== undefined).length,
-      total: rows.filter((r) => r.question).length,
-      need: rows.some((r) => r.question?.required && effective[r.key] === undefined),
+      lead,
+      blocks,
+      hiddenCount,
+      answered: all.filter((r) => effective[r.key] !== undefined).length,
+      total: all.length,
+      need: all.some((r) => r.question.required && effective[r.key] === undefined),
     };
   }).filter((s): s is NonNullable<typeof s> => s !== null);
 
@@ -128,17 +163,38 @@ export function HearingForm({ answers, effective, onChange }: Props) {
                 {s.answered}/{s.total}
               </span>
             </header>
-            <div className="fields">
-              {s.rows.map((r) =>
-                r.heading ? (
-                  <p className="repeat-head" key={r.key}>
-                    {r.heading}
-                  </p>
-                ) : (
-                  <Field key={r.key} question={r.question!} fieldKey={r.key} value={answers[r.key]} onChange={set} />
-                ),
-              )}
-            </div>
+            {s.lead.length > 0 && (
+              <div className="fields">
+                {s.lead.map((r) => (
+                  <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} />
+                ))}
+              </div>
+            )}
+
+            {s.blocks.map((b) =>
+              b.heading === null ? (
+                <div className="fields" key={b.index}>
+                  {b.rows.map((r) => (
+                    <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} />
+                  ))}
+                </div>
+              ) : (
+                // 何台目を入力しているのかが一目で分かるよう、1件ずつ枠で囲んで交互に色を変える
+                <div className={`repeat-block ${b.index % 2 ? 'alt' : ''}`} key={b.index}>
+                  <div className="repeat-head">
+                    <b>{b.heading}</b>
+                    <span className={b.need ? 'need' : b.answered === b.rows.length ? 'done' : ''}>
+                      {b.need ? '未入力あり' : `${b.answered}/${b.rows.length}`}
+                    </span>
+                  </div>
+                  <div className="fields">
+                    {b.rows.map((r) => (
+                      <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} />
+                    ))}
+                  </div>
+                </div>
+              ),
+            )}
             {s.hiddenCount > 0 && (
               <p className="hidden-note">
                 既定値のままでよい質問を{s.hiddenCount}件隠しています。変える場合は右上の「既定値のままでよい質問も表示」を入れてください。

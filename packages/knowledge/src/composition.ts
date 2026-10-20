@@ -340,12 +340,15 @@ export const FEEDERS: Placement[] = [
 
 /** 進相設備・特殊設備 */
 export const EXTRAS: Placement[] = [
+  // リアクトルの有無はコンデンサごとに決まるので、同じ件数で並べて書く。
+  // 隣り合わせにしてあるため SR1→SC1→SR2→SC2 の順に出る
   {
     role: 'reactor',
     symbolId: 'sr',
     kind: 'branch-right',
-    when: { key: 'hasReactor', eq: 'yes' },
+    when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'hasReactor', eq: 'yes' }] },
     labelTemplate: ['SR', '{reactorCapacity}'],
+    repeatCountKey: 'capacitorCount',
   },
   {
     role: 'capacitor',
@@ -360,15 +363,16 @@ export const EXTRAS: Placement[] = [
     symbolId: 'generator',
     kind: 'branch-left',
     when: { key: 'hasGenerator', eq: 'yes' },
-    labelTemplate: ['G', '{generatorPlace}'],
-    props: { usage: 'generatorUsage', place: 'generatorPlace' },
+    labelTemplate: ['G', '{generatorText}', '{generatorPlace}'],
+    props: { usage: 'generatorUsage', place: 'generatorPlace', fuel: 'generatorFuel' },
+    repeatCountKey: 'generatorCount',
   },
   {
     role: 'pv',
     symbolId: 'pv',
     kind: 'series',
     when: { key: 'hasPv', eq: 'yes' },
-    labelTemplate: ['PV', '{pvCapacity}'],
+    labelTemplate: ['PV', '{pcsText}'],
   },
   {
     role: 'battery',

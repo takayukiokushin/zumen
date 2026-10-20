@@ -89,7 +89,9 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   let pendingDashed = false;
   let pendingGap = GAP;
   /** 直前に置いた横分岐（続けて横につなぐかの判定に使う） */
-  let lastBranch: { role: string; dir: number; sym: PlacedSymbol; def: SymbolDef } | null = null;
+  let lastBranch: { role: string; dir: number; sym: PlacedSymbol; def: SymbolDef; unit?: number } | null = null;
+  /** 直前までの分岐が占めている下端（文字を含む）。次の分岐をここより下に出す */
+  let branchBottom = -Infinity;
 
   /** 180°回したときの座標 */
   const flip = (def: SymbolDef, x: number, yy: number, rotate: number): [number, number] =>
@@ -225,8 +227,10 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     const w = rotate ? def.box.h : def.box.w;
     const [erx, ery] = rotate === -90 ? [entry.y, def.box.h - entry.x] : [entry.x, entry.y];
 
-    // 直前も同じ向きの分岐なら、その出口から横につなぐ
-    const chain = lastBranch && lastBranch.dir === dir ? lastBranch : null;
+    // 直前も同じ向きの分岐で、かつ同じ1台ぶんなら、その出口から横につなぐ。
+    // （コンデンサ1台目のリアクトルとコンデンサは1本の分岐、2台目は別の分岐になる）
+    const chain =
+      lastBranch && lastBranch.dir === dir && lastBranch.unit === item.unit ? lastBranch : null;
     let tapY: number;
     let x: number;
     if (chain) {
@@ -239,7 +243,8 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       x = dir > 0 ? px + 14 : px - 14 - w;
       wires.push({ x1: px, y1: tapY, x2: dir > 0 ? x + erx : x + erx, y2: tapY });
     } else {
-      tapY = started ? spineY + BRANCH_GAP : spineY;
+      // 直前の分岐の文字と重ならない位置まで下げる
+      tapY = started ? Math.max(spineY + BRANCH_GAP, branchBottom + BRANCH_GAP) : spineY;
       if (started) wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: tapY, dashed: pendingDashed });
       spineY = tapY;
       started = true;
@@ -257,8 +262,9 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     }
     // 分岐の記号の下端まで主回路を空けて、次の機器と重ならないようにする
     const bottom = sym.y + (rotate ? def.box.w : def.box.h) + (sym.label.length ? sym.label.length * 10 + 12 : 0);
+    branchBottom = Math.max(branchBottom, bottom);
     pendingGap = Math.max(GAP, bottom - spineY + 10);
-    lastBranch = { role: item.role, dir, sym, def };
+    lastBranch = { role: item.role, dir, sym, def, unit: item.unit };
   }
 
   /* ---- 低圧母線と、そこから下へ出る回線 ---- */

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Question } from '@zumen/knowledge';
 import type { Value } from '@zumen/knowledge';
 
@@ -9,10 +10,18 @@ interface Props {
   onChange: (key: string, value: Value) => void;
 }
 
+/** 手入力に切り替えるための、一覧の中の特別な値 */
+const OTHER = '__other__';
+
 /** 選択肢が3つ以下で短ければ押しボタン、それ以外はプルダウンにする */
 export function Field({ question: q, fieldKey, value, onChange }: Props) {
+  const [pickedOther, setPickedOther] = useState(false);
   const set = (v: Value) => onChange(fieldKey, v);
   const current = value ?? q.defaultValue ?? '';
+  // 一覧に無い値がすでに入っているか、利用者が「その他」を選んだときだけ手入力欄を出す
+  const free =
+    q.allowFreeInput === true &&
+    (pickedOther || (current !== '' && !q.options?.some((o) => o.value === String(current))));
 
   return (
     <div className="field">
@@ -42,7 +51,18 @@ export function Field({ question: q, fieldKey, value, onChange }: Props) {
         </div>
       ) : q.type === 'select' ? (
         <>
-          <select id={fieldKey} value={String(current)} onChange={(e) => set(e.target.value || undefined)}>
+          <select
+            id={fieldKey}
+            value={free ? OTHER : String(current)}
+            onChange={(e) => {
+              // 「その他」を選んだときは、手入力の欄を出すだけで値はまだ決めない
+              if (e.target.value === OTHER) setPickedOther(true);
+              else {
+                setPickedOther(false);
+                set(e.target.value || undefined);
+              }
+            }}
+          >
             <option value="">選択してください</option>
             {q.options?.map((o) => (
               <option key={o.value} value={o.value}>
@@ -50,12 +70,13 @@ export function Field({ question: q, fieldKey, value, onChange }: Props) {
                 {o.share ? `（${o.share}）` : ''}
               </option>
             ))}
+            {q.allowFreeInput && <option value={OTHER}>その他（手入力）</option>}
           </select>
-          {q.allowFreeInput && (
+          {free && (
             <input
               type="text"
               aria-label={`${q.label}（一覧にない値）`}
-              placeholder="一覧にない値はこちらに入力"
+              placeholder="一覧にない値を入力"
               value={q.options?.some((o) => o.value === String(current)) ? '' : String(current)}
               onChange={(e) => set(e.target.value || undefined)}
             />

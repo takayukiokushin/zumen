@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CATEGORY_LABEL, SYMBOLS, getSymbol, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
-import { layout } from '@zumen/layout';
+import { COMPANY_NAME, layout } from '@zumen/layout';
 import { buildComposition } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
@@ -43,7 +43,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     title: `${String(answers.customerNameForTitleBlock ?? answers.siteName ?? answers.customerName ?? '')}　${String(
       answers.drawingName ?? 'キュービクル式高圧受電設備単線結線図',
     )}`.trim(),
-    footer: String(answers.author ?? ''),
+    // 右下は常に社名（作成者や図面番号は図面に入れない方針）
+    footer: COMPANY_NAME,
     draftNotice: '※ 作図支援ツールで作成したたたき台です。内容は有資格者の確認が必要です',
   };
   const fileBase = String(answers.siteName ?? answers.customerName ?? '単線結線図');

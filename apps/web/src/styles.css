@@ -47,8 +47,6 @@ section.group > header h3 { margin: 0; font-size: 14.5px; }
 section.group > header .desc { font-size: 11.5px; color: var(--muted); }
 section.group > header .badge { margin-left: auto; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 18px; padding: 16px; }
-.repeat-head { grid-column: 1 / -1; font-size: 12px; color: var(--accent); letter-spacing: .04em;
-  border-top: 1px dashed var(--rule-soft); padding-top: 12px; margin-top: 2px; }
 .repeat-head:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
 
 .field { display: flex; flex-direction: column; gap: 5px; }
@@ -238,3 +236,17 @@ body:has(.projectbar) .app, body:has(.projectbar) .editor, body:has(.projectbar)
 .notready .how { color: var(--ink); }
 .notready code { background: #fff; border: 1px solid var(--rule); border-radius: 2px;
   padding: 1px 5px; font-size: 12px; }
+
+/* ---- 繰り返し入力（変圧器1台目・2台目…）の区切り ---- */
+.repeat-block { border: 1px solid var(--rule); border-radius: 3px; margin: 0 0 14px;
+  overflow: hidden; background: var(--panel); }
+.repeat-block.alt { background: #f7f8f7; }
+.repeat-block.alt .repeat-head { background: #eceeed; }
+.repeat-block > .fields { padding: 14px 16px 16px; }
+.repeat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 14px; background: var(--accent-soft); border-bottom: 1px solid var(--rule);
+  position: sticky; top: 0; z-index: 2; }
+.repeat-head b { font-size: 13px; letter-spacing: .04em; }
+.repeat-head span { font-size: 11.5px; color: var(--muted); }
+.repeat-head span.done { color: var(--ok); }
+.repeat-head span.need { color: var(--need); font-weight: 600; }

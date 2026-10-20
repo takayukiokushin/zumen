@@ -2,6 +2,9 @@ import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import type { DrawingLayout } from './layout.ts';
 
 /** 表題欄の内容 */
+/** 図面の右下に入れる社名。全図面で共通 */
+export const COMPANY_NAME = '株式会社フジエレックス';
+
 export interface TitleBlock {
   title: string;
   footer?: string;
@@ -100,7 +103,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
     <rect x="${M + 60}" y="${M + 6}" width="${W - M * 2 - 120}" height="${TITLE_H - 12}" stroke-width="1" />
   </g>
   <text x="${W / 2}" y="${M + 6 + (TITLE_H - 12) / 2 + 5}" font-size="14" font-weight="700" text-anchor="middle" font-family="${FONT_FAMILY}" fill="#000">${esc(title.title)}</text>
-  ${title.footer ? `<text x="${W - M - 14}" y="${H - M - 12}" font-size="9" text-anchor="end" font-family="${FONT_FAMILY}" fill="#000">${esc(title.footer)}</text>` : ''}
+  <text x="${W - M - 14}" y="${H - M - 12}" font-size="9" text-anchor="end" font-family="${FONT_FAMILY}" fill="#000">${esc(title.footer ?? COMPANY_NAME)}</text>
   ${title.draftNotice ? `<text x="${M + 14}" y="${H - M - 12}" font-size="8" font-family="${FONT_FAMILY}" fill="#666">${esc(title.draftNotice)}</text>` : ''}
   <g transform="translate(${round(tx)} ${round(ty)}) scale(${scale.toFixed(4)})">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">

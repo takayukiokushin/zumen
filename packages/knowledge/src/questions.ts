@@ -39,6 +39,11 @@ export interface Question {
   showIf?: Condition;
   ask: AskWhen;
   required?: boolean;
+  /**
+   * 繰り返しグループの中でも、1回だけ聞く質問。
+   * 例：「コンデンサ設備はありますか？」は台数ぶん聞く必要がない。
+   */
+  shared?: boolean;
 }
 
 export interface QuestionGroup {
@@ -47,8 +52,16 @@ export interface QuestionGroup {
   description?: string;
   /** 繰り返し入力するグループのとき、件数を持つ質問のID（例: 受電設備エリア） */
   repeatCountKey?: string;
+  /** 繰り返しの数え方（「1台目」「1回線目」のように見出しに使う） */
+  repeatUnit?: string;
   showIf?: Condition;
 }
+
+/** 台数・回線数などを選ぶための 1〜50 の一覧。一覧にない数は手入力できる */
+const COUNT_OPTIONS: Choice[] = Array.from({ length: 50 }, (_, i) => ({
+  value: String(i + 1),
+  label: String(i + 1),
+}));
 
 export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'customer', label: 'お客様・現場', description: '表題欄と図面の基本情報' },
@@ -57,18 +70,26 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'pas', label: 'PAS（区分開閉器）' },
   { id: 'vct', label: 'VCT（計器用変成器）' },
   { id: 'cable', label: '引込ケーブル' },
-  { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount' },
+  { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
   { id: 'receiving', label: '受電設備の構成' },
-  { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount' },
-  { id: 'feeder', label: '低圧側の分岐', description: '変圧器の下の母線から出る回線', repeatCountKey: 'feederCount' },
-  { id: 'compensation', label: '進相設備' },
+  { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台' },
+  { id: 'feeder', label: '低圧側の分岐', description: '変圧器の下の母線から出る回線', repeatCountKey: 'feederCount', repeatUnit: '回線' },
+  { id: 'compensation', label: '進相設備', repeatCountKey: 'capacitorCount', repeatUnit: '台' },
   { id: 'special', label: '特殊設備' },
+  { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' } },
+  { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' } },
   { id: 'title', label: '表題欄' },
 ];
 
 const YES_NO: Choice[] = [
   { value: 'yes', label: 'あり' },
   { value: 'no', label: 'なし' },
+];
+
+/** 「〜ですか？」と尋ねる質問は「あり／なし」ではなく「はい／いいえ」で答える */
+const YES_NO_Q: Choice[] = [
+  { value: 'yes', label: 'はい' },
+  { value: 'no', label: 'いいえ' },
 ];
 
 export const QUESTIONS: Question[] = [
@@ -83,7 +104,6 @@ export const QUESTIONS: Question[] = [
     help: 'お客様名称と異なる書き方をする場合に入力する',
   },
   { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true },
-  { id: 'siteAddress', group: 'customer', label: '現場住所', type: 'text', ask: 'always' },
   {
     id: 'receivingType',
     group: 'customer',
@@ -97,7 +117,6 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     required: true,
   },
-  { id: 'contractPower', group: 'customer', label: '契約電力', type: 'number', unit: 'kW', ask: 'always' },
   { id: 'receivingVoltage', group: 'customer', label: '受電電圧', type: 'number', unit: 'V', defaultValue: 6600, ask: 'always' },
 
   /* ---------------- 引込元 ---------------- */
@@ -332,7 +351,7 @@ export const QUESTIONS: Question[] = [
     label: '断面積は？',
     type: 'select',
     unit: 'mm2',
-    options: [14, 22, 38, 60, 100, 150, 200, 250].map((v) => ({ value: String(v), label: `${v} mm2` })),
+    options: [14, 22, 38, 60, 100, 150].map((v) => ({ value: String(v), label: `${v} mm2` })),
     allowFreeInput: true,
     ask: 'always',
     help: '一覧にない値は手入力できる',
@@ -490,7 +509,18 @@ export const QUESTIONS: Question[] = [
   { id: 'earthingNotes', group: 'receiving', label: '接地方式・接地抵抗値等の特記事項', type: 'text', ask: 'always' },
 
   /* ---------------- 変圧器 ---------------- */
-  { id: 'transformerCount', group: 'transformer', label: '変圧器の台数', type: 'number', defaultValue: 1, ask: 'ai-uncertain' },
+  {
+    id: 'transformerCount',
+    group: 'transformer',
+    label: '変圧器の台数',
+    type: 'select',
+    options: COUNT_OPTIONS,
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '1',
+    ask: 'ai-uncertain',
+    help: '51台以上のときは手入力できる',
+  },
   {
     id: 'trUsage',
     group: 'transformer',
@@ -571,26 +601,155 @@ export const QUESTIONS: Question[] = [
   { id: 'feederSourceLabel', group: 'feeder', label: '先の機器の表記', type: 'text', placeholder: '蓄電池ユニットNo.1', showIf: { key: 'feederSource', ne: 'none' }, ask: 'ai-uncertain' },
 
   /* ---------------- 進相設備 ---------------- */
-  { id: 'hasCapacitor', group: 'compensation', label: 'コンデンサ設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
-  { id: 'capacitorCount', group: 'compensation', label: 'コンデンサの台数', type: 'number', defaultValue: 1, showIf: { key: 'hasCapacitor', eq: 'yes' }, ask: 'ai-uncertain' },
-  { id: 'capacitorCapacity', group: 'compensation', label: 'コンデンサの容量', type: 'text', placeholder: '3φ106kvar 7020V', showIf: { key: 'hasCapacitor', eq: 'yes' }, ask: 'always' },
-  { id: 'hasReactor', group: 'compensation', label: '直列リアクトルは入りますか？', type: 'select', options: YES_NO, showIf: { key: 'hasCapacitor', eq: 'yes' }, ask: 'ai-uncertain' },
-  { id: 'reactorCapacity', group: 'compensation', label: 'リアクトルの容量', type: 'text', placeholder: '3φ6.38kvar 243V', showIf: { key: 'hasReactor', eq: 'yes' }, ask: 'always' },
+  {
+    id: 'hasCapacitor',
+    group: 'compensation',
+    label: 'コンデンサ設備はありますか？',
+    type: 'select',
+    options: YES_NO,
+    defaultValue: 'no',
+    ask: 'ai-uncertain',
+    shared: true,
+  },
+  {
+    id: 'capacitorCount',
+    group: 'compensation',
+    label: 'コンデンサの台数',
+    type: 'select',
+    options: COUNT_OPTIONS,
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '1',
+    showIf: { key: 'hasCapacitor', eq: 'yes' },
+    ask: 'ai-uncertain',
+  },
+  // 容量もリアクトルの有無も、コンデンサ1台ごとに違う（4台あって1台だけリアクトル付き、もある）
+  {
+    id: 'capacitorCapacity',
+    group: 'compensation',
+    label: 'コンデンサの容量',
+    type: 'text',
+    placeholder: '3φ106kvar 7020V',
+    showIf: { key: 'hasCapacitor', eq: 'yes' },
+    ask: 'always',
+  },
+  {
+    id: 'hasReactor',
+    group: 'compensation',
+    label: 'このコンデンサに直列リアクトルは入りますか？',
+    type: 'select',
+    options: YES_NO,
+    showIf: { key: 'hasCapacitor', eq: 'yes' },
+    ask: 'ai-uncertain',
+    help: 'リアクトルの有無はコンデンサごとに決まる。台数分それぞれ答える',
+  },
+  {
+    id: 'reactorCapacity',
+    group: 'compensation',
+    label: 'リアクトルの容量',
+    type: 'text',
+    placeholder: '3φ6.38kvar 243V',
+    showIf: { key: 'hasReactor', eq: 'yes' },
+    ask: 'always',
+  },
 
   /* ---------------- 特殊設備 ---------------- */
   { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
-  { id: 'generatorUsage', group: 'special', label: '発電機の用途区分', type: 'select', options: [{ value: 'normal', label: '常用型' }, { value: 'emergency', label: '非常用型' }], showIf: { key: 'hasGenerator', eq: 'yes' }, ask: 'always' },
-  { id: 'generatorPlace', group: 'special', label: '発電機の設置場所', type: 'text', showIf: { key: 'hasGenerator', eq: 'yes' }, ask: 'always', help: '非常用発電機の場合は図面に明記する' },
   { id: 'hasPv', group: 'special', label: '太陽光発電設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
-  { id: 'pvCapacity', group: 'special', label: '太陽光の設備規模', type: 'text', placeholder: '50kW×2', showIf: { key: 'hasPv', eq: 'yes' }, ask: 'always' },
-  { id: 'hasBattery', group: 'special', label: '系統用蓄電所ですか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
+  { id: 'hasBattery', group: 'special', label: '系統用蓄電所ですか？', type: 'select', options: YES_NO_Q, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'batteryCapacity', group: 'special', label: '蓄電ユニットの規模', type: 'text', showIf: { key: 'hasBattery', eq: 'yes' }, ask: 'always' },
+
+  /* ---------------- 発電機（台ごと） ---------------- */
+  {
+    id: 'generatorCount',
+    group: 'generator',
+    label: '発電機の台数',
+    type: 'select',
+    options: COUNT_OPTIONS,
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '1',
+    ask: 'ai-uncertain',
+  },
+  {
+    id: 'generatorUsage',
+    group: 'generator',
+    label: '用途区分',
+    type: 'select',
+    options: [
+      { value: 'normal', label: '常用型' },
+      { value: 'emergency', label: '非常用型' },
+    ],
+    ask: 'always',
+    required: true,
+  },
+  {
+    id: 'generatorFuel',
+    group: 'generator',
+    label: '燃料の種別',
+    type: 'select',
+    options: [
+      { value: 'diesel', label: '軽油' },
+      { value: 'gas', label: '天然ガス' },
+      { value: 'gasoline', label: 'ガソリン' },
+      { value: 'kerosene', label: '灯油' },
+      { value: 'heavy-oil', label: '重油' },
+    ],
+    allowFreeInput: true,
+    ask: 'always',
+    help: '分かる範囲でよい。図面に書くが、作図の時点で不明なら空欄のままでよい',
+  },
+  {
+    id: 'generatorCapacity',
+    group: 'generator',
+    label: '発電機の容量',
+    type: 'text',
+    placeholder: '500kVA',
+    ask: 'always',
+  },
+  {
+    id: 'generatorPlace',
+    group: 'generator',
+    label: '設置場所',
+    type: 'text',
+    ask: 'always',
+    help: '非常用発電機の場合は図面に明記する',
+  },
+
+  /* ---------------- 太陽光（PCS。容量ごとのまとまりで入力） ---------------- */
+  {
+    id: 'pvGroupCount',
+    group: 'pv',
+    label: 'PCSは何種類の容量がありますか？',
+    type: 'select',
+    options: COUNT_OPTIONS.slice(0, 10),
+    unit: '種類',
+    defaultValue: '1',
+    ask: 'always',
+    help: '同じ容量のPCSが何台あっても1種類。50kWが7台と100kWが8台なら2種類',
+  },
+  {
+    id: 'pcsCapacity',
+    group: 'pv',
+    label: 'PCS 1台の容量',
+    type: 'number',
+    unit: 'kW',
+    ask: 'always',
+    required: true,
+  },
+  {
+    id: 'pcsCount',
+    group: 'pv',
+    label: 'この容量のPCSは何台ありますか？',
+    type: 'select',
+    options: COUNT_OPTIONS,
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '1',
+    ask: 'always',
+    required: true,
+  },
 
   /* ---------------- 表題欄 ---------------- */
   { id: 'drawingName', group: 'title', label: '図面名称', type: 'text', defaultValue: 'キュービクル式高圧受電設備単線結線図', ask: 'always' },
-  { id: 'drawingNumber', group: 'title', label: '図面番号', type: 'text', ask: 'always' },
-  { id: 'revision', group: 'title', label: '版数', type: 'text', ask: 'always' },
-  { id: 'author', group: 'title', label: '作成者名', type: 'text', ask: 'always' },
-  { id: 'createdAt', group: 'title', label: '作成日', type: 'date', ask: 'always' },
-  { id: 'notes', group: 'title', label: 'その他の特記事項・注意書き', type: 'text', ask: 'always' },
 ];

@@ -75,6 +75,14 @@ export const DRIVER_QUESTION_IDS: ReadonlySet<string> = (() => {
 /* ------------------------------------------------------------------ */
 
 const CABLE_INSTALLATION_LABEL: Record<string, string> = { buried: '埋ケ', overhead: '架ケ' };
+const GENERATOR_USAGE_LABEL: Record<string, string> = { normal: '常用', emergency: '非常用' };
+const GENERATOR_FUEL_LABEL: Record<string, string> = {
+  diesel: '軽油',
+  gas: '天然ガス',
+  gasoline: 'ガソリン',
+  kerosene: '灯油',
+  'heavy-oil': '重油',
+};
 
 /** 回答そのものに加えて、図面の文字に使う導出値を足した集まりを作る */
 export function withDerived(answers: Answers): Answers {
@@ -93,6 +101,26 @@ export function withDerived(answers: Answers): Answers {
     answers.pasRatedVoltage ? `${answers.pasRatedVoltage}V` : '',
     answers.pasRatedCurrent ? `${answers.pasRatedCurrent}A` : '',
   ].join('');
+
+  // 発電機の注記（例: 非常用 500kVA 軽油）。分かっているものだけ並べる
+  d.generatorText = [
+    GENERATOR_USAGE_LABEL[String(answers.generatorUsage)] ?? '',
+    answers.generatorCapacity ? String(answers.generatorCapacity) : '',
+    GENERATOR_FUEL_LABEL[String(answers.generatorFuel)] ?? (answers.generatorFuel ? String(answers.generatorFuel) : ''),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  // PCSの注記（例: 100kW×15台、50kW×7台）。同じ容量はまとめて書く
+  const groups = Math.max(1, Number(answers.pvGroupCount ?? 1));
+  const pcs: string[] = [];
+  for (let i = 0; i < groups; i++) {
+    const kw = answers[indexedKey('pcsCapacity', i)];
+    const n = answers[indexedKey('pcsCount', i)] ?? 1;
+    if (kw === undefined || kw === null || kw === '') continue;
+    pcs.push(`${kw}kW×${n}台`);
+  }
+  d.pcsText = pcs.join('、');
 
   // ケーブルの注記（3行目：定格電圧 断面積 長さ。長さ不明は「- m」）
   d.cableInstallationLabel = CABLE_INSTALLATION_LABEL[String(answers.cableInstallation)] ?? '';
@@ -180,6 +208,11 @@ export interface PlacedItem {
   labelSide?: 'left' | 'right';
   /** 低圧の回線のとき、何本目か（0始まり） */
   lane?: number;
+  /**
+   * 繰り返しの何件目か（0始まり）。
+   * コンデンサ1台目のリアクトルとコンデンサ、のように「同じ1台ぶん」をまとめるのに使う。
+   */
+  unit?: number;
   note?: string;
 }
 
@@ -216,32 +249,47 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
   ];
 
   const out: PlacedItem[] = [];
+
+  // 同じ件数で繰り返す機器が隣り合っているときは、件ごとにまとめて出す。
+  // （コンデンサとそのリアクトルが SR1→SC1→SR2→SC2 の順に並ぶように）
+  const runs: Placement[][] = [];
   for (const p of chain) {
-    if (!evaluate(p.when, answers)) continue;
-    const count = p.repeatCountKey ? Math.max(1, Number(answers[p.repeatCountKey] ?? 1)) : 1;
+    const prev = runs.at(-1);
+    if (prev && p.repeatCountKey && prev[0]!.repeatCountKey === p.repeatCountKey) prev.push(p);
+    else runs.push([p]);
+  }
+
+  for (const run of runs) {
+    const countKey = run[0]!.repeatCountKey;
+    const count = countKey ? Math.max(1, Number(answers[countKey] ?? 1)) : 1;
     for (let i = 0; i < count; i++) {
       // 2件目以降は、そのぶんの回答で文字と入力値を組み立てる
-      const a = p.repeatCountKey && i > 0 ? withDerived(viewAt(rawAnswers, i)) : answers;
-      const symbolId = p.symbolId.replace(/\{([\w.]+)\}/g, (_, k: string) => String(a[k] ?? ''));
-      if (!symbolId) continue;
-      out.push({
-        id: count > 1 ? `${p.role}-${i + 1}` : p.role,
-        role: p.role,
-        symbolId,
-        kind: p.kind,
-        parent: p.parent,
-        slot: p.slot,
-        label: p.labelTemplate ? fillTemplate(p.labelTemplate, a) : [],
-        props: Object.fromEntries(
-          Object.entries(p.props ?? {}).map(([field, key]) => [field, a[key]]),
-        ),
-        gapAfter: p.gapAfter,
-        dashedAfter: evaluate(p.dashedAfter, a) && p.dashedAfter !== undefined,
-        connectFrom: p.connectFrom,
-        labelSide: p.labelSide,
-        lane: p.kind === 'feeder' ? i : undefined,
-        note: p.note,
-      });
+      const a = countKey && i > 0 ? withDerived(viewAt(rawAnswers, i)) : answers;
+      for (const p of run) {
+        // 条件も件ごとに見る（4台あって1台だけリアクトル付き、のような現場があるため）
+        if (!evaluate(p.when, a)) continue;
+        const symbolId = p.symbolId.replace(/\{([\w.]+)\}/g, (_, k: string) => String(a[k] ?? ''));
+        if (!symbolId) continue;
+        out.push({
+          id: count > 1 ? `${p.role}-${i + 1}` : p.role,
+          role: p.role,
+          symbolId,
+          kind: p.kind,
+          parent: p.parent,
+          slot: p.slot,
+          label: p.labelTemplate ? fillTemplate(p.labelTemplate, a) : [],
+          props: Object.fromEntries(
+            Object.entries(p.props ?? {}).map(([field, key]) => [field, a[key]]),
+          ),
+          gapAfter: p.gapAfter,
+          dashedAfter: evaluate(p.dashedAfter, a) && p.dashedAfter !== undefined,
+          connectFrom: p.connectFrom,
+          labelSide: p.labelSide,
+          lane: p.kind === 'feeder' ? i : undefined,
+          unit: countKey ? i : undefined,
+          note: p.note,
+        });
+      }
     }
   }
   return out;
