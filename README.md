@@ -5,6 +5,7 @@
 編集してPDF/PNGで出力する。
 
 - **導入手順（インストールのしかた）**：[docs/install.md](docs/install.md)
+- **APIキーの設定手順（管理者・事務担当向け）**：[docs/apikey-setup.md](docs/apikey-setup.md)
 - 仕様書：[docs/spec.md](docs/spec.md)
 - **使ってみての要望・指摘（反映待ちを含む）**：[docs/feedback.md](docs/feedback.md)
 - 記号ナレッジベース（現場知識）：[docs/knowledge-base.md](docs/knowledge-base.md)
