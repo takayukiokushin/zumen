@@ -12,7 +12,25 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-corepack enable >/dev/null 2>&1
+# pnpm を使えるようにする（無ければ用意する）
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "pnpm を用意しています…"
+  corepack enable >/dev/null 2>&1 || true
+fi
+if ! command -v pnpm >/dev/null 2>&1; then
+  npm install -g pnpm@10.33.0 >/dev/null 2>&1 || true
+fi
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "[×] pnpm を用意できませんでした。"
+  echo "    ターミナルで次の1行を実行してから、もう一度ダブルクリックしてください。"
+  echo
+  echo "        sudo npm install -g pnpm"
+  echo
+  read -r -p "Enterキーで閉じます"
+  exit 1
+fi
+
 pnpm install || { read -r -p "うまくいきませんでした。Enterキーで閉じます"; exit 1; }
 pnpm start
 

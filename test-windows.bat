@@ -2,6 +2,8 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
+rem corepack が確認を求めて止まらないようにする
+set COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 set "LOG=%~dp0test-result.txt"
 set "NG=0"
@@ -30,8 +32,26 @@ for /f "delims=" %%v in ('node -v') do set "NODEV=%%v"
 echo [1/6] Node.js !NODEV!
 echo [1/6] Node.js !NODEV! >> "%LOG%"
 
-rem ---- pnpm を使えるようにする ----
+rem ---- pnpm を使えるようにする（無ければ用意する） ----
+where pnpm >nul 2>nul
+if not errorlevel 1 goto :pnpm_ready
+echo     pnpm を用意しています…
 call corepack enable >>"%LOG%" 2>&1
+where pnpm >nul 2>nul
+if not errorlevel 1 goto :pnpm_ready
+call npm install -g pnpm@10.33.0 >>"%LOG%" 2>&1
+where pnpm >nul 2>nul
+if not errorlevel 1 goto :pnpm_ready
+echo.
+echo [×] pnpm を用意できませんでした。
+echo     PowerShell を「管理者として実行」で開き、次の1行を実行してから、
+echo     もう一度このファイルをダブルクリックしてください。
+echo.
+echo         npm install -g pnpm
+echo.
+pause
+exit /b 1
+:pnpm_ready
 
 echo [2/6] 部品をそろえています（初回は数分かかります）…
 echo. >> "%LOG%"

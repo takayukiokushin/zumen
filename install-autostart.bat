@@ -16,6 +16,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
+where pnpm >nul 2>nul
+if errorlevel 1 (
+  echo 先に test-windows.bat を一度実行して、部品をそろえてください。
+  pause
+  exit /b 1
+)
+
 set "LNK=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\単線結線図サーバー.lnk"
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^

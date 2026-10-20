@@ -29,14 +29,22 @@ corepack enable
 
 ### 1-3. アプリのファイルを持ってくる
 
+**Gitを使っていない場合（こちらが簡単）**
+
+1. <https://github.com/takayukiokushin/zumen> を開く
+2. 緑色の **「Code」** ボタン → **「Download ZIP」**
+3. ダウンロードした ZIP を右クリック → **「すべて展開」**（macOSはダブルクリック）
+4. できたフォルダを、分かりやすい場所（デスクトップなど）に置く
+
+> 展開したフォルダを開くと、**中に同じ名前のフォルダがもう一つある**ことがある。
+> `package.json` や `test-windows.bat` が見えるところまで進むこと。そこが本体。
+
+**Gitを使う場合**
+
 ```sh
 git clone https://github.com/takayukiokushin/zumen.git
 cd zumen
-pnpm install
 ```
-
-Gitを使っていなければ、GitHubのページの緑色の「Code」→「Download ZIP」で落として展開し、
-そのフォルダで `pnpm install` でもよい。
 
 ### 1-4. Claude APIキーを置く
 
