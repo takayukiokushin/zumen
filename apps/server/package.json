@@ -9,7 +9,8 @@
     "user:add": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts add",
     "user:passwd": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts passwd",
     "user:list": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts list",
-    "backup": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts backup"
+    "backup": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts backup",
+    "apikey": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts apikey"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

@@ -1,3 +1,5 @@
+// 何よりも先に .env を読み込む（APIキーやポートの設定がここにある）
+import './env.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { networkInterfaces } from 'node:os';

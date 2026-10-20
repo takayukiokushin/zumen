@@ -71,6 +71,7 @@ Node.js 22.6 以上（TypeScriptの型ストリップを使用）と pnpm が必
 pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>   # 追加
 pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード> # パスワード変更
 pnpm --filter @zumen/server user:list                          # 一覧
+pnpm --filter @zumen/server apikey                             # 利用券が使えるか確かめる
 ```
 
 ```sh

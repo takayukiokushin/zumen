@@ -1,5 +1,8 @@
+// 何よりも先に .env を読み込む
+import './env.ts';
 import { createUser, listUsers, setPassword } from './auth.ts';
 import { backup, sourceDir } from './backup.ts';
+import { checkApiKey, explainApiError } from './apikey.ts';
 
 /**
  * 利用者を追加・変更するための小さなコマンド。
@@ -8,6 +11,7 @@ import { backup, sourceDir } from './backup.ts';
  *   pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
  *   pnpm --filter @zumen/server user:list
  *   pnpm --filter @zumen/server backup <保存先フォルダ>
+ *   pnpm --filter @zumen/server apikey
  */
 const [command, ...args] = process.argv.slice(2);
 
@@ -43,8 +47,19 @@ try {
       console.log(`  案件のデータ: ${(r.bytes / 1024).toFixed(0)}KB / 写真: ${r.fileCount}枚`);
       break;
     }
+    case 'apikey': {
+      try {
+        await checkApiKey();
+      } catch (e) {
+        console.error('\n✗ ' + explainApiError(e));
+        process.exit(1);
+      }
+      break;
+    }
     default:
-      console.log('使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / list / backup <保存先>');
+      console.log(
+        '使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / list / backup <保存先> / apikey',
+      );
       process.exit(1);
   }
 } catch (e) {
