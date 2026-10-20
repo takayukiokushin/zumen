@@ -71,7 +71,7 @@ cp .env.example .env
 
 書き換えたら**サーバーを起動し直す**（`start-server.bat` の窓を閉じて、もう一度ダブルクリック）。
 **このファイルはサーバーの中だけに置き、他の人には配らない。**
-キーは <https://console.anthropic.com/> で発行する。
+キーは <https://platform.claude.com/> で発行する。
 社内で許可をもらうための説明文は [api-key-request.md](api-key-request.md) にある。
 
 > キーがなくても、ヒアリングから図面を作る機能は動く。

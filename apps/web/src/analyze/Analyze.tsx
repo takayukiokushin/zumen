@@ -136,7 +136,7 @@ export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
             <p className="how">
               置き方：サーバーのフォルダにある <code>.env.example</code> を <code>.env</code> という名前で
               コピーし、<code>ANTHROPIC_API_KEY=</code> の後ろに利用券の文字列を書いて、サーバーを
-              起動し直します。利用券は <code>https://console.anthropic.com/</code> で発行します。
+              起動し直します。利用券は <code>https://platform.claude.com/</code> で発行します。
             </p>
             <p className="how">
               <b>利用券が無くても、ほかの機能はすべて使えます。</b>
