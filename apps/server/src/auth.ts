@@ -8,6 +8,53 @@ import { db, now } from './db.ts';
 const COOKIE = 'zumen_session';
 const SESSION_DAYS = 30;
 
+/* ---------------- 総当たり対策 ---------------- */
+
+/** 何回まちがえたら止めるか */
+const MAX_FAILS = 5;
+/** 止める時間（ミリ秒）。まちがえ続けると伸びていく */
+const LOCK_MS = 60_000;
+/** この時間まちがえなければ、失敗の数を忘れる */
+const FORGET_MS = 15 * 60_000;
+
+/** IDごとの失敗の記録。再起動すると消えるが、社内数名の運用ではこれで足りる */
+const fails = new Map<string, { count: number; last: number; until: number }>();
+
+/** 存在しないIDでも同じだけ時間をかけるための、形だけのハッシュ */
+const DUMMY_HASH = hashPassword(randomBytes(16).toString('hex'));
+
+/** いま止められているか。止められていれば、あと何秒かを返す */
+function lockedFor(id: string): number {
+  const f = fails.get(id);
+  if (!f) return 0;
+  if (Date.now() - f.last > FORGET_MS) {
+    fails.delete(id);
+    return 0;
+  }
+  return f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0;
+}
+
+function recordFail(id: string): void {
+  const f = fails.get(id) ?? { count: 0, last: 0, until: 0 };
+  f.count += 1;
+  f.last = Date.now();
+  if (f.count >= MAX_FAILS) {
+    // 5回目以降は、まちがえるたびに止める時間が倍になる（1分→2分→4分…最大1時間）
+    const step = Math.min(f.count - MAX_FAILS, 6);
+    f.until = Date.now() + LOCK_MS * 2 ** step;
+  }
+  fails.set(id, f);
+}
+
+function clearFails(id: string): void {
+  fails.delete(id);
+}
+
+/** 試験用。失敗の記録をすべて忘れる */
+export function resetLoginAttempts(): void {
+  fails.clear();
+}
+
 export interface User {
   id: string;
   name: string;
@@ -53,11 +100,27 @@ export function listUsers(): User[] {
   return db.prepare('SELECT id, name FROM users ORDER BY id').all() as unknown as User[];
 }
 
-export function login(c: Context, userId: string, password: string): User | null {
+export type LoginResult =
+  | { ok: true; user: User }
+  | { ok: false; reason: 'bad' }
+  | { ok: false; reason: 'locked'; retryAfterSec: number };
+
+export function login(c: Context, userId: string, password: string): LoginResult {
+  const retryAfterSec = lockedFor(userId);
+  if (retryAfterSec > 0) return { ok: false, reason: 'locked', retryAfterSec };
+
   const row = db.prepare('SELECT id, name, password_hash FROM users WHERE id = ?').get(userId) as
     | { id: string; name: string; password_hash: string }
     | undefined;
-  if (!row || !verifyPassword(password, row.password_hash)) return null;
+
+  // 存在しないIDでも同じだけ時間をかける。
+  // そうしないと、返ってくる速さで「このIDは実在する」と分かってしまう
+  const okPassword = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
+  if (!row || !okPassword) {
+    recordFail(userId);
+    return { ok: false, reason: 'bad' };
+  }
+  clearFails(userId);
 
   const token = randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + SESSION_DAYS * 86400_000);
@@ -74,7 +137,7 @@ export function login(c: Context, userId: string, password: string): User | null
     maxAge: SESSION_DAYS * 86400,
     secure: process.env.NODE_ENV === 'production',
   });
-  return { id: row.id, name: row.name };
+  return { ok: true, user: { id: row.id, name: row.name } };
 }
 
 export function logout(c: Context): void {

@@ -111,6 +111,7 @@ try {
   const add1 = await runNode(['apps/server/src/cli.ts', 'add', 'tester1', '試験太郎', 'testpass123'], env);
   check('1人目を登録できる', add1.code === 0, add1.code === 0 ? '' : add1.out.trim().split('\n').pop() ?? '');
   const add2 = await runNode(['apps/server/src/cli.ts', 'add', 'tester2', '試験花子', 'testpass123'], env);
+  await runNode(['apps/server/src/cli.ts', 'add', 'tester3', '試験次郎', 'testpass123'], env);
   check('2人目を登録できる', add2.code === 0, add2.code === 0 ? '' : add2.out.trim().split('\n').pop() ?? '');
   const short = await runNode(['apps/server/src/cli.ts', 'add', 'tester3', '短い', 'abc'], env);
   check('短すぎるパスワードは断る', short.code !== 0);
@@ -139,7 +140,7 @@ try {
   if (!up) throw new Error('サーバーが起動しませんでした');
 
   const health = (await (await fetch(`${base}/api/health`)).json()) as { userCount: number };
-  check('登録した利用者が見えている', health.userCount === 2, `${health.userCount}人`);
+  check('登録した利用者が見えている', health.userCount === 3, `${health.userCount}人`);
 
   /* ---------- 4. 画面の配信 ---------- */
   say('\n■ 画面の配信');
@@ -209,9 +210,42 @@ try {
   }
   check('細工したIDやパスワードで入れない（SQLインジェクション）', broke === 0, `${attacks.length}通り試して全部拒否`);
 
+  // 総当たり対策：まちがえ続けると、しばらく受け付けなくなるか
+  const tryLogin = (userId: string, password: string) =>
+    fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId, password }),
+    });
+  let locked = 0;
+  for (let i = 0; i < 6; i++) {
+    const r = await tryLogin('tester3', `でたらめ${i}`);
+    if (r.status === 429) locked = i + 1;
+  }
+  check('まちがえ続けると受け付けなくなる', locked > 0, `${locked}回目で止まった`);
+  const rightButLocked = await tryLogin('tester3', 'testpass123');
+  check('止まっている間は正しいパスワードでも入れない', rightButLocked.status === 429, `${rightButLocked.status}`);
+  const other = await tryLogin('tester1', 'testpass123');
+  check('止まるのはそのIDだけ（他の人は使える）', other.ok, `${other.status}`);
+
+  // 存在しないIDと、実在するIDで、返ってくる速さに差が出ないか
+  const timeOf = async (userId: string): Promise<number> => {
+    const t = Date.now();
+    await tryLogin(userId, 'まちがったパスワード');
+    return Date.now() - t;
+  };
+  const exists = await timeOf('tester2');
+  const missing = await timeOf('こんなIDはない');
+  const ratio = Math.max(exists, missing) / Math.max(1, Math.min(exists, missing));
+  check(
+    'IDが実在するかを、返事の速さで見分けられない',
+    ratio < 3,
+    `実在 ${exists}ms / 架空 ${missing}ms`,
+  );
+
   // 攻撃のあとも利用者の表が壊れていないか
   const afterAttack = (await (await fetch(`${base}/api/health`)).json()) as { userCount: number };
-  check('攻撃のあとも利用者が消えていない', afterAttack.userCount === 2, `${afterAttack.userCount}人`);
+  check('攻撃のあとも利用者が消えていない', afterAttack.userCount === 3, `${afterAttack.userCount}人`);
 
   /* ---------- 6. 案件の保存と呼び出し ---------- */
   say('\n■ 案件の保存と呼び出し');

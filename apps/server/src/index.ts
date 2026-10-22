@@ -33,9 +33,21 @@ app.post('/api/auth/login', async (c) => {
     password?: string;
   };
   if (!userId || !password) return c.json({ error: 'IDとパスワードを入力してください。' }, 400);
-  const user = login(c, userId, password);
-  if (!user) return c.json({ error: 'IDまたはパスワードが違います。' }, 401);
-  return c.json({ user });
+  const r = login(c, userId, password);
+  if (!r.ok && r.reason === 'locked') {
+    const minutes = Math.ceil(r.retryAfterSec / 60);
+    return c.json(
+      {
+        error:
+          `何度もまちがえたため、このIDはしばらく受け付けません。約${minutes}分後にもう一度お試しください。` +
+          'お急ぎの場合は、サーバーの担当者にパスワードの再設定を頼んでください。',
+      },
+      429,
+      { 'retry-after': String(r.retryAfterSec) },
+    );
+  }
+  if (!r.ok) return c.json({ error: 'IDまたはパスワードが違います。' }, 401);
+  return c.json({ user: r.user });
 });
 
 app.post('/api/auth/logout', (c) => {
