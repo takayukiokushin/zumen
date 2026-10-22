@@ -23,7 +23,9 @@ node -v
 
 **何もしなくてよい。** 起動用・診断用のファイルが自動で用意する。
 
-`pnpm` が入っていなければ **corepack 経由**で使うので、管理者権限は要らない。
+`pnpm` が入っていなければ、Node同梱の corepack を使って
+**自分のホームの中**（mac: `~/.zumen-bin` ／ Windows: `%LOCALAPPDATA%\zumen-bin`）に
+用意するので、管理者権限は要らない。
 corepack も無い古い環境のときだけ、画面に次の1行が出る。
 
 ```sh

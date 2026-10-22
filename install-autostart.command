@@ -17,16 +17,21 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-# pnpm の呼び出し方を決める（入っていなければ corepack 経由で使う）
-if command -v pnpm >/dev/null 2>&1; then
-  PNPM="pnpm"
-elif command -v corepack >/dev/null 2>&1 && corepack pnpm --version >/dev/null 2>&1; then
-  PNPM="corepack pnpm"
-else
+# pnpm を用意する（管理者権限は使わない）
+if ! command -v pnpm >/dev/null 2>&1; then
+  if command -v corepack >/dev/null 2>&1; then
+    mkdir -p "$HOME/.zumen-bin"
+    corepack enable --install-directory "$HOME/.zumen-bin" >/dev/null 2>&1
+    PATH="$HOME/.zumen-bin:$PATH"
+    export PATH
+  fi
+fi
+if ! command -v pnpm >/dev/null 2>&1; then
   echo "先に test-mac.command を一度実行して、部品をそろえてください。"
   read -r -p "Enterキーで閉じます"
   exit 1
 fi
+PNPM_DIR="$(dirname "$(command -v pnpm)")"
 
 mkdir -p "$HOME/Library/LaunchAgents" "$DIR/data"
 
@@ -40,7 +45,7 @@ cat > "$PLIST" <<PLISTEOF
   <array>
     <string>/bin/bash</string>
     <string>-lc</string>
-    <string>cd '$DIR' || exit 1; exec $PNPM start</string>
+    <string>export PATH='$PNPM_DIR':\$PATH; cd '$DIR' || exit 1; exec pnpm start</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

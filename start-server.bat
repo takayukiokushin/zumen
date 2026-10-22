@@ -16,10 +16,28 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem ---- pnpm の呼び出し方を決める（管理者権限が要らない順に試す） ----
-set "PNPM=pnpm"
+rem ---- pnpm を用意する（管理者権限が要らない順に試す） ----
 where pnpm >nul 2>nul
 if not errorlevel 1 goto :pnpm_ready
+set "ZUMEN_BIN=%LOCALAPPDATA%\zumen-bin"
+if not exist "%ZUMEN_BIN%" mkdir "%ZUMEN_BIN%"
+call corepack enable --install-directory "%ZUMEN_BIN%" >nul 2>nul
+set "PATH=%ZUMEN_BIN%;%PATH%"
+where pnpm >nul 2>nul
+if not errorlevel 1 goto :pnpm_ready
+call npm install -g pnpm@10.33.0 >nul 2>nul
+where pnpm >nul 2>nul
+if not errorlevel 1 goto :pnpm_ready
+echo.
+echo [×] pnpm を用意できませんでした。
+echo     PowerShell を「管理者として実行」で開き、次の1行を実行してから、
+echo     もう一度このファイルをダブルクリックしてください。
+echo.
+echo         npm install -g pnpm
+echo.
+pause
+exit /b 1
+:pnpm_ready
 call corepack pnpm --version >nul 2>nul
 if not errorlevel 1 (
   rem corepack 経由なら、入れ直さずにそのまま使える
@@ -57,8 +75,8 @@ pause
 exit /b 1
 :pnpm_ready
 
-call %PNPM% install || (echo うまくいきませんでした。 & pause & exit /b 1)
-call %PNPM% start
+call pnpm install || (echo うまくいきませんでした。 & pause & exit /b 1)
+call pnpm start
 
 echo.
 echo サーバーが止まりました。

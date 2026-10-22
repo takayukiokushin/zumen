@@ -23,14 +23,20 @@ fi
 echo "[1/6] Node.js $(node -v)"
 echo "[1/6] Node.js $(node -v)" >> "$LOG"
 
-# pnpm の用意。管理者権限が要らない順に試す
-if command -v pnpm >/dev/null 2>&1; then
-  PNPM="pnpm"
-elif command -v corepack >/dev/null 2>&1 && corepack pnpm --version >/dev/null 2>&1; then
-  # corepack 経由なら、入れ直さずにそのまま使える（管理者権限が要らない）
-  PNPM="corepack pnpm"
-  echo "      pnpm は corepack 経由で使います"
-else
+# pnpm の用意。管理者権限が要らない順に試す。
+# スクリプトの中から pnpm を呼ぶ場面があるので、PATHに通った本物を用意する
+if ! command -v pnpm >/dev/null 2>&1; then
+  if command -v corepack >/dev/null 2>&1; then
+    mkdir -p "$HOME/.zumen-bin"
+    corepack enable --install-directory "$HOME/.zumen-bin" >/dev/null 2>&1
+    PATH="$HOME/.zumen-bin:$PATH"
+    export PATH
+  fi
+fi
+if ! command -v pnpm >/dev/null 2>&1; then
+  npm install -g pnpm@10.33.0 >/dev/null 2>&1
+fi
+if ! command -v pnpm >/dev/null 2>&1; then
   echo "[×] pnpm を用意できませんでした。"
   echo "    ターミナルで次の1行を実行してから、もう一度ダブルクリックしてください。"
   echo
@@ -40,7 +46,6 @@ else
   exit 1
 fi
 
-# 古いbash（macOS標準の3.2）でも確実に動くように、printfで出す
 step() {
   step_n="$1"
   step_label="$2"
@@ -59,15 +64,15 @@ step() {
     printf '    ----------------------------------\n\n'
   fi
 }
-step 2/6 "部品をそろえています（初回は数分かかります）" $PNPM install
-step 3/6 "型の確認" $PNPM typecheck
-step 4/6 "図記号と質問の確認" $PNPM check
-step 5/6 "画面のビルド" $PNPM build
+step 2/6 "部品をそろえています（初回は数分かかります）" pnpm install
+step 3/6 "型の確認" pnpm typecheck
+step 4/6 "図記号と質問の確認" pnpm check
+step 5/6 "画面のビルド" pnpm build
 
 echo "[6/6] 通しの動作確認…"
 echo
 { echo; echo "---- selftest ----"; } >> "$LOG"
-SELFTEST_LOG="$LOG" $PNPM selftest || NG=1
+SELFTEST_LOG="$LOG" pnpm selftest || NG=1
 
 echo
 echo "================================================"
@@ -81,13 +86,13 @@ echo "================================================"
 echo
 read -r -p "続けて実際の画面も確かめますか？（y / そのままEnterで終了）: " yn
 if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
-  $PNPM --filter @zumen/server user:add test テスト太郎 testpass123 >/dev/null 2>&1 || true
+  pnpm --filter @zumen/server user:add test テスト太郎 testpass123 >/dev/null 2>&1 || true
   echo
   echo "ログインID: test ／ パスワード: testpass123"
   echo "止めるときは Control + C。"
   echo
   ( sleep 12; open http://127.0.0.1:8787 ) &
-  $PNPM start
+  pnpm start
 fi
 
 echo
