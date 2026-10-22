@@ -34,7 +34,7 @@ const ja = {
   'nav.logout.confirm': 'ログアウトします。よろしいですか。',
 
   'project.choose': '案件を選ぶ',
-  'project.list': '案件の一覧',
+  'project.list': '図面一覧',
   'project.new': '新しい案件',
   'project.newName': '案件の名前を入れてください。',
   'project.search': '名前で探す',
@@ -168,7 +168,7 @@ const en: Dict = {
   'nav.logout.confirm': 'Sign out. Are you sure?',
 
   'project.choose': 'Choose a job',
-  'project.list': 'All jobs',
+  'project.list': 'All drawings',
   'project.new': 'New job',
   'project.newName': 'Enter a name for the job.',
   'project.search': 'Search by name',
@@ -299,7 +299,7 @@ const fr: Dict = {
   'nav.logout.confirm': 'Vous allez être déconnecté. Continuer ?',
 
   'project.choose': 'Choisir une affaire',
-  'project.list': 'Toutes les affaires',
+  'project.list': 'Tous les schémas',
   'project.new': 'Nouvelle affaire',
   'project.newName': 'Saisissez un nom pour l’affaire.',
   'project.search': 'Rechercher par nom',
@@ -431,7 +431,7 @@ const zh: Dict = {
   'nav.logout.confirm': '即将退出登录，确定吗？',
 
   'project.choose': '选择项目',
-  'project.list': '项目一览',
+  'project.list': '图纸一览',
   'project.new': '新建项目',
   'project.newName': '请输入项目名称。',
   'project.search': '按名称查找',
@@ -559,7 +559,7 @@ const ko: Dict = {
   'nav.logout.confirm': '로그아웃합니다. 괜찮으십니까?',
 
   'project.choose': '건을 고르기',
-  'project.list': '건 목록',
+  'project.list': '도면 목록',
   'project.new': '새 건',
   'project.newName': '건의 이름을 입력하세요.',
   'project.search': '이름으로 찾기',

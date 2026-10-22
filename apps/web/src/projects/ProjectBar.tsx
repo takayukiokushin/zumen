@@ -1,4 +1,4 @@
-import { useT } from '../i18n/useT.ts';
+import { useLang, useT } from '../i18n/useT.ts';
 
 interface Props {
   projectId: string | null;
@@ -28,6 +28,7 @@ export function ProjectBar({
   onSave,
 }: Props) {
   const t = useT();
+  const lang = useLang();
   return (
     <div className="projectbar">
       <button type="button" className="picker" onClick={onList}>
@@ -61,7 +62,7 @@ export function ProjectBar({
               : dirty
                 ? t('project.hasUnsaved')
                 : savedAt
-                  ? `${new Date(savedAt).toLocaleTimeString()} ${t('project.savedAt')}`
+                  ? `${new Date(savedAt).toLocaleTimeString(lang)} ${t('project.savedAt')}`
                   : ''}
           </span>
         </>

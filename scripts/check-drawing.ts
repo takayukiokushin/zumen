@@ -8,6 +8,9 @@
  */
 import {
   applyAnchors,
+  descendantsOf,
+  groupRootOf,
+  removeItem,
   assistMove,
   fromLayout,
   moveItem,
@@ -217,6 +220,50 @@ if (tr) {
   const dangling = wires(d).filter((w) => w.at1?.item === tr.id || w.at2?.item === tr.id);
   if (dangling.length) fail(`消した記号へのつなぎ先が ${dangling.length}箇所 残っています`);
   else console.log('  消した記号へのつなぎ先は、きちんと外れました');
+}
+
+/* ---------- 7. PASのように中に部品を抱えている記号 ---------- */
+console.log('\n■ 内蔵品をひとかたまりで扱う');
+const pas = symbols(base).find((s) => s.symbolId === 'pas');
+if (!pas) fail('PASが見つかりません');
+else {
+  const kids = descendantsOf(base, pas.id);
+  if (kids.length === 0) fail('PASに内蔵品（ZCT・VT・LA）がありません');
+  else {
+    const names = symbols(base)
+      .filter((s) => kids.includes(s.id))
+      .map((s) => s.symbolId);
+    console.log(`  PASの中身: ${names.join(' / ')}（${kids.length}個）`);
+  }
+
+  // 中の部品を指しても、かたまりの外側（PAS）が選ばれる
+  for (const k of kids) {
+    if (groupRootOf(base, k) !== pas.id) fail(`${k} のかたまりの外側がPASになっていません`);
+  }
+
+  // 動かすと、中身も同じだけ動く
+  const before = symbols(base).filter((s) => kids.includes(s.id)).map((s) => ({ id: s.id, x: s.x, y: s.y }));
+  const movedDoc = moveItem(base, pas.id, 24, -16);
+  let allMoved = true;
+  for (const b of before) {
+    const after = symbols(movedDoc).find((s) => s.id === b.id)!;
+    if (after.x - b.x !== 24 || after.y - b.y !== -16) allMoved = false;
+  }
+  if (!allMoved) fail('PASを動かしても、内蔵品がついてきませんでした');
+  else console.log(`  PASを動かすと、内蔵品 ${kids.length}個 も同じだけ動きました`);
+  if (worstGap(movedDoc) !== 0) fail(`PASを動かしたあと ${worstGap(movedDoc)} のずれがあります`);
+
+  // 消すと、中身も一緒に消える
+  const cut = removeItem(base, pas.id);
+  const leftovers = symbols(cut).filter((s) => kids.includes(s.id) || s.id === pas.id);
+  if (leftovers.length > 0) fail(`PASを消したのに ${leftovers.map((s) => s.symbolId).join('・')} が残りました`);
+  else console.log('  PASを消すと、内蔵品も一緒に消えました');
+
+  // スロットの無い記号に差し替えると、中身も一緒に消える
+  const swapped = replaceSymbol(base, pas.id, 'lbs-pf');
+  const orphans = symbols(swapped).filter((s) => kids.includes(s.id));
+  if (orphans.length > 0) fail(`スロットの無い記号に差し替えたのに ${orphans.length}個 残りました`);
+  else console.log('  スロットの無い記号に差し替えると、内蔵品も一緒に消えました');
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

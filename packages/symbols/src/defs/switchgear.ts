@@ -217,23 +217,26 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '区分開閉器（高圧気中開閉器）',
     category: 'switchgear',
     tags: ['区分開閉器', '電柱上', 'GR', 'DGR'],
-    box: { w: 96, h: 170 },
+    // 内蔵するZCT・VT・LAが収まる最小限の大きさにしてある。
+    // 以前は余白が多く、他の記号に比べて大きすぎた。
+    box: { w: 86, h: 148 },
     shapes: [
-      vline(28, 0, 60),
-      rect(8, 14, 80, 142),
-      hline(64, 20, 36),
-      contact(28, 70, 4.5),
-      line(28, 104, 16, 80),
-      vline(28, 104, 170),
+      vline(28, 0, 10),
+      rect(6, 10, 74, 126),
+      hline(56, 20, 36),
+      contact(28, 62, 4.5),
+      line(28, 84, 16, 66),
+      vline(28, 84, 148),
     ],
     ports: [
       { id: 'in', x: 28, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 28, y: 170, dir: 'down', role: 'line' },
+      { id: 'out', x: 28, y: 148, dir: 'down', role: 'line' },
     ],
+    // 並びは見本図面のまま（上からZCT・開閉部・LAとVT）。余白だけを詰めてある
     slots: [
-      { id: 'zct', x: 28, y: 16, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
-      { id: 'vt', x: 34, y: 120, label: 'VT内蔵', accepts: ['vt'] },
-      { id: 'la', x: 18, y: 108, label: 'LA内蔵', accepts: ['la'] },
+      { id: 'zct', x: 28, y: 12, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
+      { id: 'la', x: 20, y: 88, label: 'LA内蔵', accepts: ['la'] },
+      { id: 'vt', x: 24, y: 105, label: 'VT内蔵', accepts: ['vt'] },
     ],
     fields: [
       RATED_VOLTAGE,

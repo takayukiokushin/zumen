@@ -14,6 +14,10 @@ export interface PlacedSymbol {
   id: string;
   role: string;
   symbolId: string;
+  /** 親の記号のid。PASに内蔵するZCT・VT・LAのように、親と一緒に動くもの */
+  parent?: string;
+  /** 親のどのスロットに入っているか。記号を差し替えたときの置き直しに使う */
+  slot?: string;
   /** 記号の左上の座標 */
   x: number;
   y: number;
@@ -110,12 +114,16 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     yy: number,
     rotate: number,
     side: 'right' | 'left',
+    parentId?: string,
+    slotId?: string,
   ): PlacedSymbol => {
     const labelSide = item.labelSide ?? side;
     const sym: PlacedSymbol = {
       id: item.id,
       role: item.role,
       symbolId: item.symbolId,
+      parent: parentId,
+      slot: slotId,
       x,
       y: yy,
       rotate,
@@ -260,7 +268,7 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       if (!parent || !slot || !entry) continue;
       const ax = parent.sym.x + slot.x;
       const ay = parent.sym.y + slot.y;
-      add(item, def, ax - entry.x, ay - entry.y, 0, 'right');
+      add(item, def, ax - entry.x, ay - entry.y, 0, 'right', parent.sym.id, slot.id);
       const parentEntry = portOf(parent.def, 'in');
       const spineX = parentEntry ? parent.sym.x + parentEntry.x : SPINE;
       if (Math.abs(ax - spineX) > 0.5) wires.push({ x1: spineX, y1: ay, x2: ax, y2: ay });

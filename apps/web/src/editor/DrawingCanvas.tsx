@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import type { Doc, DocItem } from './doc.ts';
-import { assistMove, assistWireEnd, docBounds, itemBounds, moveItem, moveWireEnd } from './doc.ts';
+import { assistMove, assistWireEnd, docBounds, groupOf, groupRootOf, itemBounds, moveItem, moveWireEnd } from './doc.ts';
 
 interface Props {
   doc: Doc;
@@ -63,11 +63,18 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
   const onPointerDown = (e: React.PointerEvent, it: DocItem) => {
     if (mode === 'wire') return;
     e.stopPropagation();
-    onSelect(it.id);
+
+    // PASのように中に部品を抱えている記号は、かたまりごと選ぶ。
+    // すでにそのかたまりを選んでいるときだけ、もう一度押すと中の部品を選べる
+    const root = groupRootOf(doc, it.id);
+    const insideSelected = selectedId !== null && groupOf(doc, root).includes(selectedId);
+    const pick = insideSelected ? it.id : root;
+
+    onSelect(pick);
     if (it.kind === 'frame') return;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     start.current = toDrawing(e);
-    setDrag({ id: it.id, dx: 0, dy: 0 });
+    setDrag({ id: pick, dx: 0, dy: 0 });
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -243,9 +250,16 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
 
         {selectedId &&
           (() => {
-            const it = view.items.find((i) => i.id === selectedId);
-            if (!it) return null;
-            const bb = itemBounds(it);
+            // かたまりを選んでいるときは、中の部品まで含めて囲う
+            const ids = groupOf(view, selectedId);
+            const boxes = view.items.filter((i) => ids.includes(i.id)).map(itemBounds);
+            if (boxes.length === 0) return null;
+            const bb = {
+              x0: Math.min(...boxes.map((b) => b.x0)),
+              y0: Math.min(...boxes.map((b) => b.y0)),
+              x1: Math.max(...boxes.map((b) => b.x1)),
+              y1: Math.max(...boxes.map((b) => b.y1)),
+            };
             return (
               <rect
                 className="selection"

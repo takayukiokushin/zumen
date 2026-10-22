@@ -15,6 +15,13 @@ export interface DocSymbol {
   kind: 'symbol';
   id: string;
   symbolId: string;
+  /**
+   * 親の記号のid。PASに内蔵するZCT・VT・LAのように、親と一体で扱うもの。
+   * 親を動かすと一緒に動き、親を消すと一緒に消える。
+   */
+  parent?: string;
+  /** 親のどのスロットに入っているか。親を差し替えたときの置き直しに使う */
+  slot?: string;
   x: number;
   y: number;
   rotate: number;
@@ -68,13 +75,37 @@ export type DocItem = DocSymbol | DocWire | DocFrame | DocText;
 
 export interface Doc {
   items: DocItem[];
+  /**
+   * この図面を組み立てたときの、ヒアリング回答の印。
+   * 回答が変わったかどうかを、これで見分ける。
+   */
+  basis?: string;
+  /**
+   * 人が手で直したか。false のままなら、回答が変われば作り直してよい。
+   * true のものを勝手に作り直すと、直した内容が消えてしまう。
+   */
+  edited?: boolean;
+}
+
+/**
+ * 文字列を短い印にする（FNV-1a）。
+ * ヒアリングの回答から組み立てた構成が変わったかどうかを見分けるためだけに使う。
+ * 暗号用途ではない。
+ */
+export function digest(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(36);
 }
 
 let seq = 0;
 const nextId = (prefix: string) => `${prefix}-${++seq}`;
 
 /** 自動レイアウトの結果を、編集できる形に取り込む */
-export function fromLayout(drawing: DrawingLayout): Doc {
+export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
   const items: DocItem[] = [];
   for (const f of drawing.frames) {
     items.push({ kind: 'frame', id: nextId('frame'), x: f.x, y: f.y, w: f.w, label: f.label });
@@ -87,6 +118,8 @@ export function fromLayout(drawing: DrawingLayout): Doc {
       kind: 'symbol',
       id: s.id || nextId('sym'),
       symbolId: s.symbolId,
+      parent: s.parent,
+      slot: s.slot,
       x: s.x,
       y: s.y,
       rotate: s.rotate,
@@ -96,7 +129,8 @@ export function fromLayout(drawing: DrawingLayout): Doc {
       labelAnchor: s.labelAt.anchor,
     });
   }
-  return tidyDoc({ items });
+  // 作りたてなので edited は false。回答が変われば作り直してよい印
+  return tidyDoc({ items, basis, edited: false });
 }
 
 /* ------------------------------------------------------------------ */
@@ -148,9 +182,49 @@ export function nearestPort(
   return best;
 }
 
+/* ------------------------------------------------------------------ */
+/* 親子（PASとその内蔵品のように、ひとかたまりで扱うもの）                */
+/* ------------------------------------------------------------------ */
+
+/** その記号に内蔵されているもの（孫まで）のid */
+export function descendantsOf(doc: Doc, id: string): string[] {
+  const out: string[] = [];
+  let frontier = [id];
+  while (frontier.length > 0) {
+    const next: string[] = [];
+    for (const it of doc.items) {
+      if (it.kind !== 'symbol' || !it.parent) continue;
+      if (frontier.includes(it.parent) && !out.includes(it.id)) {
+        out.push(it.id);
+        next.push(it.id);
+      }
+    }
+    frontier = next;
+  }
+  return out;
+}
+
+/** その記号を含む「かたまり」のいちばん外側。内蔵品でなければ自分自身 */
+export function groupRootOf(doc: Doc, id: string): string {
+  const byId = new Map(doc.items.map((it) => [it.id, it]));
+  let cur = byId.get(id);
+  const seen = new Set<string>();
+  while (cur && cur.kind === 'symbol' && cur.parent && !seen.has(cur.id)) {
+    seen.add(cur.id);
+    const up = byId.get(cur.parent);
+    if (!up) break;
+    cur = up;
+  }
+  return cur?.id ?? id;
+}
+
+/** かたまり全体（自分＋内蔵品）のid */
+export const groupOf = (doc: Doc, id: string): string[] => [id, ...descendantsOf(doc, id)];
+
 /** まだつなぎ先が無い線の端を、近くの接続点に結びつける */
 export function linkWires(doc: Doc): Doc {
   return {
+    ...doc,
     items: doc.items.map((it) => {
       if (it.kind !== 'wire') return it;
       if (it.at1 && it.at2) return it;
@@ -174,6 +248,7 @@ export function linkWires(doc: Doc): Doc {
  */
 export function applyAnchors(doc: Doc): Doc {
   return {
+    ...doc,
     items: doc.items.map((it) => {
       if (it.kind !== 'wire') return it;
       if (!it.at1 && !it.at2) return it;
@@ -228,9 +303,13 @@ export const moveItem = (doc: Doc, id: string, dx: number, dy: number): Doc => {
   const target = doc.items.find((it) => it.id === id);
   if (!target) return doc;
 
+  // 記号を動かすときは、内蔵しているもの（PASのZCT・VT・LAなど）も一緒に動かす
+  const moving = new Set(target.kind === 'symbol' ? groupOf(doc, id) : [id]);
+
   const moved: Doc = {
+    ...doc,
     items: doc.items.map((it) => {
-      if (it.id !== id) return it;
+      if (!moving.has(it.id)) return it;
       if (it.kind === 'wire') {
         // 線そのものを動かしたときは、つないであった印をいったん外す
         return {
@@ -260,6 +339,7 @@ function alignTo(px: number, py: number, qx: number, qy: number): [number, numbe
 /** 線の端だけを動かして伸縮する。縦か横のどちらかに自動で揃える */
 export const moveWireEnd = (doc: Doc, id: string, end: 1 | 2, dx: number, dy: number): Doc => {
   const next: Doc = {
+    ...doc,
     items: doc.items.map((it) => {
       if (it.kind !== 'wire' || it.id !== id) return it;
       const w = { ...it };
@@ -321,7 +401,7 @@ export const addWire = (
   const [ax, ay, bx, by] = straighten(a.x, a.y, b.x, b.y);
   const id = nextId('wire');
   return {
-    doc: tidyDoc({ items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by }] }),
+    doc: tidyDoc({ ...doc, items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by }] }),
     id,
   };
 };
@@ -333,6 +413,7 @@ export const snapWireToPorts = (doc: Doc, id: string): Doc => {
   const a = nearestPort(doc, wire.x1, wire.y1, 12);
   const b = nearestPort(doc, wire.x2, wire.y2, 12);
   const linked: Doc = {
+    ...doc,
     items: doc.items.map((it) =>
       it.id !== id
         ? it
@@ -346,19 +427,22 @@ export const snapWireToPorts = (doc: Doc, id: string): Doc => {
   return applyAnchors(linked);
 };
 
-export const removeItem = (doc: Doc, id: string): Doc => ({
-  items: doc.items
-    .filter((it) => it.id !== id)
-    .map((it) => {
-      if (it.kind !== 'wire') return it;
-      if (it.at1?.item !== id && it.at2?.item !== id) return it;
-      return {
-        ...it,
-        at1: it.at1?.item === id ? undefined : it.at1,
-        at2: it.at2?.item === id ? undefined : it.at2,
-      };
-    }),
-});
+/** 要素を消す。記号を消すと、内蔵しているものも一緒に消える */
+export const removeItem = (doc: Doc, id: string): Doc => {
+  const gone = new Set(groupOf(doc, id));
+  return {
+    ...doc,
+    items: doc.items
+      .filter((it) => !gone.has(it.id))
+      .map((it) => {
+        if (it.kind !== 'wire') return it;
+        const a1 = it.at1 && gone.has(it.at1.item);
+        const a2 = it.at2 && gone.has(it.at2.item);
+        if (!a1 && !a2) return it;
+        return { ...it, at1: a1 ? undefined : it.at1, at2: a2 ? undefined : it.at2 };
+      }),
+  };
+};
 
 /**
  * 記号を別の記号に差し替える。
@@ -372,7 +456,7 @@ export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
   const next: DocSymbol = { ...old, symbolId };
   const newPorts = portsOf(next);
   if (oldPorts.length === 0 || newPorts.length === 0) {
-    return applyAnchors({ items: doc.items.map((it) => (it.id === id ? next : it)) });
+    return applyAnchors({ ...doc, items: doc.items.map((it) => (it.id === id ? next : it)) });
   }
 
   // 線がつながっている接続点を基準にする。無ければ最初の接続点
@@ -398,16 +482,41 @@ export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
     remap.set(p.id, (same ?? newPorts[Math.min(i, newPorts.length - 1)]!).id);
   });
 
-  const items = doc.items.map((it) => {
-    if (it.id === id) return next;
-    if (it.kind !== 'wire') return it;
-    if (it.at1?.item !== id && it.at2?.item !== id) return it;
-    const w = { ...it };
-    if (w.at1?.item === id) w.at1 = { item: id, port: remap.get(w.at1.port) ?? w.at1.port };
-    if (w.at2?.item === id) w.at2 = { item: id, port: remap.get(w.at2.port) ?? w.at2.port };
-    return w;
-  });
-  return applyAnchors({ items });
+  // 内蔵しているもの（PASのZCT・VT・LAなど）を、新しい記号のスロットに置き直す。
+  // 同じ名前のスロットが無ければ、その内蔵品は一緒に消える
+  const newDef = getSymbol(symbolId);
+  const dropped = new Set<string>();
+  const reseated = new Map<string, { x: number; y: number }>();
+  for (const it of doc.items) {
+    if (it.kind !== 'symbol' || it.parent !== id) continue;
+    const slot = it.slot ? newDef.slots?.find((s2) => s2.id === it.slot) : undefined;
+    if (!slot) {
+      for (const g of groupOf(doc, it.id)) dropped.add(g);
+      continue;
+    }
+    // 内蔵品の入り口を、新しいスロットの位置に合わせる
+    const entry = portsOf(it)[0];
+    if (!entry) continue;
+    reseated.set(it.id, { x: it.x + (next.x + slot.x - entry.x), y: it.y + (next.y + slot.y - entry.y) });
+  }
+
+  const items = doc.items
+    .filter((it) => !dropped.has(it.id))
+    .map((it) => {
+      if (it.id === id) return next;
+      const seat = it.kind === 'symbol' ? reseated.get(it.id) : undefined;
+      if (seat) return { ...it, x: seat.x, y: seat.y };
+      if (it.kind !== 'wire') return it;
+      const a1 = it.at1 && dropped.has(it.at1.item);
+      const a2 = it.at2 && dropped.has(it.at2.item);
+      const w = { ...it };
+      if (a1) w.at1 = undefined;
+      if (a2) w.at2 = undefined;
+      if (w.at1?.item === id) w.at1 = { item: id, port: remap.get(w.at1.port) ?? w.at1.port };
+      if (w.at2?.item === id) w.at2 = { item: id, port: remap.get(w.at2.port) ?? w.at2.port };
+      return w;
+    });
+  return applyAnchors({ ...doc, items });
 };
 
 export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { doc: Doc; id: string } => {
@@ -425,15 +534,16 @@ export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { d
     labelDy: 10,
     labelAnchor: 'start',
   };
-  return { doc: { items: [...doc.items, item] }, id };
+  return { doc: { ...doc, items: [...doc.items, item] }, id };
 };
 
 export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Doc; id: string } => {
   const id = nextId('text');
-  return { doc: { items: [...doc.items, { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start' }] }, id };
+  return { doc: { ...doc, items: [...doc.items, { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start' }] }, id };
 };
 
 export const setLabel = (doc: Doc, id: string, lines: string[]): Doc => ({
+  ...doc,
   items: doc.items.map((it) =>
     it.id !== id ? it : it.kind === 'symbol' ? { ...it, label: lines } : it.kind === 'text' ? { ...it, lines } : it,
   ),
@@ -442,6 +552,7 @@ export const setLabel = (doc: Doc, id: string, lines: string[]): Doc => ({
 /** 記号を回す。つないである線の端も、回ったあとの接続点について回る */
 export const rotateSymbol = (doc: Doc, id: string, delta: number): Doc =>
   applyAnchors({
+    ...doc,
     items: doc.items.map((it) =>
       it.kind === 'symbol' && it.id === id ? { ...it, rotate: (it.rotate + delta + 360) % 360 } : it,
     ),

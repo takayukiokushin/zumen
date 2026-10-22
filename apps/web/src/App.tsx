@@ -12,7 +12,7 @@ import { TabBar } from './TabBar.tsx';
 import type { Tab } from './TabBar.tsx';
 import { UserAdmin } from './projects/UserAdmin.tsx';
 import { SettingsPanel } from './settings/SettingsPanel.tsx';
-import { useT } from './i18n/useT.ts';
+import { useLang, useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
 import { QUESTIONS } from '@zumen/knowledge';
@@ -24,6 +24,7 @@ export const DEFAULTS: Answers = Object.fromEntries(
 
 export function App() {
   const t = useT();
+  const lang = useLang();
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [tab, setTab] = useState<Tab>('hearing');
   /** 案件の一覧を出しているか（㉚）。案件を開いていないときは必ず一覧 */
@@ -204,7 +205,7 @@ export function App() {
             {lockedBy.userName}
             {t('lock.editingNow')}
           </b>
-          {t('lock.viewOnly')}（{new Date(lockedBy.since).toLocaleTimeString()}）
+          {t('lock.viewOnly')}（{new Date(lockedBy.since).toLocaleTimeString(lang)}）
           {dirty && <b className="warn">{t('lock.cannotSave')}</b>}
           <button
             type="button"

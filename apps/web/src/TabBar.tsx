@@ -9,7 +9,7 @@ import type { Key } from './i18n/index.ts';
  */
 
 /** 説明が出るまでの待ち時間 */
-const TIP_DELAY = 2500;
+const TIP_DELAY = 1000;
 
 function Tab({
   label,

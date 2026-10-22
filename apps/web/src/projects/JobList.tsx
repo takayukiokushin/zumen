@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../session/api.ts';
 import type { ProjectSummary } from '../session/api.ts';
-import { useT } from '../i18n/useT.ts';
+import { useLang, useT } from '../i18n/useT.ts';
 
 /**
  * 案件の一覧（㉚）。名前の一部を入れて絞り込める。
@@ -32,6 +32,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
 
 export function JobList({ meId, currentId, onOpen, onNew }: Props) {
   const t = useT();
+  const lang = useLang();
   const [list, setList] = useState<ProjectSummary[] | null>(null);
   const [q, setQ] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +121,7 @@ export function JobList({ meId, currentId, onOpen, onNew }: Props) {
                     )}
                     {p.file_count > 0 && <span className="when">　写真{p.file_count}枚</span>}
                   </td>
-                  <td className="when">{new Date(p.updated_at).toLocaleString()}</td>
+                  <td className="when">{new Date(p.updated_at).toLocaleString(lang)}</td>
                   <td className="row-actions">
                     <button type="button" className="btn primary" onClick={() => onOpen(p.id)}>
                       {t('project.open')}

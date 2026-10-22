@@ -8,7 +8,7 @@ import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT } from '../i18n/useT.ts';
 import { buildSheetSvg, downloadPng, downloadSvg } from './exportSheet.ts';
 import type { Doc, DocSymbol } from './doc.ts';
-import { addSymbol, addText, addWire, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, rotateSymbol, setLabel, snapWireToPorts, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, rotateSymbol, setLabel, snapWireToPorts, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -33,13 +33,21 @@ interface EditorProps {
 
 export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const t = useT();
-  const generated = useMemo(() => fromLayout(layout(buildComposition(answers), answers)), [answers]);
-  // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく
-  const [history, setHistory] = useState<History>(() => ({
-    past: [],
-    present: initialDoc ? tidyDoc(initialDoc) : generated,
-    future: [],
-  }));
+  const composition = useMemo(() => buildComposition(answers), [answers]);
+  /** いまのヒアリング回答の印。これが変わったら、図面の中身も変わるはず */
+  const basis = useMemo(
+    () => digest(JSON.stringify(composition.map((i) => [i.role, i.symbolId, i.label, i.unit ?? 0]))),
+    [composition],
+  );
+  const generated = useMemo(() => fromLayout(layout(composition, answers), basis), [composition, answers, basis]);
+
+  const [history, setHistory] = useState<History>(() => {
+    // 手で直していない図面は、いつでも回答から作り直してよい。
+    // 手で直したものは、勝手に作り直さずそのまま開く（案内だけ出す）
+    if (!initialDoc || initialDoc.edited !== true) return { past: [], present: generated, future: [] };
+    // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく
+    return { past: [], present: tidyDoc(initialDoc), future: [] };
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
@@ -62,17 +70,24 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   const apply = useCallback(
     (next: Doc) => {
-      setHistory((h) => commit(h, next));
-      onDocChange?.(next);
+      // 手で直した印を付ける。どの回答から作った図面かは、そのまま持ち越す
+      const stamped: Doc = { ...next, edited: true, basis: doc.basis };
+      setHistory((h) => commit(h, stamped));
+      onDocChange?.(stamped);
     },
-    [onDocChange],
+    [onDocChange, doc.basis],
   );
 
   /** ヒアリングの回答から作り直す（編集内容は履歴に残るので元に戻せる） */
   const regenerate = () => {
-    apply(fromLayout(layout(buildComposition(answers), answers)));
+    const fresh = generated;
+    setHistory((h) => commit(h, fresh));
+    onDocChange?.(fresh);
     setSelectedId(null);
   };
+
+  /** 手で直したあとに回答が変わっている。勝手に作り直さず、案内だけ出す */
+  const stale = doc.edited === true && doc.basis !== undefined && doc.basis !== basis;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -203,6 +218,17 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           </button>
         </div>
       </div>
+
+      {stale && (
+        <p className="stale-note">
+          <b>ヒアリングの回答が、この図面を作ったときから変わっています。</b>
+          いまの図面は手で直したものなので、そのままにしてあります。
+          <button type="button" className="btn" onClick={regenerate}>
+            {t('editor.regenerate')}
+          </button>
+          <span className="hint">（押しても「操作を戻す」で元に戻せます）</span>
+        </p>
+      )}
 
       {mode === 'wire' && (
         <p className="mode-hint">{t('editor.wireHint')}</p>
