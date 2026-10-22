@@ -110,8 +110,11 @@ echo
 read -r -p "続けて実際の画面も確かめますか？（y / そのままEnterで終了）: " yn
 if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
   pnpm --filter @zumen/server user:add test テスト太郎 testpass123 >/dev/null 2>&1 || true
+  # 確認用のIDは、このあと必ず消す（パスワードが手順書に書いてあるため）
+  trap 'pnpm --filter @zumen/server user:remove test >/dev/null 2>&1 || true' EXIT
   echo
   echo "ログインID: test ／ パスワード: testpass123"
+  echo "※ この確認用のIDは、終了すると自動で消えます。"
   echo "止めるときは Control + C。"
   echo
   # 起動したのを確かめてからブラウザを開く（ビルドに時間がかかることがあるため）
@@ -130,6 +133,11 @@ if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
     echo "  ブラウザで http://127.0.0.1:8787 を自分で開いてみてください。"
   ) &
   pnpm start
+  pnpm --filter @zumen/server user:remove test >/dev/null 2>&1 || true
+  echo
+  echo "確認用のID（test）は消しました。"
+  echo "実際に使う人のIDは、次のように作ってください。"
+  echo "  pnpm --filter @zumen/server user:add <ID> <名前> <8文字以上のパスワード>"
 fi
 
 echo

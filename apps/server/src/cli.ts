@@ -1,6 +1,6 @@
 // 何よりも先に .env を読み込む
 import './env.ts';
-import { createUser, listUsers, setPassword } from './auth.ts';
+import { createUser, deleteUser, listUsers, setPassword } from './auth.ts';
 import { backup, sourceDir } from './backup.ts';
 import { checkApiKey, explainApiError } from './apikey.ts';
 
@@ -9,6 +9,7 @@ import { checkApiKey, explainApiError } from './apikey.ts';
  *
  *   pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>
  *   pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
+ *   pnpm --filter @zumen/server user:remove <ID>
  *   pnpm --filter @zumen/server user:list
  *   pnpm --filter @zumen/server backup <保存先フォルダ>
  *   pnpm --filter @zumen/server apikey
@@ -31,6 +32,14 @@ try {
       if (password.length < 8) throw new Error('パスワードは8文字以上にしてください。');
       if (!setPassword(id, password)) throw new Error(`利用者が見つかりません: ${id}`);
       console.log(`パスワードを変更しました: ${id}`);
+      break;
+    }
+    case 'remove': {
+      const [id] = args;
+      if (!id) throw new Error('使い方: remove <ID>');
+      if (!deleteUser(id)) throw new Error(`利用者が見つかりません: ${id}`);
+      console.log(`利用者を消しました: ${id}`);
+      console.log('  この人がログイン中だった場合、その場で使えなくなります。');
       break;
     }
     case 'list': {
@@ -58,7 +67,7 @@ try {
     }
     default:
       console.log(
-        '使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / list / backup <保存先> / apikey',
+        '使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / remove <ID> / list / backup <保存先> / apikey',
       );
       process.exit(1);
   }

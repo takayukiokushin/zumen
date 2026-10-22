@@ -168,6 +168,16 @@ pnpm --filter @zumen/server user:add jimu 事務担当 パスワード8文字以
 pnpm --filter @zumen/server user:list
 ```
 
+**要らない利用者は消す：**
+
+```sh
+pnpm --filter @zumen/server user:remove test
+```
+
+> ⚠️ 動作確認のときに `test` というIDが作られることがある。
+> **このパスワード（`testpass123`）は手順書に書いてあるので、社内の誰でも知り得る。**
+> `user:list` に `test` が残っていたら、必ず消すこと。
+
 ## 2-8. 自動で立ち上がるようにする
 
 ```sh
@@ -265,9 +275,14 @@ pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>
 # パスワードを変える
 pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
 
+# 消す（辞めた人など）
+pnpm --filter @zumen/server user:remove <ID>
+
 # 一覧
 pnpm --filter @zumen/server user:list
 ```
+
+消した人がログイン中だった場合、その場で使えなくなる。
 
 ## バックアップ
 

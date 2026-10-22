@@ -42,6 +42,13 @@ export function setPassword(id: string, password: string): boolean {
   return Number(r.changes) > 0;
 }
 
+/** 利用者を消す。その人のログイン中の状態（セッション）もまとめて消える */
+export function deleteUser(id: string): boolean {
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+  const r = db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  return Number(r.changes) > 0;
+}
+
 export function listUsers(): User[] {
   return db.prepare('SELECT id, name FROM users ORDER BY id').all() as unknown as User[];
 }

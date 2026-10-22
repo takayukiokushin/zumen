@@ -149,6 +149,8 @@ choice /c YN /n /m "確かめる場合は Y、終わる場合は N を押して�
 if errorlevel 2 goto :done
 
 call pnpm --filter @zumen/server user:add test テスト太郎 testpass123 >nul 2>nul
+echo ※ この確認用のIDは、あとで消してください（パスワードが手順書に書いてあるため）
+echo    call pnpm --filter @zumen/server user:remove test
 start "単線結線図サーバー" cmd /k "cd /d "%~dp0" && pnpm start"
 echo.
 echo サーバーの起動を待っています…
