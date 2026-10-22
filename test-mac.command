@@ -91,7 +91,21 @@ if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
   echo "ログインID: test ／ パスワード: testpass123"
   echo "止めるときは Control + C。"
   echo
-  ( sleep 12; open http://127.0.0.1:8787 ) &
+  # 起動したのを確かめてからブラウザを開く（ビルドに時間がかかることがあるため）
+  (
+    i=0
+    while [ "$i" -lt 120 ]; do
+      if curl -sf -o /dev/null http://127.0.0.1:8787/api/health 2>/dev/null; then
+        open http://127.0.0.1:8787
+        exit 0
+      fi
+      i=$((i + 1))
+      sleep 1
+    done
+    echo
+    echo "※ 2分待ちましたが、サーバーの応答がありません。"
+    echo "  ブラウザで http://127.0.0.1:8787 を自分で開いてみてください。"
+  ) &
   pnpm start
 fi
 
