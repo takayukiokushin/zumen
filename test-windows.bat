@@ -95,7 +95,15 @@ echo [5/6] 画面のビルド…
 echo. >> "%LOG%"
 echo ---- pnpm build ---- >> "%LOG%"
 call %PNPM% build >>"%LOG%" 2>&1
-if errorlevel 1 (echo     [×] 失敗 & set "NG=1") else (echo     [○] 完了)
+if errorlevel 1 (
+  echo     [×] 失敗
+  set "NG=1"
+  echo.
+  echo     ---- 失敗した理由 ----
+  powershell -NoProfile -Command "Get-Content -Tail 15 '%LOG%' | ForEach-Object { '    ' + $_ }"
+  echo     ----------------------
+  echo.
+) else (echo     [○] 完了)
 
 echo [6/6] 通しの動作確認…
 echo.

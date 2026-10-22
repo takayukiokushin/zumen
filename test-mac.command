@@ -40,11 +40,24 @@ else
   exit 1
 fi
 
+# 古いbash（macOS標準の3.2）でも確実に動くように、printfで出す
 step() {
-  local n="$1" label="$2"; shift 2
-  echo "[$n] $label…"
+  step_n="$1"
+  step_label="$2"
+  shift 2
+  printf '[%s] %s…\n' "$step_n" "$step_label"
   { echo; echo "---- $* ----"; } >> "$LOG"
-  if "$@" >>"$LOG" 2>&1; then echo "    [○] 完了"; else echo "    [×] 失敗"; NG=1; fi
+  before=$(wc -l < "$LOG")
+  if "$@" >>"$LOG" 2>&1; then
+    printf '    [○] 完了\n'
+  else
+    printf '    [×] 失敗\n'
+    NG=1
+    # 失敗した理由をその場で出す（ファイルを開かなくても分かるように）
+    printf '\n    ---- 失敗した理由（最後の15行）----\n'
+    tail -n +"$((before + 1))" "$LOG" | tail -15 | sed 's/^/    /'
+    printf '    ----------------------------------\n\n'
+  fi
 }
 step 2/6 "部品をそろえています（初回は数分かかります）" $PNPM install
 step 3/6 "型の確認" $PNPM typecheck
