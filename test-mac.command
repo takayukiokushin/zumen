@@ -46,6 +46,29 @@ if ! command -v pnpm >/dev/null 2>&1; then
   exit 1
 fi
 
+# 次から普通のターミナルでも pnpm が使えるように、設定ファイルに1行足しておく
+if [ -d "$HOME/.zumen-bin" ]; then
+  for rc in "$HOME/.zshrc" "$HOME/.bash_profile"; do
+    [ -e "$rc" ] || continue
+    if ! grep -q '.zumen-bin' "$rc" 2>/dev/null; then
+      {
+        echo ''
+        echo '# 単線結線図作成アプリで使う pnpm'
+        echo 'export PATH="$HOME/.zumen-bin:$PATH"'
+      } >> "$rc"
+      echo "      $rc に pnpm の場所を追記しました（次に開くターミナルから有効）"
+    fi
+  done
+  # zshrc が無い人のために作る
+  if [ ! -e "$HOME/.zshrc" ]; then
+    {
+      echo '# 単線結線図作成アプリで使う pnpm'
+      echo 'export PATH="$HOME/.zumen-bin:$PATH"'
+    } > "$HOME/.zshrc"
+    echo "      ~/.zshrc を作って pnpm の場所を書きました（次に開くターミナルから有効）"
+  fi
+fi
+
 step() {
   step_n="$1"
   step_label="$2"
