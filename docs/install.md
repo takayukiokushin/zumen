@@ -21,11 +21,15 @@ node -v
 
 ### 1-2. pnpm を使えるようにする
 
-```sh
-corepack enable
-```
+**何もしなくてよい。** 起動用・診断用のファイルが自動で用意する。
 
-（Windowsで「アクセスが拒否されました」と出たら、PowerShellを**管理者として実行**して同じコマンドを打つ）
+`pnpm` が入っていなければ **corepack 経由**で使うので、管理者権限は要らない。
+corepack も無い古い環境のときだけ、画面に次の1行が出る。
+
+```sh
+sudo npm install -g pnpm     # macOS
+npm install -g pnpm          # Windows（管理者として実行したPowerShellで）
+```
 
 ### 1-3. アプリのファイルを持ってくる
 

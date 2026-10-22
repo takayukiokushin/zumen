@@ -3,6 +3,7 @@
 cd "$(dirname "$0")" || exit 1
 LOG="$(pwd)/test-result.txt"
 NG=0
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 echo "================================================"
 echo " 単線結線図作成：動作診断"
@@ -22,16 +23,14 @@ fi
 echo "[1/6] Node.js $(node -v)"
 echo "[1/6] Node.js $(node -v)" >> "$LOG"
 
-# pnpm を使えるようにする（無ければ用意する）
-export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "pnpm を用意しています…"
-  corepack enable >/dev/null 2>&1 || true
-fi
-if ! command -v pnpm >/dev/null 2>&1; then
-  npm install -g pnpm@10.33.0 >/dev/null 2>&1 || true
-fi
-if ! command -v pnpm >/dev/null 2>&1; then
+# pnpm の用意。管理者権限が要らない順に試す
+if command -v pnpm >/dev/null 2>&1; then
+  PNPM="pnpm"
+elif command -v corepack >/dev/null 2>&1 && corepack pnpm --version >/dev/null 2>&1; then
+  # corepack 経由なら、入れ直さずにそのまま使える（管理者権限が要らない）
+  PNPM="corepack pnpm"
+  echo "      pnpm は corepack 経由で使います"
+else
   echo "[×] pnpm を用意できませんでした。"
   echo "    ターミナルで次の1行を実行してから、もう一度ダブルクリックしてください。"
   echo
@@ -47,15 +46,15 @@ step() {
   { echo; echo "---- $* ----"; } >> "$LOG"
   if "$@" >>"$LOG" 2>&1; then echo "    [○] 完了"; else echo "    [×] 失敗"; NG=1; fi
 }
-step 2/6 "部品をそろえています（初回は数分かかります）" pnpm install
-step 3/6 "型の確認" pnpm typecheck
-step 4/6 "図記号と質問の確認" pnpm check
-step 5/6 "画面のビルド" pnpm build
+step 2/6 "部品をそろえています（初回は数分かかります）" $PNPM install
+step 3/6 "型の確認" $PNPM typecheck
+step 4/6 "図記号と質問の確認" $PNPM check
+step 5/6 "画面のビルド" $PNPM build
 
 echo "[6/6] 通しの動作確認…"
 echo
-{ echo; echo "---- pnpm selftest ----"; } >> "$LOG"
-SELFTEST_LOG="$LOG" pnpm selftest || NG=1
+{ echo; echo "---- selftest ----"; } >> "$LOG"
+SELFTEST_LOG="$LOG" $PNPM selftest || NG=1
 
 echo
 echo "================================================"
@@ -69,13 +68,13 @@ echo "================================================"
 echo
 read -r -p "続けて実際の画面も確かめますか？（y / そのままEnterで終了）: " yn
 if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
-  pnpm --filter @zumen/server user:add test テスト太郎 testpass123 >/dev/null 2>&1 || true
+  $PNPM --filter @zumen/server user:add test テスト太郎 testpass123 >/dev/null 2>&1 || true
   echo
   echo "ログインID: test ／ パスワード: testpass123"
   echo "止めるときは Control + C。"
   echo
   ( sleep 12; open http://127.0.0.1:8787 ) &
-  pnpm start
+  $PNPM start
 fi
 
 echo

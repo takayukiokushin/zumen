@@ -32,9 +32,29 @@ for /f "delims=" %%v in ('node -v') do set "NODEV=%%v"
 echo [1/6] Node.js !NODEV!
 echo [1/6] Node.js !NODEV! >> "%LOG%"
 
-rem ---- pnpm を使えるようにする（無ければ用意する） ----
+rem ---- pnpm の呼び出し方を決める（管理者権限が要らない順に試す） ----
+set "PNPM=pnpm"
 where pnpm >nul 2>nul
 if not errorlevel 1 goto :pnpm_ready
+call corepack pnpm --version >>"%LOG%" 2>&1
+if not errorlevel 1 (
+  rem corepack 経由なら、入れ直さずにそのまま使える
+  set "PNPM=corepack pnpm"
+  goto :pnpm_ready
+)
+call npm install -g pnpm@10.33.0 >>"%LOG%" 2>&1
+where pnpm >nul 2>nul
+if not errorlevel 1 goto :pnpm_ready
+echo.
+echo [×] pnpm を用意できませんでした。
+echo     PowerShell を「管理者として実行」で開き、次の1行を実行してから、
+echo     もう一度このファイルをダブルクリックしてください。
+echo.
+echo         npm install -g pnpm
+echo.
+pause
+exit /b 1
+:pnpm_ready
 echo     pnpm を用意しています…
 call corepack enable >>"%LOG%" 2>&1
 where pnpm >nul 2>nul
@@ -56,25 +76,25 @@ exit /b 1
 echo [2/6] 部品をそろえています（初回は数分かかります）…
 echo. >> "%LOG%"
 echo ---- pnpm install ---- >> "%LOG%"
-call pnpm install >>"%LOG%" 2>&1
+call %PNPM% install >>"%LOG%" 2>&1
 if errorlevel 1 (echo     [×] 失敗 & set "NG=1") else (echo     [○] 完了)
 
 echo [3/6] 型の確認…
 echo. >> "%LOG%"
 echo ---- pnpm typecheck ---- >> "%LOG%"
-call pnpm typecheck >>"%LOG%" 2>&1
+call %PNPM% typecheck >>"%LOG%" 2>&1
 if errorlevel 1 (echo     [×] 失敗 & set "NG=1") else (echo     [○] 完了)
 
 echo [4/6] 図記号と質問の確認…
 echo. >> "%LOG%"
 echo ---- pnpm check ---- >> "%LOG%"
-call pnpm check >>"%LOG%" 2>&1
+call %PNPM% check >>"%LOG%" 2>&1
 if errorlevel 1 (echo     [×] 失敗 & set "NG=1") else (echo     [○] 完了)
 
 echo [5/6] 画面のビルド…
 echo. >> "%LOG%"
 echo ---- pnpm build ---- >> "%LOG%"
-call pnpm build >>"%LOG%" 2>&1
+call %PNPM% build >>"%LOG%" 2>&1
 if errorlevel 1 (echo     [×] 失敗 & set "NG=1") else (echo     [○] 完了)
 
 echo [6/6] 通しの動作確認…
@@ -82,7 +102,7 @@ echo.
 echo. >> "%LOG%"
 echo ---- pnpm selftest ---- >> "%LOG%"
 set "SELFTEST_LOG=%LOG%"
-call pnpm selftest
+call %PNPM% selftest
 if errorlevel 1 set "NG=1"
 set "SELFTEST_LOG="
 
@@ -102,7 +122,7 @@ echo.
 choice /c YN /n /m "確かめる場合は Y、終わる場合は N を押してください: "
 if errorlevel 2 goto :done
 
-call pnpm --filter @zumen/server user:add test テスト太郎 testpass123 >nul 2>nul
+call %PNPM% --filter @zumen/server user:add test テスト太郎 testpass123 >nul 2>nul
 start "単線結線図サーバー" cmd /k "cd /d "%~dp0" && pnpm start"
 echo.
 echo サーバーの起動を待っています…

@@ -17,6 +17,17 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
+# pnpm の呼び出し方を決める（入っていなければ corepack 経由で使う）
+if command -v pnpm >/dev/null 2>&1; then
+  PNPM="pnpm"
+elif command -v corepack >/dev/null 2>&1 && corepack pnpm --version >/dev/null 2>&1; then
+  PNPM="corepack pnpm"
+else
+  echo "先に test-mac.command を一度実行して、部品をそろえてください。"
+  read -r -p "Enterキーで閉じます"
+  exit 1
+fi
+
 mkdir -p "$HOME/Library/LaunchAgents" "$DIR/data"
 
 cat > "$PLIST" <<PLISTEOF
@@ -29,7 +40,7 @@ cat > "$PLIST" <<PLISTEOF
   <array>
     <string>/bin/bash</string>
     <string>-lc</string>
-    <string>cd '$DIR' || exit 1; exec pnpm start</string>
+    <string>cd '$DIR' || exit 1; exec $PNPM start</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
