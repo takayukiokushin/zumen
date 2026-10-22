@@ -52,9 +52,12 @@
 ターミナルを開いて（`command + スペース` →「ターミナル」）、次を貼り付けて Enter。
 
 ```sh
-cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
+cd ~/Desktop/zumen
 rm .env
 ```
+
+> フォルダの名前が違う場合は、`cd ` と打って（うしろに半角スペース）、
+> デスクトップのフォルダをターミナルの窓に**ドラッグ**してから Enter。
 
 これでAPIキーが消えます。
 
@@ -63,7 +66,7 @@ rm .env
 試しに作っただけなら不要。残したいものがあれば：
 
 ```sh
-open ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73/data
+open ~/Desktop/zumen/data
 ```
 
 開いたフォルダを丸ごとコピーして、あとでサーバー役のMacの同じ場所に置く。
@@ -98,9 +101,11 @@ node -v
 2. 緑色の **「Code」** → **「Download ZIP」**
 3. ダウンロードフォルダのZIPを**ダブルクリック**（展開される）
 4. できたフォルダを**デスクトップに移動**
+5. フォルダの名前を **`zumen`** に変える（長い名前が付いているので、短くしておく）
 
 > 中に同じ名前のフォルダがもう一段入っていることがある。
-> `test-mac.command` が見えるところまで進むこと。そこが本体。
+> **`test-mac.command` が見えるところ**まで進むこと。そこが本体。
+> 以降この手順書では、この場所を `~/Desktop/zumen` と書く。
 
 ## 2-3. ダウンロードの警告を外す
 
@@ -303,7 +308,7 @@ http://192.168.11.28:8787
 出ないときは、サーバー役のMacで：
 
 ```sh
-cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
+cd ~/Desktop/zumen
 ./start-server.command
 ```
 
@@ -329,7 +334,7 @@ cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
 ターミナルからでも同じことができる。
 
 ```sh
-cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
+cd ~/Desktop/zumen
 
 pnpm --filter @zumen/server user:add <ID> <名前> <パスワード> <admin|member|sandbox>
 pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
@@ -357,7 +362,7 @@ pnpm --filter @zumen/server backup "/Users/ユーザー名/Dropbox/単線結線�
 ## APIキーを入れ替える
 
 ```sh
-cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
+cd ~/Desktop/zumen
 open -e .env
 ```
 

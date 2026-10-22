@@ -4,6 +4,7 @@
 現地のラフスケッチ（写真・PDF）とヒアリング回答から図面のたたき台を生成し、
 編集してPDF/PNGで出力する。
 
+- **会社のMacのClaude Codeに最初に貼るテキスト**：[docs/start-here.md](docs/start-here.md)
 - **サーバー用Macの設置手順書（初心者向け）**：[docs/server-setup.md](docs/server-setup.md)
 - **困ったとき用の1枚（印刷して手元に置く）**：[docs/first-aid.md](docs/first-aid.md)
 - **導入手順（インストールのしかた）**：[docs/install.md](docs/install.md)

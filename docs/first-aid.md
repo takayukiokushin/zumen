@@ -12,8 +12,7 @@
 
 | もの | 場所 |
 |---|---|
-| アプリのフォルダ | デスクトップの `zumen-claude-single-line-diagram-app-h1mp73`
-（`test-mac.command` が見えるところ） |
+| アプリのフォルダ | デスクトップの **`zumen`**（`test-mac.command` が見えるところ） |
 | APIキー | そのフォルダの **`.env`** |
 | 案件のデータ | そのフォルダの **`data/`** |
 | 記録（ログ） | そのフォルダの **`data/server.log`** |
@@ -26,7 +25,17 @@
 
 ---
 
-## 1. まず試すこと（合言葉）
+## 1. まず試すこと
+
+### いちばん確実：貼るだけのテキスト
+
+`docs/start-here.md` の枠の中を**まるごとコピーして Claude Code に貼る**。
+設置から利用者の登録、非公開化まで、これ1つで最後まで進む。
+フォルダがまだ無くても使える（そこから作ってくれる）。
+
+<https://github.com/takayukiokushin/zumen/blob/claude/single-line-diagram-app-h1mp73/docs/start-here.md>
+
+### フォルダがすでにあるなら：合言葉
 
 アプリのフォルダで Claude Code を開いて、こう言う。
 
@@ -46,7 +55,7 @@
 ターミナルで、アプリのフォルダに入ってから開き直す。
 
 ```sh
-cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
+cd ~/Desktop/zumen
 claude
 ```
 
@@ -149,7 +158,7 @@ GitHubの画面でそのまま読める（ダウンロード不要）。
 ### サーバーを手で動かす・止める
 
 ```sh
-cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73   # アプリのフォルダへ
+cd ~/Desktop/zumen   # アプリのフォルダへ
 ./start-server.command         # 動かす（止めるのは control + C）
 ```
 
