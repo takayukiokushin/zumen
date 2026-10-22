@@ -25,7 +25,9 @@ db.exec(`
     id            TEXT PRIMARY KEY,
     name          TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    created_at    TEXT NOT NULL
+    created_at    TEXT NOT NULL,
+    -- admin（管理用）／ member（標準）／ sandbox（練習用）
+    role          TEXT NOT NULL DEFAULT 'member'
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -47,7 +49,9 @@ db.exec(`
     drawing    TEXT,
     -- 編集中の人（誰も編集していなければ null）
     locked_by  TEXT,
-    locked_at  TEXT
+    locked_at  TEXT,
+    -- 作った人。練習用のアカウントは、自分が作ったものだけを扱う
+    owner      TEXT
   );
 
   CREATE TABLE IF NOT EXISTS project_files (
@@ -75,5 +79,7 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
 
 addColumnIfMissing('projects', 'locked_by', 'TEXT');
 addColumnIfMissing('projects', 'locked_at', 'TEXT');
+addColumnIfMissing('projects', 'owner', 'TEXT');
+addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'member'");
 
 export const now = (): string => new Date().toISOString();

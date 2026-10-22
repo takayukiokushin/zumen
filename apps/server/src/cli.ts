@@ -1,13 +1,14 @@
 // 何よりも先に .env を読み込む
 import './env.ts';
-import { createUser, deleteUser, listUsers, setPassword } from './auth.ts';
+import { createUser, deleteUser, listUsers, ROLE_LABEL, ROLES, setPassword } from './auth.ts';
+import type { Role } from './auth.ts';
 import { backup, sourceDir } from './backup.ts';
 import { checkApiKey, explainApiError } from './apikey.ts';
 
 /**
  * 利用者を追加・変更するための小さなコマンド。
  *
- *   pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>
+ *   pnpm --filter @zumen/server user:add <ID> <名前> <パスワード> [admin|member|sandbox]
  *   pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
  *   pnpm --filter @zumen/server user:remove <ID>
  *   pnpm --filter @zumen/server user:list
@@ -19,11 +20,16 @@ const [command, ...args] = process.argv.slice(2);
 try {
   switch (command) {
     case 'add': {
-      const [id, name, password] = args;
-      if (!id || !name || !password) throw new Error('使い方: add <ID> <名前> <パスワード>');
+      const [id, name, password, role = 'member'] = args;
+      if (!id || !name || !password) {
+        throw new Error('使い方: add <ID> <名前> <パスワード> [種類: admin / member / sandbox]');
+      }
       if (password.length < 8) throw new Error('パスワードは8文字以上にしてください。');
-      createUser(id, name, password);
-      console.log(`利用者を追加しました: ${id}（${name}）`);
+      if (!ROLES.includes(role as Role)) {
+        throw new Error('種類は admin（管理用）／ member（標準）／ sandbox（練習用）のどれかです。');
+      }
+      createUser(id, name, password, role as Role);
+      console.log(`利用者を追加しました: ${id}（${name}／${ROLE_LABEL[role as Role]}）`);
       break;
     }
     case 'passwd': {
@@ -44,7 +50,11 @@ try {
     }
     case 'list': {
       const users = listUsers();
-      console.log(users.length ? users.map((u) => `  ${u.id}\t${u.name}`).join('\n') : '  （まだ誰も登録されていません）');
+      console.log(
+        users.length
+          ? users.map((u) => `  ${ROLE_LABEL[u.role].padEnd(4, '　')}  ${u.id}\t${u.name}`).join('\n')
+          : '  （まだ誰も登録されていません）',
+      );
       break;
     }
     case 'backup': {

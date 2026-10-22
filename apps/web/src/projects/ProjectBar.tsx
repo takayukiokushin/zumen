@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { api } from '../session/api.ts';
+import { api, ROLE_LABEL } from '../session/api.ts';
 import type { ProjectSummary, User } from '../session/api.ts';
+import { UserAdmin } from './UserAdmin.tsx';
 
 interface Props {
   user: User;
@@ -25,6 +26,7 @@ export function ProjectBar(props: Props) {
   const [list, setList] = useState<ProjectSummary[] | null>(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -90,10 +92,25 @@ export function ProjectBar(props: Props) {
       )}
 
       <span className="spacer" />
-      <span className="who">{user.name}</span>
-      <button type="button" onClick={props.onLogout}>
+      {user.role === 'admin' && (
+        <button type="button" onClick={() => setAdminOpen(true)}>
+          利用者の管理
+        </button>
+      )}
+      <span className="who">
+        {user.name}
+        <span className={`role role-${user.role}`}>{ROLE_LABEL[user.role]}</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          if (window.confirm('ログアウトします。よろしいですか。')) props.onLogout();
+        }}
+      >
         ログアウト
       </button>
+
+      {adminOpen && <UserAdmin me={user} onClose={() => setAdminOpen(false)} />}
 
       {open && (
         <div className="picker-menu">

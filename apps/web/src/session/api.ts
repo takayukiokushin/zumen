@@ -3,9 +3,18 @@ import type { Doc } from '../editor/doc.ts';
 
 /** サーバーとのやり取り。認証はCookieなので、どの呼び出しも credentials: 'include' で行う */
 
+export type Role = 'admin' | 'member' | 'sandbox';
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: '管理用',
+  member: '標準',
+  sandbox: '練習用',
+};
+
 export interface User {
   id: string;
   name: string;
+  role: Role;
 }
 
 /** 誰かが編集中であることの印 */
@@ -13,6 +22,19 @@ export interface Lock {
   userId: string;
   userName: string;
   since: string;
+}
+
+/** ログインに失敗したときのエラー。あと何回で止まるか、止まっていればあと何秒かを持つ */
+export class LoginError extends Error {
+  constructor(
+    message: string,
+    readonly remaining?: number,
+    readonly lockMinutes?: number,
+    readonly lockedSec?: number,
+  ) {
+    super(message);
+    this.name = 'LoginError';
+  }
 }
 
 /** 編集中のため断られたときのエラー。誰が編集しているかを持つ */
@@ -53,9 +75,16 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const { error, lock } = json as { error?: string; lock?: Lock };
+    const { error, lock, remaining, lockMinutes, lockedSec } = json as {
+      error?: string;
+      lock?: Lock;
+      remaining?: number;
+      lockMinutes?: number;
+      lockedSec?: number;
+    };
     const message = error ?? '通信に失敗しました。';
     if (res.status === 409) throw new LockedError(message, lock ?? null);
+    if (path === '/api/auth/login') throw new LoginError(message, remaining, lockMinutes, lockedSec);
     throw new Error(message);
   }
   return json as T;
@@ -84,6 +113,20 @@ export const api = {
       body: JSON.stringify({ force }),
     }),
   releaseLock: (id: string) => call<{ ok: true }>(`/api/projects/${id}/lock`, { method: 'DELETE' }),
+
+  /* ---- 利用者の管理（管理用のアカウントのみ） ---- */
+  listUsers: () => call<{ users: User[] }>('/api/admin/users'),
+  addUser: (u: { id: string; name: string; password: string; role: Role }) =>
+    call<{ ok: true }>('/api/admin/users', { method: 'POST', body: JSON.stringify(u) }),
+  setUserPassword: (id: string, password: string) =>
+    call<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    }),
+  unlockUser: (id: string) =>
+    call<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}/unlock`, { method: 'POST' }),
+  removeUser: (id: string) =>
+    call<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   uploadFile: (projectId: string, file: { fileName: string; mediaType: string; data: string }) =>
     call<{ id: string }>(`/api/projects/${projectId}/files`, { method: 'POST', body: JSON.stringify(file) }),

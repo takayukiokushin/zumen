@@ -6,16 +6,19 @@ import { db, now } from './db.ts';
 /** ログインの仕組み。社内数名を想定し、ID＋パスワードとセッションだけの最小構成 */
 
 const COOKIE = 'zumen_session';
-const SESSION_DAYS = 30;
+/** ログインが続く日数。これを過ぎたら入れ直してもらう */
+const SESSION_DAYS = 10;
 
 /* ---------------- 総当たり対策 ---------------- */
 
 /** 何回まちがえたら止めるか */
-const MAX_FAILS = 5;
-/** 止める時間（ミリ秒）。まちがえ続けると伸びていく */
-const LOCK_MS = 60_000;
+export const MAX_FAILS = 10;
+/** 何回目から「あと○回」と知らせるか */
+export const WARN_FROM = 5;
+/** 止める時間（ミリ秒） */
+export const LOCK_MS = 30 * 60_000;
 /** この時間まちがえなければ、失敗の数を忘れる */
-const FORGET_MS = 15 * 60_000;
+const FORGET_MS = 30 * 60_000;
 
 /** IDごとの失敗の記録。再起動すると消えるが、社内数名の運用ではこれで足りる */
 const fails = new Map<string, { count: number; last: number; until: number }>();
@@ -34,16 +37,14 @@ function lockedFor(id: string): number {
   return f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0;
 }
 
-function recordFail(id: string): void {
+/** まちがえた回数を1つ増やし、いま何回目かを返す */
+function recordFail(id: string): number {
   const f = fails.get(id) ?? { count: 0, last: 0, until: 0 };
   f.count += 1;
   f.last = Date.now();
-  if (f.count >= MAX_FAILS) {
-    // 5回目以降は、まちがえるたびに止める時間が倍になる（1分→2分→4分…最大1時間）
-    const step = Math.min(f.count - MAX_FAILS, 6);
-    f.until = Date.now() + LOCK_MS * 2 ** step;
-  }
+  if (f.count >= MAX_FAILS) f.until = Date.now() + LOCK_MS;
   fails.set(id, f);
+  return f.count;
 }
 
 function clearFails(id: string): void {
@@ -55,9 +56,27 @@ export function resetLoginAttempts(): void {
   fails.clear();
 }
 
+/** アカウントの種類 */
+export type Role =
+  /** 管理用。すべての案件を扱え、利用者の管理もできる */
+  | 'admin'
+  /** 標準。案件はみんなで共有する */
+  | 'member'
+  /** 練習用。自分が作ったものだけを扱う */
+  | 'sandbox';
+
+export const ROLES: Role[] = ['admin', 'member', 'sandbox'];
+
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: '管理用',
+  member: '標準',
+  sandbox: '練習用',
+};
+
 export interface User {
   id: string;
   name: string;
+  role: Role;
 }
 
 /** パスワードを保存できる形にする（salt:hash） */
@@ -75,12 +94,13 @@ export function verifyPassword(password: string, stored: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function createUser(id: string, name: string, password: string): void {
-  db.prepare('INSERT INTO users (id, name, password_hash, created_at) VALUES (?, ?, ?, ?)').run(
+export function createUser(id: string, name: string, password: string, role: Role = 'member'): void {
+  db.prepare('INSERT INTO users (id, name, password_hash, created_at, role) VALUES (?, ?, ?, ?, ?)').run(
     id,
     name,
     hashPassword(password),
     now(),
+    role,
   );
 }
 
@@ -97,28 +117,40 @@ export function deleteUser(id: string): boolean {
 }
 
 export function listUsers(): User[] {
-  return db.prepare('SELECT id, name FROM users ORDER BY id').all() as unknown as User[];
+  return db.prepare('SELECT id, name, role FROM users ORDER BY role, id').all() as unknown as User[];
+}
+
+/** 管理用のアカウントの数。最後の1つを消させないために使う */
+export function adminCount(): number {
+  const r = db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'").get() as { n: number };
+  return Number(r.n);
+}
+
+/** 止まっているログインを、管理者が手で解除する */
+export function unlockUser(id: string): void {
+  fails.delete(id);
 }
 
 export type LoginResult =
   | { ok: true; user: User }
-  | { ok: false; reason: 'bad' }
+  /** まちがい。remaining は、あと何回まちがえると止まるか */
+  | { ok: false; reason: 'bad'; remaining: number }
   | { ok: false; reason: 'locked'; retryAfterSec: number };
 
 export function login(c: Context, userId: string, password: string): LoginResult {
   const retryAfterSec = lockedFor(userId);
   if (retryAfterSec > 0) return { ok: false, reason: 'locked', retryAfterSec };
 
-  const row = db.prepare('SELECT id, name, password_hash FROM users WHERE id = ?').get(userId) as
-    | { id: string; name: string; password_hash: string }
+  const row = db.prepare('SELECT id, name, role, password_hash FROM users WHERE id = ?').get(userId) as
+    | { id: string; name: string; role: Role; password_hash: string }
     | undefined;
 
   // 存在しないIDでも同じだけ時間をかける。
   // そうしないと、返ってくる速さで「このIDは実在する」と分かってしまう
   const okPassword = verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
   if (!row || !okPassword) {
-    recordFail(userId);
-    return { ok: false, reason: 'bad' };
+    const count = recordFail(userId);
+    return { ok: false, reason: 'bad', remaining: Math.max(0, MAX_FAILS - count) };
   }
   clearFails(userId);
 
@@ -137,7 +169,7 @@ export function login(c: Context, userId: string, password: string): LoginResult
     maxAge: SESSION_DAYS * 86400,
     secure: process.env.NODE_ENV === 'production',
   });
-  return { ok: true, user: { id: row.id, name: row.name } };
+  return { ok: true, user: { id: row.id, name: row.name, role: row.role } };
 }
 
 export function logout(c: Context): void {
@@ -152,22 +184,31 @@ export function currentUser(c: Context): User | null {
   if (!token) return null;
   const row = db
     .prepare(
-      `SELECT u.id AS id, u.name AS name, s.expires_at AS expires_at
+      `SELECT u.id AS id, u.name AS name, u.role AS role, s.expires_at AS expires_at
        FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`,
     )
-    .get(token) as { id: string; name: string; expires_at: string } | undefined;
+    .get(token) as { id: string; name: string; role: Role; expires_at: string } | undefined;
   if (!row) return null;
   if (new Date(row.expires_at).getTime() < Date.now()) {
     db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
     return null;
   }
-  return { id: row.id, name: row.name };
+  return { id: row.id, name: row.name, role: row.role };
 }
 
 /** ログインしていなければ弾く */
 export async function requireAuth(c: Context, next: Next): Promise<Response | void> {
   const user = currentUser(c);
   if (!user) return c.json({ error: 'ログインしてください。' }, 401);
+  c.set('user', user);
+  await next();
+}
+
+/** 管理用のアカウントだけが通れる入口 */
+export async function requireAdmin(c: Context, next: Next): Promise<Response | void> {
+  const user = currentUser(c);
+  if (!user) return c.json({ error: 'ログインしてください。' }, 401);
+  if (user.role !== 'admin') return c.json({ error: '管理用のアカウントでのみ操作できます。' }, 403);
   c.set('user', user);
   await next();
 }

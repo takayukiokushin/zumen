@@ -112,6 +112,21 @@ try {
   check('1人目を登録できる', add1.code === 0, add1.code === 0 ? '' : add1.out.trim().split('\n').pop() ?? '');
   const add2 = await runNode(['apps/server/src/cli.ts', 'add', 'tester2', '試験花子', 'testpass123'], env);
   await runNode(['apps/server/src/cli.ts', 'add', 'tester3', '試験次郎', 'testpass123'], env);
+  const addAdmin = await runNode(
+    ['apps/server/src/cli.ts', 'add', 'kanri', '管理者', 'testpass123', 'admin'],
+    env,
+  );
+  check('管理用のアカウントを作れる', addAdmin.code === 0);
+  const addSandbox = await runNode(
+    ['apps/server/src/cli.ts', 'add', 'renshu', '練習用', 'testpass123', 'sandbox'],
+    env,
+  );
+  check('練習用のアカウントを作れる', addSandbox.code === 0);
+  const badRole = await runNode(
+    ['apps/server/src/cli.ts', 'add', 'dame', 'だめ', 'testpass123', 'king'],
+    env,
+  );
+  check('知らない種類は断る', badRole.code !== 0);
   check('2人目を登録できる', add2.code === 0, add2.code === 0 ? '' : add2.out.trim().split('\n').pop() ?? '');
   const short = await runNode(['apps/server/src/cli.ts', 'add', 'tester3', '短い', 'abc'], env);
   check('短すぎるパスワードは断る', short.code !== 0);
@@ -140,7 +155,7 @@ try {
   if (!up) throw new Error('サーバーが起動しませんでした');
 
   const health = (await (await fetch(`${base}/api/health`)).json()) as { userCount: number };
-  check('登録した利用者が見えている', health.userCount === 3, `${health.userCount}人`);
+  check('登録した利用者が見えている', health.userCount === 5, `${health.userCount}人`);
 
   /* ---------- 4. 画面の配信 ---------- */
   say('\n■ 画面の配信');
@@ -218,13 +233,23 @@ try {
       body: JSON.stringify({ userId, password }),
     });
   let locked = 0;
-  for (let i = 0; i < 6; i++) {
+  let firstWarn = 0;
+  for (let i = 1; i <= 11; i++) {
     const r = await tryLogin('tester3', `でたらめ${i}`);
-    if (r.status === 429) locked = i + 1;
+    const j = (await r.json()) as { remaining?: number };
+    if (!firstWarn && j.remaining !== undefined) firstWarn = i;
+    if (r.status === 429 && !locked) locked = i;
   }
-  check('まちがえ続けると受け付けなくなる', locked > 0, `${locked}回目で止まった`);
+  check('5回目から「あと何回」を知らせる', firstWarn === 5, `${firstWarn}回目から`);
+  check('10回まちがえると止まる', locked === 11, `${locked}回目の試行で断られた`);
   const rightButLocked = await tryLogin('tester3', 'testpass123');
+  const lockBody = (await rightButLocked.json()) as { lockedSec?: number };
   check('止まっている間は正しいパスワードでも入れない', rightButLocked.status === 429, `${rightButLocked.status}`);
+  check(
+    '止まる時間は30分',
+    Math.abs((lockBody.lockedSec ?? 0) - 1800) < 10,
+    `あと${lockBody.lockedSec}秒`,
+  );
   const other = await tryLogin('tester1', 'testpass123');
   check('止まるのはそのIDだけ（他の人は使える）', other.ok, `${other.status}`);
 
@@ -245,7 +270,7 @@ try {
 
   // 攻撃のあとも利用者の表が壊れていないか
   const afterAttack = (await (await fetch(`${base}/api/health`)).json()) as { userCount: number };
-  check('攻撃のあとも利用者が消えていない', afterAttack.userCount === 3, `${afterAttack.userCount}人`);
+  check('攻撃のあとも利用者が消えていない', afterAttack.userCount === 5, `${afterAttack.userCount}人`);
 
   /* ---------- 6. 案件の保存と呼び出し ---------- */
   say('\n■ 案件の保存と呼び出し');
@@ -299,6 +324,63 @@ try {
   const stillOriginal = (await (await call(a, `/api/projects/${created.id}`)).json()) as { name: string };
   check('横取りで名前が変わっていない', stillOriginal.name === '診断用の案件', stillOriginal.name);
   await call(b, `/api/projects/${created.id}/lock`, { method: 'DELETE' });
+
+  /* ---------- 7b. アカウントの種類ごとの振る舞い ---------- */
+  say('\n■ アカウントの種類');
+  const kanri = await login('kanri');
+  const renshu = await login('renshu');
+
+  // 管理用は、他の人が編集中でも確認なしで奪える
+  await call(a, `/api/projects/${created.id}/lock`, { method: 'POST', body: '{}' });
+  const adminGrab = await call(kanri, `/api/projects/${created.id}/lock`, { method: 'POST', body: '{}' });
+  check('管理用は編集中でも引き継げる', adminGrab.ok, `${adminGrab.status}`);
+  const adminSave = await call(kanri, `/api/projects/${created.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name: '管理者が直した' }),
+  });
+  check('管理用は編集中でも保存できる', adminSave.ok, `${adminSave.status}`);
+  await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ name: '診断用の案件' }) });
+
+  // 練習用は自分のものだけ
+  const renshuList = (await (await call(renshu, '/api/projects')).json()) as { projects: unknown[] };
+  check('練習用には他の人の案件が見えない', renshuList.projects.length === 0, `${renshuList.projects.length}件`);
+  const renshuPeek = await call(renshu, `/api/projects/${created.id}`);
+  check('練習用は他の人の案件を開けない', renshuPeek.status === 404, `${renshuPeek.status}`);
+  const renshuMade = (await (
+    await call(renshu, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '練習' }) })
+  ).json()) as { id: string };
+  const renshuOwn = (await (await call(renshu, '/api/projects')).json()) as { projects: unknown[] };
+  check('練習用は自分の案件を作れて見える', renshuOwn.projects.length === 1, `${renshuOwn.projects.length}件`);
+  const memberPeek = (await (await call(a, '/api/projects')).json()) as { projects: { id: string }[] };
+  check(
+    '練習用の案件は他の人に見えない',
+    !memberPeek.projects.some((x) => x.id === renshuMade.id),
+    `${memberPeek.projects.length}件`,
+  );
+
+  // 利用者の管理は管理用だけ
+  const memberAdmin = await call(a, '/api/admin/users');
+  check('標準は利用者の管理を使えない', memberAdmin.status === 403, `${memberAdmin.status}`);
+  const adminUsers = (await (await call(kanri, '/api/admin/users')).json()) as { users: unknown[] };
+  check('管理用は利用者の一覧を見られる', adminUsers.users.length === 5, `${adminUsers.users.length}人`);
+  const made = await call(kanri, '/api/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({ id: 'tsuika', name: '追加した人', password: 'password123', role: 'member' }),
+  });
+  check('管理用は利用者を追加できる', made.status === 201, `${made.status}`);
+  const shortPw = await call(kanri, '/api/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({ id: 'mijikai', name: '短い', password: 'abc', role: 'member' }),
+  });
+  check('短すぎるパスワードは断る', shortPw.status === 400, `${shortPw.status}`);
+  const removed = await call(kanri, '/api/admin/users/tsuika', { method: 'DELETE' });
+  check('管理用は利用者を消せる', removed.ok, `${removed.status}`);
+  const selfRemove = await call(kanri, '/api/admin/users/kanri', { method: 'DELETE' });
+  check('自分自身は消せない', selfRemove.status === 400, `${selfRemove.status}`);
+  const unlocked = await call(kanri, '/api/admin/users/tester3/unlock', { method: 'POST' });
+  check('管理用は止まったログインを解除できる', unlocked.ok, `${unlocked.status}`);
+  const afterUnlock = await tryLogin('tester3', 'testpass123');
+  check('解除すると、すぐ入れる', afterUnlock.ok, `${afterUnlock.status}`);
 
   /* ---------- 8. 現地写真 ---------- */
   say('\n■ 現地写真');

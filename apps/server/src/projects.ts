@@ -52,6 +52,18 @@ function currentLock(projectId: string): Lock | null {
   return { userId: row.locked_by, userName: row.user_name ?? row.locked_by, since: row.locked_at };
 }
 
+/**
+ * その人がこの案件を扱えるか。
+ * 練習用のアカウントは、自分が作ったものだけを扱う（他の人の案件は見えない）。
+ */
+function canTouch(user: User, projectId: string): boolean {
+  if (user.role !== 'sandbox') return true;
+  const row = db.prepare('SELECT owner FROM projects WHERE id = ?').get(projectId) as
+    | { owner: string | null }
+    | undefined;
+  return row?.owner === user.id;
+}
+
 /** 編集中の印を自分のものにする（すでに自分のものなら時刻だけ更新する） */
 function takeLock(projectId: string, userId: string): void {
   db.prepare('UPDATE projects SET locked_by = ?, locked_at = ? WHERE id = ?').run(userId, now(), projectId);
@@ -62,13 +74,20 @@ projects.use('*', requireAuth);
 
 /** 一覧（中身は返さない） */
 projects.get('/', (c) => {
+  const user = c.get('user');
+  // 練習用のアカウントは自分のものだけ。ほかの人には練習用のものを見せない
+  const where =
+    user.role === 'sandbox'
+      ? 'WHERE p.owner = ?'
+      : "WHERE p.owner IS NULL OR p.owner NOT IN (SELECT id FROM users WHERE role = 'sandbox')";
+  const args = user.role === 'sandbox' ? [user.id] : [];
   const rows = db
     .prepare(
       `SELECT p.id, p.name, p.created_at, p.updated_at, p.updated_by,
               (SELECT COUNT(*) FROM project_files f WHERE f.project_id = p.id) AS file_count
-       FROM projects p ORDER BY p.updated_at DESC`,
+       FROM projects p ${where} ORDER BY p.updated_at DESC`,
     )
-    .all() as { id: string }[];
+    .all(...args) as { id: string }[];
   return c.json({
     projects: rows.map((r) => ({ ...r, lock: currentLock(r.id) })),
   });
@@ -79,8 +98,8 @@ projects.post('/', async (c) => {
   const id = newId();
   const t = now();
   db.prepare(
-    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, (name ?? '').trim() || '無題の案件', t, t, c.get('user').id, '{}');
+    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, owner) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, (name ?? '').trim() || '無題の案件', t, t, c.get('user').id, '{}', c.get('user').id);
   takeLock(id, c.get('user').id);
   return c.json({ id }, 201);
 });
@@ -88,6 +107,7 @@ projects.post('/', async (c) => {
 projects.get('/:id', (c) => {
   const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(c.req.param('id')) as ProjectRow | undefined;
   if (!row) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (!canTouch(c.get('user'), row.id)) return c.json({ error: '案件が見つかりません。' }, 404);
   const files = db
     .prepare('SELECT id, file_name, media_type, size, created_at FROM project_files WHERE project_id = ? ORDER BY created_at')
     .all(row.id);
@@ -109,10 +129,12 @@ projects.put('/:id', async (c) => {
   const exists = db.prepare('SELECT id FROM projects WHERE id = ?').get(id);
   if (!exists) return c.json({ error: '案件が見つかりません。' }, 404);
 
-  // 他の人が編集中なら保存させない（あとから保存したほうで上書きされるのを防ぐ）
+  // 他の人が編集中なら保存させない（あとから保存したほうで上書きされるのを防ぐ）。
+  // ただし管理用のアカウントは、編集中でも上書きできる
   const user = c.get('user');
+  if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。' }, 404);
   const lock = currentLock(id);
-  if (lock && lock.userId !== user.id) {
+  if (lock && lock.userId !== user.id && user.role !== 'admin') {
     return c.json({ error: `${lock.userName}さんが編集中のため保存できません。`, lock }, 409);
   }
   takeLock(id, user.id);
@@ -152,9 +174,11 @@ projects.post('/:id/lock', async (c) => {
     return c.json({ error: '案件が見つかりません。' }, 404);
   }
   const user = c.get('user');
+  if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。' }, 404);
   const { force } = (await c.req.json().catch(() => ({}))) as { force?: boolean };
   const lock = currentLock(id);
-  if (lock && lock.userId !== user.id && !force) {
+  // 管理用のアカウントは、確認なしで編集を引き継げる
+  if (lock && lock.userId !== user.id && !force && user.role !== 'admin') {
     return c.json({ error: `${lock.userName}さんが編集中です。`, lock }, 409);
   }
   takeLock(id, user.id);
@@ -173,8 +197,9 @@ projects.delete('/:id/lock', (c) => {
 
 projects.delete('/:id', (c) => {
   const id = c.req.param('id');
+  if (!canTouch(c.get('user'), id)) return c.json({ error: '案件が見つかりません。' }, 404);
   const held = currentLock(id);
-  if (held && held.userId !== c.get('user').id) {
+  if (held && held.userId !== c.get('user').id && c.get('user').role !== 'admin') {
     return c.json({ error: `${held.userName}さんが編集中のため削除できません。`, lock: held }, 409);
   }
   for (const f of db.prepare('SELECT id FROM project_files WHERE project_id = ?').all(id) as { id: string }[]) {
@@ -197,8 +222,9 @@ projects.post('/:id/files', async (c) => {
   if (!db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId)) {
     return c.json({ error: '案件が見つかりません。' }, 404);
   }
+  if (!canTouch(c.get('user'), projectId)) return c.json({ error: '案件が見つかりません。' }, 404);
   const held = currentLock(projectId);
-  if (held && held.userId !== c.get('user').id) {
+  if (held && held.userId !== c.get('user').id && c.get('user').role !== 'admin') {
     return c.json({ error: `${held.userName}さんが編集中のため追加できません。`, lock: held }, 409);
   }
   const body = (await c.req.json().catch(() => null)) as

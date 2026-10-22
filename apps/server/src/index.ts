@@ -9,9 +9,10 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { analyze } from './analyze.ts';
 import { startAutoBackup } from './backup.ts';
-import { currentUser, login, logout, requireAuth } from './auth.ts';
+import { currentUser, login, logout, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
 import type { User } from './auth.ts';
 import { projects } from './projects.ts';
+import { admin } from './admin.ts';
 import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
 
@@ -35,18 +36,26 @@ app.post('/api/auth/login', async (c) => {
   if (!userId || !password) return c.json({ error: 'IDとパスワードを入力してください。' }, 400);
   const r = login(c, userId, password);
   if (!r.ok && r.reason === 'locked') {
-    const minutes = Math.ceil(r.retryAfterSec / 60);
     return c.json(
       {
-        error:
-          `何度もまちがえたため、このIDはしばらく受け付けません。約${minutes}分後にもう一度お試しください。` +
-          'お急ぎの場合は、サーバーの担当者にパスワードの再設定を頼んでください。',
+        error: '何度もまちがえたため、このIDはしばらくログインできません。',
+        lockedSec: r.retryAfterSec,
       },
       429,
       { 'retry-after': String(r.retryAfterSec) },
     );
   }
-  if (!r.ok) return c.json({ error: 'IDまたはパスワードが違います。' }, 401);
+  if (!r.ok) {
+    // 残りが少なくなってきたら、あと何回で止まるかを知らせる
+    const warn = r.remaining > 0 && r.remaining <= MAX_FAILS - WARN_FROM;
+    return c.json(
+      {
+        error: 'IDまたはパスワードが違います。',
+        ...(warn ? { remaining: r.remaining, lockMinutes: Math.round(LOCK_MS / 60_000) } : {}),
+      },
+      401,
+    );
+  }
   return c.json({ user: r.user });
 });
 
@@ -63,6 +72,7 @@ app.get('/api/auth/me', (c) => {
 /* ---------------- 案件 ---------------- */
 
 app.route('/api/projects', projects);
+app.route('/api/admin', admin);
 
 /* ---------------- 解析 ---------------- */
 

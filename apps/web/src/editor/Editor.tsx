@@ -9,7 +9,7 @@ import { buildSheetSvg, downloadPng, downloadSvg } from './exportSheet.ts';
 import type { Doc, DocSymbol } from './doc.ts';
 import { addSymbol, addText, addWire, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, rotateSymbol, setLabel, snapWireToPorts } from './doc.ts';
 
-/** 元に戻す／やり直すのための履歴 */
+/** 操作を戻す／進めるための履歴 */
 interface History {
   past: Doc[];
   present: Doc;
@@ -108,23 +108,27 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         <div className="tools">
           <button
             type="button"
+            className="btn"
+            title="直前の操作を取り消します"
             onClick={() => setHistory((h) => { const n = undo(h); onDocChange?.(n.present); return n; })}
             disabled={history.past.length === 0}
           >
-            元に戻す
+            操作を戻す
           </button>
           <button
             type="button"
+            className="btn"
+            title="取り消した操作をやり直します"
             onClick={() => setHistory((h) => { const n = redo(h); onDocChange?.(n.present); return n; })}
             disabled={history.future.length === 0}
           >
-            やり直す
+            操作を進める
           </button>
           <span className="sep" />
-          <button type="button" disabled={!selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
+          <button type="button" className="btn" disabled={!selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
             削除
           </button>
-          <button type="button" disabled={!selectedSymbol} onClick={() => selectedSymbol && apply(rotateSymbol(doc, selectedSymbol.id, 90))}>
+          <button type="button" className="btn" disabled={!selectedSymbol} onClick={() => selectedSymbol && apply(rotateSymbol(doc, selectedSymbol.id, 90))}>
             90°回す
           </button>
           <button
