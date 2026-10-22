@@ -339,7 +339,13 @@ try {
     body: JSON.stringify({ name: '管理者が直した' }),
   });
   check('管理用は編集中でも保存できる', adminSave.ok, `${adminSave.status}`);
-  await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ name: '診断用の案件' }) });
+  // 名前と編集中の印を元に戻し、続きの検査に影響させない
+  await call(kanri, `/api/projects/${created.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name: '診断用の案件' }),
+  });
+  await call(kanri, `/api/projects/${created.id}/lock`, { method: 'DELETE' });
+  await call(a, `/api/projects/${created.id}/lock`, { method: 'POST', body: '{}' });
 
   // 練習用は自分のものだけ
   const renshuList = (await (await call(renshu, '/api/projects')).json()) as { projects: unknown[] };
