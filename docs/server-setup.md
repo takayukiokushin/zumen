@@ -151,32 +151,65 @@ BACKUP_DIR=/Users/ユーザー名/Dropbox/単線結線図_控え
 
 ## 2-7. 利用者を登録する
 
-使う人の数だけ作る。
+アカウントには**3つの種類**がある。
+
+| 種類 | 書き方 | できること |
+|---|---|---|
+| **管理用** | `admin` | すべての案件＋**画面から利用者の管理**。編集中の案件も引き継げる |
+| **標準** | `member` | 案件をみんなで共有する。ふだん使うのはこれ |
+| **練習用** | `sandbox` | **自分が作ったものだけ**。他の人には見えず、他の人のも見えない |
+
+### 作る
 
 ```sh
-pnpm --filter @zumen/server user:add oku 奥新 パスワード8文字以上
-pnpm --filter @zumen/server user:add jimu 事務担当 パスワード8文字以上
+pnpm --filter @zumen/server user:add <ID> <名前> <パスワード> <種類>
 ```
 
-- 1つ目（`oku`）がログインID（半角英数）
-- 2つ目（`奥新`）が画面に出る名前
-- 3つ目がパスワード（**8文字以上**）
+最初に作るのは、この3つでよい。
 
-登録済みの一覧：
+```sh
+pnpm --filter @zumen/server user:add kanri 管理者 ここにパスワード admin
+pnpm --filter @zumen/server user:add fujielex 株式会社フジエレックス ここにパスワード member
+pnpm --filter @zumen/server user:add renshu 練習用 ここにパスワード sandbox
+```
+
+- IDは半角の英数字（`.` `_` `-` `@` も使える）
+- パスワードは**8文字以上**。会社名や年号をそのまま使わない
+- 種類を省くと `member`（標準）になる
+
+### 一覧を見る
 
 ```sh
 pnpm --filter @zumen/server user:list
 ```
 
-**要らない利用者は消す：**
+```
+  管理用　  kanri	管理者
+  標準　　  fujielex	株式会社フジエレックス
+  練習用　  renshu	練習用
+```
+
+### 消す
 
 ```sh
-pnpm --filter @zumen/server user:remove test
+pnpm --filter @zumen/server user:remove <ID>
 ```
 
 > ⚠️ 動作確認のときに `test` というIDが作られることがある。
 > **このパスワード（`testpass123`）は手順書に書いてあるので、社内の誰でも知り得る。**
 > `user:list` に `test` が残っていたら、必ず消すこと。
+
+### パスワードを変える
+
+```sh
+pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
+```
+
+### これ以降は画面からできる
+
+**管理用のアカウントでログインすると、右上に「利用者の管理」ボタンが出る。**
+追加・削除・パスワードの再設定・ログインの解除は、そこから行える。
+ターミナルを開く必要があるのは、**一番最初に管理用アカウントを作るときだけ**。
 
 ## 2-8. 自動で立ち上がるようにする
 
@@ -264,25 +297,25 @@ cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
 
 ## 利用者を増やす・パスワードを変える
 
-サーバー役のMacのターミナルで：
+**ふだんは画面から行う。** 管理用のアカウントでログインし、右上の**「利用者の管理」**を押す。
+
+- 追加（種類も選べる）
+- パスワードの再設定
+- **ログインの解除**（まちがえ過ぎて止まっている人を、待たずに入れるようにする）
+- 削除
+
+> 最後の管理用アカウントと、自分自身は消せないようにしてある。
+
+ターミナルからでも同じことができる。
 
 ```sh
 cd ~/Desktop/zumen-claude-single-line-diagram-app-h1mp73
 
-# 追加
-pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>
-
-# パスワードを変える
+pnpm --filter @zumen/server user:add <ID> <名前> <パスワード> <admin|member|sandbox>
 pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
-
-# 消す（辞めた人など）
 pnpm --filter @zumen/server user:remove <ID>
-
-# 一覧
 pnpm --filter @zumen/server user:list
 ```
-
-消した人がログイン中だった場合、その場で使えなくなる。
 
 ## バックアップ
 
@@ -346,6 +379,15 @@ pnpm --filter @zumen/server apikey   # 確認
 > `.env`（APIキー）と `data/`（案件のデータ）だけは、必ず引き継ぐこと。
 
 ---
+
+## ログインの保護
+
+- ログインは**10日**続く。11日目に入れ直してもらう
+- **10回**まちがえると**30分**ログインできなくなる
+- 5回目から「あと○回で止まります。管理者に確認してください」と出る
+- 止まっている間は、画面に残り時間が出る
+- **管理者がパスワードを変えれば、待たずにすぐ入れる**
+  （「利用者の管理」→「パスワードを変える」、または「ログインを解除」）
 
 ## パスワードの決め方
 
