@@ -7,11 +7,15 @@ import { HearingForm } from './HearingForm.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
 import { Analyze } from './analyze/Analyze.tsx';
+import { JobList } from './projects/JobList.tsx';
+import { TabBar } from './TabBar.tsx';
+import type { Tab } from './TabBar.tsx';
+import { UserAdmin } from './projects/UserAdmin.tsx';
+import { SettingsPanel } from './settings/SettingsPanel.tsx';
+import { useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
 import { QUESTIONS } from '@zumen/knowledge';
-
-type Tab = 'analyze' | 'hearing' | 'drawing';
 
 /** 質問定義の既定値。回答そのものとは分けて持ち、「まだ触っていない」が分かるようにする */
 export const DEFAULTS: Answers = Object.fromEntries(
@@ -19,8 +23,16 @@ export const DEFAULTS: Answers = Object.fromEntries(
 );
 
 export function App() {
+  const t = useT();
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [tab, setTab] = useState<Tab>('hearing');
+  /** 案件の一覧を出しているか（㉚）。案件を開いていないときは必ず一覧 */
+  const [showList, setShowList] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
+  /** ㉖㉗ ヒアリング画面の左の目次・右の「いまの構成」を出すか */
+  const [showNav, setShowNav] = useState(true);
+  const [showPreview, setShowPreview] = useState(true);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState('');
@@ -99,6 +111,7 @@ export function App() {
       setDirty(false);
       setSavedAt(null);
       setError(null);
+      setShowList(false);
       try {
         await api.takeLock(id, force);
         setLockedBy(null);
@@ -122,6 +135,7 @@ export function App() {
       setDirty(false);
       setError(null);
       setLockedBy(null);
+      setShowList(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : '案件を作れませんでした。');
     }
@@ -143,41 +157,23 @@ export function App() {
     }
   };
 
-  if (user === undefined) return <p className="booting">読み込み中…</p>;
+  if (user === undefined) return <p className="booting">…</p>;
   if (user === null) return <Login onDone={setUser} />;
 
-  return (
-    <>
-      <div className="tabbar">
-        <strong>単線結線図作成</strong>
-        {(
-          [
-            ['analyze', 'スケッチ読み取り'],
-            ['hearing', '事前ヒアリング'],
-            ['drawing', '図面'],
-          ] as const
-        ).map(([id, label]) => (
-          <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
+  const listing = showList || !projectId;
 
-      <ProjectBar
+  return (
+    <div className="shell">
+      <TabBar
         user={user}
-        projectId={projectId}
-        projectName={projectName}
-        dirty={dirty}
-        saving={saving}
-        savedAt={savedAt}
-        onOpen={(id) => void openProject(id)}
-        onNew={(name) => void newProject(name)}
-        onRename={(name) => {
-          setProjectName(name);
-          setDirty(true);
+        tab={tab}
+        onTab={(id) => {
+          setTab(id);
+          setShowList(false);
         }}
-        onSave={() => void save()}
-        readOnly={readOnly}
+        enabled={projectId !== null && !listing}
+        onSettings={() => setSettingsOpen(true)}
+        onUsers={() => setUsersOpen(true)}
         onLogout={() => {
           void leaveCurrent();
           void api.logout();
@@ -185,13 +181,31 @@ export function App() {
         }}
       />
 
+      <ProjectBar
+        projectId={projectId}
+        projectName={projectName}
+        dirty={dirty}
+        saving={saving}
+        savedAt={savedAt}
+        onList={() => setShowList(true)}
+        onRename={(name) => {
+          setProjectName(name);
+          setDirty(true);
+        }}
+        onSave={() => void save()}
+        readOnly={readOnly}
+      />
+
       {error && <p className="bar-error">{error}</p>}
 
-      {lockedBy && (
+      {lockedBy && !listing && (
         <p className="bar-lock">
-          <b>{lockedBy.userName}さんが編集中です。</b>
-          この案件はいま閲覧のみです（{new Date(lockedBy.since).toLocaleTimeString('ja-JP')} から）。
-          {dirty && <b className="warn">この画面の未保存の変更は保存できません。</b>}
+          <b>
+            {lockedBy.userName}
+            {t('lock.editingNow')}
+          </b>
+          {t('lock.viewOnly')}（{new Date(lockedBy.since).toLocaleTimeString()}）
+          {dirty && <b className="warn">{t('lock.cannotSave')}</b>}
           <button
             type="button"
             onClick={() => {
@@ -209,40 +223,63 @@ export function App() {
               }
             }}
           >
-            編集を引き継ぐ
+            {t('lock.takeover')}
           </button>
         </p>
       )}
 
-      <Shield readOnly={readOnly}>
-      {!projectId ? (
-        <p className="empty-state">
-          上の「案件を選ぶ」から案件を開くか、新しい案件をつくってください。
-        </p>
-      ) : tab === 'drawing' ? (
-        <Editor
-          answers={effective}
-          initialDoc={drawing}
-          onDocChange={(doc) => {
-            setDrawing(doc);
-            setDirty(true);
-          }}
-        />
-      ) : tab === 'analyze' ? (
-        <Analyze
-          answers={effective}
-          projectId={projectId}
-          onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
-          onGoToHearing={() => setTab('hearing')}
-        />
-      ) : (
-        <div className="app">
-          <HearingForm answers={answers} effective={effective} onChange={updateAnswers} />
-          <CompositionPreview answers={effective} />
-        </div>
-      )}
-      </Shield>
-    </>
+      <div className="body">
+        <Shield readOnly={readOnly && !listing}>
+          {listing ? (
+            <JobList
+              meId={user.id}
+              currentId={projectId}
+              onOpen={(id) => void openProject(id)}
+              onNew={(name) => void newProject(name)}
+            />
+          ) : tab === 'drawing' ? (
+            <Editor
+              answers={effective}
+              initialDoc={drawing}
+              onDocChange={(doc) => {
+                setDrawing(doc);
+                setDirty(true);
+              }}
+            />
+          ) : tab === 'analyze' ? (
+            <Analyze
+              answers={effective}
+              projectId={projectId!}
+              onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
+              onGoToHearing={() => setTab('hearing')}
+            />
+          ) : (
+            <div className="hearing-pane">
+              <div className="panel-bar">
+                <button type="button" className="panel-toggle" aria-pressed={!showNav} onClick={() => setShowNav((v) => !v)}>
+                  {showNav ? `◀ ${t('hearing.hideNav')}` : `▶ ${t('hearing.showNav')}`}
+                </button>
+                <button
+                  type="button"
+                  className="panel-toggle"
+                  aria-pressed={!showPreview}
+                  onClick={() => setShowPreview((v) => !v)}
+                >
+                  {showPreview ? `${t('hearing.hidePreview')} ▶` : `◀ ${t('hearing.showPreview')}`}
+                </button>
+              </div>
+              <div className={`app${showNav ? '' : ' no-nav'}${showPreview ? '' : ' no-preview'}`}>
+                <HearingForm answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} />
+                {showPreview && <CompositionPreview answers={effective} />}
+              </div>
+            </div>
+          )}
+        </Shield>
+      </div>
+
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {usersOpen && <UserAdmin me={user} onClose={() => setUsersOpen(false)} />}
+    </div>
   );
 }
 

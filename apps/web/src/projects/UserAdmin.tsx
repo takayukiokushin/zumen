@@ -1,19 +1,15 @@
 import { useEffect, useState } from 'react';
-import { api, ROLE_LABEL } from '../session/api.ts';
+import { api } from '../session/api.ts';
 import type { Role, User } from '../session/api.ts';
+import { useT } from '../i18n/useT.ts';
 
 /**
  * 利用者の管理。管理用のアカウントでログインしたときだけ開ける。
  * ターミナルを使わずに、追加・削除・パスワードの再設定ができる。
  */
 
-const ROLE_HELP: Record<Role, string> = {
-  admin: 'すべての案件を扱えます。利用者の管理もできます',
-  member: '案件をみんなで共有します。ふだん使うのはこれです',
-  sandbox: '自分が作ったものだけを扱います。練習用です',
-};
-
 export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
+  const t = useT();
   const [users, setUsers] = useState<User[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -75,9 +71,9 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
     <div className="modal-back" onClick={onClose}>
       <div className="modal useradmin" onClick={(e) => e.stopPropagation()}>
         <header>
-          <h2>利用者の管理</h2>
+          <h2>{t('users.title')}</h2>
           <button type="button" className="btn" onClick={onClose}>
-            閉じる
+            {t('common.close')}
           </button>
         </header>
 
@@ -85,16 +81,16 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
         {done && <p className="ok-note">{done}</p>}
 
         <section>
-          <h3>いまの利用者</h3>
+          <h3>{t('users.current')}</h3>
           {users === null ? (
-            <p className="hint">読み込み中…</p>
+            <p className="hint">{t('common.loading')}</p>
           ) : (
             <table className="users">
               <thead>
                 <tr>
-                  <th>種類</th>
-                  <th>ID</th>
-                  <th>名前</th>
+                  <th>{t('users.kind')}</th>
+                  <th>{t('users.id')}</th>
+                  <th>{t('users.name')}</th>
                   <th />
                 </tr>
               </thead>
@@ -102,23 +98,23 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
                 {users.map((u) => (
                   <tr key={u.id}>
                     <td>
-                      <span className={`role role-${u.role}`}>{ROLE_LABEL[u.role]}</span>
+                      <span className={`role role-${u.role}`}>{t(`role.${u.role}`)}</span>
                     </td>
                     <td className="mono">{u.id}</td>
                     <td>
                       {u.name}
-                      {u.id === me.id && <span className="you">（あなた）</span>}
+                      {u.id === me.id && <span className="you">{t('users.you')}</span>}
                     </td>
                     <td className="row-actions">
                       <button type="button" className="btn" onClick={() => resetPassword(u)}>
-                        パスワードを変える
+                        {t('users.setPassword')}
                       </button>
                       <button
                         type="button"
                         className="btn"
                         onClick={() => void run(() => api.unlockUser(u.id), `${u.id} のログインを解除しました。`)}
                       >
-                        ログインを解除
+                        {t('users.unlock')}
                       </button>
                       <button
                         type="button"
@@ -126,7 +122,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
                         disabled={u.id === me.id}
                         onClick={() => remove(u)}
                       >
-                        消す
+                        {t('users.remove')}
                       </button>
                     </td>
                   </tr>
@@ -134,16 +130,14 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
               </tbody>
             </table>
           )}
-          <p className="hint">
-            「ログインを解除」は、まちがえ過ぎて止まっている人を、待たずに入れるようにするためのものです。
-          </p>
+          <p className="hint">{t('users.unlockNote')}</p>
         </section>
 
         <section>
-          <h3>利用者を追加する</h3>
+          <h3>{t('users.add')}</h3>
           <form className="add-user" onSubmit={add}>
             <label>
-              ID
+              {t('users.id')}
               <input
                 value={id}
                 onChange={(e) => setId(e.target.value)}
@@ -152,29 +146,29 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
               />
             </label>
             <label>
-              名前
+              {t('users.name')}
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="営業部" />
             </label>
             <label>
-              パスワード
+              {t('users.password')}
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="8文字以上"
+                placeholder={t('users.passwordHint')}
                 autoComplete="new-password"
               />
             </label>
             <label>
-              種類
+              {t('users.kind')}
               <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                <option value="member">標準</option>
-                <option value="sandbox">練習用</option>
-                <option value="admin">管理用</option>
+                <option value="member">{t('role.member')}</option>
+                <option value="sandbox">{t('role.sandbox')}</option>
+                <option value="admin">{t('role.admin')}</option>
               </select>
             </label>
-            <p className="hint role-help">{ROLE_HELP[role]}</p>
+            <p className="hint role-help">{t(`users.help.${role}`)}</p>
             <button type="submit" className="btn primary" disabled={!id || !name || password.length < 8}>
-              追加する
+              {t('users.addButton')}
             </button>
           </form>
         </section>

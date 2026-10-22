@@ -15,6 +15,8 @@ interface Props {
   /** 既定値を下敷きにした、実際に効いている回答 */
   effective: Answers;
   onChange: (next: (prev: Answers) => Answers) => void;
+  /** 左の目次を出すか（㉖） */
+  showNav?: boolean;
 }
 
 /**
@@ -51,7 +53,7 @@ function pick(answers: Answers, index: number): Answers {
   return out;
 }
 
-export function HearingForm({ answers, effective, onChange }: Props) {
+export function HearingForm({ answers, effective, onChange, showNav = true }: Props) {
   const [showAll, setShowAll] = useState(false);
   /** スケッチから読み取れた前提で、質問がどれだけ減るかを確かめる切り替え */
   const [aiAssist, setAiAssist] = useState(false);
@@ -123,6 +125,7 @@ export function HearingForm({ answers, effective, onChange }: Props) {
 
   return (
     <>
+      {showNav && (
       <nav className="nav">
         <h1>事前ヒアリング</h1>
         <p className="sub">
@@ -141,6 +144,7 @@ export function HearingForm({ answers, effective, onChange }: Props) {
           </a>
         ))}
       </nav>
+      )}
 
       <main className="form">
         <div className="form-head">

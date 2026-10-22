@@ -1,10 +1,6 @@
-import { useEffect, useState } from 'react';
-import { api, ROLE_LABEL } from '../session/api.ts';
-import type { ProjectSummary, User } from '../session/api.ts';
-import { UserAdmin } from './UserAdmin.tsx';
+import { useT } from '../i18n/useT.ts';
 
 interface Props {
-  user: User;
   projectId: string | null;
   projectName: string;
   /** 未保存の変更があるか */
@@ -13,147 +9,62 @@ interface Props {
   savedAt: string | null;
   /** 他の人が編集中で、閲覧のみになっているか */
   readOnly: boolean;
-  onOpen: (id: string) => void;
-  onNew: (name: string) => void;
+  /** 案件の一覧へ戻る */
+  onList: () => void;
   onRename: (name: string) => void;
   onSave: () => void;
-  onLogout: () => void;
 }
 
-/** 案件の切り替え・保存と、ログイン状態を出す帯 */
-export function ProjectBar(props: Props) {
-  const { user, projectId, projectName, dirty, saving, savedAt, readOnly } = props;
-  const [list, setList] = useState<ProjectSummary[] | null>(null);
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [adminOpen, setAdminOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    api
-      .listProjects()
-      .then((r) => setList(r.projects))
-      .catch((e) => setError(e instanceof Error ? e.message : '案件を読み込めませんでした。'));
-  }, [open, savedAt]);
-
-  const newProject = () => {
-    const name = window.prompt('案件の名前を入力してください', '新しい案件');
-    if (name !== null) props.onNew(name);
-    setOpen(false);
-  };
-
-  const remove = async (p: ProjectSummary) => {
-    if (!window.confirm(`「${p.name}」を削除します。元に戻せません。よろしいですか。`)) return;
-    try {
-      await api.deleteProject(p.id);
-      setList((prev) => prev?.filter((x) => x.id !== p.id) ?? null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '削除できませんでした。');
-    }
-  };
-
+/** 開いている案件の名前・保存の帯。利用者まわりは上のタブ帯に移した（㉙） */
+export function ProjectBar({
+  projectId,
+  projectName,
+  dirty,
+  saving,
+  savedAt,
+  readOnly,
+  onList,
+  onRename,
+  onSave,
+}: Props) {
+  const t = useT();
   return (
     <div className="projectbar">
-      <button type="button" className="picker" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        {projectId ? projectName : '案件を選ぶ'}
-        <span className="caret">▾</span>
+      <button type="button" className="picker" onClick={onList}>
+        ☰ {t('project.list')}
       </button>
 
       {projectId && (
         <>
+          <b className="jobname">{projectName}</b>
           <button
             type="button"
             disabled={readOnly}
             onClick={() => {
-              const name = window.prompt('案件の名前', projectName);
-              if (name) props.onRename(name);
+              const name = window.prompt(t('project.name'), projectName);
+              if (name) onRename(name);
             }}
           >
-            名前を変える
+            {t('project.rename')}
           </button>
           <button
             type="button"
             className={dirty ? 'need-save' : ''}
-            onClick={props.onSave}
+            onClick={onSave}
             disabled={saving || !dirty || readOnly}
           >
-            {saving ? '保存中…' : dirty ? '保存する' : '保存済み'}
+            {saving ? t('project.saving') : dirty ? t('project.save') : t('project.saved')}
           </button>
           <span className="saved">
             {readOnly
-              ? '閲覧のみ'
+              ? t('project.readonly')
               : dirty
-                ? '未保存の変更があります'
+                ? t('project.hasUnsaved')
                 : savedAt
-                  ? `${new Date(savedAt).toLocaleTimeString('ja-JP')} に保存`
+                  ? `${new Date(savedAt).toLocaleTimeString()} ${t('project.savedAt')}`
                   : ''}
           </span>
         </>
-      )}
-
-      <span className="spacer" />
-      {user.role === 'admin' && (
-        <button type="button" onClick={() => setAdminOpen(true)}>
-          利用者の管理
-        </button>
-      )}
-      <span className="who">
-        {user.name}
-        <span className={`role role-${user.role}`}>{ROLE_LABEL[user.role]}</span>
-      </span>
-      <button
-        type="button"
-        onClick={() => {
-          if (window.confirm('ログアウトします。よろしいですか。')) props.onLogout();
-        }}
-      >
-        ログアウト
-      </button>
-
-      {adminOpen && <UserAdmin me={user} onClose={() => setAdminOpen(false)} />}
-
-      {open && (
-        <div className="picker-menu">
-          <button type="button" className="new" onClick={newProject}>
-            ＋ 新しい案件をつくる
-          </button>
-          {error && <p className="err">{error}</p>}
-          {list === null ? (
-            <p className="hint">読み込み中…</p>
-          ) : list.length === 0 ? (
-            <p className="hint">まだ案件がありません。</p>
-          ) : (
-            <ul>
-              {list.map((p) => (
-                <li key={p.id} className={p.id === projectId ? 'current' : ''}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      props.onOpen(p.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <b>{p.name}</b>
-                    <span>
-                      {new Date(p.updated_at).toLocaleString('ja-JP')}
-                      {p.file_count > 0 && ` ・写真${p.file_count}枚`}
-                      {p.lock && <b className="editing">　{p.lock.userName}さんが編集中</b>}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="del"
-                    disabled={p.lock !== null}
-                    onClick={() => void remove(p)}
-                    aria-label={`${p.name}を削除`}
-                  >
-                    削除
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
       )}
     </div>
   );

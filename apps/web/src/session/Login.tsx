@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, LoginError } from './api.ts';
+import { useT } from '../i18n/useT.ts';
 import type { User } from './api.ts';
 
 /** 残り時間を「29分40秒」の形にする */
@@ -11,6 +12,7 @@ function formatLeft(sec: number): string {
 
 /** ログイン画面。社内数名での利用を想定した最小構成 */
 export function Login({ onDone }: { onDone: (user: User) => void }) {
+  const t = useT();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -61,10 +63,10 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
   return (
     <div className="login">
       <form className="panel" onSubmit={submit}>
-        <h1>単線結線図作成</h1>
-        <p className="hint">ID とパスワードを入力してください。</p>
+        <h1>{t('app.name')}</h1>
+        <p className="hint">{t('login.hint')}</p>
 
-        <label htmlFor="login-id">ID</label>
+        <label htmlFor="login-id">{t('login.id')}</label>
         <input
           id="login-id"
           value={userId}
@@ -73,7 +75,7 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
           onChange={(e) => setUserId(e.target.value)}
         />
 
-        <label htmlFor="login-pw">パスワード</label>
+        <label htmlFor="login-pw">{t('login.password')}</label>
         <div className="pw-row">
           <input
             id="login-pw"
@@ -86,9 +88,9 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
           <button
             type="button"
             className="pw-eye"
-            aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示する'}
+            aria-label={showPassword ? t('login.hide') : t('login.show')}
             aria-pressed={showPassword}
-            title={showPassword ? 'パスワードを隠す' : 'パスワードを表示する'}
+            title={showPassword ? t('login.hide') : t('login.show')}
             onClick={() => setShowPassword((v) => !v)}
           >
             {showPassword ? '🙈' : '👁'}
@@ -118,7 +120,7 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
         )}
 
         <button type="submit" className="primary" disabled={busy || locked || !userId || !password}>
-          {busy ? 'ログイン中…' : 'ログイン'}
+          {busy ? t('login.busy') : t('login.submit')}
         </button>
       </form>
     </div>
