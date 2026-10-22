@@ -4,6 +4,7 @@
 現地のラフスケッチ（写真・PDF）とヒアリング回答から図面のたたき台を生成し、
 編集してPDF/PNGで出力する。
 
+- **サーバー用Macの設置手順書（初心者向け）**：[docs/server-setup.md](docs/server-setup.md)
 - **導入手順（インストールのしかた）**：[docs/install.md](docs/install.md)
 - **APIキーの設定手順（管理者・事務担当向け）**：[docs/apikey-setup.md](docs/apikey-setup.md)
 - 仕様書：[docs/spec.md](docs/spec.md)
