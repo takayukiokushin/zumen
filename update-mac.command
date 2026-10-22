@@ -14,6 +14,8 @@ LABEL="jp.co.fuji-elex.zumen"
 ZIP_URL="https://github.com/takayukiokushin/zumen/archive/refs/heads/claude/single-line-diagram-app-h1mp73.zip"
 
 say() { printf '%s\n' "$1"; }
+# ファイルの日付。macOS（BSD）とそれ以外の両方に合わせる
+when_of() { stat -f '%Sm' -t '%Y/%m/%d %H:%M' "$1" 2>/dev/null || date -r "$1" '+%Y/%m/%d %H:%M' 2>/dev/null; }
 die() { say ""; say "[×] $1"; say ""; read -r -p "Enterキーで閉じます"; exit 1; }
 
 say "単線結線図作成：アプリを新しくします"
@@ -38,11 +40,35 @@ say "[1/6] いまの設定とデータを控えました"
 say "      $SAFE"
 
 # ---- 2. 新しい中身を取ってくる ----
-say "[2/6] 新しい中身をダウンロードしています…"
+say "[2/6] 新しい中身を取ってきています…"
 TMP="$(mktemp -d)" || die "作業用の場所を作れませんでした。"
 trap 'rm -rf "$TMP"' EXIT
-curl -fL --retry 3 --retry-delay 2 -o "$TMP/zumen.zip" "$ZIP_URL" \
-  || die "ダウンロードできませんでした。インターネットにつながっているか確かめてください。"
+
+GOT=""
+# まず直接ダウンロードしてみる（リポジトリが「公開」のときはこれで通る）
+if curl -fsL --retry 2 --retry-delay 2 -o "$TMP/zumen.zip" "$ZIP_URL" 2>/dev/null; then
+  GOT="インターネットから取ってきた中身"
+else
+  # リポジトリを「非公開」にしてあると、ここは通らない。
+  # そのときは、ブラウザで落としてもらったZIPを「ダウンロード」フォルダから探す
+  ZIP_LOCAL="$(ls -t "$HOME/Downloads"/zumen-*.zip 2>/dev/null | head -1)"
+  if [ -n "$ZIP_LOCAL" ]; then
+    cp "$ZIP_LOCAL" "$TMP/zumen.zip" || die "ZIPを読めませんでした。"
+    GOT="ダウンロードフォルダの $(basename "$ZIP_LOCAL")（$(when_of "$ZIP_LOCAL")）"
+  fi
+fi
+[ -n "$GOT" ] || die "新しい中身を取ってこられませんでした。
+
+    リポジトリを「非公開」にしている場合は、先にブラウザで落としてください。
+
+      1. GitHubにログインした状態で
+         https://github.com/takayukiokushin/zumen を開く
+      2. 緑色の「Code」→「Download ZIP」
+      3. 落とし終わったら、このファイルをもう一度ダブルクリック
+
+    （ZIPはダウンロードフォルダに置いたままで構いません。
+      古いZIPが残っていると間違えるので、先に捨てておくこと）"
+say "      $GOT を使います"
 unzip -q "$TMP/zumen.zip" -d "$TMP/out" || die "ZIPを開けませんでした。"
 
 # 展開すると zumen-なんとか/ という1段深いフォルダになる

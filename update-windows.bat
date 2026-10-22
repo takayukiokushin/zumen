@@ -29,15 +29,35 @@ echo [1/5] いまの設定とデータを控えました
 echo       %SAFE%
 
 rem ---- 2. 新しい中身を取ってくる ----
-echo [2/5] 新しい中身をダウンロードしています...
+rem   まず直接ダウンロードしてみる（リポジトリが「公開」のとき）。
+rem   「非公開」にしてあると通らないので、そのときはブラウザで落としてもらった
+rem   ダウンロードフォルダの zumen-*.zip を使う。
+echo [2/5] 新しい中身を取ってきています...
 set "TMP_DIR=%TEMP%\zumen-update-%RANDOM%"
 mkdir "%TMP_DIR%" >nul 2>&1
 powershell -NoProfile -Command ^
-  "$ErrorActionPreference='Stop';" ^
-  "Invoke-WebRequest -Uri '%ZIP_URL%' -OutFile '%TMP_DIR%\zumen.zip';" ^
+  "try { Invoke-WebRequest -Uri '%ZIP_URL%' -OutFile '%TMP_DIR%\zumen.zip' -ErrorAction Stop }" ^
+  "catch {" ^
+  "  $z = Get-ChildItem \"$env:USERPROFILE\Downloads\zumen-*.zip\" -ErrorAction SilentlyContinue |" ^
+  "       Sort-Object LastWriteTime -Descending | Select-Object -First 1;" ^
+  "  if ($z) { Write-Host ('      ダウンロードフォルダの ' + $z.Name + ' を使います');" ^
+  "            Copy-Item $z.FullName '%TMP_DIR%\zumen.zip' }" ^
+  "  else { exit 1 } };" ^
   "Expand-Archive -Path '%TMP_DIR%\zumen.zip' -DestinationPath '%TMP_DIR%\out' -Force"
 if errorlevel 1 (
-  echo [x] ダウンロードできませんでした。インターネットにつながっているか確かめてください。
+  echo.
+  echo [x] 新しい中身を取ってこられませんでした。
+  echo.
+  echo     リポジトリを「非公開」にしている場合は、先にブラウザで落としてください。
+  echo.
+  echo       1. GitHubにログインした状態で
+  echo          https://github.com/takayukiokushin/zumen を開く
+  echo       2. 緑色の「Code」→「Download ZIP」
+  echo       3. 落とし終わったら、このファイルをもう一度ダブルクリック
+  echo.
+  echo     （ZIPはダウンロードフォルダに置いたままで構いません。
+  echo       古いZIPが残っていると間違えるので、先に捨てておくこと）
+  echo.
   pause
   exit /b 1
 )
