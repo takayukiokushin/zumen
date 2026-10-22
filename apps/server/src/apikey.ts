@@ -82,6 +82,19 @@ export function explainApiError(e: unknown): string {
     ].join('\n');
   }
   if (e instanceof Anthropic.APIError) {
+    // 残高切れは 400 で返ってくる。利用券の問題ではないので、分けて案内する
+    if (/credit balance is too low/i.test(e.message)) {
+      return [
+        '利用券は正しいのですが、アカウントの残高がありません。',
+        '  Claude APIは前払いの残高から引かれる仕組みです。',
+        '  カードを登録しただけでは使えず、残高を買い足す必要があります。',
+        '',
+        '  管理者に次をお願いしてください（5分ほど）。',
+        '    1. https://platform.claude.com/settings/billing を開く',
+        '    2. 「Plans & Billing」で残高（クレジット）を購入する（最低額でよい）',
+        '    3. 必要なら「自動チャージ」を入れておくと、切れて止まることがなくなる',
+      ].join('\n');
+    }
     return `サーバーから断られました（${e.status}）。\n  ${e.message}`;
   }
   return e instanceof Error ? e.message : String(e);

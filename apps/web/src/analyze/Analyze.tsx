@@ -137,6 +137,7 @@ export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
               置き方：サーバーのフォルダにある <code>.env.example</code> を <code>.env</code> という名前で
               コピーし、<code>ANTHROPIC_API_KEY=</code> の後ろに利用券の文字列を書いて、サーバーを
               起動し直します。利用券は <code>https://platform.claude.com/</code> で発行します。
+              <b>残高（クレジット）の購入も必要です</b>（カードの登録だけでは使えません）。
             </p>
             <p className="how">
               <b>利用券が無くても、ほかの機能はすべて使えます。</b>
