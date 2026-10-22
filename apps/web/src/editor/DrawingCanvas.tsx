@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import type { Doc, DocItem } from './doc.ts';
-import { docBounds, itemBounds } from './doc.ts';
+import { assistMove, assistWireEnd, docBounds, itemBounds, moveItem, moveWireEnd } from './doc.ts';
 
 interface Props {
   doc: Doc;
@@ -18,15 +18,34 @@ interface Props {
   zoom: number;
 }
 
+/** 動かしている最中の状態。dx・dy は吸い寄せたあとの値 */
+interface Drag {
+  id: string;
+  end?: 1 | 2;
+  dx: number;
+  dy: number;
+  /** 揃った位置に引く目安の線 */
+  guideX?: number;
+  guideY?: number;
+}
+
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
 export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [drag, setDrag] = useState<{ id: string; end?: 1 | 2; dx: number; dy: number } | null>(null);
+  const [drag, setDrag] = useState<Drag | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
   /** 線を引いている途中の始点と、いまのカーソル位置 */
   const [wireStart, setWireStart] = useState<{ x: number; y: number } | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
+  // 表示用の図面。動かしている最中も、結線をつないだまま見せる
+  const view = !drag
+    ? doc
+    : drag.end
+      ? moveWireEnd(doc, drag.id, drag.end, drag.dx, drag.dy)
+      : moveItem(doc, drag.id, drag.dx, drag.dy);
+
+  // 見える範囲は動かす前の図面から決める。動かすたびに画面が揺れないように
   const b = docBounds(doc);
   const pad = 40;
   const vb = { x: b.x0 - pad, y: b.y0 - pad, w: b.x1 - b.x0 + pad * 2, h: b.y1 - b.y0 + pad * 2 };
@@ -55,11 +74,16 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
     if (mode === 'wire' && wireStart) setCursor(toDrawing(e));
     if (!drag || !start.current) return;
     const p = toDrawing(e);
-    setDrag({ ...drag, dx: p.x - start.current.x, dy: p.y - start.current.y });
+    const rawDx = p.x - start.current.x;
+    const rawDy = p.y - start.current.y;
+    const a = drag.end
+      ? assistWireEnd(doc, drag.id, drag.end, rawDx, rawDy)
+      : assistMove(doc, drag.id, rawDx, rawDy);
+    setDrag({ id: drag.id, end: drag.end, dx: a.dx, dy: a.dy, guideX: a.guideX, guideY: a.guideY });
   };
 
   const onPointerUp = () => {
-    if (drag && (Math.abs(drag.dx) > 0.5 || Math.abs(drag.dy) > 0.5)) {
+    if (drag && (Math.abs(drag.dx) > 0.01 || Math.abs(drag.dy) > 0.01)) {
       if (drag.end) onWireEnd(drag.id, drag.end, drag.dx, drag.dy);
       else onMoveEnd(drag.id, drag.dx, drag.dy);
     }
@@ -84,9 +108,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
     }
   };
 
-  const offset = (id: string) => (drag && drag.id === id && !drag.end ? { x: drag.dx, y: drag.dy } : { x: 0, y: 0 });
-
-  const selectedWire = doc.items.find((i) => i.id === selectedId && i.kind === 'wire');
+  const selectedWire = view.items.find((i) => i.id === selectedId && i.kind === 'wire');
 
   return (
     <svg
@@ -102,12 +124,10 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
       aria-label="図面"
     >
       <g stroke="#000" fill="none" strokeLinecap="round" strokeLinejoin="round" color="#000">
-        {doc.items.map((it) => {
-          const o = offset(it.id);
+        {view.items.map((it) => {
           const selected = it.id === selectedId;
           const common = {
             key: it.id,
-            transform: `translate(${o.x} ${o.y})`,
             onPointerDown: (e: React.PointerEvent) => onPointerDown(e, it),
             className: `item${selected ? ' selected' : ''}`,
           };
@@ -182,28 +202,31 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
           );
         })}
 
+        {/* 動かしている最中、まっすぐ揃った位置に目安の線を出す */}
+        {drag?.guideX !== undefined && (
+          <line className="guide" x1={drag.guideX} y1={vb.y} x2={drag.guideX} y2={vb.y + vb.h} pointerEvents="none" />
+        )}
+        {drag?.guideY !== undefined && (
+          <line className="guide" x1={vb.x} y1={drag.guideY} x2={vb.x + vb.w} y2={drag.guideY} pointerEvents="none" />
+        )}
+
         {selectedWire && selectedWire.kind === 'wire' && mode === 'select' && (
           <>
-            {([1, 2] as const).map((end) => {
-              const hx = end === 1 ? selectedWire.x1 : selectedWire.x2;
-              const hy = end === 1 ? selectedWire.y1 : selectedWire.y2;
-              const d = drag && drag.id === selectedWire.id && drag.end === end ? drag : null;
-              return (
-                <circle
-                  key={end}
-                  className="handle"
-                  cx={hx + (d?.dx ?? 0)}
-                  cy={hy + (d?.dy ?? 0)}
-                  r={4}
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    (e.target as Element).setPointerCapture?.(e.pointerId);
-                    start.current = toDrawing(e);
-                    setDrag({ id: selectedWire.id, end, dx: 0, dy: 0 });
-                  }}
-                />
-              );
-            })}
+            {([1, 2] as const).map((end) => (
+              <circle
+                key={end}
+                className="handle"
+                cx={end === 1 ? selectedWire.x1 : selectedWire.x2}
+                cy={end === 1 ? selectedWire.y1 : selectedWire.y2}
+                r={4}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  (e.target as Element).setPointerCapture?.(e.pointerId);
+                  start.current = toDrawing(e);
+                  setDrag({ id: selectedWire.id, end, dx: 0, dy: 0 });
+                }}
+              />
+            ))}
           </>
         )}
 
@@ -220,15 +243,14 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
 
         {selectedId &&
           (() => {
-            const it = doc.items.find((i) => i.id === selectedId);
+            const it = view.items.find((i) => i.id === selectedId);
             if (!it) return null;
             const bb = itemBounds(it);
-            const o = offset(it.id);
             return (
               <rect
                 className="selection"
-                x={bb.x0 - 4 + o.x}
-                y={bb.y0 - 4 + o.y}
+                x={bb.x0 - 4}
+                y={bb.y0 - 4}
                 width={bb.x1 - bb.x0 + 8}
                 height={bb.y1 - bb.y0 + 8}
                 fill="none"

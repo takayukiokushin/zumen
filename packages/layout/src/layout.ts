@@ -99,9 +99,9 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   /** 直前までの分岐が占めている下端（文字を含む）。次の分岐をここより下に出す */
   let branchBottom = -Infinity;
 
-  /** 180°回したときの座標 */
+  /** 回したあとの接続点の座標（記号の左上からの相対） */
   const flip = (def: SymbolDef, x: number, yy: number, rotate: number): [number, number] =>
-    rotate === 180 ? [def.box.w - x, def.box.h - yy] : [x, yy];
+    rotatedPort(def.box, x, yy, rotate);
 
   const add = (
     item: PlacedItem,
@@ -295,8 +295,8 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     const entry = portOf(def, 'in', dir > 0 ? 'l' : 'r') ?? def.ports[0]!;
     // 縦向きの記号（PFなど）は90°回して横に出す
     const rotate = entry.dir === 'up' && def.box.h > def.box.w ? -90 : 0;
-    const w = rotate ? def.box.h : def.box.w;
-    const [erx, ery] = rotate === -90 ? [entry.y, def.box.h - entry.x] : [entry.x, entry.y];
+    const rb = rotatedBox(def.box, rotate);
+    const [erx, ery] = rotatedPort(def.box, entry.x, entry.y, rotate);
 
     // 直前も同じ向きの分岐で、かつ同じ1台ぶんなら、その出口から横につなぐ。
     // （コンデンサ1台目のリアクトルとコンデンサは1本の分岐、2台目は別の分岐になる）
@@ -306,12 +306,11 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     let x: number;
     if (chain) {
       const prevExit = portOf(chain.def, 'sec', 'out', 'r') ?? chain.def.ports[chain.def.ports.length - 1]!;
-      const pr = chain.sym.rotate === -90
-        ? [prevExit.y, chain.def.box.h - prevExit.x]
-        : [prevExit.x, prevExit.y];
+      const pr = rotatedPort(chain.def.box, prevExit.x, prevExit.y, chain.sym.rotate);
       const px = chain.sym.x + pr[0]!;
       tapY = chain.sym.y + pr[1]!;
-      x = dir > 0 ? px + 14 : px - 14 - w;
+      // 記号は箱の中心まわりに回るので、見えている外形の端に合わせて置く
+      x = dir > 0 ? px + 14 - rb.dx : px - 14 - rb.dx - rb.w;
       wires.push({ x1: px, y1: tapY, x2: dir > 0 ? x + erx : x + erx, y2: tapY });
     } else {
       // 直前の分岐の文字と重ならない位置まで下げる
@@ -320,7 +319,7 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       spineY = tapY;
       started = true;
       pendingDashed = false;
-      x = dir > 0 ? BRANCH_OFFSET : -BRANCH_OFFSET - w;
+      x = dir > 0 ? BRANCH_OFFSET - rb.dx : -BRANCH_OFFSET - rb.dx - rb.w;
       wires.push({ x1: SPINE, y1: tapY, x2: x + erx, y2: tapY });
     }
     const sym = add(item, def, x, tapY - ery, rotate, dir > 0 ? 'right' : 'left');
@@ -329,10 +328,10 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       const merged = [...chain.sym.label, ...sym.label];
       chain.sym.label = [];
       sym.label = merged;
-      sym.labelAt = { x: sym.x, y: sym.y + (rotate ? def.box.w : def.box.h) + 12, anchor: 'start' };
+      sym.labelAt = { x: sym.x + rb.dx, y: sym.y + rb.dy + rb.h + 12, anchor: 'start' };
     }
     // 分岐の記号の下端まで主回路を空けて、次の機器と重ならないようにする
-    const bottom = sym.y + (rotate ? def.box.w : def.box.h) + (sym.label.length ? sym.label.length * 10 + 12 : 0);
+    const bottom = sym.y + rb.dy + rb.h + (sym.label.length ? sym.label.length * 10 + 12 : 0);
     branchBottom = Math.max(branchBottom, bottom);
     pendingGap = Math.max(GAP, bottom - spineY + 10);
     lastBranch = { role: item.role, dir, sym, def, unit: item.unit };
@@ -403,7 +402,8 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   };
   for (const s of symbols) {
     const def = getSymbol(s.symbolId);
-    ext(s.x, s.y, s.x + def.box.w, s.y + def.box.h);
+    const rb = rotatedBox(def.box, s.rotate);
+    ext(s.x + rb.dx, s.y + rb.dy, s.x + rb.dx + rb.w, s.y + rb.dy + rb.h);
     if (s.label.length) {
       const w = Math.max(...s.label.map((l) => l.length)) * 6;
       ext(
@@ -447,6 +447,46 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
 }
 
 /** 図面の格子の刻み。移動・伸縮はこの単位に吸着させる */
+/**
+ * 記号を回したあとの、接続点の位置（記号の左上からの相対）。
+ * 画面に描くときは箱の中心まわりに回しているので、計算もそこに揃える。
+ * ここがずれると、線の端が接続点から外れて印刷で目立つ。
+ * 90度の倍数は三角関数を使わずに出して、誤差を残さない。
+ */
+export function rotatedPort(
+  box: { w: number; h: number },
+  x: number,
+  y: number,
+  deg: number,
+): [number, number] {
+  const cx = box.w / 2;
+  const cy = box.h / 2;
+  const dx = x - cx;
+  const dy = y - cy;
+  const d = ((deg % 360) + 360) % 360;
+  if (d === 0) return [x, y];
+  if (d === 90) return [cx - dy, cy + dx];
+  if (d === 180) return [cx - dx, cy - dy];
+  if (d === 270) return [cx + dy, cy - dx];
+  const rad = (d * Math.PI) / 180;
+  return [cx + dx * Math.cos(rad) - dy * Math.sin(rad), cy + dx * Math.sin(rad) + dy * Math.cos(rad)];
+}
+
+/**
+ * 記号を回したあとの外形。dx・dy は記号の左上から見た、見えている左上のずれ。
+ * 縦長の記号を90°回すと、箱の中心はそのままで左右にはみ出す。
+ */
+export function rotatedBox(
+  box: { w: number; h: number },
+  deg: number,
+): { dx: number; dy: number; w: number; h: number } {
+  const d = ((deg % 360) + 360) % 360;
+  if (d === 90 || d === 270) {
+    return { dx: (box.w - box.h) / 2, dy: (box.h - box.w) / 2, w: box.h, h: box.w };
+  }
+  return { dx: 0, dy: 0, w: box.w, h: box.h };
+}
+
 export const GRID = 2;
 
 /** 格子に吸着させる */

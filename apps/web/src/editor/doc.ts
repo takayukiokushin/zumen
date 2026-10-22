@@ -1,10 +1,14 @@
 import { getSymbol } from '@zumen/symbols';
-import { snap, straighten } from '@zumen/layout';
+import { rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout } from '@zumen/layout';
 
 /**
  * 編集中の図面。自動レイアウトの結果をここに取り込んでから、自由に動かせるようにする。
  * 記号・線・文字をそれぞれ独立した要素として持つので、記号を差し替えても結線は残る。
+ *
+ * 結線は「だいたい近い場所」ではなく、つなぐ相手（記号とその接続点）で覚える。
+ * こうしておくと、記号を動かしても差し替えても線の端が必ず接続点の真上に来るので、
+ * 画面でも印刷でもずれない。
  */
 
 export interface DocSymbol {
@@ -20,6 +24,14 @@ export interface DocSymbol {
   labelAnchor: 'start' | 'middle' | 'end';
 }
 
+/** 線の端がつながっている先。位置ではなく相手で覚える */
+export interface Anchor {
+  /** 記号の id */
+  item: string;
+  /** その記号の接続点の id */
+  port: string;
+}
+
 export interface DocWire {
   kind: 'wire';
   id: string;
@@ -28,6 +40,10 @@ export interface DocWire {
   x2: number;
   y2: number;
   dashed?: boolean;
+  /** 始点のつなぎ先。つないでいなければ無し */
+  at1?: Anchor;
+  /** 終点のつなぎ先 */
+  at2?: Anchor;
 }
 
 export interface DocFrame {
@@ -80,95 +96,216 @@ export function fromLayout(drawing: DrawingLayout): Doc {
       labelAnchor: s.labelAt.anchor,
     });
   }
-  return { items };
+  return tidyDoc({ items });
+}
+
+/* ------------------------------------------------------------------ */
+/* 接続点とつなぎ先                                                     */
+/* ------------------------------------------------------------------ */
+
+/** 線の端がこの距離より近ければ「その接続点につないだ」とみなす */
+const ATTACH_RADIUS = 6;
+
+/** 動かしている途中、この距離まで近づいたら、まっすぐになる位置に吸い寄せる */
+const ASSIST_RANGE = 10;
+
+/** 記号の接続点の絶対座標 */
+export function portsOf(it: DocSymbol): { id: string; x: number; y: number }[] {
+  const def = getSymbol(it.symbolId);
+  return def.ports.map((p) => {
+    const [px, py] = rotatedPort(def.box, p.x, p.y, it.rotate);
+    return { id: p.id, x: it.x + px, y: it.y + py };
+  });
+}
+
+/** つなぎ先の、いまの座標。記号が消えていれば null */
+function portAt(doc: Doc, a: Anchor | undefined): { x: number; y: number } | null {
+  if (!a) return null;
+  const it = doc.items.find((i) => i.id === a.item);
+  if (!it || it.kind !== 'symbol') return null;
+  return portsOf(it).find((p) => p.id === a.port) ?? null;
+}
+
+/** その座標にいちばん近い接続点。radius より遠ければ null */
+export function nearestPort(
+  doc: Doc,
+  x: number,
+  y: number,
+  radius = ATTACH_RADIUS,
+): { item: string; port: string; x: number; y: number } | null {
+  let best: { item: string; port: string; x: number; y: number } | null = null;
+  let bestD = radius;
+  for (const it of doc.items) {
+    if (it.kind !== 'symbol') continue;
+    for (const p of portsOf(it)) {
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d <= bestD) {
+        bestD = d;
+        best = { item: it.id, port: p.id, x: p.x, y: p.y };
+      }
+    }
+  }
+  return best;
+}
+
+/** まだつなぎ先が無い線の端を、近くの接続点に結びつける */
+export function linkWires(doc: Doc): Doc {
+  return {
+    items: doc.items.map((it) => {
+      if (it.kind !== 'wire') return it;
+      if (it.at1 && it.at2) return it;
+      const w = { ...it };
+      if (!w.at1) {
+        const p = nearestPort(doc, w.x1, w.y1);
+        if (p) w.at1 = { item: p.item, port: p.port };
+      }
+      if (!w.at2) {
+        const p = nearestPort(doc, w.x2, w.y2);
+        if (p) w.at2 = { item: p.item, port: p.port };
+      }
+      return w;
+    }),
+  };
+}
+
+/**
+ * つないである端を、接続点の真上にぴったり置き直す。
+ * 片側だけつないでいる線は、縦なら縦、横なら横のまま伸び縮みさせる。
+ */
+export function applyAnchors(doc: Doc): Doc {
+  return {
+    items: doc.items.map((it) => {
+      if (it.kind !== 'wire') return it;
+      if (!it.at1 && !it.at2) return it;
+      const p1 = portAt(doc, it.at1);
+      const p2 = portAt(doc, it.at2);
+      const w = { ...it };
+      // 記号ごと消えていたら、つなぎ先の印も外す
+      if (it.at1 && !p1) w.at1 = undefined;
+      if (it.at2 && !p2) w.at2 = undefined;
+      if (!p1 && !p2) return w;
+
+      // いまの向き（縦か横か）を覚えてから動かす
+      const vertical = Math.abs(it.x2 - it.x1) <= Math.abs(it.y2 - it.y1);
+      if (p1) {
+        w.x1 = p1.x;
+        w.y1 = p1.y;
+      }
+      if (p2) {
+        w.x2 = p2.x;
+        w.y2 = p2.y;
+      }
+      // 反対側が自由なら、まっすぐのまま伸び縮みさせる
+      if (p1 && !p2) {
+        if (vertical) w.x2 = w.x1;
+        else w.y2 = w.y1;
+      } else if (p2 && !p1) {
+        if (vertical) w.x1 = w.x2;
+        else w.y1 = w.y2;
+      }
+      return w;
+    }),
+  };
+}
+
+/** 結線を整える。つなぎ忘れを結び直し、端を接続点にぴったり合わせる */
+export function tidyDoc(doc: Doc): Doc {
+  return applyAnchors(linkWires(doc));
 }
 
 /* ------------------------------------------------------------------ */
 /* 編集操作（いずれも新しい Doc を返す）                                 */
 /* ------------------------------------------------------------------ */
 
-/** 線の端が、この距離より近ければ「つながっている」とみなす */
-const SNAP_RADIUS = 4;
-
-/** 記号の接続点の絶対座標 */
-function portPoints(it: DocSymbol): { x: number; y: number }[] {
-  const def = getSymbol(it.symbolId);
-  const cx = def.box.w / 2;
-  const cy = def.box.h / 2;
-  const rad = (it.rotate * Math.PI) / 180;
-  return def.ports.map((p) => ({
-    x: it.x + cx + (p.x - cx) * Math.cos(rad) - (p.y - cy) * Math.sin(rad),
-    y: it.y + cy + (p.x - cx) * Math.sin(rad) + (p.y - cy) * Math.cos(rad),
-  }));
-}
-
 /**
- * 要素を動かす。記号を動かしたときは、その接続点につながっている線の端も
- * 一緒に動かして、線が切れないようにする。
+ * 要素を動かす。記号を動かすと、つないである線の端も接続点について回る。
+ *
+ * dx・dy は呼ぶ側で決めた値をそのまま使う（assistMove が格子合わせと
+ * 吸い寄せを済ませている）。ここで丸め直すと、せっかく揃えた位置がずれる。
  */
-export const moveItem = (doc: Doc, id: string, rawDx: number, rawDy: number): Doc => {
-  const dx = snap(rawDx);
-  const dy = snap(rawDy);
+export const moveItem = (doc: Doc, id: string, dx: number, dy: number): Doc => {
+  if (dx === 0 && dy === 0) return doc;
   const target = doc.items.find((it) => it.id === id);
   if (!target) return doc;
 
-  // 記号なら、つながっている線の端を拾っておく
-  const attached: { wireId: string; end: 1 | 2 }[] = [];
-  if (target.kind === 'symbol') {
-    const pts = portPoints(target);
-    for (const it of doc.items) {
-      if (it.kind !== 'wire') continue;
-      for (const end of [1, 2] as const) {
-        const wx = end === 1 ? it.x1 : it.x2;
-        const wy = end === 1 ? it.y1 : it.y2;
-        if (pts.some((p) => Math.hypot(p.x - wx, p.y - wy) <= SNAP_RADIUS)) {
-          attached.push({ wireId: it.id, end });
-        }
-      }
-    }
-  }
-
-  return {
+  const moved: Doc = {
     items: doc.items.map((it) => {
-      if (it.id === id) {
-        if (it.kind === 'wire') {
-          return { ...it, x1: snap(it.x1 + dx), y1: snap(it.y1 + dy), x2: snap(it.x2 + dx), y2: snap(it.y2 + dy) };
-        }
-        return { ...it, x: snap(it.x + dx), y: snap(it.y + dy) };
-      }
+      if (it.id !== id) return it;
       if (it.kind === 'wire') {
-        const ends = attached.filter((a) => a.wireId === it.id);
-        if (ends.length === 0) return it;
-        const next = { ...it };
-        for (const a of ends) {
-          if (a.end === 1) {
-            next.x1 = snap(next.x1 + dx);
-            next.y1 = snap(next.y1 + dy);
-          } else {
-            next.x2 = snap(next.x2 + dx);
-            next.y2 = snap(next.y2 + dy);
-          }
-        }
-        return next;
+        // 線そのものを動かしたときは、つないであった印をいったん外す
+        return {
+          ...it,
+          x1: it.x1 + dx,
+          y1: it.y1 + dy,
+          x2: it.x2 + dx,
+          y2: it.y2 + dy,
+          at1: undefined,
+          at2: undefined,
+        };
       }
-      return it;
+      return { ...it, x: it.x + dx, y: it.y + dy };
     }),
   };
+
+  // 線を動かしたときだけ、行き先の接続点に結び直す
+  return target.kind === 'wire' ? tidyDoc(moved) : applyAnchors(moved);
 };
 
+/** 点 (px,py) は動かさずに、点 (qx,qy) を縦か横に揃えた座標 */
+function alignTo(px: number, py: number, qx: number, qy: number): [number, number] {
+  const [, , nx, ny] = straighten(px, py, qx, qy);
+  return [nx, ny];
+}
+
 /** 線の端だけを動かして伸縮する。縦か横のどちらかに自動で揃える */
-export const moveWireEnd = (doc: Doc, id: string, end: 1 | 2, dx: number, dy: number): Doc => ({
-  items: doc.items.map((it) => {
-    if (it.kind !== 'wire' || it.id !== id) return it;
-    const nx = snap((end === 1 ? it.x1 : it.x2) + dx);
-    const ny = snap((end === 1 ? it.y1 : it.y2) + dy);
-    const [ax, ay, bx, by] =
-      end === 1 ? straighten(nx, ny, it.x2, it.y2) : straighten(it.x1, it.y1, nx, ny);
-    return end === 1
-      ? { ...it, x1: ax, y1: ay, x2: bx, y2: by }
-      : { ...it, x1: ax, y1: ay, x2: bx, y2: by };
-  }),
-});
+export const moveWireEnd = (doc: Doc, id: string, end: 1 | 2, dx: number, dy: number): Doc => {
+  const next: Doc = {
+    items: doc.items.map((it) => {
+      if (it.kind !== 'wire' || it.id !== id) return it;
+      const w = { ...it };
+      const nx = (end === 1 ? w.x1 : w.x2) + dx;
+      const ny = (end === 1 ? w.y1 : w.y2) + dy;
+      if (end === 1) {
+        w.x1 = nx;
+        w.y1 = ny;
+        w.at1 = undefined;
+      } else {
+        w.x2 = nx;
+        w.y2 = ny;
+        w.at2 = undefined;
+      }
+
+      // 接続点にぴったり乗ったなら、そこを動かさずに残す
+      if (nearestPort(doc, nx, ny, 0.5)) return w;
+
+      const fixedX = end === 1 ? w.x2 : w.x1;
+      const fixedY = end === 1 ? w.y2 : w.y1;
+      if (end === 1 ? w.at2 : w.at1) {
+        // 反対側はつないであって動かせないので、持っている側を揃える
+        const [ax, ay] = alignTo(fixedX, fixedY, nx, ny);
+        if (end === 1) {
+          w.x1 = ax;
+          w.y1 = ay;
+        } else {
+          w.x2 = ax;
+          w.y2 = ay;
+        }
+      } else {
+        // 反対側が自由なら、持っている側を活かして反対側を揃える
+        const [ax, ay] = alignTo(nx, ny, fixedX, fixedY);
+        if (end === 1) {
+          w.x2 = ax;
+          w.y2 = ay;
+        } else {
+          w.x1 = ax;
+          w.y1 = ay;
+        }
+      }
+      return w;
+    }),
+  };
+  return tidyDoc(next);
+};
 
 /** 線を追加する。始点と終点から縦か横に揃えて引く */
 export const addWire = (
@@ -178,40 +315,100 @@ export const addWire = (
   x2: number,
   y2: number,
 ): { doc: Doc; id: string } => {
-  const [ax, ay, bx, by] = straighten(snap(x1), snap(y1), snap(x2), snap(y2));
+  // 引き始め・引き終わりが接続点の近くなら、そこにぴったり合わせる
+  const a = nearestPort(doc, x1, y1, ASSIST_RANGE) ?? { x: snap(x1), y: snap(y1) };
+  const b = nearestPort(doc, x2, y2, ASSIST_RANGE) ?? { x: snap(x2), y: snap(y2) };
+  const [ax, ay, bx, by] = straighten(a.x, a.y, b.x, b.y);
   const id = nextId('wire');
-  return { doc: { items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by }] }, id };
+  return {
+    doc: tidyDoc({ items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by }] }),
+    id,
+  };
 };
 
 /** 選んでいる線を、いちばん近い記号の接続点にきっちり合わせる */
 export const snapWireToPorts = (doc: Doc, id: string): Doc => {
   const wire = doc.items.find((it) => it.id === id);
   if (!wire || wire.kind !== 'wire') return doc;
-  const pts = doc.items.filter((it): it is DocSymbol => it.kind === 'symbol').flatMap(portPoints);
-  const nearest = (x: number, y: number) => {
-    let best: { x: number; y: number } | null = null;
-    let bestD = 12;
-    for (const p of pts) {
-      const d = Math.hypot(p.x - x, p.y - y);
-      if (d < bestD) {
-        bestD = d;
-        best = p;
-      }
-    }
-    return best ?? { x: snap(x), y: snap(y) };
+  const a = nearestPort(doc, wire.x1, wire.y1, 12);
+  const b = nearestPort(doc, wire.x2, wire.y2, 12);
+  const linked: Doc = {
+    items: doc.items.map((it) =>
+      it.id !== id
+        ? it
+        : {
+            ...wire,
+            at1: a ? { item: a.item, port: a.port } : wire.at1,
+            at2: b ? { item: b.item, port: b.port } : wire.at2,
+          },
+    ),
   };
-  const a = nearest(wire.x1, wire.y1);
-  const b = nearest(wire.x2, wire.y2);
-  const [ax, ay, bx, by] = straighten(a.x, a.y, b.x, b.y);
-  return { items: doc.items.map((it) => (it.id === id ? { ...it, x1: ax, y1: ay, x2: bx, y2: by } : it)) };
+  return applyAnchors(linked);
 };
 
-export const removeItem = (doc: Doc, id: string): Doc => ({ items: doc.items.filter((it) => it.id !== id) });
-
-/** 記号を別の記号に差し替える。位置と文字、まわりの結線はそのまま残る */
-export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => ({
-  items: doc.items.map((it) => (it.kind === 'symbol' && it.id === id ? { ...it, symbolId } : it)),
+export const removeItem = (doc: Doc, id: string): Doc => ({
+  items: doc.items
+    .filter((it) => it.id !== id)
+    .map((it) => {
+      if (it.kind !== 'wire') return it;
+      if (it.at1?.item !== id && it.at2?.item !== id) return it;
+      return {
+        ...it,
+        at1: it.at1?.item === id ? undefined : it.at1,
+        at2: it.at2?.item === id ? undefined : it.at2,
+      };
+    }),
 });
+
+/**
+ * 記号を別の記号に差し替える。
+ * つないである接続点がその場に残るように置き直し、まわりの線は自動で伸び縮みする。
+ */
+export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
+  const old = doc.items.find((it) => it.id === id);
+  if (!old || old.kind !== 'symbol' || old.symbolId === symbolId) return doc;
+
+  const oldPorts = portsOf(old);
+  const next: DocSymbol = { ...old, symbolId };
+  const newPorts = portsOf(next);
+  if (oldPorts.length === 0 || newPorts.length === 0) {
+    return applyAnchors({ items: doc.items.map((it) => (it.id === id ? next : it)) });
+  }
+
+  // 線がつながっている接続点を基準にする。無ければ最初の接続点
+  const used = new Set<string>();
+  for (const it of doc.items) {
+    if (it.kind !== 'wire') continue;
+    if (it.at1?.item === id) used.add(it.at1.port);
+    if (it.at2?.item === id) used.add(it.at2.port);
+  }
+  const keyIndex = Math.max(
+    0,
+    oldPorts.findIndex((p) => used.has(p.id)),
+  );
+  const from = oldPorts[keyIndex]!;
+  const to = newPorts[Math.min(keyIndex, newPorts.length - 1)]!;
+  next.x = old.x + (from.x - to.x);
+  next.y = old.y + (from.y - to.y);
+
+  // 古い接続点の名前を、新しい記号のどれに読み替えるか決める
+  const remap = new Map<string, string>();
+  oldPorts.forEach((p, i) => {
+    const same = newPorts.find((q) => q.id === p.id);
+    remap.set(p.id, (same ?? newPorts[Math.min(i, newPorts.length - 1)]!).id);
+  });
+
+  const items = doc.items.map((it) => {
+    if (it.id === id) return next;
+    if (it.kind !== 'wire') return it;
+    if (it.at1?.item !== id && it.at2?.item !== id) return it;
+    const w = { ...it };
+    if (w.at1?.item === id) w.at1 = { item: id, port: remap.get(w.at1.port) ?? w.at1.port };
+    if (w.at2?.item === id) w.at2 = { item: id, port: remap.get(w.at2.port) ?? w.at2.port };
+    return w;
+  });
+  return applyAnchors({ items });
+};
 
 export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { doc: Doc; id: string } => {
   const def = getSymbol(symbolId);
@@ -220,8 +417,8 @@ export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { d
     kind: 'symbol',
     id,
     symbolId,
-    x: x - def.box.w / 2,
-    y: y - def.box.h / 2,
+    x: snap(x - def.box.w / 2),
+    y: snap(y - def.box.h / 2),
     rotate: 0,
     label: [],
     labelDx: def.box.w + 10,
@@ -242,11 +439,110 @@ export const setLabel = (doc: Doc, id: string, lines: string[]): Doc => ({
   ),
 });
 
-export const rotateSymbol = (doc: Doc, id: string, delta: number): Doc => ({
-  items: doc.items.map((it) =>
-    it.kind === 'symbol' && it.id === id ? { ...it, rotate: (it.rotate + delta + 360) % 360 } : it,
-  ),
-});
+/** 記号を回す。つないである線の端も、回ったあとの接続点について回る */
+export const rotateSymbol = (doc: Doc, id: string, delta: number): Doc =>
+  applyAnchors({
+    items: doc.items.map((it) =>
+      it.kind === 'symbol' && it.id === id ? { ...it, rotate: (it.rotate + delta + 360) % 360 } : it,
+    ),
+  });
+
+/* ------------------------------------------------------------------ */
+/* 動かすときの手助け                                                   */
+/* ------------------------------------------------------------------ */
+
+/** 動かしている途中の、吸い寄せ後のずらし量と、目安の線 */
+export interface MoveAssist {
+  dx: number;
+  dy: number;
+  /** 縦に揃った位置（目安の線を引くため） */
+  guideX?: number;
+  /** 横に揃った位置 */
+  guideY?: number;
+}
+
+/** 吸い寄せ先の候補。d はずらし量、at は揃う座標 */
+interface Candidate {
+  d: number;
+  at: number;
+}
+
+/** 候補のうち、いま指している量にいちばん近いもの。遠ければ null */
+function pick(raw: number, cands: Candidate[]): Candidate | null {
+  let best: Candidate | null = null;
+  let bestGap = ASSIST_RANGE;
+  for (const c of cands) {
+    const gap = Math.abs(c.d - raw);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/**
+ * 記号を動かしている途中、結線がまっすぐになる位置に軽く吸い寄せる。
+ * 先に「つないである線がまっすぐになる位置」、次に「ほかの記号と揃う位置」を見る。
+ */
+export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number): MoveAssist {
+  const target = doc.items.find((it) => it.id === id);
+  if (!target || target.kind !== 'symbol') return { dx: snap(rawDx), dy: snap(rawDy) };
+
+  const pts = portsOf(target);
+  const wantX: Candidate[] = [];
+  const wantY: Candidate[] = [];
+
+  // ① つないである線が、まっすぐになる位置
+  for (const it of doc.items) {
+    if (it.kind !== 'wire') continue;
+    for (const end of [1, 2] as const) {
+      const here = end === 1 ? it.at1 : it.at2;
+      const there = end === 1 ? it.at2 : it.at1;
+      if (here?.item !== id) continue;
+      if (there?.item === id) continue; // 同じ記号の中で閉じている線は対象外
+      const p = pts.find((q) => q.id === here.port);
+      if (!p) continue;
+      const ox = end === 1 ? it.x2 : it.x1;
+      const oy = end === 1 ? it.y2 : it.y1;
+      if (Math.abs(it.x2 - it.x1) <= Math.abs(it.y2 - it.y1)) wantX.push({ d: ox - p.x, at: ox });
+      else wantY.push({ d: oy - p.y, at: oy });
+    }
+  }
+
+  // ② ほかの記号の接続点と、たて・よこが揃う位置
+  for (const it of doc.items) {
+    if (it.kind !== 'symbol' || it.id === id) continue;
+    for (const q of portsOf(it)) {
+      for (const p of pts) {
+        wantX.push({ d: q.x - p.x, at: q.x });
+        wantY.push({ d: q.y - p.y, at: q.y });
+      }
+    }
+  }
+
+  const bx = pick(rawDx, wantX);
+  const by = pick(rawDy, wantY);
+  return {
+    dx: bx ? bx.d : snap(rawDx),
+    dy: by ? by.d : snap(rawDy),
+    guideX: bx?.at,
+    guideY: by?.at,
+  };
+}
+
+/** 線の端を動かしている途中、近くの接続点に吸い寄せる */
+export function assistWireEnd(doc: Doc, id: string, end: 1 | 2, rawDx: number, rawDy: number): MoveAssist {
+  const w = doc.items.find((it) => it.id === id);
+  if (!w || w.kind !== 'wire') return { dx: snap(rawDx), dy: snap(rawDy) };
+  const fromX = end === 1 ? w.x1 : w.x2;
+  const fromY = end === 1 ? w.y1 : w.y2;
+  const p = nearestPort(doc, fromX + rawDx, fromY + rawDy, ASSIST_RANGE);
+  if (!p) return { dx: snap(rawDx), dy: snap(rawDy) };
+  return { dx: p.x - fromX, dy: p.y - fromY, guideX: p.x, guideY: p.y };
+}
+
+/* ------------------------------------------------------------------ */
 
 /** 要素の外形（選択枠の表示と、図枠に収める計算に使う） */
 export function itemBounds(it: DocItem): { x0: number; y0: number; x1: number; y1: number } {
@@ -264,7 +560,8 @@ export function itemBounds(it: DocItem): { x0: number; y0: number; x1: number; y
     return { x0: it.x, y0: it.y - 9, x1: it.x + w, y1: it.y + it.lines.length * 10 };
   }
   const def = getSymbol(it.symbolId);
-  return { x0: it.x, y0: it.y, x1: it.x + def.box.w, y1: it.y + def.box.h };
+  const rb = rotatedBox(def.box, it.rotate);
+  return { x0: it.x + rb.dx, y0: it.y + rb.dy, x1: it.x + rb.dx + rb.w, y1: it.y + rb.dy + rb.h };
 }
 
 export function docBounds(doc: Doc): { x0: number; y0: number; x1: number; y1: number } {

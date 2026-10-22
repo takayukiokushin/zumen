@@ -103,7 +103,7 @@ body:has(.tabbar) .app { height: calc(100% - 45px); }
 .editor-body { display: grid; grid-template-columns: 1fr 280px; flex: 1; min-height: 0; }
 @media (max-width: 900px) { .editor-body { grid-template-columns: 1fr; } }
 .canvas-wrap { overflow: auto; background: var(--paper); padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
-.canvas { background: #fff; border: 1px solid var(--rule); width: auto; max-width: none; flex: 0 0 auto; touch-action: none; }
+.canvas { background: #fff; border: 1px solid var(--rule); width: auto; max-width: none; flex: 0 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
 .canvas .item { cursor: move; }
 .canvas .item:hover { color: var(--accent); }
 .canvas .selection { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
@@ -124,6 +124,7 @@ body:has(.tabbar) .app { height: calc(100% - 45px); }
 .canvas .handle { fill: #fff; stroke: var(--accent); stroke-width: 1.5; cursor: pointer; }
 .canvas .handle:hover { fill: var(--accent-soft); }
 .canvas .preview { stroke: var(--accent); stroke-dasharray: 4 3; pointer-events: none; }
+.canvas .guide { stroke: var(--accent); stroke-width: 0.6; stroke-dasharray: 2 3; opacity: 0.7; pointer-events: none; }
 .tools button.on { background: var(--accent-soft); border-color: var(--accent); }
 .mode-hint { font-size: 12px; color: var(--accent); margin-left: 6px; }
 

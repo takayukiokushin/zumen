@@ -7,7 +7,7 @@ import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { buildSheetSvg, downloadPng, downloadSvg } from './exportSheet.ts';
 import type { Doc, DocSymbol } from './doc.ts';
-import { addSymbol, addText, addWire, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, rotateSymbol, setLabel, snapWireToPorts } from './doc.ts';
+import { addSymbol, addText, addWire, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, rotateSymbol, setLabel, snapWireToPorts, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -32,7 +32,12 @@ interface EditorProps {
 
 export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const generated = useMemo(() => fromLayout(layout(buildComposition(answers), answers)), [answers]);
-  const [history, setHistory] = useState<History>({ past: [], present: initialDoc ?? generated, future: [] });
+  // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく
+  const [history, setHistory] = useState<History>(() => ({
+    past: [],
+    present: initialDoc ? tidyDoc(initialDoc) : generated,
+    future: [],
+  }));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
@@ -156,10 +161,20 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           </button>
           <button
             type="button"
+            className="btn"
             disabled={selected?.kind !== 'wire'}
+            title="選んでいる線の端を、いちばん近い接続点にぴったり合わせます"
             onClick={() => selected && apply(snapWireToPorts(doc, selected.id))}
           >
             接続点に合わせる
+          </button>
+          <button
+            type="button"
+            className="btn"
+            title="図面全体の結線を、接続点にぴったり合わせ直します"
+            onClick={() => apply(tidyDoc(doc))}
+          >
+            結線を整える
           </button>
           <span className="sep" />
           <button type="button" onClick={regenerate}>
@@ -217,7 +232,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             <h3>記号を追加・差し替え</h3>
             <p className="hint">
               {selectedSymbol
-                ? '記号を選んでいます。下から選ぶと差し替わります（結線はそのまま残ります）。'
+                ? '記号を選んでいます。下から選ぶと差し替わります（結線はつながったまま、長さが自動で合います）。'
                 : '下から選ぶと図面の下に追加します。記号を選んでから押すと差し替えになります。'}
             </p>
             <select value={paletteCategory} onChange={(e) => setPaletteCategory(e.target.value as SymbolCategory)}>
@@ -267,7 +282,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
               ) : (
                 <p className="hint">
                   {selected.kind === 'wire'
-                    ? '結線を選んでいます。線をドラッグすると移動、両端の丸をドラッグすると伸縮します。線は縦か横に自動で揃います。'
+                    ? '結線を選んでいます。線をドラッグすると移動、両端の丸をドラッグすると伸縮します。接続点に近づけると吸い付きます。'
                     : '枠を選んでいます。'}
                 </p>
               )}
