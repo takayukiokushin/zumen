@@ -185,6 +185,34 @@ try {
   const noCookie = await fetch(`${base}/api/projects`);
   check('ログインせずには案件を見られない', noCookie.status === 401, `${noCookie.status}`);
 
+  // SQLインジェクション：IDやパスワードに細工をして、認証をすり抜けられないか
+  const attacks: [string, string][] = [
+    ["' OR '1'='1", "' OR '1'='1"],
+    ["' OR 1=1 --", 'なんでもよい'],
+    ["admin' --", 'なんでもよい'],
+    ["tester1' --", 'でたらめなパスワード'],
+    ['tester1', "' OR '1'='1' --"],
+    ["'; DROP TABLE users; --", 'なんでもよい'],
+    ['" OR ""="', '" OR ""="'],
+  ];
+  let broke = 0;
+  for (const [id, pw] of attacks) {
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId: id, password: pw }),
+    });
+    if (r.ok) {
+      broke++;
+      say(`  ✗ 細工したIDで入れてしまいました: ${id} / ${pw}`);
+    }
+  }
+  check('細工したIDやパスワードで入れない（SQLインジェクション）', broke === 0, `${attacks.length}通り試して全部拒否`);
+
+  // 攻撃のあとも利用者の表が壊れていないか
+  const afterAttack = (await (await fetch(`${base}/api/health`)).json()) as { userCount: number };
+  check('攻撃のあとも利用者が消えていない', afterAttack.userCount === 2, `${afterAttack.userCount}人`);
+
   /* ---------- 6. 案件の保存と呼び出し ---------- */
   say('\n■ 案件の保存と呼び出し');
   const created = (await (
