@@ -1,5 +1,6 @@
 import { findSymbol, getSymbol } from '@zumen/symbols';
 import type { Port, SymbolDef } from '@zumen/symbols';
+import { ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
 
 /**
@@ -167,17 +168,46 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     }
     pendingDashed = false;
 
+    /*
+     * 列ごとに上から詰めるのではなく、「段」で揃える。
+     * 変圧器は変圧器で、コンデンサはコンデンサで、どの列でも同じ高さに来る。
+     * PCやLBSが無い列は、その段を空けたまま母線からの線を長く引く。
+     */
+    const rowOf = (p: PlacedItem) => p.row ?? ROW_COUNT - 1;
+    const rowHeight = Array.from({ length: ROW_COUNT }, () => 0);
+    for (const p of parallels) {
+      const def = findSymbol(p.symbolId);
+      if (!def) continue;
+      const r = rowOf(p);
+      rowHeight[r] = Math.max(rowHeight[r]!, def.box.h);
+    }
+    // 誰も使わない段は詰める（1台だけの図面を無駄に縦長にしないため）
+    const rowTop = Array.from({ length: ROW_COUNT }, () => busY);
+    let cursor = busY;
+    for (let r = 0; r < ROW_COUNT; r++) {
+      if (rowHeight[r] === 0) {
+        rowTop[r] = cursor;
+        continue;
+      }
+      cursor += GAP;
+      rowTop[r] = cursor;
+      cursor += rowHeight[r]!;
+    }
+
     let deepest = busY;
     for (const lane of lanes) {
       let ly = busY;
-      const inLane = parallels.filter((p) => (p.lane ?? 0) === lane);
-      for (const [i, item] of inLane.entries()) {
+      const inLane = parallels
+        .filter((p) => (p.lane ?? 0) === lane)
+        .sort((a, b) => rowOf(a) - rowOf(b));
+      for (const item of inLane) {
         const def = getSymbol(item.symbolId);
         const entry = portOf(def, 'in') ?? def.ports[0]!;
         const exit = portOf(def, 'out', 'sec');
+        const top = rowTop[rowOf(item)]!;
         const x = laneX(lane) - entry.x;
-        const yy = ly + (i === 0 ? GAP : GAP) - entry.y;
-        wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: yy + entry.y });
+        const yy = top - entry.y;
+        wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: top });
         add(item, def, x, yy, 0, 'right');
         ly = exit ? yy + exit.y : yy + def.box.h;
       }

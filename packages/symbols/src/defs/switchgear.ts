@@ -1,7 +1,19 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
-import { blade, contact, hline, line, rect, tiltedBar, vline } from '../shape.ts';
+import { blade, contact, hline, line, path, rect, tiltedBar, vline } from '../shape.ts';
 
 /** 遮断器を表す×印 */
+/**
+ * 主回路に直列に入る機器の共通の枠。
+ * DS・VCB・PC・LBS・変圧器・リアクトル・コンデンサを同じ大きさに揃えてある。
+ * 大小がまちまちだと図面のつり合いが崩れるため。
+ * 接続点は上下の中央（x=24）に置き、記号の絵は枠の中で上下中央に収める。
+ */
+export const CELL = { w: 48, h: 72 } as const;
+export const CELL_PORTS = [
+  { id: 'in', x: 24, y: 0, dir: 'up' as const, role: 'line' as const },
+  { id: 'out', x: 24, y: CELL.h, dir: 'down' as const, role: 'line' as const },
+];
+
 const crossMark = (x: number, y: number, s = 3.6) => [
   line(x - s, y - s, x + s, y + s),
   line(x + s, y - s, x - s, y + s),
@@ -77,18 +89,15 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '断路器（ディスコン）',
     category: 'switchgear',
     tags: ['CB形', 'ディスコン', '受電設備'],
-    box: { w: 44, h: 64 },
+    box: { ...CELL },
     shapes: [
-      vline(14, 0, 8),
-      hline(8, 3, 25),
-      contact(14, 46, 4),
-      line(14, 42, 34, 13),
-      vline(14, 50, 64),
+      vline(24, 0, 15),
+      hline(15, 13, 35),
+      contact(24, 53, 4),
+      line(24, 49, 44, 20),
+      vline(24, 57, 72),
     ],
-    ports: [
-      { id: 'in', x: 14, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 14, y: 64, dir: 'down', role: 'line' },
-    ],
+    ports: CELL_PORTS,
     fields: [RATED_VOLTAGE, RATED_CURRENT],
     status: 'confirmed',
     statusNote: '見本図面のとおり、上に横バー（固定接点）、下に丸（可動接点）、可動刃は右上がりにしました。',
@@ -123,19 +132,16 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '限流ヒューズ付高圧負荷開閉器',
     category: 'switchgear',
     tags: ['PFS形', '主遮断装置', 'PF・S形'],
-    box: { w: 48, h: 78 },
+    box: { ...CELL },
     shapes: [
-      vline(24, 0, 8),
-      hline(8, 15, 33),
-      contact(24, 14.5, 5.5),
-      line(24, 62, 12, 26),
-      tiltedBar(22.1, 56.3, 13.9, 31.7, 5),
-      vline(24, 62, 78),
+      vline(24, 0, 9),
+      hline(9, 15, 33),
+      contact(24, 15.5, 5.5),
+      line(24, 63, 12, 27),
+      tiltedBar(22.1, 57.3, 13.9, 32.7, 5),
+      vline(24, 63, 72),
     ],
-    ports: [
-      { id: 'in', x: 24, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 24, y: 78, dir: 'down', role: 'line' },
-    ],
+    ports: CELL_PORTS,
     fields: [
       RATED_VOLTAGE,
       RATED_CURRENT,
@@ -169,17 +175,14 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '高圧カットアウト',
     category: 'switchgear',
     tags: ['カットアウトスイッチ', '変圧器一次側'],
-    box: { w: 48, h: 72 },
+    box: { ...CELL },
     shapes: [
-      vline(26, 0, 14),
-      line(26, 62, 10, 14),
-      tiltedBar(23.5, 54.5, 12.5, 21.5, 5.5),
-      vline(26, 62, 72),
+      vline(24, 0, 12),
+      line(24, 60, 8, 12),
+      tiltedBar(21.5, 52.5, 10.5, 19.5, 5.5),
+      vline(24, 60, 72),
     ],
-    ports: [
-      { id: 'in', x: 26, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 26, y: 72, dir: 'down', role: 'line' },
-    ],
+    ports: CELL_PORTS,
     fields: [
       RATED_VOLTAGE,
       RATED_CURRENT,
@@ -195,21 +198,39 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '真空遮断器',
     category: 'switchgear',
     tags: ['CB形', '主遮断装置', '責任分界点'],
-    box: { w: 40, h: 44 },
+    box: { ...CELL },
     shapes: [
-      vline(20, 0, 12),
-      ...crossMark(20, 12),
-      contact(20, 30, 4),
-      line(20, 26, 34, 14),
-      vline(20, 30, 44),
+      vline(24, 0, 27),
+      ...crossMark(24, 27),
+      contact(24, 45, 4),
+      line(24, 41, 38, 29),
+      vline(24, 45, 72),
     ],
-    ports: [
-      { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },
-    ],
+    ports: CELL_PORTS,
     status: 'confirmed',
     statusNote: '×印付き開閉器（JIS式）。可動刃は右上がり、下に丸（可動接点）を付けます。上の丸は付けません。',
     note: 'CB形の主遮断装置。設備容量301kVA以上では必須。すぐ下にCTが入る。',
+  },
+  {
+    id: 'vcs',
+    abbr: 'VCS',
+    nameJa: '真空電磁接触器',
+    category: 'switchgear',
+    tags: ['電磁接触器', '進相設備', 'コンデンサ開閉'],
+    // 進相コンデンサの開閉に使う。DSと見分けられるよう、固定接点を「お椀」で描く
+    box: { ...CELL },
+    shapes: [
+      vline(24, 0, 15),
+      path('M 17 15 A 7 7 0 0 0 31 15'),
+      contact(24, 53, 4),
+      line(24, 49, 42, 22),
+      vline(24, 57, 72),
+    ],
+    ports: CELL_PORTS,
+    fields: [RATED_VOLTAGE, RATED_CURRENT],
+    status: 'confirmed',
+    statusNote: '固定接点をお椀（半円）で描き、断路器と見分けられるようにしました。',
+    note: '進相コンデンサの開閉用。LBSと組み合わせて使う現場がある。',
   },
   {
     id: 'pas',

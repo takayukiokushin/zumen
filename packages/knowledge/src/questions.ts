@@ -376,6 +376,17 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     help: '不明な場合は空欄にする（図面には「- m」と記載する）',
   },
+  {
+    id: 'cableLengthApprox',
+    group: 'cable',
+    label: '図面に「約」を付ける',
+    type: 'boolean',
+    // 既定値を持たせると「既定のままでよい質問」として畳まれてしまうので置かない。
+    // 未回答は「付けない」と同じ扱いになる
+    showIf: { key: 'cableLength', gt: 0 },
+    ask: 'always',
+    help: '歩測などで、きっちりした実測ではないとき。「約20m」と書かれる',
+  },
 
   /* ---------------- 受電設備エリア ---------------- */
   {
@@ -646,6 +657,38 @@ export const QUESTIONS: Question[] = [
     placeholder: '3φ106kvar 7020V',
     showIf: { key: 'hasCapacitor', eq: 'yes' },
     ask: 'always',
+  },
+  // 手前に入る開閉器。現場によって PCのみ・LBSのみ・LBS＋VCS と分かれる
+  {
+    id: 'capHasPc',
+    group: 'compensation',
+    label: 'このコンデンサの手前にPC（高圧カットアウト）が入りますか？',
+    type: 'select',
+    options: YES_NO,
+    defaultValue: 'no',
+    showIf: { key: 'hasCapacitor', eq: 'yes' },
+    ask: 'ai-uncertain',
+  },
+  {
+    id: 'capHasLbs',
+    group: 'compensation',
+    label: 'このコンデンサの手前にLBSが入りますか？',
+    type: 'select',
+    options: YES_NO,
+    defaultValue: 'no',
+    showIf: { key: 'hasCapacitor', eq: 'yes' },
+    ask: 'ai-uncertain',
+  },
+  {
+    id: 'capHasVcs',
+    group: 'compensation',
+    label: 'このコンデンサの手前にVCS（真空電磁接触器）が入りますか？',
+    type: 'select',
+    options: YES_NO,
+    defaultValue: 'no',
+    showIf: { key: 'hasCapacitor', eq: 'yes' },
+    ask: 'ai-uncertain',
+    help: 'LBSと組み合わせて入ることが多い。LBSの下に付く',
   },
   {
     id: 'hasReactor',

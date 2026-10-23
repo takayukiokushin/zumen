@@ -23,6 +23,7 @@ import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
+import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -264,6 +265,69 @@ else {
   const orphans = symbols(swapped).filter((s) => kids.includes(s.id));
   if (orphans.length > 0) fail(`スロットの無い記号に差し替えたのに ${orphans.length}個 残りました`);
   else console.log('  スロットの無い記号に差し替えると、内蔵品も一緒に消えました');
+}
+
+/* ---------- 8. 並列の段ぞろえ ---------- */
+console.log('\n■ 段ぞろえ（変圧器・コンデンサの高さ）');
+{
+  const common: Answers = {
+    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
+    transformerCount: 3, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
+    hasCapacitor: 'yes', capacitorCount: 2, hasReactor: 'yes',
+  };
+
+  /** 同じ記号が、どの列でも同じ高さに来ているか */
+  const sameY = (a: Answers, symbolId: string): { ys: number[]; ok: boolean } => {
+    const d = layout(buildComposition(a), a);
+    const ys = d.symbols.filter((s) => s.symbolId === symbolId).map((s) => s.y);
+    return { ys, ok: new Set(ys).size <= 1 };
+  };
+
+  const cases: [string, Answers][] = [
+    ['前置きなし', { ...common }],
+    ['Trの前にPC・SCの前にLBS＋VCS', { ...common, trHasPc: 'yes', capHasLbs: 'yes', capHasVcs: 'yes' }],
+    ['Trの前にLBS・SCの前にPC', { ...common, trHasLbs: 'yes', capHasPc: 'yes' }],
+  ];
+  for (const [name, a] of cases) {
+    const tr = sameY(a, 'tr-3p-dy');
+    const sc = sameY(a, 'sc');
+    if (!tr.ok) fail(`${name}：変圧器の高さが揃っていません（${tr.ys.join(' / ')}）`);
+    if (!sc.ok) fail(`${name}：コンデンサの高さが揃っていません（${sc.ys.join(' / ')}）`);
+    // 変圧器とコンデンサは同じ段なので、同じ高さに来る
+    if (tr.ok && sc.ok && tr.ys[0] !== sc.ys[0]) {
+      fail(`${name}：変圧器(${tr.ys[0]})とコンデンサ(${sc.ys[0]})の高さが違います`);
+    }
+    if (tr.ok && sc.ok && tr.ys[0] === sc.ys[0]) {
+      console.log(`  ${name}：変圧器3台とコンデンサ2台が、すべて y=${tr.ys[0]} に揃いました`);
+    }
+  }
+
+  // 前置き機器そのものも、列をまたいで揃っているか
+  const mixed: Answers = { ...common, trHasPc: 'yes', capHasPc: 'yes' };
+  const pc = sameY(mixed, 'pc');
+  if (!pc.ok) fail(`PCの高さが揃っていません（${pc.ys.join(' / ')}）`);
+  else console.log(`  変圧器側とコンデンサ側のPC ${pc.ys.length}個 も y=${pc.ys[0]} に揃いました`);
+}
+
+/* ---------- 9. 主回路の記号の大きさ ---------- */
+console.log('\n■ 記号の大きさ');
+{
+  const ids = ['ds', 'vcb', 'pc', 'lbs-pf', 'vcs', 'tr-3p-dy', 'sr', 'sc'];
+  const boxes = ids.map((id) => {
+    const def = getSymbolDef(id);
+    return { id, w: def.box.w, h: def.box.h, portX: def.ports[0]!.x };
+  });
+  const sizes = new Set(boxes.map((b) => `${b.w}x${b.h}`));
+  if (sizes.size !== 1) {
+    fail(`主回路の記号の大きさが揃っていません：${boxes.map((b) => `${b.id} ${b.w}x${b.h}`).join(' / ')}`);
+  } else {
+    console.log(`  ${ids.length}種類すべて ${[...sizes][0]}（接続点も中央に）`);
+  }
+  const offCentre = boxes.filter((b) => b.portX !== boxes[0]!.w / 2);
+  if (offCentre.length > 0) fail(`接続点が中央にない記号：${offCentre.map((b) => b.id).join('・')}`);
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

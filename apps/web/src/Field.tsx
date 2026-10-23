@@ -26,7 +26,7 @@ export function Field({ question: q, fieldKey, value, onChange }: Props) {
   return (
     <div className="field">
       <label htmlFor={fieldKey}>
-        {q.label}
+        {q.type === 'boolean' ? '' : q.label}
         {q.required && <span className="req">必須</span>}
         {q.ask === 'ai-uncertain' && <span className="ai">AI判定可</span>}
         {q.unit && <span className="unit">（{q.unit}）</span>}
@@ -82,6 +82,17 @@ export function Field({ question: q, fieldKey, value, onChange }: Props) {
             />
           )}
         </>
+      ) : q.type === 'boolean' ? (
+        // 入れる・入れないだけの項目は、チェックの箱で出す
+        <label className="check">
+          <input
+            id={fieldKey}
+            type="checkbox"
+            checked={current === 'yes'}
+            onChange={(e) => set(e.target.checked ? 'yes' : 'no')}
+          />
+          <span>{q.label}</span>
+        </label>
       ) : q.type === 'number' ? (
         <input
           id={fieldKey}

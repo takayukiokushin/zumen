@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, LoginError } from './api.ts';
 import { useT } from '../i18n/useT.ts';
+import { EyeIcon, EyeOffIcon } from '../icons.tsx';
+import { TEXT_STEPS, useSettings } from '../settings/settings.tsx';
 import type { User } from './api.ts';
 
 /** 残り時間を「29分40秒」の形にする */
@@ -13,6 +15,7 @@ function formatLeft(sec: number): string {
 /** ログイン画面。社内数名での利用を想定した最小構成 */
 export function Login({ onDone }: { onDone: (user: User) => void }) {
   const t = useT();
+  const { settings, set } = useSettings();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -93,7 +96,7 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
             title={showPassword ? t('login.hide') : t('login.show')}
             onClick={() => setShowPassword((v) => !v)}
           >
-            {showPassword ? '🙈' : '👁'}
+            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
           </button>
         </div>
 
@@ -122,6 +125,32 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
         <button type="submit" className="primary" disabled={busy || locked || !userId || !password}>
           {busy ? t('login.busy') : t('login.submit')}
         </button>
+
+        {/*
+          文字が小さくて読めない人が、ログインする前に大きくできるようにしておく。
+          ここで選んだ大きさは、ログインしたあとの画面にもそのまま引き継がれる。
+        */}
+        <div className="login-size">
+          <span className="lbl">{t('login.size')}</span>
+          <div className="seg">
+            {([
+              [TEXT_STEPS[1]!, 'login.size.small'],
+              [TEXT_STEPS[2]!, 'login.size.normal'],
+              [TEXT_STEPS[4]!, 'login.size.large'],
+              [TEXT_STEPS[6]!, 'login.size.xlarge'],
+            ] as const).map(([value, key]) => (
+              <button
+                key={key}
+                type="button"
+                className="btn"
+                aria-pressed={settings.textScale === value}
+                onClick={() => set('textScale', value)}
+              >
+                {t(key)}
+              </button>
+            ))}
+          </div>
+        </div>
       </form>
     </div>
   );

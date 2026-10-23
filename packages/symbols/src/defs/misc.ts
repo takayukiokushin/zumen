@@ -1,4 +1,5 @@
 import type { SymbolDef } from '../types.ts';
+import { CELL, CELL_PORTS } from './switchgear.ts';
 import { circle, hline, line, path, poly, rect, text, vline } from '../shape.ts';
 
 /** 一点鎖線（受電設備エリアの外枠に使う） */
@@ -12,17 +13,14 @@ export const miscSymbols: SymbolDef[] = [
     nameJa: '直列リアクトル',
     category: 'compensation',
     tags: ['リアクトル', '進相設備'],
-    box: { w: 44, h: 56 },
+    box: { ...CELL },
     shapes: [
-      vline(22, 0, 16),
-      rect(7, 10, 30, 36),
-      path('M 22 16 A 6 6 0 0 0 22 24 A 6 6 0 0 0 22 32 A 6 6 0 0 0 22 40'),
-      vline(22, 40, 56),
+      vline(24, 0, 24),
+      rect(9, 18, 30, 36),
+      path('M 24 24 A 6 6 0 0 0 24 32 A 6 6 0 0 0 24 40 A 6 6 0 0 0 24 48'),
+      vline(24, 48, 72),
     ],
-    ports: [
-      { id: 'in', x: 22, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 22, y: 56, dir: 'down', role: 'line' },
-    ],
+    ports: CELL_PORTS,
     fields: [
       { key: 'phase', label: '相', type: 'text', defaultValue: '3φ' },
       { key: 'capacity', label: '容量', type: 'number', unit: 'kvar' },
@@ -38,9 +36,9 @@ export const miscSymbols: SymbolDef[] = [
     nameJa: '進相コンデンサ',
     category: 'compensation',
     tags: ['コンデンサ', '進相設備', '力率改善'],
-    box: { w: 44, h: 48 },
-    shapes: [vline(22, 0, 10), rect(7, 10, 30, 30), vline(22, 10, 21), hline(21, 11, 33), hline(26, 11, 33)],
-    ports: [{ id: 'in', x: 22, y: 0, dir: 'up', role: 'line' }],
+    box: { ...CELL },
+    shapes: [vline(24, 0, 21), rect(9, 21, 30, 30), vline(24, 21, 32), hline(32, 13, 35), hline(37, 13, 35)],
+    ports: [{ id: 'in', x: 24, y: 0, dir: 'up', role: 'line' }],
     fields: [
       { key: 'phase', label: '相', type: 'text', defaultValue: '3φ' },
       { key: 'capacity', label: '容量', type: 'number', unit: 'kvar' },

@@ -1,24 +1,26 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
 import type { Shape } from '../shape.ts';
 import { circle, deltaMark, hline, line, starMark, text, vline } from '../shape.ts';
+import { CELL } from './switchgear.ts';
 
 /**
  * 変圧器の共通の形（縦に重なった2つの円）。
  * 見本図面（電灯Tr・V結線）に合わせ、上下の円を大きめに重ねている。
  */
+// 枠は主回路の記号と共通（CELL）。絵は枠の中で上下中央に置く
 const CX = 24;
-const CY1 = 22;
-const CY2 = 40;
+const CY1 = 27;
+const CY2 = 45;
 const R = 12;
-const BOX = { w: 48, h: 64 };
+const BOX = { ...CELL };
 
 const body = (primary: Shape[], secondary: Shape[]): Shape[] => [
-  vline(CX, 0, 10),
+  vline(CX, 0, 15),
   circle(CX, CY1, R),
   circle(CX, CY2, R),
   ...primary,
   ...secondary,
-  vline(CX, 52, 64),
+  vline(CX, 57, CELL.h),
 ];
 
 const PORTS = [

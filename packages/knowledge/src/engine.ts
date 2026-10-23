@@ -129,7 +129,8 @@ export function withDerived(answers: Answers): Answers {
     answers.cableCrossSection ? `${answers.cableCrossSection}mm2` : '',
     answers.cableLength === undefined || answers.cableLength === null || answers.cableLength === ''
       ? '- m'
-      : `${answers.cableLength}m`,
+      // 実測でないときは「約20m」と書く（現場で歩測しただけ、という場面が多い）
+      : `${answers.cableLengthApprox === 'yes' ? '約' : ''}${answers.cableLength}m`,
   ].filter(Boolean);
   d.cableSpecLine = third.join(' ');
 
@@ -208,6 +209,11 @@ export interface PlacedItem {
   labelSide?: 'left' | 'right';
   /** 低圧の回線のとき、何本目か（0始まり） */
   lane?: number;
+  /**
+   * 高圧母線から並列にぶら下がるときの「段」（Placement.row と同じ）。
+   * 同じ段の機器は、どの列でも同じ高さに揃う。
+   */
+  row?: number;
   /**
    * 繰り返しの何件目か（0始まり）。
    * コンデンサ1台目のリアクトルとコンデンサ、のように「同じ1台ぶん」をまとめるのに使う。
@@ -293,6 +299,7 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
           connectFrom: p.connectFrom,
           labelSide: p.labelSide,
           lane: p.kind === 'feeder' ? i : p.kind === 'parallel' ? laneBase + i : undefined,
+          row: p.row,
           unit: countKey ? i : undefined,
           note: p.note,
         });

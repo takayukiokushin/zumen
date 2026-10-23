@@ -54,8 +54,23 @@ export interface Placement {
   connectFrom?: string[];
   /** 文字を記号のどちら側に書くか（既定は右） */
   labelSide?: 'left' | 'right';
+  /**
+   * 高圧母線から並列にぶら下がるときの「段」。
+   * 同じ段の機器は、どの列でも同じ高さに揃う。
+   * PCやLBSが無い列は、その段を空けたまま母線からの線を長く引く。
+   *   0 … PC（高圧カットアウト）
+   *   1 … LBS
+   *   2 … VCS（真空電磁接触器）
+   *   3 … SR（直列リアクトル）
+   *   4 … 本体（変圧器・コンデンサ）既定
+   */
+  row?: number;
   note?: string;
 }
+
+/** 並列の段。読みやすさのために名前を付けておく */
+export const ROW = { pc: 0, lbs: 1, vcs: 2, reactor: 3, main: 4 } as const;
+export const ROW_COUNT = 5;
 
 /** 引込元から受電設備の入口まで（主遮断装置の形式によらず共通） */
 export const UPSTREAM: Placement[] = [
@@ -295,6 +310,7 @@ export const TRANSFORMER: Placement[] = [
     role: 'tr-pc',
     symbolId: 'pc',
     kind: 'parallel',
+    row: ROW.pc,
     when: { key: 'trHasPc', eq: 'yes' },
     labelTemplate: ['PC'],
     repeatCountKey: 'transformerCount',
@@ -303,6 +319,7 @@ export const TRANSFORMER: Placement[] = [
     role: 'tr-lbs',
     symbolId: 'lbs-pf',
     kind: 'parallel',
+    row: ROW.lbs,
     when: { key: 'trHasLbs', eq: 'yes' },
     labelTemplate: ['LBS'],
     repeatCountKey: 'transformerCount',
@@ -311,6 +328,7 @@ export const TRANSFORMER: Placement[] = [
     role: 'transformer',
     symbolId: '{trConnection}',
     kind: 'parallel',
+    row: ROW.main,
     labelTemplate: ['{trUsage}', 'Tr', '{trCapacityLine}', '{trVoltage}', '{trComposition}'],
     props: { usage: 'trUsage', capacity: 'trCapacity', voltage: 'trVoltage', composition: 'trComposition' },
     repeatCountKey: 'transformerCount',
@@ -358,10 +376,39 @@ export const EXTRAS: Placement[] = [
   // リアクトルの有無はコンデンサごとに決まるので、同じ件数で並べて書く。
   // 隣り合わせにしてあるため SR1→SC1→SR2→SC2 の順に出る
   // 進相設備は変圧器と並列に入る。1台ごとに「リアクトル→コンデンサ」が1本の列になる
+  // コンデンサの手前に入る開閉器。PCだけ・LBSだけ・LBS＋VCS など現場によって違う
+  {
+    role: 'cap-pc',
+    symbolId: 'pc',
+    kind: 'parallel',
+    row: ROW.pc,
+    when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'capHasPc', eq: 'yes' }] },
+    labelTemplate: ['PC'],
+    repeatCountKey: 'capacitorCount',
+  },
+  {
+    role: 'cap-lbs',
+    symbolId: 'lbs-pf',
+    kind: 'parallel',
+    row: ROW.lbs,
+    when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'capHasLbs', eq: 'yes' }] },
+    labelTemplate: ['LBS'],
+    repeatCountKey: 'capacitorCount',
+  },
+  {
+    role: 'cap-vcs',
+    symbolId: 'vcs',
+    kind: 'parallel',
+    row: ROW.vcs,
+    when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'capHasVcs', eq: 'yes' }] },
+    labelTemplate: ['VCS'],
+    repeatCountKey: 'capacitorCount',
+  },
   {
     role: 'reactor',
     symbolId: 'sr',
     kind: 'parallel',
+    row: ROW.reactor,
     when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'hasReactor', eq: 'yes' }] },
     labelTemplate: ['SR', '{reactorCapacity}'],
     repeatCountKey: 'capacitorCount',
@@ -370,6 +417,7 @@ export const EXTRAS: Placement[] = [
     role: 'capacitor',
     symbolId: 'sc',
     kind: 'parallel',
+    row: ROW.main,
     when: { key: 'hasCapacitor', eq: 'yes' },
     labelTemplate: ['SC', '{capacitorCapacity}'],
     repeatCountKey: 'capacitorCount',
