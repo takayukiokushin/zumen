@@ -35,6 +35,11 @@ export interface Question {
   defaultValue?: Value;
   help?: string;
   placeholder?: string;
+  /**
+   * 既定値があっても畳まずに、いつも出す。
+   * 「ふつうは200A。でも変えることがある」ような項目に使う。
+   */
+  alwaysShow?: boolean;
   /** この条件を満たすときだけ表示する */
   showIf?: Condition;
   ask: AskWhen;
@@ -102,6 +107,77 @@ const YES_NO_Q: Choice[] = [
   { value: 'yes', label: 'はい' },
   { value: 'no', label: 'いいえ' },
 ];
+
+/* 開閉器とヒューズの定格電流。一覧から選べて、手入力もできる */
+const amps = (...vals: string[]): Choice[] => vals.map((v) => ({ value: v, label: v }));
+const PC_RATINGS = amps('30A', '50A', '75A', '100A');
+const PC_FUSES = amps('5A', '7.5A', '10A', '15A', '20A', '30A', '50A');
+const LBS_RATINGS = amps('100A', '200A', '300A', '400A');
+const PF_RATINGS = amps('10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A', '150A');
+const LOAD_AMPS = amps('5A', '10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A');
+const SHORT_CIRCUIT = amps('12.5kA', '20kA', '31.5kA', '40kA');
+/** パワーヒューズの負荷側。つなぐ相手で記号が変わる */
+const PF_LOAD_KIND: Choice[] = [
+  { value: 'T', label: 'T（変圧器）' },
+  { value: 'C', label: 'C（コンデンサ）' },
+  { value: 'M', label: 'M（モーター）' },
+];
+
+/**
+ * PC と LBS の定格を聞く質問を作る。
+ * 変圧器の手前・コンデンサの手前で同じことを聞くので、ひな形から作る。
+ */
+function breakerRatings(
+  prefix: 'tr' | 'cap',
+  group: string,
+  showIf: Condition,
+  defaultLoad: 'T' | 'C',
+): Question[] {
+  const cap = prefix === 'tr' ? '変圧器' : 'コンデンサ';
+  const P = (id: string) => `${prefix}${id}`;
+  const hasPc: Condition = { all: [showIf, { key: P('HasPc'), eq: 'yes' }] };
+  const hasLbs: Condition = { all: [showIf, { key: P('HasLbs'), eq: 'yes' }] };
+  return [
+    {
+      id: P('PcRating'), group, label: `PC本体の定格電流`, type: 'select',
+      options: PC_RATINGS, allowFreeInput: true, showIf: hasPc, ask: 'always', alwaysShow: true,
+      help: `図面には「30A」のように、記号なしで書く`,
+    },
+    {
+      id: P('PcFuse'), group, label: 'PCのヒューズの定格電流', type: 'select',
+      options: PC_FUSES, allowFreeInput: true, showIf: hasPc, ask: 'always', alwaysShow: true,
+      help: '図面には「F:10A」のように、先頭にF:を付けて書く',
+    },
+    {
+      id: P('LbsRating'), group, label: 'LBS本体の定格電流', type: 'select',
+      options: LBS_RATINGS, allowFreeInput: true, defaultValue: '200A',
+      showIf: hasLbs, ask: 'always', alwaysShow: true,
+      help: 'ふつうは200A。図面には「200A」のように、記号なしで書く',
+    },
+    {
+      id: P('PfG'), group, label: 'パワーヒューズ（PF）の定格電流', type: 'select',
+      options: PF_RATINGS, allowFreeInput: true, showIf: hasLbs, ask: 'always', alwaysShow: true,
+      help: '図面には「G50A」のように、先頭にGを付けて書く',
+    },
+    {
+      id: P('PfLoad'), group, label: 'PFの負荷側につなぐもの', type: 'select',
+      options: PF_LOAD_KIND, defaultValue: defaultLoad,
+      showIf: hasLbs, ask: 'always', alwaysShow: true,
+      help: `${cap}につなぐので、ふつうは「${defaultLoad}」`,
+    },
+    {
+      id: P('PfLoadAmp'), group, label: 'PFの負荷側の電流', type: 'select',
+      options: LOAD_AMPS, allowFreeInput: true, showIf: hasLbs, ask: 'always', alwaysShow: true,
+      help: '図面には「T30A」のように、上で選んだ記号に続けて書く',
+    },
+    {
+      id: P('PfKa'), group, label: 'PFの許容できる短絡電流', type: 'select',
+      options: SHORT_CIRCUIT, allowFreeInput: true, defaultValue: '40kA',
+      showIf: hasLbs, ask: 'always', alwaysShow: true,
+      help: 'ふつうは40kA',
+    },
+  ];
+}
 
 export const QUESTIONS: Question[] = [
   /* ---------------- お客様・現場 ---------------- */
@@ -625,7 +701,7 @@ export const QUESTIONS: Question[] = [
   },
   { id: 'feederSourceLabel', group: 'feeder', label: '先の機器の表記', type: 'text', placeholder: '蓄電池ユニットNo.1', showIf: { key: 'feederSource', ne: 'none' }, ask: 'ai-uncertain', fromSketch: true },
 
-  /* ---------------- 進相設備 ---------------- */
+/* ---------------- 進相設備 ---------------- */
   {
     id: 'hasCapacitor',
     group: 'compensation',
@@ -809,4 +885,8 @@ export const QUESTIONS: Question[] = [
 
   /* ---------------- 表題欄 ---------------- */
   { id: 'drawingName', group: 'title', label: '図面名称', type: 'text', defaultValue: 'キュービクル式高圧受電設備単線結線図', ask: 'always' },
+
+  // PC・LBSの定格電流とヒューズ（変圧器の手前／コンデンサの手前）
+  ...breakerRatings('tr', 'transformer', { key: 'transformerCount', gt: 0 }, 'T'),
+  ...breakerRatings('cap', 'compensation', { key: 'hasCapacitor', eq: 'yes' }, 'C'),
 ];

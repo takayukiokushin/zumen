@@ -24,6 +24,7 @@ import { buildComposition } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
+import { inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -328,6 +329,82 @@ console.log('\n■ 記号の大きさ');
   }
   const offCentre = boxes.filter((b) => b.portX !== boxes[0]!.w / 2);
   if (offCentre.length > 0) fail(`接続点が中央にない記号：${offCentre.map((b) => b.id).join('・')}`);
+}
+
+/* ---------- 10. 図面を整える ---------- */
+console.log('\n■ 図面を整える');
+{
+  const common: Answers = {
+    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr', pasBuiltinVt: 'yes',
+    vctLocation: 'indoor', vctCount: 2, areaCount: 1, areaForm: 'cubicle', hasSiteCt: 'yes',
+  };
+  const patterns: [string, Answers][] = [
+    ['PFS形・変圧器1台', { ...common, mainBreakerForm: 'pfs', transformerCount: 1, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300 }],
+    ['CB形・変圧器3台・コンデンサ2台', { ...common, mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
+      transformerCount: 3, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
+      hasCapacitor: 'yes', capacitorCount: 2, hasReactor: 'yes', capacitorCapacity: '3φ106kvar' }],
+    ['前置き機器つき・低圧回線2本', { ...common, mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
+      transformerCount: 2, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
+      trHasPc: 'yes', trPcRating: '30A', trPcFuse: '10A',
+      hasCapacitor: 'yes', capacitorCount: 2, capHasLbs: 'yes', capHasVcs: 'yes',
+      capLbsRating: '200A', capPfG: '50A', capPfLoad: 'C', capPfLoadAmp: '30A', capPfKa: '40kA',
+      feederCount: 2 }],
+    ['発電機・太陽光つき', { ...common, mainBreakerForm: 'pfs', transformerCount: 2, trConnection: 'tr-3p-dy',
+      trUsage: '動力', trCapacity: 300, hasGenerator: 'yes', hasPv: 'yes', pvCapacity: '50kW×2' }],
+  ];
+
+  for (const [name, a] of patterns) {
+    const d = fromLayout(layout(buildComposition(a), a));
+    const r = tidyDrawing(d, 'A4', 'portrait');
+    const left = r.issues;
+    const serious = left.filter((i) => i.kind !== 'paper');
+    if (serious.length > 0) {
+      fail(`${name}：整えたあとも ${serious.length}件 残りました（${serious[0]!.message}）`);
+    } else {
+      console.log(`  ${name}：整えたあと、直すところはありません`);
+    }
+  }
+
+  // わざと壊した図面を直せるか
+  const a: Answers = { ...common, mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
+    transformerCount: 2, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300 };
+  const clean = fromLayout(layout(buildComposition(a), a));
+  const trs = symbols(clean).filter((s) => s.symbolId.startsWith('tr-'));
+  const vcb = symbols(clean).find((s) => s.symbolId === 'vcb')!;
+  const port = portsOf(trs[0]!)[0]!;
+  const items = clean.items.map((i) => ({ ...i }));
+  // 接続点の少し横で終わっている線（どこにもつながっていない）
+  items.push({ kind: 'wire', id: 'bad-float', x1: port.x + 70, y1: port.y, x2: port.x + 15, y2: port.y } as DocWire);
+  items.push({ kind: 'wire', id: 'bad-poke', x1: vcb.x + 24, y1: vcb.y - 30, x2: vcb.x + 24, y2: vcb.y + 30 } as DocWire);
+  items.push({ kind: 'wire', id: 'bad-zero', x1: 10, y1: 10, x2: 10, y2: 10 } as DocWire);
+  const t2 = items.find((i) => i.id === trs[1]!.id)! as typeof trs[0];
+  t2.labelDx = trs[0]!.x + trs[0]!.labelDx - t2.x;
+  t2.labelDy = trs[0]!.y + trs[0]!.labelDy - t2.y;
+  const brokenDoc = { ...clean, items };
+
+  const found = inspectDrawing(brokenDoc, 'A4', 'portrait');
+  for (const kind of ['floating', 'through', 'overlap'] as const) {
+    if (!found.some((i) => i.kind === kind)) fail(`壊した図面の「${kind}」を見つけられませんでした`);
+  }
+  console.log(`  わざと壊した図面：${found.length}件の問題を見つけました`);
+
+  const r = tidyDrawing(brokenDoc, 'A4', 'portrait');
+  if (r.doc.items.some((i) => i.id === 'bad-zero')) fail('長さ0の線が消えていません');
+  if (r.fixed.floating < 1) fail('宙に浮いた線をつなげませんでした');
+  if (r.fixed.through < 1) fail('記号に突っ込んだ線を引っ込められませんでした');
+  if (r.fixed.overlap < 1) fail('重なった文字をずらせませんでした');
+  const after = inspectDrawing(r.doc, 'A4', 'portrait');
+  if (after.some((i) => i.kind === 'overlap')) fail('整えたあとも文字が重なっています');
+  // 接続点に近いほうの端がつながっていればよい（反対の端は宙に浮いたままでよい）
+  const floatWire = wires(r.doc).find((w) => w.id === 'bad-float');
+  if (!floatWire || (!floatWire.at1 && !floatWire.at2)) {
+    fail('接続点の近くにある線をつなげませんでした');
+  }
+  console.log(
+    `  直した件数：${Object.entries(r.fixed).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(' / ')}` +
+    `／残り ${after.length}件`,
+  );
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

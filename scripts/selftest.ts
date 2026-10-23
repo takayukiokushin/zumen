@@ -434,7 +434,6 @@ try {
   const svg = renderSvg(drawing, {
     title: '試験事業場　キュービクル式高圧受電設備単線結線図',
     footer: '試験',
-    draftNotice: '※ 診断用',
   });
   check('図面を描き出せる', svg.includes('<svg') && svg.length > 2000, `${(svg.length / 1024).toFixed(0)}KB`);
   check('日本語のフォント指定が入っている', svg.includes('IPAGothic'));

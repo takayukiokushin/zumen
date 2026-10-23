@@ -204,7 +204,8 @@ export const switchgearSymbols: SymbolDef[] = [
       ...crossMark(24, 27),
       contact(24, 45, 4),
       line(24, 41, 38, 29),
-      vline(24, 45, 72),
+      // 丸（可動接点）の中を線が突き抜けないよう、下端から引き直す
+      vline(24, 49, 72),
     ],
     ports: CELL_PORTS,
     status: 'confirmed',

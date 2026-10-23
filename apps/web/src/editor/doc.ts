@@ -1,6 +1,6 @@
 import { getSymbol } from '@zumen/symbols';
 import { rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
-import type { DrawingLayout } from '@zumen/layout';
+import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
 
 /**
  * 編集中の図面。自動レイアウトの結果をここに取り込んでから、自由に動かせるようにする。
@@ -85,6 +85,9 @@ export interface Doc {
    * true のものを勝手に作り直すと、直した内容が消えてしまう。
    */
   edited?: boolean;
+  /** 印刷する用紙。既定はA4の縦 */
+  paper?: PaperSize;
+  orientation?: Orientation;
 }
 
 /**

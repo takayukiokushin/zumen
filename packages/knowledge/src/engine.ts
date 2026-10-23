@@ -134,6 +134,28 @@ export function withDerived(answers: Answers): Answers {
   ].filter(Boolean);
   d.cableSpecLine = third.join(' ');
 
+  // PC・LBSの定格の書き方
+  //   PC  … 1行目「30A」／2行目「F:10A」
+  //   LBS … 1行目「200A」／2行目「G50A T30A 40kA」（半角スペース区切り）
+  const pfLine = (g: Value, kind: Value, amp: Value, ka: Value): string => {
+    const parts: string[] = [];
+    if (g) parts.push(`G${g}`);
+    if (kind && amp) parts.push(`${kind}${amp}`);
+    if (ka) parts.push(String(ka));
+    return parts.join(' ');
+  };
+  for (const prefix of ['tr', 'cap'] as const) {
+    // 定格を入れていないときは、せめて記号名を出す
+    d[`${prefix}PcHead`] = answers[`${prefix}PcRating`] || 'PC';
+    d[`${prefix}LbsHead`] = answers[`${prefix}LbsRating`] || 'LBS';
+    d[`${prefix}PfLine`] = pfLine(
+      answers[`${prefix}PfG`],
+      answers[`${prefix}PfLoad`],
+      answers[`${prefix}PfLoadAmp`],
+      answers[`${prefix}PfKa`],
+    );
+  }
+
   // 変圧器の容量表記（V結線は2台分を別行にする）
   const phase = String(answers.trConnection ?? '').startsWith('tr-1p') || answers.trConnection === 'tr-vv' ? '1φ' : '3φ';
   if (answers.trConnection === 'tr-vv') {

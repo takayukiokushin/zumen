@@ -22,7 +22,7 @@ const ja = {
   'app.name': '単線結線図作成',
 
   'tab.analyze': 'スケッチ読み取り',
-  'tab.hearing': '事前ヒアリング',
+  'tab.hearing': '入力して図面を作成',
   'tab.drawing': '図面',
   'tab.analyze.help': 'すでにある図面や手書きのスケッチから、図面を作成します',
   'tab.hearing.help': '必要事項を入力して、そこから図面を作成します',
@@ -161,7 +161,7 @@ const en: Dict = {
   'app.name': 'Single-Line Diagram',
 
   'tab.analyze': 'Read sketch',
-  'tab.hearing': 'Questionnaire',
+  'tab.hearing': 'Build from answers',
   'tab.drawing': 'Diagram',
   'tab.analyze.help': 'Builds a diagram from an existing drawing or a hand-drawn sketch',
   'tab.hearing.help': 'Answer the questions, and a diagram is built from them',
@@ -297,7 +297,7 @@ const fr: Dict = {
   'app.name': 'Schéma unifilaire',
 
   'tab.analyze': 'Lire un croquis',
-  'tab.hearing': 'Questionnaire',
+  'tab.hearing': 'Saisir et construire',
   'tab.drawing': 'Schéma',
   'tab.analyze.help': 'Crée un schéma à partir d’un plan existant ou d’un croquis à la main',
   'tab.hearing.help': 'Répondez aux questions : le schéma en est déduit',
@@ -434,7 +434,7 @@ const zh: Dict = {
   'app.name': '单线接线图',
 
   'tab.analyze': '读取草图',
-  'tab.hearing': '事前问询',
+  'tab.hearing': '填写并生成图纸',
   'tab.drawing': '图纸',
   'tab.analyze.help': '根据已有图纸或手绘草图生成图纸',
   'tab.hearing.help': '填写必要事项，据此生成图纸',
@@ -567,7 +567,7 @@ const ko: Dict = {
   'app.name': '단선결선도 작성',
 
   'tab.analyze': '스케치 읽기',
-  'tab.hearing': '사전 문진',
+  'tab.hearing': '입력해서 도면 만들기',
   'tab.drawing': '도면',
   'tab.analyze.help': '기존 도면이나 손으로 그린 스케치에서 도면을 만듭니다',
   'tab.hearing.help': '필요한 항목을 입력하면 그것으로 도면을 만듭니다',

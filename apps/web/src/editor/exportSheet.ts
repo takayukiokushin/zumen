@@ -1,10 +1,15 @@
 import { getSymbol } from '@zumen/symbols';
 import { renderSvg } from '@zumen/layout';
-import type { DrawingLayout, TitleBlock } from '@zumen/layout';
+import type { DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
 
 /** 編集中の図面を、図枠・表題欄つきの1枚のSVGにする */
-export function buildSheetSvg(doc: Doc, title: TitleBlock): string {
+export function buildSheetSvg(
+  doc: Doc,
+  title: TitleBlock,
+  paper: PaperSize = 'A4',
+  orientation: Orientation = 'portrait',
+): string {
   const drawing: DrawingLayout = {
     symbols: [],
     wires: [],
@@ -61,7 +66,7 @@ export function buildSheetSvg(doc: Doc, title: TitleBlock): string {
   }
   if (!Number.isFinite(b.x0)) Object.assign(b, { x0: 0, y0: 0, x1: 100, y1: 100 });
 
-  return renderSvg(drawing, title);
+  return renderSvg(drawing, title, { paper, orientation });
 }
 
 /** SVGをPNGにして保存する */

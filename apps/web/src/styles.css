@@ -171,13 +171,15 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 /* ---- 印刷（ブラウザの「PDFとして保存」で提出用のPDFになる） ---- */
 .print-root { display: none; }
 @media print {
-  @page { size: A4 portrait; margin: 0; }
+  /* 用紙の指定は Editor が差し込む（A4/A3・縦横を選べるため） */
   html, body, #root { margin: 0; padding: 0; height: auto; background: #fff; zoom: 1; }
-  .tabbar, .projectbar, .bar-error, .bar-lock, .editor-bar, .editor-body, .app, .mode-hint { display: none !important; }
+  .tabbar, .projectbar, .bar-error, .bar-lock, .editor-bar, .editor-body, .app,
+  .mode-hint, .stale-note, .panel-bar, .modal-back { display: none !important; }
   .shell, .shell > .body { display: block; height: auto; overflow: visible; }
   .editor { display: block; height: auto; }
   .print-root { display: block; }
-  .print-root svg { display: block; width: 210mm; height: 296mm; }
+  /* 大きさは Editor が選んだ用紙に合わせて差し込む */
+  .print-root svg { display: block; }
 }
 
 /* ---- スケッチ読み取り ---- */
@@ -516,3 +518,28 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
   cursor: pointer; font-size: calc(13px * var(--text-scale)); color: var(--ink); }
 .field .check input { width: calc(18px * var(--text-scale)); height: calc(18px * var(--text-scale));
   min-height: 0; margin: 0; accent-color: var(--accent); cursor: pointer; }
+
+/* 用紙のまま見るとき（印刷の見た目の確認） */
+.sheet-view { background: #fff; border: 1px solid var(--rule); box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  height: 100%; max-width: 100%; flex: 0 0 auto; }
+.sheet-view svg { display: block; width: 100%; height: 100%; }
+.paper-pick { display: inline-flex; gap: 6px; align-items: center; }
+.paper-pick .btn { min-width: calc(50px * var(--text-scale)); }
+/* 印刷では、用紙の大きさに合わせて図面を出す（寸法は Editor が差し込む） */
+@media print { .print-root svg { display: block; } }
+
+/* 「結線を整える」の結果 */
+.tidy-note { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale));
+  background: var(--ok-soft); border-bottom: 1px solid var(--ok);
+  font-size: calc(12.5px * var(--text-scale)); display: flex; align-items: flex-start;
+  gap: calc(12px * var(--text-scale)); flex-wrap: wrap; }
+.tidy-note.has-left { background: var(--need-soft); border-bottom-color: var(--need); }
+.tidy-note .issue-list { margin: 0; padding: 0; list-style: none; width: 100%;
+  display: grid; gap: 3px; max-height: 8.5em; overflow-y: auto; }
+.tidy-note .issue-list li { display: flex; gap: 8px; align-items: baseline; }
+.tidy-note .tag { flex: 0 0 auto; font-size: calc(11px * var(--text-scale)); color: var(--need);
+  background: var(--field); border: 1px solid var(--need); border-radius: 10px; padding: 0 8px; }
+/* 図面の上に出す「ここが直っていません」の印 */
+.canvas .issue-mark circle { fill: none; stroke: #d2334a; stroke-width: 1.6; }
+.canvas .issue-mark line { stroke: #d2334a; stroke-width: 1.8; }
+.canvas .issue-mark .dot { fill: #d2334a; stroke: none; }

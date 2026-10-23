@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import type { Doc, DocItem } from './doc.ts';
 import { assistMove, assistWireEnd, docBounds, groupOf, groupRootOf, itemBounds, moveItem, moveWireEnd } from './doc.ts';
+import type { Issue } from './inspect.ts';
 
 interface Props {
   doc: Doc;
@@ -16,6 +17,8 @@ interface Props {
   /** 'wire' のときは2点をクリックして線を引く */
   mode: 'select' | 'wire';
   zoom: number;
+  /** 「結線を整える」で直しきれなかったところ。赤い印で知らせる */
+  issues?: Issue[];
 }
 
 /** 動かしている最中の状態。dx・dy は吸い寄せたあとの値 */
@@ -30,7 +33,7 @@ interface Drag {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom }: Props) {
+export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom, issues = [] }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -247,6 +250,15 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
             strokeWidth={1}
           />
         )}
+
+        {/* 直しきれなかったところに、赤い印を出す */}
+        {issues.map((is, i) => (
+          <g key={`issue-${i}`} className="issue-mark" pointerEvents="none">
+            <circle cx={is.x} cy={is.y} r={11} />
+            <line x1={is.x} y1={is.y - 5} x2={is.x} y2={is.y + 1} />
+            <circle cx={is.x} cy={is.y + 4.5} r={0.9} className="dot" />
+          </g>
+        ))}
 
         {selectedId &&
           (() => {

@@ -200,8 +200,6 @@ export interface TitleBlock {
   revision?: string;
   author?: string;
   createdAt?: ISODate;
-  /** 作図支援ツールである旨の注記を出力に含めるか */
-  draftNotice?: boolean;
 }
 
 export interface Drawing {

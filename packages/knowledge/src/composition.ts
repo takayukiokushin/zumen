@@ -312,7 +312,7 @@ export const TRANSFORMER: Placement[] = [
     kind: 'parallel',
     row: ROW.pc,
     when: { key: 'trHasPc', eq: 'yes' },
-    labelTemplate: ['PC'],
+    labelTemplate: ['{trPcHead}', 'F:{trPcFuse}'],
     repeatCountKey: 'transformerCount',
   },
   {
@@ -321,7 +321,7 @@ export const TRANSFORMER: Placement[] = [
     kind: 'parallel',
     row: ROW.lbs,
     when: { key: 'trHasLbs', eq: 'yes' },
-    labelTemplate: ['LBS'],
+    labelTemplate: ['{trLbsHead}', '{trPfLine}'],
     repeatCountKey: 'transformerCount',
   },
   {
@@ -383,7 +383,7 @@ export const EXTRAS: Placement[] = [
     kind: 'parallel',
     row: ROW.pc,
     when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'capHasPc', eq: 'yes' }] },
-    labelTemplate: ['PC'],
+    labelTemplate: ['{capPcHead}', 'F:{capPcFuse}'],
     repeatCountKey: 'capacitorCount',
   },
   {
@@ -392,7 +392,7 @@ export const EXTRAS: Placement[] = [
     kind: 'parallel',
     row: ROW.lbs,
     when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'capHasLbs', eq: 'yes' }] },
-    labelTemplate: ['LBS'],
+    labelTemplate: ['{capLbsHead}', '{capPfLine}'],
     repeatCountKey: 'capacitorCount',
   },
   {

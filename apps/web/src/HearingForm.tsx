@@ -38,6 +38,8 @@ interface Block {
 }
 
 const isOptionalDetail = (q: Question, typed: Answers, key: string): boolean => {
+  // 「いつも出す」と決めてある項目は畳まない（既定値があっても変えたいもの）
+  if (q.alwaysShow) return false;
   // 現地のメモから分かる項目は、ヒアリングの段階では畳んでおく
   if (q.fromSketch && typed[key] === undefined) return true;
   return !q.required && !DRIVER_QUESTION_IDS.has(q.id) && q.defaultValue !== undefined && typed[key] === undefined;

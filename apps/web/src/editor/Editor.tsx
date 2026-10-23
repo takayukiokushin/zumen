@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CATEGORY_LABEL, SYMBOLS, getSymbol, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
-import { COMPANY_NAME, layout } from '@zumen/layout';
+import { COMPANY_NAME, layout, sheetSize } from '@zumen/layout';
+import type { Orientation, PaperSize } from '@zumen/layout';
 import { buildComposition } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT } from '../i18n/useT.ts';
 import { buildSheetSvg, downloadPng, downloadSvg } from './exportSheet.ts';
+import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
+import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, rotateSymbol, setLabel, snapWireToPorts, tidyDoc } from './doc.ts';
 
@@ -52,6 +55,11 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
   const [mode, setMode] = useState<'select' | 'wire'>('select');
+  /** 用紙のまま（図枠つき）で見るか。印刷の見た目をそのまま確かめられる */
+  const [sheetView, setSheetView] = useState(false);
+  /** 「結線を整える」で直しきれなかったところ */
+  const [issues, setIssues] = useState<Issue[] | null>(null);
+  const [tidyNote, setTidyNote] = useState<string | null>(null);
 
   const doc = history.present;
   const sheetTitle = {
@@ -60,12 +68,19 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     )}`.trim(),
     // 右下は常に社名（作成者や図面番号は図面に入れない方針）
     footer: COMPANY_NAME,
-    draftNotice: '※ 作図支援ツールで作成したたたき台です。内容は有資格者の確認が必要です',
   };
   const fileBase = String(answers.siteName ?? answers.customerName ?? '単線結線図');
   const selected = doc.items.find((i) => i.id === selectedId) ?? null;
   /** 印刷・保存用の1枚のSVG（図枠と表題欄つき） */
-  const sheetSvg = useMemo(() => buildSheetSvg(doc, sheetTitle), [doc, sheetTitle.title, sheetTitle.footer]);
+  const paper: PaperSize = doc.paper ?? 'A4';
+  const orientation: Orientation = doc.orientation ?? 'portrait';
+  const sheetSvg = useMemo(
+    () => buildSheetSvg(doc, sheetTitle, paper, orientation),
+    [doc, sheetTitle.title, sheetTitle.footer, paper, orientation],
+  );
+  /** 印刷のときの用紙の実寸。@page と図面の大きさを合わせるのに使う */
+  const sheetMm = sheetSize(paper, orientation);
+
   const selectedSymbol = selected?.kind === 'symbol' ? (selected as DocSymbol) : null;
 
   const apply = useCallback(
@@ -85,6 +100,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     onDocChange?.(fresh);
     setSelectedId(null);
   };
+
+  /** 用紙の設定を変える（図面の一部として保存する） */
+  const setPaper = (next: Partial<Pick<Doc, 'paper' | 'orientation'>>) => apply({ ...doc, ...next });
 
   /** 手で直したあとに回答が変わっている。勝手に作り直さず、案内だけ出す */
   const stale = doc.edited === true && doc.basis !== undefined && doc.basis !== basis;
@@ -189,7 +207,19 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             type="button"
             className="btn"
             title={t('editor.tidy.help')}
-            onClick={() => apply(tidyDoc(doc))}
+            onClick={() => {
+              const r = tidyDrawing(doc, paper, orientation);
+              apply(r.doc);
+              const done = Object.entries(r.fixed)
+                .filter(([, n]) => n > 0)
+                .map(([k, n]) => `${ISSUE_LABEL[k as keyof typeof ISSUE_LABEL]} ${n}件`);
+              setIssues(r.issues);
+              setTidyNote(
+                done.length > 0
+                  ? `直しました：${done.join(' / ')}`
+                  : '直すところはありませんでした',
+              );
+            }}
           >
             {t('editor.tidy')}
           </button>
@@ -197,6 +227,44 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <button type="button" onClick={regenerate}>
             {t('editor.regenerate')}
           </button>
+          <span className="sep" />
+          <span className="paper-pick">
+            {(['A4', 'A3'] as const).map((p2) => (
+              <button
+                key={p2}
+                type="button"
+                className="btn"
+                aria-pressed={paper === p2}
+                title={`${p2}（${sheetSize(p2, orientation).mmW}×${sheetSize(p2, orientation).mmH}mm）で印刷します`}
+                onClick={() => setPaper({ paper: p2 })}
+              >
+                {p2}
+              </button>
+            ))}
+            {([
+              ['portrait', '縦'],
+              ['landscape', '横'],
+            ] as const).map(([o, label]) => (
+              <button
+                key={o}
+                type="button"
+                className="btn"
+                aria-pressed={orientation === o}
+                onClick={() => setPaper({ orientation: o })}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="btn"
+              aria-pressed={sheetView}
+              title="図枠つきの、印刷したときの見た目で確かめます"
+              onClick={() => setSheetView((v) => !v)}
+            >
+              用紙で見る
+            </button>
+          </span>
           <span className="sep" />
           <button type="button" onClick={() => window.print()}>
             {t('editor.print')}
@@ -230,14 +298,56 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         </p>
       )}
 
+      {tidyNote && (
+        <p className={`tidy-note${issues && issues.length > 0 ? ' has-left' : ''}`}>
+          <b>{tidyNote}</b>
+          {issues && issues.length > 0 ? (
+            <>
+              <span>直しきれなかったところが {issues.length}件 あります（図面に赤い印を出しています）</span>
+              <ul className="issue-list">
+                {issues.slice(0, 8).map((is, i) => (
+                  <li key={i}>
+                    <span className="tag">{ISSUE_LABEL[is.kind]}</span>
+                    {is.message}
+                  </li>
+                ))}
+                {issues.length > 8 && <li>ほか {issues.length - 8}件</li>}
+              </ul>
+            </>
+          ) : (
+            <span>直しきれなかったところはありません</span>
+          )}
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setTidyNote(null);
+              setIssues(null);
+            }}
+          >
+            {t('common.close')}
+          </button>
+        </p>
+      )}
+
       {mode === 'wire' && (
         <p className="mode-hint">{t('editor.wireHint')}</p>
       )}
 
+      {/* 印刷の用紙を、選んだ大きさ・向きに合わせる */}
+      <style>{`@page { size: ${sheetMm.mmW}mm ${sheetMm.mmH}mm; margin: 0; }
+        .print-root svg { width: ${sheetMm.mmW}mm; height: ${sheetMm.mmH}mm; }`}</style>
       <div className="print-root" aria-hidden="true" dangerouslySetInnerHTML={{ __html: sheetSvg }} />
 
       <div className="editor-body">
         <div className="canvas-wrap">
+          {sheetView ? (
+            <div
+              className="sheet-view"
+              style={{ aspectRatio: `${sheetMm.mmW} / ${sheetMm.mmH}` }}
+              dangerouslySetInnerHTML={{ __html: sheetSvg }}
+            />
+          ) : (
           <DrawingCanvas
             doc={doc}
             selectedId={selectedId}
@@ -252,7 +362,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             }}
             mode={mode}
             zoom={zoom}
+            issues={issues ?? []}
           />
+          )}
         </div>
 
         <aside className="side">

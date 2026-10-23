@@ -8,13 +8,44 @@ export const COMPANY_NAME = '株式会社フジエレックス';
 export interface TitleBlock {
   title: string;
   footer?: string;
-  /** 作図支援ツールによる下書きである旨の注記 */
-  draftNotice?: string;
+}
+
+export type PaperSize = 'A4' | 'A3';
+export type Orientation = 'portrait' | 'landscape';
+
+/** 用紙の実寸（mm）。縦向きのときの値 */
+export const PAPER_MM: Record<PaperSize, { w: number; h: number }> = {
+  A4: { w: 210, h: 297 },
+  A3: { w: 297, h: 420 },
+};
+
+/**
+ * 1mm あたりの作図単位。
+ * これまでA4縦を 760×1075 で描いていたので、その比率をそのまま使う。
+ * 用紙が大きくなるとそのぶん作図できる範囲が広がり、
+ * 線の太さや文字は紙の上で同じ大きさのままになる。
+ */
+const UNITS_PER_MM = 760 / 210;
+
+/** 用紙の大きさ（mmと作図単位の両方） */
+export function sheetSize(paper: PaperSize, orientation: Orientation): {
+  mmW: number;
+  mmH: number;
+  w: number;
+  h: number;
+} {
+  const mm = PAPER_MM[paper];
+  const mmW = orientation === 'portrait' ? mm.w : mm.h;
+  const mmH = orientation === 'portrait' ? mm.h : mm.w;
+  return { mmW, mmH, w: Math.round(mmW * UNITS_PER_MM), h: Math.round(mmH * UNITS_PER_MM) };
 }
 
 export interface SheetOptions {
   width?: number;
   height?: number;
+  /** 用紙の大きさ。width/height を直接渡さないときに使う */
+  paper?: PaperSize;
+  orientation?: Orientation;
   /** 図枠の余白 */
   margin?: number;
   titleHeight?: number;
@@ -29,8 +60,9 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * 作図内容は必ず図枠の内側に収める（はみ出す場合は全体を縮小する）。
  */
 export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: SheetOptions = {}): string {
-  const W = opts.width ?? 760;
-  const H = opts.height ?? 1080;
+  const size = sheetSize(opts.paper ?? 'A4', opts.orientation ?? 'portrait');
+  const W = opts.width ?? size.w;
+  const H = opts.height ?? size.h;
   const M = opts.margin ?? 24;
   const TITLE_H = opts.titleHeight ?? 44;
   const PAD = opts.pad ?? 12;
@@ -45,7 +77,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   const ch = Math.max(y1 - y0, 1);
   const scale = Math.min(areaW / cw, areaH / ch, 1);
   const tx = areaX + (areaW - cw * scale) / 2 - x0 * scale;
-  const ty = areaY - y0 * scale;
+  const ty = areaY + (areaH - ch * scale) / 2 - y0 * scale;
 
   const body: string[] = [];
 
@@ -104,7 +136,6 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   </g>
   <text x="${W / 2}" y="${M + 6 + (TITLE_H - 12) / 2 + 5}" font-size="14" font-weight="700" text-anchor="middle" font-family="${FONT_FAMILY}" fill="#000">${esc(title.title)}</text>
   <text x="${W - M - 14}" y="${H - M - 12}" font-size="9" text-anchor="end" font-family="${FONT_FAMILY}" fill="#000">${esc(title.footer ?? COMPANY_NAME)}</text>
-  ${title.draftNotice ? `<text x="${M + 14}" y="${H - M - 12}" font-size="8" font-family="${FONT_FAMILY}" fill="#666">${esc(title.draftNotice)}</text>` : ''}
   <g transform="translate(${round(tx)} ${round(ty)}) scale(${scale.toFixed(4)})">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">
 ${body.join('\n')}
