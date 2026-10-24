@@ -22,13 +22,22 @@ const CY1 = CELL.h / 2 - SEP;
 const CY2 = CELL.h / 2 + SEP;
 const BOX = { ...CELL };
 
+/** 下の円の下端。ここが出口（低圧側）になる */
+const OUT_Y = CY2 + R;
+
+/**
+ * 変圧器の絵。
+ *
+ * 下側の縦線（低圧側への引き出し線）は**描かない**。
+ * 下に何もつながっていないのに線だけ伸びていると、行き先のない線に見えるため。
+ * 下につなぐものがあるときは、作図のほうが出口から接続先まで線を引く。
+ */
 const body = (primary: Shape[], secondary: Shape[]): Shape[] => [
   vline(CX, 0, CY1 - R),
   circle(CX, CY1, R),
   circle(CX, CY2, R),
   ...primary,
   ...secondary,
-  vline(CX, CY2 + R, CELL.h),
 ];
 
 /** 座標を直に書いている記号（並行運転）を、まるごと拡大する */
@@ -43,7 +52,7 @@ const grow = (shapes: Shape[], k: number): Shape[] =>
 
 const PORTS = [
   { id: 'in', x: CX, y: 0, dir: 'up' as const, role: 'line' as const },
-  { id: 'out', x: CX, y: BOX.h, dir: 'down' as const, role: 'line' as const },
+  { id: 'out', x: CX, y: OUT_Y, dir: 'down' as const, role: 'line' as const },
 ];
 
 /** 巻線の線数（単相変圧器は一次1本・二次3本で単相三線式を表す） */
@@ -175,11 +184,11 @@ export const transformerSymbols: SymbolDef[] = [
       vline(22, 54, 60),
       vline(62, 54, 60),
       hline(60, 22, 62),
-      vline(42, 60, 68),
+      // 下側の縦線は描かない（つなぐものがあるときだけ作図のほうが引く）
     ], SCALE),
     ports: [
       { id: 'in', x: 42 * SCALE, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 42 * SCALE, y: 68 * SCALE, dir: 'down', role: 'line' },
+      { id: 'out', x: 42 * SCALE, y: 60 * SCALE, dir: 'down', role: 'line' },
     ],
     fields: [USAGE, CAPACITY, VOLTAGE],
     status: 'confirmed',

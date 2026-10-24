@@ -678,5 +678,42 @@ console.log('\n■ 高圧コンデンサ（SC）と直列リアクトル（SR）
   }
 }
 
+/* ---------- 15. 変圧器の下側の縦線 ---------- */
+console.log('\n■ 変圧器の下側の縦線（つなぐものがあるときだけ出す）');
+{
+  const kinds = ['tr-1p', 'tr-1p-2w', 'tr-3p-yy', 'tr-3p-dd', 'tr-3p-yd', 'tr-3p-dy', 'tr-vv', 'tr-1p-parallel', 'tr-scott'];
+  const common: Answers = {
+    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', transformerCount: 1, trCapacity: 100,
+  };
+  /** 変圧器の出口から下へ伸びる線の本数と、出口からのすき間 */
+  const below = (a: Answers, kind: string) => {
+    const r = layout(buildComposition(a), a);
+    const tr = r.symbols.find((s) => s.symbolId === kind);
+    if (!tr) return null;
+    const out = getSymbolDef(kind).ports.find((p) => p.id === 'out')!;
+    const ox = tr.x + out.x;
+    const oy = tr.y + out.y;
+    const lines = r.wires.filter(
+      (w) => w.x1 === w.x2 && Math.abs(w.x1 - ox) < 1 && Math.min(w.y1, w.y2) >= oy - 1 && Math.max(w.y1, w.y2) > oy + 1,
+    );
+    const gap = lines.length ? Math.min(...lines.map((w) => Math.min(w.y1, w.y2))) - oy : 0;
+    return { count: lines.length, gap };
+  };
+
+  let bad = 0;
+  for (const kind of kinds) {
+    const alone = below({ ...common, trConnection: kind }, kind);
+    const withFeeder = below({ ...common, trConnection: kind, feederCount: 2, feederForm: 'mccb' }, kind);
+    if (!alone || !withFeeder) { fail(`${kind} が図面に置かれませんでした`); bad++; continue; }
+    if (alone.count !== 0) { fail(`${kind}：下に何も無いのに縦線が ${alone.count}本 出ています`); bad++; }
+    if (withFeeder.count === 0) { fail(`${kind}：下に回線があるのに縦線が出ていません`); bad++; }
+    else if (Math.abs(withFeeder.gap) > 0.01) { fail(`${kind}：縦線が出口から ${withFeeder.gap} 離れています`); bad++; }
+  }
+  if (bad === 0) console.log(`  ${kinds.length}種類すべて：つなぐものが無ければ出さず、あれば出口から途切れずにつながる`);
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
