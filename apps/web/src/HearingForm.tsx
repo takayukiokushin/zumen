@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { DRIVER_QUESTION_IDS, evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, visibleQuestions } from '@zumen/knowledge';
+import { evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, Question, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 
@@ -37,14 +37,6 @@ interface Block {
   need: boolean;
 }
 
-const isOptionalDetail = (q: Question, typed: Answers, key: string): boolean => {
-  // 「いつも出す」と決めてある項目は畳まない（既定値があっても変えたいもの）
-  if (q.alwaysShow) return false;
-  // 現地のメモから分かる項目は、ヒアリングの段階では畳んでおく
-  if (q.fromSketch && typed[key] === undefined) return true;
-  return !q.required && !DRIVER_QUESTION_IDS.has(q.id) && q.defaultValue !== undefined && typed[key] === undefined;
-};
-
 /** n件目の回答だけを取り出す（表示条件の判定に使う） */
 function pick(answers: Answers, index: number): Answers {
   const suffix = `__${index + 1}`;
@@ -56,7 +48,6 @@ function pick(answers: Answers, index: number): Answers {
 }
 
 export function HearingForm({ answers, effective, onChange, showNav = true }: Props) {
-  const [showAll, setShowAll] = useState(false);
   /** スケッチから読み取れた前提で、質問がどれだけ減るかを確かめる切り替え */
   const [aiAssist, setAiAssist] = useState(false);
 
@@ -84,14 +75,9 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
     const leading = groupQuestions.filter((q) => q.id === countKey || q.shared);
     const repeated = groupQuestions.filter((q) => q.id !== countKey && !q.shared);
 
-    const keep = (key: string, q: Question) => showAll || !isOptionalDetail(q, answers, key);
-    let hiddenCount = 0;
-
-    const lead: Row[] = [];
-    for (const q of leading) {
-      if (keep(q.id, q)) lead.push({ key: q.id, question: q });
-      else hiddenCount++;
-    }
+    // 質問は畳まず、対象になったものは全部出す。
+    // 隠れている項目に気づかないまま入力漏れになるほうが困るため
+    const lead: Row[] = leading.map((q) => ({ key: q.id, question: q }));
 
     /** 1台目・2台目…のまとまり。count が1なら見出しの無い1つだけ */
     const blocks: Block[] = [];
@@ -99,9 +85,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
       const rows: Row[] = [];
       for (const q of repeated) {
         if (i > 0 && !evaluate(q.showIf, { ...effective, ...pick(effective, i) })) continue;
-        const key = indexedKey(q.id, i);
-        if (keep(key, q)) rows.push({ key, question: q });
-        else hiddenCount++;
+        rows.push({ key: indexedKey(q.id, i), question: q });
       }
       if (rows.length === 0) continue;
       blocks.push({
@@ -118,7 +102,6 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
       group,
       lead,
       blocks,
-      hiddenCount,
       answered: all.filter((r) => effective[r.key] !== undefined).length,
       total: all.length,
       need: all.some((r) => r.question.required && effective[r.key] === undefined),
@@ -155,10 +138,6 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
             <label className="toggle">
               <input type="checkbox" checked={aiAssist} onChange={(e) => setAiAssist(e.target.checked)} />
               スケッチから判定できた質問を隠す
-            </label>
-            <label className="toggle">
-              <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-              既定値のままでよい質問も表示
             </label>
           </div>
         </div>
@@ -203,11 +182,6 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
                   </div>
                 </div>
               ),
-            )}
-            {s.hiddenCount > 0 && (
-              <p className="hidden-note">
-                既定値のままでよい質問を{s.hiddenCount}件隠しています。変える場合は右上の「既定値のままでよい質問も表示」を入れてください。
-              </p>
             )}
           </section>
         ))}
