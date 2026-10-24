@@ -16,6 +16,14 @@ const meter = (id: string, label: string, nameJa: string, size = 11): SymbolDef 
 });
 
 /** 計器用変成器・計器 */
+/**
+ * ZCTの円と、その中に引く斜線。
+ * 斜線は円の外へ出さず、内側で終わらせる（ふちから1だけ内側）。
+ * 位置を手で書くと円の大きさを変えたときにはみ出すので、中心と半径から決める。
+ */
+const ZCT = { cx: 20, cy: 22, r: 11 };
+const ZCT_SLASH = ((ZCT.r - 1) / Math.SQRT2);
+
 export const instrumentSymbols: SymbolDef[] = [
   {
     id: 'vct',
@@ -124,8 +132,11 @@ export const instrumentSymbols: SymbolDef[] = [
     box: { w: 52, h: 44 },
     shapes: [
       vline(20, 0, 44),
-      circle(20, 22, 11),
-      line(9, 33, 31, 11),
+      circle(ZCT.cx, ZCT.cy, ZCT.r),
+      line(
+        ZCT.cx - ZCT_SLASH, ZCT.cy + ZCT_SLASH,
+        ZCT.cx + ZCT_SLASH, ZCT.cy - ZCT_SLASH,
+      ),
       // 「3」は円の内側に収める。以前は右下にはみ出して外周の円と重なっていた。
       // 縦の導体と斜線のどちらにも触れない、円の右下のすきまに置いている
       text(24.75, 25, '3', { size: 9 }),

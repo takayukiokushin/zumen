@@ -126,5 +126,42 @@ console.log('\n■ 丸の中の文字が、丸からはみ出していないか'
   console.log(`  丸の中の文字 ${seen}箇所を調べました`);
 }
 
+/* ---------- 丸の中に引いた飾りの線が、丸からはみ出していないか ---------- */
+console.log('\n■ 丸の中の斜線などが、丸からはみ出していないか');
+{
+  let seen = 0;
+  for (const def of SYMBOLS) {
+    const circles = def.shapes.filter((s): s is Extract<Shape, { k: 'circle' }> => s.k === 'circle');
+    if (circles.length === 0) continue;
+    /** 接続点につながっている線は主回路なので、丸を突き抜けてよい */
+    const atPort = (x: number, y: number) => def.ports.some((p) => Math.hypot(p.x - x, p.y - y) <= 1);
+    for (const c of circles) {
+      for (const sh of def.shapes) {
+        if (sh.k !== 'line') continue;
+        if (atPort(sh.x1, sh.y1) || atPort(sh.x2, sh.y2)) continue;
+        // 丸の中心のそばを通る線だけを「中に描いた飾り」とみなす
+        const dx = sh.x2 - sh.x1;
+        const dy = sh.y2 - sh.y1;
+        const len2 = dx * dx + dy * dy;
+        const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((c.cx - sh.x1) * dx + (c.cy - sh.y1) * dy) / len2));
+        if (Math.hypot(sh.x1 + t * dx - c.cx, sh.y1 + t * dy - c.cy) >= c.r / 2) continue;
+        seen++;
+        const out = Math.max(
+          Math.hypot(sh.x1 - c.cx, sh.y1 - c.cy),
+          Math.hypot(sh.x2 - c.cx, sh.y2 - c.cy),
+        );
+        // ふちにぴたりと届いているのは、塗りつぶしの斜線などで正しい
+        if (out > c.r + 0.05) {
+          fail(
+            `${def.id}（${def.nameJa}）：線 (${sh.x1},${sh.y1})-(${sh.x2},${sh.y2}) が ` +
+              `丸 (${c.cx},${c.cy}) r=${c.r} から ${(out - c.r).toFixed(1)} はみ出しています`,
+          );
+        }
+      }
+    }
+  }
+  console.log(`  丸の中に描いた線 ${seen}本を調べました`);
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
