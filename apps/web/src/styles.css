@@ -478,7 +478,9 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .hearing-pane { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .hearing-pane > .app { flex: 1 1 auto; min-height: 0; height: auto; }
 .projectbar .picker { font-weight: var(--weight-strong); }
-.projectbar .jobname { font-size: calc(13.5px * var(--text-scale)); margin: 0 4px; }
+.projectbar .jobname { font-size: calc(13.5px * var(--text-scale)); margin: 0 4px;
+  min-width: 0; max-width: min(40ch, 42vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.projectbar .jobname-label { color: var(--muted); font-weight: 400; margin-right: 2px; }
 .projectbar .saved { color: var(--muted); font-size: calc(11.5px * var(--text-scale)); }
 .projectbar button.need-save { background: var(--accent-soft); border-color: var(--accent); }
 .joblist .panel { max-width: 1000px; }

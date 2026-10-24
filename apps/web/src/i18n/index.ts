@@ -35,6 +35,7 @@ const ja = {
 
   'project.choose': '案件を選ぶ',
   'project.list': '図面一覧',
+  'project.nameLabel': '図面:',
   'project.new': '新しい案件',
   'project.newName': '案件の名前を入れてください。',
   'project.search': '名前で探す',
@@ -116,7 +117,7 @@ const ja = {
   'hearing.hidePreview': 'いまの構成を隠す',
   'hearing.showPreview': 'いまの構成を出す',
 
-  'project.rename': '名前を変える',
+  'project.rename': '図面の名称を変更',
   'project.readonly': '閲覧のみ',
   'project.hasUnsaved': '未保存の変更があります',
   'project.savedAt': 'に保存',
@@ -174,6 +175,7 @@ const en: Dict = {
 
   'project.choose': 'Choose a job',
   'project.list': 'All drawings',
+  'project.nameLabel': 'Drawing: ',
   'project.new': 'New job',
   'project.newName': 'Enter a name for the job.',
   'project.search': 'Search by name',
@@ -255,7 +257,7 @@ const en: Dict = {
   'hearing.hidePreview': 'Hide summary',
   'hearing.showPreview': 'Show summary',
 
-  'project.rename': 'Rename',
+  'project.rename': 'Rename drawing',
   'project.readonly': 'View only',
   'project.hasUnsaved': 'You have unsaved changes',
   'project.savedAt': 'saved',
@@ -310,6 +312,7 @@ const fr: Dict = {
 
   'project.choose': 'Choisir une affaire',
   'project.list': 'Tous les schémas',
+  'project.nameLabel': 'Schéma : ',
   'project.new': 'Nouvelle affaire',
   'project.newName': 'Saisissez un nom pour l’affaire.',
   'project.search': 'Rechercher par nom',
@@ -392,7 +395,7 @@ const fr: Dict = {
   'hearing.hidePreview': 'Masquer le récapitulatif',
   'hearing.showPreview': 'Afficher le récapitulatif',
 
-  'project.rename': 'Renommer',
+  'project.rename': 'Renommer le schéma',
   'project.readonly': 'Lecture seule',
   'project.hasUnsaved': 'Modifications non enregistrées',
   'project.savedAt': 'enregistré',
@@ -447,6 +450,7 @@ const zh: Dict = {
 
   'project.choose': '选择项目',
   'project.list': '图纸一览',
+  'project.nameLabel': '图纸：',
   'project.new': '新建项目',
   'project.newName': '请输入项目名称。',
   'project.search': '按名称查找',
@@ -525,7 +529,7 @@ const zh: Dict = {
   'hearing.hidePreview': '隐藏当前构成',
   'hearing.showPreview': '显示当前构成',
 
-  'project.rename': '改名',
+  'project.rename': '修改图纸名称',
   'project.readonly': '仅查看',
   'project.hasUnsaved': '有未保存的修改',
   'project.savedAt': '已保存',
@@ -580,6 +584,7 @@ const ko: Dict = {
 
   'project.choose': '건을 고르기',
   'project.list': '도면 목록',
+  'project.nameLabel': '도면: ',
   'project.new': '새 건',
   'project.newName': '건의 이름을 입력하세요.',
   'project.search': '이름으로 찾기',
@@ -660,7 +665,7 @@ const ko: Dict = {
   'hearing.hidePreview': '현재 구성 숨기기',
   'hearing.showPreview': '현재 구성 보이기',
 
-  'project.rename': '이름 바꾸기',
+  'project.rename': '도면 이름 변경',
   'project.readonly': '보기 전용',
   'project.hasUnsaved': '저장하지 않은 변경이 있습니다',
   'project.savedAt': '에 저장',

@@ -37,7 +37,11 @@ export function ProjectBar({
 
       {projectId && (
         <>
-          <b className="jobname">{projectName}</b>
+          {/* 長い名前でもボタンに重ならないよう、はみ出す分は「…」で省く（全文はツールチップ） */}
+          <b className="jobname" title={projectName}>
+            <span className="jobname-label">{t('project.nameLabel')}</span>
+            {projectName}
+          </b>
           <button
             type="button"
             disabled={readOnly}
