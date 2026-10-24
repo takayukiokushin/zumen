@@ -323,7 +323,7 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
   }
 
   // 高圧母線から並列にぶら下がるものは、1台ぶんで1列になる。
-  // 変圧器→進相設備の順に、列を左から詰めていく
+  // 変圧器→高圧進相設備の順に、列を左から詰めていく
   let parallelLane = 0;
 
   for (const run of runs) {

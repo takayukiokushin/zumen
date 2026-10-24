@@ -145,7 +145,7 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   const frees: PlacedItem[] = [];
   /** 結線せずに置いたものは、受電設備の枠の中に数えない */
   const freeIds = new Set<string>();
-  /** 高圧母線から並列にぶら下がるもの（変圧器・進相設備） */
+  /** 高圧母線から並列にぶら下がるもの（変圧器・高圧進相設備） */
   const parallels = items.filter((i) => i.kind === 'parallel' && findSymbol(i.symbolId));
   let parallelDrawn = false;
   /** 低圧の回線をぶら下げる位置（最初の変圧器の下）。無ければ主回路の末端 */
@@ -154,7 +154,7 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   /** 変圧器ごとの低圧側の出口（1台目から順に）。低圧の回線はここからぶら下げる */
   const transformerOut: { x: number; y: number }[] = [];
 
-  /** 高圧母線を引き、変圧器や進相設備をそこから下へ並列にぶら下げる */
+  /** 高圧母線を引き、変圧器や高圧進相設備をそこから下へ並列にぶら下げる */
   function drawParallelSection(): void {
     if (parallels.length === 0) return;
 

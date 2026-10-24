@@ -305,7 +305,7 @@ export const switchgearSymbols: SymbolDef[] = [
     abbr: 'VCS',
     nameJa: '真空電磁接触器',
     category: 'switchgear',
-    tags: ['電磁接触器', '進相設備', 'コンデンサ開閉'],
+    tags: ['電磁接触器', '高圧進相設備', 'コンデンサ開閉'],
     // 進相コンデンサの開閉に使う。DSと見分けられるよう、固定接点を「お椀」で描く
     box: { ...CELL },
     shapes: [

@@ -46,7 +46,7 @@ export interface Question {
   required?: boolean;
   /**
    * 繰り返しグループの中でも、1回だけ聞く質問。
-   * 例：「コンデンサ設備はありますか？」は台数ぶん聞く必要がない。
+   * 例：「高圧コンデンサ設備はありますか？」は台数ぶん聞く必要がない。
    */
   shared?: boolean;
   /**
@@ -83,7 +83,13 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
   { id: 'receiving', label: '受電設備の構成' },
   { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台' },
-  { id: 'compensation', label: '進相設備', repeatCountKey: 'capacitorCount', repeatUnit: '台' },
+  {
+    id: 'compensation',
+    label: '高圧進相設備',
+    description: '高圧側に入るコンデンサとリアクトルだけを入力する。低圧側だけにある場合は入力しない',
+    repeatCountKey: 'capacitorCount',
+    repeatUnit: '台',
+  },
   { id: 'special', label: '特殊設備' },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' } },
   { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' } },
@@ -659,21 +665,24 @@ export const QUESTIONS: Question[] = [
   { id: 'trHasPc', group: 'transformer', label: '変圧器の手前にPC（高圧カットアウト）が入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'trHasLbs', group: 'transformer', label: '変圧器の手前にLBSが入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
 
-/* ---------------- 進相設備 ---------------- */
+/* ---------------- 高圧進相設備 ---------------- */
   {
     id: 'hasCapacitor',
     group: 'compensation',
-    label: 'コンデンサ設備はありますか？',
+    label: '高圧コンデンサ設備はありますか？',
     type: 'select',
     options: YES_NO,
     defaultValue: 'no',
     ask: 'ai-uncertain',
     shared: true,
+    help:
+      '高圧側（変圧器と並列に入る側）にコンデンサがあるときだけ「あり」にする。' +
+      '低圧側の分電盤などにしかコンデンサが無い場合は「なし」でよい（この図面には描かない）',
   },
   {
     id: 'capacitorCount',
     group: 'compensation',
-    label: 'コンデンサの台数',
+    label: '高圧コンデンサの台数',
     type: 'select',
     options: COUNT_OPTIONS,
     allowFreeInput: true,

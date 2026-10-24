@@ -649,7 +649,7 @@ console.log('\n■ PASに内蔵したLA・VTが母線につながっているか
   else console.log('  長さゼロの線はありません');
 }
 
-/* ---------- 14. 進相設備（SC・SR）の図記号 ---------- */
+/* ---------- 14. 高圧進相設備（SC・SR）の図記号 ---------- */
 console.log('\n■ 高圧コンデンサ（SC）と直列リアクトル（SR）の図記号');
 {
   const sc = getSymbolDef('sc').shapes;

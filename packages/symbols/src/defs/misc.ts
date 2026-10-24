@@ -6,7 +6,7 @@ import { circle, hline, line, path, poly, rect, text, vline } from '../shape.ts'
 export const DASH_DOT = '9 3 2 3';
 
 /**
- * 進相設備（SC・SR）の絵の大きさ。
+ * 高圧進相設備（SC・SR）の絵の大きさ。
  * 見本の図記号どおり、コンデンサの正方形とリアクトルの円は同じ大きさにする。
  * 枠（48×72）の中で上下中央に置く。
  */
@@ -16,14 +16,14 @@ const COMP_CY = CELL.h / 2;
 const COMP_TOP = COMP_CY - COMP_SIDE / 2;
 const COMP_LEFT = COMP_CX - COMP_SIDE / 2;
 
-/** 進相設備・電源設備・外枠・結線要素 */
+/** 高圧進相設備・電源設備・外枠・結線要素 */
 export const miscSymbols: SymbolDef[] = [
   {
     id: 'sr',
     abbr: 'SR',
     nameJa: '直列リアクトル',
     category: 'compensation',
-    tags: ['リアクトル', '進相設備'],
+    tags: ['リアクトル', '高圧進相設備'],
     box: { ...CELL },
     // 見本の図記号どおり。円は左下の4分の1が欠けた「4分の3の円」で、
     // 左のはしから上・右をまわって下のはしまで、きれいな円弧でつなぐ。
@@ -51,7 +51,7 @@ export const miscSymbols: SymbolDef[] = [
     abbr: 'SC',
     nameJa: '進相コンデンサ',
     category: 'compensation',
-    tags: ['コンデンサ', '進相設備', '力率改善'],
+    tags: ['コンデンサ', '高圧進相設備', '力率改善'],
     box: { ...CELL },
     // 見本の図記号どおり。寸法は見本の絵から比率で割り出している。
     //   上の縦線は外枠を貫いて上の極板まで届く（外枠につながっている）

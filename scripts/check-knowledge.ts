@@ -194,7 +194,7 @@ console.log(`    ${cbSeries.join(' → ')}`);
 if (!cbSeries.includes('ds') || !cbSeries.includes('vcb')) fail('CB形なのにDS/VCBが入っていません');
 if (!cbComposition.some((i) => i.symbolId === 'relay-ocr')) fail('CB形なのにOCRが入っていません');
 
-/* 変圧器と進相設備は並列に入るか */
+/* 変圧器と高圧進相設備は並列に入るか */
 {
   const parallel = composition.filter((i) => i.kind === 'parallel').map((i) => i.symbolId);
   if (!parallel.includes('tr-3p-dy')) fail('変圧器が主回路から分岐していません（直列になっています）');
