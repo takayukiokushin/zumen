@@ -264,7 +264,7 @@ export const QUESTIONS: Question[] = [
   {
     id: 'hasAs',
     group: 'source',
-    label: 'AS（エアースイッチ）はありますか？',
+    label: 'AS（気中開閉器）はありますか？',
     type: 'select',
     options: YES_NO,
     defaultValue: 'no',

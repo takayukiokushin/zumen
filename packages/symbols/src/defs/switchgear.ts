@@ -130,10 +130,11 @@ export const switchgearSymbols: SymbolDef[] = [
   {
     id: 'as',
     abbr: 'AS',
-    nameJa: 'エアースイッチ',
-    nameFormal: '気中開閉器',
+    // 画面・図面では正式名称の「気中開閉器」で統一する。
+    // 現場では「エアースイッチ」とも呼ぶので、探せるようにタグに残してある
+    nameJa: '気中開閉器',
     category: 'switchgear',
-    tags: ['電力会社', '引込元', '屋側'],
+    tags: ['電力会社', '引込元', '屋側', 'エアースイッチ'],
     box: { w: 56, h: 72 },
     shapes: [
       vline(28, 0, 10),
