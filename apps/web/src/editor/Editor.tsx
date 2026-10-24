@@ -44,10 +44,18 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   );
   const generated = useMemo(() => fromLayout(layout(composition, answers), basis), [composition, answers, basis]);
 
+  /** 作り直しても、用紙の大きさと向きだけは選んだままにする */
+  const keepPaper = (fresh: Doc, from: Doc | null | undefined): Doc =>
+    from?.paper === undefined && from?.orientation === undefined
+      ? fresh
+      : { ...fresh, paper: from.paper ?? fresh.paper, orientation: from.orientation ?? fresh.orientation };
+
   const [history, setHistory] = useState<History>(() => {
     // 手で直していない図面は、いつでも回答から作り直してよい。
     // 手で直したものは、勝手に作り直さずそのまま開く（案内だけ出す）
-    if (!initialDoc || initialDoc.edited !== true) return { past: [], present: generated, future: [] };
+    if (!initialDoc || initialDoc.edited !== true) {
+      return { past: [], present: keepPaper(generated, initialDoc), future: [] };
+    }
     // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく
     return { past: [], present: tidyDoc(initialDoc), future: [] };
   });
@@ -93,16 +101,32 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     [onDocChange, doc.basis],
   );
 
+  /**
+   * アプリが自分で整えた結果を入れる（「結線を整える」・用紙の設定）。
+   *
+   * これは利用者が手で描き変えたわけではないので、**「手で直した」印は付けない**。
+   * 付けてしまうと、そのあとヒアリングの回答を変えても図面が作り直されなくなり、
+   * 「ケーブルの長さに『約』を付けたのに図面が変わらない」といったことが起きる。
+   */
+  const applyAuto = useCallback(
+    (next: Doc) => {
+      const stamped: Doc = { ...next, edited: doc.edited, basis: doc.basis };
+      setHistory((h) => commit(h, stamped));
+      onDocChange?.(stamped);
+    },
+    [onDocChange, doc.edited, doc.basis],
+  );
+
   /** ヒアリングの回答から作り直す（編集内容は履歴に残るので元に戻せる） */
   const regenerate = () => {
-    const fresh = generated;
+    const fresh = keepPaper(generated, doc);
     setHistory((h) => commit(h, fresh));
     onDocChange?.(fresh);
     setSelectedId(null);
   };
 
   /** 用紙の設定を変える（図面の一部として保存する） */
-  const setPaper = (next: Partial<Pick<Doc, 'paper' | 'orientation'>>) => apply({ ...doc, ...next });
+  const setPaper = (next: Partial<Pick<Doc, 'paper' | 'orientation'>>) => applyAuto({ ...doc, ...next });
 
   /** 手で直したあとに回答が変わっている。勝手に作り直さず、案内だけ出す */
   const stale = doc.edited === true && doc.basis !== undefined && doc.basis !== basis;
@@ -209,7 +233,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             title={t('editor.tidy.help')}
             onClick={() => {
               const r = tidyDrawing(doc, paper, orientation);
-              apply(r.doc);
+              applyAuto(r.doc);
               const done = Object.entries(r.fixed)
                 .filter(([, n]) => n > 0)
                 .map(([k, n]) => `${ISSUE_LABEL[k as keyof typeof ISSUE_LABEL]} ${n}件`);
