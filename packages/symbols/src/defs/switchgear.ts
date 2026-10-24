@@ -1,5 +1,5 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
-import { blade, contact, hline, line, path, rect, tiltedBar, vline } from '../shape.ts';
+import { blade, contact, hline, line, loadContact, path, rect, tiltedBar, vline } from '../shape.ts';
 
 /** 遮断器を表す×印 */
 /**
@@ -33,10 +33,6 @@ const RATED_VOLTAGE: FieldDef = {
 
 const RATED_CURRENT: FieldDef = { key: 'ratedCurrent', label: '定格電流', type: 'number', unit: 'A' };
 
-/** PASの固定接点（丸）の中心と半径。真上の横棒をここに合わせる */
-const PAS_CONTACT_Y = 62;
-const PAS_CONTACT_R = 4.5;
-
 export const switchgearSymbols: SymbolDef[] = [
   {
     id: 'as',
@@ -49,9 +45,7 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(28, 0, 10),
       rect(6, 10, 44, 52),
-      vline(28, 10, 26),
-      hline(26, 20, 36),
-      contact(28, 31, 4),
+      ...loadContact(28, 31, 4, 8, 10),
       line(28, 54, 16, 38),
       vline(28, 54, 72),
     ],
@@ -115,9 +109,7 @@ export const switchgearSymbols: SymbolDef[] = [
     tags: ['PFS形', '主遮断装置', '責任分界点'],
     box: { w: 48, h: 62 },
     shapes: [
-      vline(24, 0, 8),
-      hline(8, 15, 33),
-      contact(24, 14.5, 5.5),
+      ...loadContact(24, 14.5, 5.5, 9, 0),
       line(24, 48, 13, 24),
       vline(24, 48, 62),
     ],
@@ -138,9 +130,7 @@ export const switchgearSymbols: SymbolDef[] = [
     tags: ['PFS形', '主遮断装置', 'PF・S形'],
     box: { ...CELL },
     shapes: [
-      vline(24, 0, 9),
-      hline(9, 15, 33),
-      contact(24, 15.5, 5.5),
+      ...loadContact(24, 15.5, 5.5, 9, 0),
       line(24, 63, 12, 27),
       tiltedBar(22.1, 57.3, 13.9, 32.7, 5),
       vline(24, 63, 72),
@@ -249,10 +239,7 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(28, 0, 10),
       rect(6, 10, 74, 126),
-      // 横棒は接点の丸の真上に「載せる」。隙間があると別々の部品に見えてしまうので、
-      // 位置は丸の中心と半径から決めて、手で書いた数字がずれないようにする
-      hline(PAS_CONTACT_Y - PAS_CONTACT_R, 20, 36),
-      contact(28, PAS_CONTACT_Y, PAS_CONTACT_R),
+      ...loadContact(28, 62, 4.5, 8),
       line(28, 84, 16, 66),
       vline(28, 84, 148),
     ],

@@ -117,6 +117,28 @@ export const dot = (cx: number, cy: number, r = 2.2): CircleShape =>
   circle(cx, cy, r, { fill: 'solid' });
 
 /**
+ * 負荷開閉器（PAS・AS・LBS）の固定接点。
+ *
+ * 丸の**すぐ上に横棒を載せて**描く。横棒の位置は丸の中心と半径から決めるので、
+ * 丸の大きさを変えても隙間ができない。
+ * （以前は横棒の y を手で書いていたため、拡大すると丸と棒の間に隙間が見えていた）
+ *
+ * @param half  横棒の長さの半分
+ * @param leadFrom  上から横棒まで引き込み線を引くときの、その始点の y
+ */
+export const loadContact = (
+  cx: number,
+  cy: number,
+  r: number,
+  half: number,
+  leadFrom?: number,
+): Shape[] => [
+  ...(leadFrom === undefined ? [] : [vline(cx, leadFrom, cy - r)]),
+  hline(cy - r, cx - half, cx + half),
+  contact(cx, cy, r),
+];
+
+/**
  * 開閉器の可動刃（ブレード）。
  * 下側の固定接点を支点に、右上がりに開いた状態で描く（JISの開閉器記号の標準的な表現）。
  */
