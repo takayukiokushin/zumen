@@ -188,6 +188,26 @@ function dropStrayWires(doc: Doc): { doc: Doc; removed: number } {
   return { doc: { ...doc, items: keep }, removed };
 }
 
+/**
+ * PASの中のLA・VTのような内蔵機器は、親の記号の中に描かれた主回路から
+ * 横に分かれている。その分岐点は親の記号の上にあるので、浮いてはいない。
+ *
+ * これを「浮いている」と見なすと、分岐線が内蔵機器のほうへ吸い寄せられて
+ * 長さがゼロになり、「LAが母線につながっていない」状態になってしまう。
+ */
+function branchesInsideParent(doc: Doc, w: DocWire, x: number, y: number): boolean {
+  for (const a of [w.at1, w.at2]) {
+    if (!a) continue;
+    const kid = doc.items.find((i) => i.id === a.item);
+    if (!kid || kid.kind !== 'symbol' || !kid.parent) continue;
+    const parent = doc.items.find((i) => i.id === kid.parent);
+    if (!parent || parent.kind !== 'symbol') continue;
+    const b = symbolBox(parent);
+    if (x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1) return true;
+  }
+  return false;
+}
+
 /** 2 宙に浮いた端を、近くの接続点につなぐ */
 function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
   const issues: Issue[] = [];
@@ -196,6 +216,7 @@ function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
 
   const touchesOtherWire = (self: DocWire, x: number, y: number): boolean =>
     all.some((o) => o.id !== self.id && distToSegment(x, y, o.x1, o.y1, o.x2, o.y2) <= TOUCH);
+
 
   const items = doc.items.map((it) => {
     if (it.kind !== 'wire') return it;
@@ -207,8 +228,12 @@ function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
       // すでに接続点の上、または他の線とつながっているなら、浮いていない
       if (nearestPort(doc, x, y, TOUCH)) continue;
       if (touchesOtherWire(it, x, y)) continue;
+      if (branchesInsideParent(doc, w, x, y)) continue;
 
       const p = nearestPort(doc, x, y, REACH);
+      // 反対の端がつながっている接続点に寄せると、線が消えてしまう
+      const other = end === 1 ? w.at2 : w.at1;
+      if (p && other && p.item === other.item && p.port === other.port) continue;
       if (p) {
         if (end === 1) w.at1 = { item: p.item, port: p.port };
         else w.at2 = { item: p.item, port: p.port };
@@ -554,6 +579,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
       const y = end === 1 ? w.y1 : w.y2;
       if (nearestPort(doc, x, y, TOUCH)) continue;
       if (wires.some((o) => o.id !== w.id && distToSegment(x, y, o.x1, o.y1, o.x2, o.y2) <= TOUCH)) continue;
+      if (branchesInsideParent(doc, w, x, y)) continue;
       issues.push({ kind: 'floating', message: '線の端がどこにもつながっていません', x, y, itemId: w.id });
     }
   }

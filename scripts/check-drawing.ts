@@ -482,5 +482,55 @@ console.log('\n■ 稲妻のような斜めの線をまっすぐにする');
   } else console.log('  つながっていた線どうしは、まっすぐにしても離れません');
 }
 
+/* ---------- 13. PASの内蔵機器（LA・VT）が母線につながっているか ---------- */
+console.log('\n■ PASに内蔵したLA・VTが母線につながっているか');
+{
+  const a: Answers = {
+    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    pasBuiltinVt: 'yes', pasBuiltinLa: 'yes',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', transformerCount: 1, trConnection: 'tr-3p-dy', trCapacity: 100,
+  };
+  const doc = fromLayout(layout(buildComposition(a), a));
+
+  /** 内蔵機器の入口と、PASの中の主回路をつなぐ横線があるか */
+  const linked = (d: Doc, role: string): boolean => {
+    const pas = symbols(d).find((x) => x.id === 'pas');
+    const kid = symbols(d).find((x) => x.id === role);
+    if (!pas || !kid) return false;
+    const inPort = portsOf(kid).find((p) => p.id === 'in');
+    const spine = portsOf(pas).find((p) => p.id === 'in');
+    if (!inPort || !spine) return false;
+    // 入口から主回路まで、長さのある線でつながっていること
+    return wires(d).some(
+      (w) =>
+        Math.abs(w.x1 - w.x2) + Math.abs(w.y1 - w.y2) > 0.5 &&
+        [[w.x1, w.y1], [w.x2, w.y2]].some(([x, y]) => Math.hypot(x! - inPort.x, y! - inPort.y) <= 1) &&
+        [[w.x1, w.y1], [w.x2, w.y2]].some(([x, y]) => Math.abs(x! - spine.x) <= 1),
+    );
+  };
+
+  for (const [role, name] of [['pas-la', 'LA'], ['pas-vt', 'VT']] as const) {
+    if (!linked(doc, role)) fail(`${name}が母線につながっていません（作った直後）`);
+    else console.log(`  ${name}：作った直後から母線につながっています`);
+  }
+
+  // 「結線を整える」で消えないこと（短い分岐線が吸い寄せられて消えていた）
+  const r = tidyDrawing(doc, 'A4', 'portrait');
+  for (const [role, name] of [['pas-la', 'LA'], ['pas-vt', 'VT']] as const) {
+    if (!linked(r.doc, role)) fail(`${name}の分岐線が「結線を整える」で消えました`);
+    else console.log(`  ${name}：整えてもつながったままです`);
+  }
+  const floating = r.issues.filter((i) => i.kind === 'floating').length;
+  if (floating > 0) fail(`内蔵機器の分岐点が「浮いている」と誤って指摘されました（${floating}件）`);
+  else console.log('  内蔵機器の分岐点を、浮いているとは指摘しません');
+
+  // 長さゼロの線が残っていないこと
+  const zero = wires(r.doc).filter((w) => w.x1 === w.x2 && w.y1 === w.y2).length;
+  if (zero > 0) fail(`長さゼロの線が ${zero}本 残っています`);
+  else console.log('  長さゼロの線はありません');
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

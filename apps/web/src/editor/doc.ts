@@ -232,13 +232,21 @@ export function linkWires(doc: Doc): Doc {
       if (it.kind !== 'wire') return it;
       if (it.at1 && it.at2) return it;
       const w = { ...it };
-      if (!w.at1) {
-        const p = nearestPort(doc, w.x1, w.y1);
-        if (p) w.at1 = { item: p.item, port: p.port };
-      }
-      if (!w.at2) {
-        const p = nearestPort(doc, w.x2, w.y2);
-        if (p) w.at2 = { item: p.item, port: p.port };
+      // 両端を同じ接続点につないではいけない。線の長さがゼロになって消えてしまう。
+      // （PASの中のLA・VTのように、記号の近くから出る短い分岐線で起きていた）
+      const same = (p: { item: string; port: string }, other: DocWire['at1']) =>
+        other !== undefined && other.item === p.item && other.port === p.port;
+      const p1 = w.at1 ? null : nearestPort(doc, w.x1, w.y1);
+      const p2 = w.at2 ? null : nearestPort(doc, w.x2, w.y2);
+      if (p1 && p2 && p1.item === p2.item && p1.port === p2.port) {
+        // 両端が同じ接続点を指した。接続点に近いほうだけをつなぎ、反対の端は自由にする
+        const d1 = Math.hypot(w.x1 - p1.x, w.y1 - p1.y);
+        const d2 = Math.hypot(w.x2 - p2.x, w.y2 - p2.y);
+        if (d1 <= d2) w.at1 = { item: p1.item, port: p1.port };
+        else w.at2 = { item: p2.item, port: p2.port };
+      } else {
+        if (p1 && !same(p1, w.at2)) w.at1 = { item: p1.item, port: p1.port };
+        if (p2 && !same(p2, w.at1)) w.at2 = { item: p2.item, port: p2.port };
       }
       return w;
     }),
