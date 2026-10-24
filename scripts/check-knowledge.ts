@@ -201,12 +201,17 @@ if (!cbComposition.some((i) => i.symbolId === 'relay-ocr')) fail('CB形なのに
   console.log(`  高圧母線から並列に入るもの: ${parallel.join(' / ')}`);
 
   // 変圧器3台＋コンデンサ2台のとき、それぞれが別の列になるか
+  // 件ごとに独立して答えるので、2台目以降もそれぞれ結線方式を入れる
   const many = buildComposition({
     ...answers,
     transformerCount: '3',
+    trConnection: 'tr-3p-dy',
+    trConnection__2: 'tr-3p-dy',
+    trConnection__3: 'tr-3p-dy',
     hasCapacitor: 'yes',
     capacitorCount: '2',
     hasReactor: 'yes',
+    hasReactor__2: 'yes',
   });
   const lanes = many.filter((i) => i.kind === 'parallel').map((i) => i.lane);
   const unique = [...new Set(lanes)].sort((a, b) => Number(a) - Number(b));

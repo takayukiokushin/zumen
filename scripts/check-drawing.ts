@@ -20,7 +20,7 @@ import {
   tidyDoc,
 } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
-import { buildComposition, indexedKey } from '../packages/knowledge/src/index.ts';
+import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
@@ -68,7 +68,31 @@ const answers: Answers = {
   hasGenerator: 'yes',
 };
 
-const build = (): Doc => fromLayout(layout(buildComposition(answers), answers));
+
+/**
+ * 件ごとに独立して答えるようになったので、試験の回答も件ごとに用意する。
+ * 「3台とも同じ変圧器」という現場はよくあるので、
+ * 1件目の答えを件数ぶんに広げる（すでに入れてある件はそのまま）。
+ * PCSの容量の種類だけは件ごとに中身が違うので広げない。
+ */
+function spreadUnits(a: Answers): Answers {
+  const out: Answers = { ...a };
+  for (const g of QUESTION_GROUPS) {
+    if (!g.repeatCountKey || g.id === 'pv') continue;
+    const count = Math.max(1, Number(a[g.repeatCountKey] ?? 1));
+    for (const q of QUESTIONS) {
+      if (q.group !== g.id || !PER_UNIT_QUESTION_IDS.has(q.id)) continue;
+      if (a[q.id] === undefined) continue;
+      for (let i = 1; i < count; i++) {
+        if (out[indexedKey(q.id, i)] === undefined) out[indexedKey(q.id, i)] = a[q.id];
+      }
+    }
+  }
+  return out;
+}
+
+const answersSpread = spreadUnits(answers);
+const build = (): Doc => fromLayout(layout(buildComposition(answersSpread), answersSpread));
 
 const wires = (d: Doc) => d.items.filter((i): i is DocWire => i.kind === 'wire');
 const symbols = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol');
@@ -276,14 +300,14 @@ else {
 /* ---------- 8. 並列の段ぞろえ ---------- */
 console.log('\n■ 段ぞろえ（変圧器・コンデンサの高さ）');
 {
-  const common: Answers = {
+  const common: Answers = spreadUnits({
     customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
     transformerCount: 3, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
     hasCapacitor: 'yes', capacitorCount: 2, hasReactor: 'yes',
-  };
+  });
 
   /** 同じ記号が、どの列でも同じ高さに来ているか */
   const sameY = (a: Answers, symbolId: string): { ys: number[]; ok: boolean } => {
@@ -371,7 +395,7 @@ console.log('\n■ 図面を整える');
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr', pasBuiltinVt: 'yes',
     vctLocation: 'indoor', vctCount: 2, areaCount: 1, areaForm: 'cubicle', hasSiteCt: 'yes',
   };
-  const patterns: [string, Answers][] = [
+  const patterns: [string, Answers][] = ([
     ['PFS形・変圧器1台', { ...common, mainBreakerForm: 'pfs', transformerCount: 1, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300 }],
     ['CB形・変圧器3台・コンデンサ2台', { ...common, mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
       transformerCount: 3, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
@@ -384,7 +408,7 @@ console.log('\n■ 図面を整える');
       hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '3', pcsToTr1: 1, pcsToTr2: 2 }],
     ['発電機・太陽光つき', { ...common, mainBreakerForm: 'pfs', transformerCount: 2, trConnection: 'tr-3p-dy',
       trUsage: '動力', trCapacity: 300, hasGenerator: 'yes', hasPv: 'yes', pvCapacity: '50kW×2' }],
-  ];
+  ] as [string, Answers][]).map(([n, a2]) => [n, spreadUnits(a2)]);
 
   for (const [name, a] of patterns) {
     const d = fromLayout(layout(buildComposition(a), a));
@@ -399,8 +423,8 @@ console.log('\n■ 図面を整える');
   }
 
   // わざと壊した図面を直せるか
-  const a: Answers = { ...common, mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
-    transformerCount: 2, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300 };
+  const a: Answers = spreadUnits({ ...common, mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
+    transformerCount: 2, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300 });
   const clean = fromLayout(layout(buildComposition(a), a));
   const trs = symbols(clean).filter((s) => s.symbolId.startsWith('tr-'));
   const vcb = symbols(clean).find((s) => s.symbolId === 'vcb')!;
@@ -442,14 +466,14 @@ console.log('\n■ 図面を整える');
 /* ---------- 11. 斜めになった線をまっすぐにする ---------- */
 console.log('\n■ 斜めの線を、機器を動かして直す');
 {
-  const a: Answers = {
+  const a: Answers = spreadUnits({
     customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
     transformerCount: 3, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
     hasCapacitor: 'yes', capacitorCount: 2, hasReactor: 'yes',
-  };
+  });
   const clean = fromLayout(layout(buildComposition(a), a));
   const ws = wires(clean);
   // 上下とも別の機器につながっている機器（動かすと線が斜めになる）
@@ -693,7 +717,8 @@ console.log('\n■ 変圧器の下側の縦線（つなぐものがあるとき�
     mainBreakerForm: 'cb', transformerCount: 1, trCapacity: 100,
   };
   /** 変圧器の出口から下へ伸びる線の本数と、出口からのすき間 */
-  const below = (a: Answers, kind: string) => {
+  const below = (raw: Answers, kind: string) => {
+    const a = spreadUnits(raw);
     const r = layout(buildComposition(a), a);
     const tr = r.symbols.find((s) => s.symbolId === kind);
     if (!tr) return null;
@@ -732,7 +757,8 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
     mainBreakerForm: 'cb', trConnection: 'tr-3p-dy', trCapacity: 100,
   };
   /** 変圧器ごとに、下へ線が出ているか */
-  const leads = (a: Answers): boolean[] => {
+  const leads = (raw: Answers): boolean[] => {
+    const a = spreadUnits(raw);
     const r = layout(buildComposition(a), a);
     return r.symbols
       .filter((s) => s.id === 'transformer' || s.id.startsWith('transformer-'))
@@ -777,7 +803,7 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
       pcsCapacity: 50, pcsCount: '5', pcsToTr1: 2, pcsToTr2: 3,
       [indexedKey('pcsCapacity', 1)]: 5, [indexedKey('pcsCount', 1)]: '1', [indexedKey('pcsToTr1', 1)]: 1,
     };
-    const boxes = buildComposition(a).filter((i) => i.role.startsWith('pcs-tr'));
+    const boxes = buildComposition(spreadUnits(a)).filter((i) => i.role.startsWith('pcs-tr'));
     const first = boxes.find((i) => i.role === 'pcs-tr1');
     if (boxes.length !== 2) fail(`PCSの枠が ${boxes.length}個 です（2個のはず）`);
     else if (first?.label.join(' / ') !== '50kW×2台 / 5kW×1台') {
@@ -790,7 +816,8 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
   // 低圧開閉器（MCCB）は描かないこと
   {
     const a: Answers = { ...common, transformerCount: 2, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '2' };
-    const mccb = layout(buildComposition(a), a).symbols.filter((s) => s.symbolId === 'mccb').length;
+    const spread = spreadUnits(a);
+    const mccb = layout(buildComposition(spread), spread).symbols.filter((s) => s.symbolId === 'mccb').length;
     if (mccb > 0) fail(`低圧開閉器（MCCB）が ${mccb}個 描かれています`);
     else console.log('  低圧開閉器（MCCB）は描かれません');
   }

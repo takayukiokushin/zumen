@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, visibleQuestions } from '@zumen/knowledge';
+import { evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, Question, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 
@@ -35,16 +35,6 @@ interface Block {
   rows: Row[];
   answered: number;
   need: boolean;
-}
-
-/** n件目の回答だけを取り出す（表示条件の判定に使う） */
-function pick(answers: Answers, index: number): Answers {
-  const suffix = `__${index + 1}`;
-  const out: Answers = {};
-  for (const [k, v] of Object.entries(answers)) {
-    if (k.endsWith(suffix)) out[k.slice(0, -suffix.length)] = v;
-  }
-  return out;
 }
 
 export function HearingForm({ answers, effective, onChange, showNav = true }: Props) {
@@ -84,7 +74,8 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
     for (let i = 0; i < count; i++) {
       const rows: Row[] = [];
       for (const q of repeated) {
-        if (i > 0 && !evaluate(q.showIf, { ...effective, ...pick(effective, i) })) continue;
+        // 表示条件も件ごとに見る（他の件の答えは引き継がない）
+        if (i > 0 && !evaluate(q.showIf, viewAt(effective, i))) continue;
         rows.push({ key: indexedKey(q.id, i), question: q });
       }
       if (rows.length === 0) continue;

@@ -35,11 +35,6 @@ export interface Question {
   defaultValue?: Value;
   help?: string;
   placeholder?: string;
-  /**
-   * 既定値があっても畳まずに、いつも出す。
-   * 「ふつうは200A。でも変えることがある」ような項目に使う。
-   */
-  alwaysShow?: boolean;
   /** この条件を満たすときだけ表示する */
   showIf?: Condition;
   ask: AskWhen;
@@ -49,11 +44,6 @@ export interface Question {
    * 例：「高圧コンデンサ設備はありますか？」は台数ぶん聞く必要がない。
    */
   shared?: boolean;
-  /**
-   * 現地のメモを読み取って初めて分かる項目。
-   * ヒアリングの画面では最初から畳んでおく（「既定値のままでよい質問も表示」で出る）。
-   */
-  fromSketch?: boolean;
 }
 
 export interface QuestionGroup {
@@ -139,40 +129,40 @@ function breakerRatings(
   return [
     {
       id: P('PcRating'), group, label: `PC本体の定格電流`, type: 'select',
-      options: PC_RATINGS, allowFreeInput: true, showIf: hasPc, ask: 'always', alwaysShow: true,
+      options: PC_RATINGS, allowFreeInput: true, showIf: hasPc, ask: 'always',
       help: `図面には「30A」のように、記号なしで書く`,
     },
     {
       id: P('PcFuse'), group, label: 'PCのヒューズの定格電流', type: 'select',
-      options: PC_FUSES, allowFreeInput: true, showIf: hasPc, ask: 'always', alwaysShow: true,
+      options: PC_FUSES, allowFreeInput: true, showIf: hasPc, ask: 'always',
       help: '図面には「F:10A」のように、先頭にF:を付けて書く',
     },
     {
       id: P('LbsRating'), group, label: 'LBS本体の定格電流', type: 'select',
       options: LBS_RATINGS, allowFreeInput: true, defaultValue: '200A',
-      showIf: hasLbs, ask: 'always', alwaysShow: true,
+      showIf: hasLbs, ask: 'always',
       help: 'ふつうは200A。図面には「200A」のように、記号なしで書く',
     },
     {
       id: P('PfG'), group, label: 'パワーヒューズ（PF）の定格電流', type: 'select',
-      options: PF_RATINGS, allowFreeInput: true, showIf: hasLbs, ask: 'always', alwaysShow: true,
+      options: PF_RATINGS, allowFreeInput: true, showIf: hasLbs, ask: 'always',
       help: '図面には「G50A」のように、先頭にGを付けて書く',
     },
     {
       id: P('PfLoad'), group, label: 'PFの負荷側につなぐもの', type: 'select',
       options: PF_LOAD_KIND, defaultValue: defaultLoad,
-      showIf: hasLbs, ask: 'always', alwaysShow: true,
+      showIf: hasLbs, ask: 'always',
       help: `${cap}につなぐので、ふつうは「${defaultLoad}」`,
     },
     {
       id: P('PfLoadAmp'), group, label: 'PFの負荷側の電流', type: 'select',
-      options: LOAD_AMPS, allowFreeInput: true, showIf: hasLbs, ask: 'always', alwaysShow: true,
+      options: LOAD_AMPS, allowFreeInput: true, showIf: hasLbs, ask: 'always',
       help: '図面には「T30A」のように、上で選んだ記号に続けて書く',
     },
     {
       id: P('PfKa'), group, label: 'PFの許容できる短絡電流', type: 'select',
       options: SHORT_CIRCUIT, allowFreeInput: true, defaultValue: '40kA',
-      showIf: hasLbs, ask: 'always', alwaysShow: true,
+      showIf: hasLbs, ask: 'always',
       help: 'ふつうは40kA',
     },
   ];

@@ -287,13 +287,36 @@ export function indexedKey(id: string, index: number): string {
   return index === 0 ? id : `${id}__${index + 1}`;
 }
 
-/** n 件目の回答として見た集まりを作る（2件目以降のキーで上書きする） */
+/**
+ * 繰り返しグループの中で、件ごとに別々に答える質問。
+ * 件数そのものと、1回だけ聞く質問（shared）は含まない。
+ */
+export const PER_UNIT_QUESTION_IDS: ReadonlySet<string> = (() => {
+  const ids = new Set<string>();
+  for (const g of QUESTION_GROUPS) {
+    if (!g.repeatCountKey) continue;
+    for (const q of QUESTIONS) {
+      if (q.group === g.id && q.id !== g.repeatCountKey && !q.shared) ids.add(q.id);
+    }
+  }
+  return ids;
+})();
+
+/**
+ * n 件目の回答として見た集まりを作る。
+ *
+ * 件ごとの質問は、**その件に入れた答えだけ**を見る。
+ * 以前は2件目以降で空欄だと1件目の答えを引き継いでいたが、
+ * 「1台目が単相だから2台目も単相」と勝手に決めてしまうため、件ごとに独立させた。
+ * 空欄のままなら、その質問は未回答として扱う（必須なら画面に「未入力あり」が出る）。
+ */
 export function viewAt(answers: Answers, index: number): Answers {
   if (index === 0) return answers;
-  const suffix = `__${index + 1}`;
   const out: Answers = { ...answers };
-  for (const [k, v] of Object.entries(answers)) {
-    if (k.endsWith(suffix)) out[k.slice(0, -suffix.length)] = v;
+  for (const id of PER_UNIT_QUESTION_IDS) {
+    const v = answers[indexedKey(id, index)];
+    if (v === undefined) delete out[id];
+    else out[id] = v;
   }
   return out;
 }
