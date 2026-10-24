@@ -45,7 +45,7 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(28, 0, 10),
       rect(6, 10, 44, 52),
-      ...loadContact(28, 31, 4, 8, 10),
+      ...loadContact(28, 31, 8, 10),
       line(28, 54, 16, 38),
       vline(28, 54, 72),
     ],
@@ -91,7 +91,7 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(24, 0, 15),
       hline(15, 13, 35),
-      contact(24, 53, 4),
+      contact(24, 53),
       line(24, 49, 44, 20),
       vline(24, 57, 72),
     ],
@@ -109,7 +109,7 @@ export const switchgearSymbols: SymbolDef[] = [
     tags: ['PFS形', '主遮断装置', '責任分界点'],
     box: { w: 48, h: 62 },
     shapes: [
-      ...loadContact(24, 14.5, 5.5, 9, 0),
+      ...loadContact(24, 14.5, 9, 0),
       line(24, 48, 13, 24),
       vline(24, 48, 62),
     ],
@@ -130,7 +130,7 @@ export const switchgearSymbols: SymbolDef[] = [
     tags: ['PFS形', '主遮断装置', 'PF・S形'],
     box: { ...CELL },
     shapes: [
-      ...loadContact(24, 15.5, 5.5, 9, 0),
+      ...loadContact(24, 15.5, 9, 0),
       line(24, 63, 12, 27),
       tiltedBar(22.1, 57.3, 13.9, 32.7, 5),
       vline(24, 63, 72),
@@ -198,7 +198,7 @@ export const switchgearSymbols: SymbolDef[] = [
       // 以前はここだけ小さく描いていたため、並べたときにVCBだけ貧相に見えていた
       vline(24, 0, 15),
       ...crossMark(24, 15, 4.5),
-      contact(24, 53, 4),
+      contact(24, 53),
       line(24, 49, 44, 20),
       // 丸（可動接点）の中を線が突き抜けないよう、下端から引き直す
       vline(24, 57, 72),
@@ -219,7 +219,7 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(24, 0, 15),
       path('M 17 15 A 7 7 0 0 0 31 15'),
-      contact(24, 53, 4),
+      contact(24, 53),
       line(24, 49, 42, 22),
       vline(24, 57, 72),
     ],
@@ -241,7 +241,7 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(28, 0, 10),
       rect(6, 10, 74, 126),
-      ...loadContact(28, 62, 4.5, 8),
+      ...loadContact(28, 62, 8),
       line(28, 84, 16, 66),
       vline(28, 84, 148),
     ],

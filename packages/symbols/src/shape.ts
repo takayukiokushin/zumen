@@ -108,8 +108,16 @@ export const text = (
   o: Omit<TextShape, 'k' | 'x' | 'y' | 's'> = {},
 ): TextShape => ({ k: 'text', x, y, s, ...o });
 
-/** 接点（小さな白丸） */
-export const contact = (cx: number, cy: number, r = 1.8): CircleShape =>
+/**
+ * 開閉器の接点を表す丸の半径。
+ *
+ * AS・LBS・DS・VCB・VCS・PAS など、接点の丸はすべてこの1つの値を使う。
+ * 大きさを変えたいときは、ここだけ直せば全部の図記号に反映される。
+ */
+export const CONTACT_R = 4;
+
+/** 接点（小さな白丸）。大きさは全記号で共通（CONTACT_R） */
+export const contact = (cx: number, cy: number, r = CONTACT_R): CircleShape =>
   circle(cx, cy, r, { fill: 'none' });
 
 /** 接続点（黒丸） */
@@ -123,19 +131,15 @@ export const dot = (cx: number, cy: number, r = 2.2): CircleShape =>
  * 丸の大きさを変えても隙間ができない。
  * （以前は横棒の y を手で書いていたため、拡大すると丸と棒の間に隙間が見えていた）
  *
+ * 丸の大きさは CONTACT_R で全記号そろえてある。ここでは指定できない。
+ *
  * @param half  横棒の長さの半分
  * @param leadFrom  上から横棒まで引き込み線を引くときの、その始点の y
  */
-export const loadContact = (
-  cx: number,
-  cy: number,
-  r: number,
-  half: number,
-  leadFrom?: number,
-): Shape[] => [
-  ...(leadFrom === undefined ? [] : [vline(cx, leadFrom, cy - r)]),
-  hline(cy - r, cx - half, cx + half),
-  contact(cx, cy, r),
+export const loadContact = (cx: number, cy: number, half: number, leadFrom?: number): Shape[] => [
+  ...(leadFrom === undefined ? [] : [vline(cx, leadFrom, cy - CONTACT_R)]),
+  hline(cy - CONTACT_R, cx - half, cx + half),
+  contact(cx, cy),
 ];
 
 /**

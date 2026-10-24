@@ -9,7 +9,7 @@
  *
  *   node --experimental-strip-types scripts/check-symbols.ts
  */
-import { SYMBOLS } from '../packages/symbols/src/index.ts';
+import { CONTACT_R, SYMBOLS } from '../packages/symbols/src/index.ts';
 import type { Shape } from '../packages/symbols/src/shape.ts';
 
 let failed = 0;
@@ -161,6 +161,28 @@ console.log('\n■ 丸の中の斜線などが、丸からはみ出していな�
     }
   }
   console.log(`  丸の中に描いた線 ${seen}本を調べました`);
+}
+
+/* ---------- 接点の丸の大きさが揃っているか ---------- */
+console.log('\n■ 接点を表す丸の大きさが揃っているか');
+{
+  // 開閉器の接点は、塗りつぶしていない小さな丸。変圧器などの大きな丸とは区別する
+  const found: { id: string; r: number }[] = [];
+  for (const def of SYMBOLS) {
+    for (const sh of def.shapes) {
+      if (sh.k !== 'circle' || sh.fill === 'solid' || sh.r >= 8) continue;
+      found.push({ id: def.id, r: sh.r });
+    }
+  }
+  const sizes = [...new Set(found.map((f) => f.r))];
+  if (sizes.length !== 1) {
+    const by = sizes.map((r) => `r=${r}（${found.filter((f) => f.r === r).map((f) => f.id).join('・')}）`);
+    fail(`接点の丸の大きさが揃っていません：${by.join(' / ')}`);
+  } else if (sizes[0] !== CONTACT_R) {
+    fail(`接点の丸が CONTACT_R（${CONTACT_R}）を参照していません：r=${sizes[0]}`);
+  } else {
+    console.log(`  ${found.length}箇所すべて r=${CONTACT_R}（CONTACT_R）`);
+  }
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
