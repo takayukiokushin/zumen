@@ -33,6 +33,10 @@ const RATED_VOLTAGE: FieldDef = {
 
 const RATED_CURRENT: FieldDef = { key: 'ratedCurrent', label: '定格電流', type: 'number', unit: 'A' };
 
+/** PASの固定接点（丸）の中心と半径。真上の横棒をここに合わせる */
+const PAS_CONTACT_Y = 62;
+const PAS_CONTACT_R = 4.5;
+
 export const switchgearSymbols: SymbolDef[] = [
   {
     id: 'as',
@@ -245,8 +249,10 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(28, 0, 10),
       rect(6, 10, 74, 126),
-      hline(56, 20, 36),
-      contact(28, 62, 4.5),
+      // 横棒は接点の丸の真上に「載せる」。隙間があると別々の部品に見えてしまうので、
+      // 位置は丸の中心と半径から決めて、手で書いた数字がずれないようにする
+      hline(PAS_CONTACT_Y - PAS_CONTACT_R, 20, 36),
+      contact(28, PAS_CONTACT_Y, PAS_CONTACT_R),
       line(28, 84, 16, 66),
       vline(28, 84, 148),
     ],
