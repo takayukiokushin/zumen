@@ -90,5 +90,41 @@ for (const def of SYMBOLS) {
 }
 console.log(`  記号 ${SYMBOLS.length}種類 / 線と丸の組み合わせ ${checked}通りを調べました`);
 
+/* ---------- 丸の中の文字が、丸からはみ出していないか ---------- */
+console.log('\n■ 丸の中の文字が、丸からはみ出していないか');
+{
+  // 文字の大きさの見積もり。1文字の幅は字の大きさの約0.58、高さは約0.72
+  const CHAR_W = 0.58;
+  const CHAR_H = 0.72;
+  let seen = 0;
+  for (const def of SYMBOLS) {
+    const circles = def.shapes.filter((s): s is Extract<Shape, { k: 'circle' }> => s.k === 'circle');
+    const texts = def.shapes.filter((s): s is Extract<Shape, { k: 'text' }> => s.k === 'text');
+    for (const t of texts) {
+      const size = t.size ?? 9;
+      const hw = (t.s.length * size * CHAR_W) / 2;
+      const hh = (size * CHAR_H) / 2;
+      for (const c of circles) {
+        // 丸の中に置いた文字だけを見る（外に添えた文字は対象外）
+        if (Math.hypot(t.x - c.cx, t.y - c.cy) >= c.r) continue;
+        seen++;
+        let worst = 0;
+        for (const sx of [-1, 1]) {
+          for (const sy of [-1, 1]) {
+            worst = Math.max(worst, Math.hypot(t.x + sx * hw - c.cx, t.y + sy * hh - c.cy));
+          }
+        }
+        if (worst > c.r) {
+          fail(
+            `${def.id}（${def.nameJa}）：文字「${t.s}」が丸 (${c.cx},${c.cy}) r=${c.r} から ` +
+              `${(worst - c.r).toFixed(1)} はみ出しています`,
+          );
+        }
+      }
+    }
+  }
+  console.log(`  丸の中の文字 ${seen}箇所を調べました`);
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
