@@ -91,14 +91,14 @@ export const switchgearSymbols: SymbolDef[] = [
     shapes: [
       vline(24, 0, 15),
       hline(15, 13, 35),
-      contact(24, 53),
-      line(24, 49, 44, 20),
-      vline(24, 57, 72),
+      // 下の丸は付けない。可動刃と下の縦線は、支点 (24,53) でそのままつなぐ
+      line(24, 53, 44, 20),
+      vline(24, 53, 72),
     ],
     ports: CELL_PORTS,
     fields: [RATED_VOLTAGE, RATED_CURRENT],
     status: 'confirmed',
-    statusNote: '見本図面のとおり、上に横バー（固定接点）、下に丸（可動接点）、可動刃は右上がりにしました。',
+    statusNote: '見本図面のとおり、上に横バー（固定接点）、可動刃は右上がり。下の丸は付けず、可動刃と下の縦線を直につなぎます。',
     note: 'CB形の基本構成で、高圧ケーブル端末の次に入る。DSの次にVTが並列接続、VCBが直列接続される。記載例「DS 7200V 400A」。',
   },
   {
@@ -194,18 +194,17 @@ export const switchgearSymbols: SymbolDef[] = [
     tags: ['CB形', '主遮断装置', '責任分界点'],
     box: { ...CELL },
     shapes: [
-      // 開閉部の寸法はDS・VCSと共通（固定接点 y=15／可動接点 y=53／可動刃の先 (44,20)）。
+      // 開閉部の寸法はDS・VCSと共通（固定接点 y=15／支点 y=53／可動刃の先 (44,20)）。
       // 以前はここだけ小さく描いていたため、並べたときにVCBだけ貧相に見えていた
       vline(24, 0, 15),
       ...crossMark(24, 15, 4.5),
-      contact(24, 53),
-      line(24, 49, 44, 20),
-      // 丸（可動接点）の中を線が突き抜けないよう、下端から引き直す
-      vline(24, 57, 72),
+      // 下の丸は付けない。可動刃と下の縦線は、支点 (24,53) でそのままつなぐ
+      line(24, 53, 44, 20),
+      vline(24, 53, 72),
     ],
     ports: CELL_PORTS,
     status: 'confirmed',
-    statusNote: '×印付き開閉器（JIS式）。可動刃は右上がり、下に丸（可動接点）を付けます。上の丸は付けません。',
+    statusNote: '×印付き開閉器（JIS式）。可動刃は右上がり。丸は上にも下にも付けません。',
     note: 'CB形の主遮断装置。設備容量301kVA以上では必須。すぐ下にCTが入る。',
   },
   {
