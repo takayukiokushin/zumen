@@ -559,5 +559,36 @@ console.log('\n■ PASに内蔵したLA・VTが母線につながっているか
   else console.log('  長さゼロの線はありません');
 }
 
+/* ---------- 14. 進相設備（SC・SR）の図記号 ---------- */
+console.log('\n■ 高圧コンデンサ（SC）と直列リアクトル（SR）の図記号');
+{
+  const sc = getSymbolDef('sc').shapes;
+  const sr = getSymbolDef('sr').shapes;
+  const box = sc.find((sh) => sh.k === 'rect');
+  const ring = sr.find((sh) => sh.k === 'circle');
+  if (!box || box.k !== 'rect') fail('SCに外枠の四角がありません');
+  else if (!ring || ring.k !== 'circle') fail('SRに円がありません');
+  else {
+    if (box.w !== box.h) fail(`SCの外枠が正方形ではありません：${box.w}×${box.h}`);
+    else console.log(`  SCの外枠は正方形（${box.w}×${box.h}）`);
+
+    if (Math.abs(ring.r * 2 - box.w) > 0.01) {
+      fail(`SCの正方形（${box.w}）とSRの円（直径 ${ring.r * 2}）の大きさが違います`);
+    } else {
+      console.log(`  SRの円の直径もSCの正方形と同じ ${ring.r * 2}`);
+    }
+
+    // 上の縦線は外枠を貫いていること／下の縦線は外枠に届かないこと
+    const verticals = sc.filter((sh) => sh.k === 'line' && sh.x1 === sh.x2);
+    const top = verticals.find((v) => v.k === 'line' && v.y1 < box.y);
+    const bottom = verticals.find((v) => v.k === 'line' && v.y1 >= box.y);
+    if (!top || top.k !== 'line' || top.y2 <= box.y) fail('SCの上の縦線が外枠につながっていません');
+    else console.log('  SCの上の縦線は外枠を貫いて極板まで届いています');
+    if (!bottom || bottom.k !== 'line') fail('SCの下の縦線が見つかりません');
+    else if (bottom.y2 >= box.y + box.h - 0.01) fail('SCの下の縦線が外枠に接しています（接してはいけません）');
+    else console.log(`  SCの下の縦線は外枠に届いていません（すき間 ${(box.y + box.h - bottom.y2).toFixed(1)}）`);
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

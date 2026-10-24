@@ -34,6 +34,8 @@ const ALLOWED: Record<string, string[]> = {
   'ct-test': ['*'],
   generator: ['*'],
   motor: ['*'],
+  // 直列リアクトルは、円の中に「⌐」を描くのが決まり
+  sr: ['*'],
   // 電柱は、丸の中に斜線を引いて塗りつぶしを表す
   'pole-utility': ['*'],
   'pole-customer': ['*'],

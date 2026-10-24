@@ -5,6 +5,17 @@ import { circle, hline, line, path, poly, rect, text, vline } from '../shape.ts'
 /** 一点鎖線（受電設備エリアの外枠に使う） */
 export const DASH_DOT = '9 3 2 3';
 
+/**
+ * 進相設備（SC・SR）の絵の大きさ。
+ * 見本の図記号どおり、コンデンサの正方形とリアクトルの円は同じ大きさにする。
+ * 枠（48×72）の中で上下中央に置く。
+ */
+const COMP_SIDE = 30;
+const COMP_CX = CELL.w / 2;
+const COMP_CY = CELL.h / 2;
+const COMP_TOP = COMP_CY - COMP_SIDE / 2;
+const COMP_LEFT = COMP_CX - COMP_SIDE / 2;
+
 /** 進相設備・電源設備・外枠・結線要素 */
 export const miscSymbols: SymbolDef[] = [
   {
@@ -14,11 +25,13 @@ export const miscSymbols: SymbolDef[] = [
     category: 'compensation',
     tags: ['リアクトル', '進相設備'],
     box: { ...CELL },
+    // 見本の図記号どおり、真円の中に「⌐」を描く。
+    // 上からの線は円の中心まで下り、そこから左へ曲がって円のふちで止まる
     shapes: [
-      vline(24, 0, 24),
-      rect(9, 18, 30, 36),
-      path('M 24 24 A 6 6 0 0 0 24 32 A 6 6 0 0 0 24 40 A 6 6 0 0 0 24 48'),
-      vline(24, 48, 72),
+      circle(COMP_CX, COMP_CY, COMP_SIDE / 2),
+      vline(COMP_CX, 0, COMP_CY),
+      hline(COMP_CY, COMP_LEFT, COMP_CX),
+      vline(COMP_CX, COMP_CY + COMP_SIDE / 2, CELL.h),
     ],
     ports: CELL_PORTS,
     fields: [
@@ -27,7 +40,7 @@ export const miscSymbols: SymbolDef[] = [
       { key: 'ratedVoltage', label: '定格電圧', type: 'text', unit: 'V' },
     ],
     status: 'confirmed',
-    statusNote: '見本図面のとおり、四角の中にコイルを描く形にしました。',
+    statusNote: 'いただいた図記号のとおり、真円の中に「⌐」を描く形にしました。円の大きさはSCの正方形と同じです。',
     note: 'コンデンサ「あり」の場合に、直列接続されるパターンとされないパターンがある。記載例「SR 3φ6.38kvar 243V」。',
   },
   {
@@ -37,7 +50,16 @@ export const miscSymbols: SymbolDef[] = [
     category: 'compensation',
     tags: ['コンデンサ', '進相設備', '力率改善'],
     box: { ...CELL },
-    shapes: [vline(24, 0, 21), rect(9, 21, 30, 30), vline(24, 21, 32), hline(32, 13, 35), hline(37, 13, 35)],
+    // 見本の図記号どおり。寸法は見本の絵から比率で割り出している。
+    //   上の縦線は外枠を貫いて上の極板まで届く（外枠につながっている）
+    //   下の縦線は下の極板から下りるが、外枠には届かせない
+    shapes: [
+      rect(COMP_LEFT, COMP_TOP, COMP_SIDE, COMP_SIDE),
+      vline(COMP_CX, 0, COMP_TOP + COMP_SIDE * 0.36),
+      hline(COMP_TOP + COMP_SIDE * 0.36, COMP_CX - COMP_SIDE * 0.255, COMP_CX + COMP_SIDE * 0.255),
+      hline(COMP_TOP + COMP_SIDE * 0.6, COMP_CX - COMP_SIDE * 0.255, COMP_CX + COMP_SIDE * 0.255),
+      vline(COMP_CX, COMP_TOP + COMP_SIDE * 0.6, COMP_TOP + COMP_SIDE * 0.82),
+    ],
     ports: [{ id: 'in', x: 24, y: 0, dir: 'up', role: 'line' }],
     fields: [
       { key: 'phase', label: '相', type: 'text', defaultValue: '3φ' },
@@ -45,7 +67,7 @@ export const miscSymbols: SymbolDef[] = [
       { key: 'ratedVoltage', label: '定格電圧', type: 'text', unit: 'V' },
     ],
     status: 'confirmed',
-    statusNote: '見本図面のとおり、四角の中にコンデンサ（2枚の板）を描く形にしました。',
+    statusNote: 'いただいた図記号のとおり、正方形の中に2枚の極板を描く形にしました。下の縦線は外枠に接しません。',
     note: '変圧器と並列に入るパターンがある。台数は1台〜複数台。記載例「SC 3φ106kvar 7020V」。',
   },
   {
