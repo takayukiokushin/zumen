@@ -44,37 +44,71 @@ export function EyeOffIcon({ size = 1.25 }: IconProps) {
 }
 
 /**
- * 歯車の輪郭。歯の数ぶん「外・外・内・内」の順に点を打って一筆で描く。
- * 太陽（放射状の線）に見えないよう、歯は平らな台形にしてある。
+ * 歯車の輪郭。
+ * 角張らないよう、歯の山も谷も**円弧**でつなぎ、
+ * 山と谷の間だけをゆるい直線（歯の側面）にしている。
+ * 太陽（放射状の線）に見えないよう、山には幅を持たせてある。
  */
+type Pt = [number, number];
+
+/**
+ * 角をすべて丸めた多角形のパスを作る。
+ * 頂点ごとに、両隣の辺に沿って少し手前で切り、その間を円弧でつなぐ。
+ */
+function roundedPolygon(pts: Pt[], radius: number): string {
+  const n = pts.length;
+  const out: string[] = [];
+  const fix = (v: number) => v.toFixed(2);
+  for (let i = 0; i < n; i++) {
+    const prev = pts[(i - 1 + n) % n]!;
+    const here = pts[i]!;
+    const next = pts[(i + 1) % n]!;
+
+    const toPrev: Pt = [prev[0] - here[0], prev[1] - here[1]];
+    const toNext: Pt = [next[0] - here[0], next[1] - here[1]];
+    const lenPrev = Math.hypot(...toPrev) || 1;
+    const lenNext = Math.hypot(...toNext) || 1;
+    // 辺の半分より深くは切らない（隣の角と食い合わないように）
+    const cut = Math.min(radius, lenPrev / 2, lenNext / 2);
+
+    const a: Pt = [here[0] + (toPrev[0] / lenPrev) * cut, here[1] + (toPrev[1] / lenPrev) * cut];
+    const b: Pt = [here[0] + (toNext[0] / lenNext) * cut, here[1] + (toNext[1] / lenNext) * cut];
+
+    // 曲がる向き。SVGはy下向きなので、外積が正なら時計回り
+    const cross = (here[0] - prev[0]) * (next[1] - here[1]) - (here[1] - prev[1]) * (next[0] - here[0]);
+    const sweep = cross > 0 ? 1 : 0;
+
+    out.push(`${i === 0 ? 'M' : 'L'} ${fix(a[0])} ${fix(a[1])}`);
+    out.push(`A ${fix(cut)} ${fix(cut)} 0 0 ${sweep} ${fix(b[0])} ${fix(b[1])}`);
+  }
+  return `${out.join(' ')} Z`;
+}
+
+/** 歯車の輪郭。角のある歯車を作ってから、角をすべて丸めている */
 const COG_PATH = (() => {
   const teeth = 8;
-  const rOut = 10.6;
-  const rIn = 7.8;
+  const rOut = 10.8;
+  const rIn = 7.6;
   const cx = 12;
   const cy = 12;
   const step = (Math.PI * 2) / teeth;
   const half = step * 0.26;
-  const at = (r: number, a: number) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
-  const parts: string[] = [];
+  const at = (r: number, a: number): Pt => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+
+  const pts: Pt[] = [];
   for (let i = 0; i < teeth; i++) {
     const a = i * step;
-    parts.push(
-      `${i === 0 ? 'M' : 'L'} ${at(rOut, a - half)}`,
-      `L ${at(rOut, a + half)}`,
-      `L ${at(rIn, a + half)}`,
-      `L ${at(rIn, a + step - half)}`,
-    );
+    pts.push(at(rOut, a - half), at(rOut, a + half), at(rIn, a + half), at(rIn, a + step - half));
   }
-  return `${parts.join(' ')} Z`;
+  return roundedPolygon(pts, 1.5);
 })();
 
 /** 歯車。表示の設定 */
 export function GearIcon({ size = 1.7 }: IconProps) {
   return (
-    <svg {...base(size)} strokeWidth={1.3} strokeLinejoin="round">
+    <svg {...base(size)} strokeWidth={1.4} strokeLinejoin="round" strokeLinecap="round">
       <path d={COG_PATH} />
-      <circle cx="12" cy="12" r="3.6" />
+      <circle cx="12" cy="12" r="3.5" />
     </svg>
   );
 }
