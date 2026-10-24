@@ -194,12 +194,14 @@ export const switchgearSymbols: SymbolDef[] = [
     tags: ['CB形', '主遮断装置', '責任分界点'],
     box: { ...CELL },
     shapes: [
-      vline(24, 0, 27),
-      ...crossMark(24, 27),
-      contact(24, 45, 4),
-      line(24, 41, 38, 29),
+      // 開閉部の寸法はDS・VCSと共通（固定接点 y=15／可動接点 y=53／可動刃の先 (44,20)）。
+      // 以前はここだけ小さく描いていたため、並べたときにVCBだけ貧相に見えていた
+      vline(24, 0, 15),
+      ...crossMark(24, 15, 4.5),
+      contact(24, 53, 4),
+      line(24, 49, 44, 20),
       // 丸（可動接点）の中を線が突き抜けないよう、下端から引き直す
-      vline(24, 49, 72),
+      vline(24, 57, 72),
     ],
     ports: CELL_PORTS,
     status: 'confirmed',

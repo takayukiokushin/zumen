@@ -329,6 +329,33 @@ console.log('\n■ 記号の大きさ');
   }
   const offCentre = boxes.filter((b) => b.portX !== boxes[0]!.w / 2);
   if (offCentre.length > 0) fail(`接続点が中央にない記号：${offCentre.map((b) => b.id).join('・')}`);
+
+  // 枠が同じでも、中の絵が小さいと並べたときに貧相に見える。
+  // 開閉器（DS・VCB・VCS）は、絵そのものの大きさも揃えておく
+  const drawn = (id: string) => {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    for (const sh of getSymbolDef(id).shapes) {
+      const xs =
+        sh.k === 'line' ? [sh.x1, sh.x2]
+        : sh.k === 'circle' ? [sh.cx - sh.r, sh.cx + sh.r]
+        : sh.k === 'rect' ? [sh.x, sh.x + sh.w]
+        : [];
+      for (const x of xs) {
+        x0 = Math.min(x0, x);
+        x1 = Math.max(x1, x);
+      }
+    }
+    return x1 - x0;
+  };
+  const widths = ['ds', 'vcb', 'vcs'].map((id) => ({ id, w: drawn(id) }));
+  const widest = Math.max(...widths.map((v) => v.w));
+  const small = widths.filter((v) => widest - v.w > 10);
+  if (small.length > 0) {
+    fail(`開閉器の絵が小さすぎます：${small.map((v) => `${v.id} ${v.w.toFixed(0)}`).join(' / ')}（いちばん大きいもの ${widest.toFixed(0)}）`);
+  } else {
+    console.log(`  開閉器の絵の大きさ：${widths.map((v) => `${v.id} ${v.w.toFixed(0)}`).join(' / ')}`);
+  }
 }
 
 /* ---------- 10. 図面を整える ---------- */
