@@ -236,8 +236,22 @@ export function linkWires(doc: Doc): Doc {
       // （PASの中のLA・VTのように、記号の近くから出る短い分岐線で起きていた）
       const same = (p: { item: string; port: string }, other: DocWire['at1']) =>
         other !== undefined && other.item === p.item && other.port === p.port;
-      const p1 = w.at1 ? null : nearestPort(doc, w.x1, w.y1);
-      const p2 = w.at2 ? null : nearestPort(doc, w.x2, w.y2);
+      /**
+       * まっすぐな線を、斜めにしてしまうつなぎ方はしない。
+       * 横の線の端を、少し上下にずれた接続点に寄せると線が斜めになってしまう。
+       * （PASの中で、LAへの横線の端がすぐ上のVTの接続点に吸い寄せられていた）
+       */
+      const keepsStraight = (p: { x: number; y: number }): boolean => {
+        if (w.y1 === w.y2) return Math.abs(p.y - w.y1) <= 1.5;
+        if (w.x1 === w.x2) return Math.abs(p.x - w.x1) <= 1.5;
+        return true;
+      };
+      const pick = (x: number, y: number) => {
+        const p = nearestPort(doc, x, y);
+        return p && keepsStraight(p) ? p : null;
+      };
+      const p1 = w.at1 ? null : pick(w.x1, w.y1);
+      const p2 = w.at2 ? null : pick(w.x2, w.y2);
       if (p1 && p2 && p1.item === p2.item && p1.port === p2.port) {
         // 両端が同じ接続点を指した。接続点に近いほうだけをつなぎ、反対の端は自由にする
         const d1 = Math.hypot(w.x1 - p1.x, w.y1 - p1.y);

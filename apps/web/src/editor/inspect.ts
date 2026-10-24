@@ -273,8 +273,16 @@ function trimThroughSymbols(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
       const end2In = inside(w.x2, w.y2);
 
       if (end1In !== end2In) {
-        // 片側だけ中に入っている → 記号のふちまで引っ込める
+        // 片側だけ中に入っている → 記号のふちまで引っ込める。
+        // ただし、その端が他の線とつながっているなら動かさない。
+        // 動かすと線どうしが離れて、1本の線が途中で途切れて見えてしまう
         const moveEnd = end1In ? 1 : 2;
+        const mx = moveEnd === 1 ? w.x1 : w.x2;
+        const my = moveEnd === 1 ? w.y1 : w.y2;
+        const joined = wiresOf(doc).some(
+          (o) => o.id !== it.id && distToSegment(mx, my, o.x1, o.y1, o.x2, o.y2) <= TOUCH,
+        );
+        if (joined) continue;
         if (w.x1 === w.x2) {
           const other = moveEnd === 1 ? w.y2 : w.y1;
           const edge = other < box.y0 ? box.y0 : box.y1;

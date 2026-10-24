@@ -322,11 +322,20 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       const entry = portOf(def, dir > 0 ? 'l' : 'r', 'in') ?? def.ports[0]!;
       const x = dir > 0 ? railX + BRANCH_OFFSET : railX - BRANCH_OFFSET - def.box.w;
       const sym = add(item, def, x, midY - entry.y, 0, dir > 0 ? 'right' : 'left');
-      for (const v of sources) {
-        wires.push({ x1: v.x, y1: v.y, x2: railX, y2: v.y });
-        wires.push({ x1: railX, y1: v.y, x2: railX, y2: midY });
+      const target = sym.x + entry.x;
+      if (sources.length === 1) {
+        // つなぎ元が1つなら、曲げずに1本でまっすぐ引く。
+        // 分けて引くと、途中が「記号を突き抜けている線」と見なされて切られ、
+        // ZCTから出る線が途切れて見えることがあった
+        const v = sources[0]!;
+        wires.push({ x1: v.x, y1: v.y, x2: target, y2: v.y });
+      } else {
+        for (const v of sources) {
+          wires.push({ x1: v.x, y1: v.y, x2: railX, y2: v.y });
+          wires.push({ x1: railX, y1: v.y, x2: railX, y2: midY });
+        }
+        wires.push({ x1: railX, y1: midY, x2: target, y2: midY });
       }
-      wires.push({ x1: railX, y1: midY, x2: sym.x + entry.x, y2: midY });
       continue;
     }
 

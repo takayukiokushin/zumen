@@ -560,6 +560,68 @@ console.log('\n■ PASに内蔵したLA・VTが母線につながっているか
     if (!linked(r.doc, role)) fail(`${name}の分岐線が「結線を整える」で消えました`);
     else console.log(`  ${name}：整えてもつながったままです`);
   }
+  // ZCTから右へ出る線が、途中で途切れていないこと
+  {
+    const zct = symbols(r.doc).find((x) => x.id === 'pas-zct');
+    const sec = zct ? portsOf(zct).find((p) => p.id === 'sec') : undefined;
+    if (!zct || !sec) fail('ZCTの二次側の接続点が見つかりません');
+    else {
+      // その高さにある水平の線分（記号の線も図面の線も）を集めて、すき間を探す
+      const segs: [number, number][] = [];
+      for (const it of r.doc.items) {
+        if (it.kind === 'wire' && it.y1 === it.y2 && Math.abs(it.y1 - sec.y) < 0.01) {
+          segs.push([Math.min(it.x1, it.x2), Math.max(it.x1, it.x2)]);
+        }
+        if (it.kind === 'symbol') {
+          for (const sh of getSymbolDef(it.symbolId).shapes) {
+            if (sh.k === 'line' && sh.y1 === sh.y2 && Math.abs(it.y + sh.y1 - sec.y) < 0.01) {
+              segs.push([it.x + Math.min(sh.x1, sh.x2), it.x + Math.max(sh.x1, sh.x2)]);
+            }
+            if (sh.k === 'circle' && Math.abs(it.y + sh.cy - sec.y) < 0.01) {
+              segs.push([it.x + sh.cx - sh.r, it.x + sh.cx + sh.r]);
+            }
+          }
+        }
+      }
+      segs.sort((a2, b2) => a2[0] - b2[0]);
+      let reach = segs.length ? segs[0]![1] : 0;
+      const gaps: string[] = [];
+      for (const [s2, e2] of segs.slice(1)) {
+        if (s2 > reach + 0.01) gaps.push(`${reach.toFixed(0)}〜${s2.toFixed(0)}`);
+        reach = Math.max(reach, e2);
+      }
+      if (gaps.length > 0) fail(`ZCTから右へ出る線が途切れています（${gaps.join(' , ')}）`);
+      else console.log('  ZCTから右へ出る線は途切れていません');
+    }
+  }
+
+  // LAは枠の左の線までと主回路までが同じくらいの余白になっていること
+  // 接地記号は、枠の外（下）へ出ていること
+  {
+    const pasSym = symbols(r.doc).find((x) => x.id === 'pas')!;
+    const pasBox = getSymbolDef(pasSym.symbolId);
+    const frame = pasBox.shapes.find((sh) => sh.k === 'rect')!;
+    const fx0 = pasSym.x + frame.x;
+    const fy1 = pasSym.y + frame.y + frame.h;
+    const spine = pasSym.x + pasBox.ports[0]!.x;
+    const la = symbols(r.doc).find((x) => x.id === 'pas-la');
+    if (!la) fail('内蔵LAが見つかりません');
+    else {
+      const xs = getSymbolDef(la.symbolId).shapes.flatMap((sh) =>
+        sh.k === 'line' ? [la.x + sh.x1, la.x + sh.x2] : [],
+      );
+      const ys = getSymbolDef(la.symbolId).shapes.flatMap((sh) =>
+        sh.k === 'line' ? [la.y + sh.y1, la.y + sh.y2] : [],
+      );
+      const left = Math.min(...xs) - fx0;
+      const right = spine - Math.max(...xs);
+      if (Math.abs(left - right) > 3) fail(`LAの左右の余白がそろっていません：左${left} 右${right}`);
+      else console.log(`  LAの左右の余白はほぼ同じ（左${left} 右${right}）`);
+      if (Math.max(...ys) <= fy1) fail('LAの接地記号が枠の中に入っています（外に出してください）');
+      else console.log(`  LAの接地記号は枠の外に出ています（枠の下へ ${(Math.max(...ys) - fy1).toFixed(0)}）`);
+    }
+  }
+
   // VTの横棒が主回路を貫いて左へはみ出していないこと
   {
     const sx = spineX(r.doc);

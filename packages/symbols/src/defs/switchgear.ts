@@ -50,7 +50,17 @@ const pasDef = (
   const { l, r, t, b } = pad;
   /** 主回路（縦に走る線）の位置 */
   const x = 28 + l;
-  const h = 148 + b;
+  const frameTop = 10 - t;
+  const frameBottom = 136 + b;
+  /**
+   * 内蔵LAの位置。
+   * LAの記号は、入口から 28 下が本体の下端、36 下が接地記号の1本目。
+   * 本体は枠の中、接地記号は枠の外（下）に出したいので、
+   * ちょうど枠の下の線をまたぐ位置に置く（本体の下に4、接地の上に4の余白）。
+   */
+  const laY = frameBottom - 32;
+  /** 接地記号が枠の下へ出るぶん、箱も下へ伸ばす（内蔵版だけ） */
+  const h = altOf ? laY + 48 + 8 : 148 + b;
   return {
     id,
     abbr: 'PAS',
@@ -62,8 +72,8 @@ const pasDef = (
     // 以前は余白が多く、他の記号に比べて大きすぎた。
     box: { w: 86 + l + r, h },
     shapes: [
-      vline(x, 0, 10 - t),
-      rect(6, 10 - t, 74 + l + r, 126 + t + b),
+      vline(x, 0, frameTop),
+      rect(6, frameTop, 74 + l + r, frameBottom - frameTop),
       ...loadContact(x, 62, 8),
       line(x, 84, 16 + l, 66),
       vline(x, 84, h),
@@ -76,8 +86,9 @@ const pasDef = (
     // VTは主回路の上に置く。少しでもずらすと、VTの横棒が主回路を貫いて左へはみ出す
     slots: [
       { id: 'zct', x, y: 12, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
-      { id: 'la', x: 20 + l, y: 88, label: 'LA内蔵', accepts: ['la'] },
-      { id: 'vt', x, y: 105, label: 'VT内蔵', accepts: ['vt'] },
+      // LAは枠の左半分の真ん中に置く（枠の左の線までと主回路までが同じ余白になる）
+      { id: 'la', x: 13 + l, y: laY, label: 'LA内蔵', accepts: ['la'] },
+      { id: 'vt', x, y: 100, label: 'VT内蔵', accepts: ['vt'] },
     ],
     fields: [
       RATED_VOLTAGE,
@@ -312,5 +323,5 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   pasDef('pas', { l: 0, r: 0, t: 0, b: 0 }),
   // 内蔵機器（LA・VT）を入れるとき用。枠を少しだけ広げてある（とくに左）
-  pasDef('pas-builtin', { l: 8, r: 2, t: 4, b: 4 }, 'pas'),
+  pasDef('pas-builtin', { l: 8, r: 2, t: 4, b: 12 }, 'pas'),
 ];
