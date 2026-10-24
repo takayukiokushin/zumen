@@ -443,5 +443,44 @@ console.log('\n■ 斜めの線を、機器を動かして直す');
   else console.log('  作りたての図面では、機器を動かしません');
 }
 
+/* ---------- 12. 稲妻（つなぎ先の無い斜めの線） ---------- */
+console.log('\n■ 稲妻のような斜めの線をまっすぐにする');
+{
+  const clean = build();
+  const bend = (id: string, x1: number, y1: number, x2: number, y2: number): DocWire => ({
+    kind: 'wire', id, x1, y1, x2, y2,
+  });
+  const cases: Array<[string, DocWire[]]> = [
+    ['どこにもつながっていない1本', [bend('z1', 300, 200, 360, 250)]],
+    ['稲妻（短い斜めが3本つながる）', [
+      bend('z1', 300, 200, 340, 230),
+      bend('z2', 340, 230, 300, 260),
+      bend('z3', 300, 260, 350, 300),
+    ]],
+    ['ほぼ水平だが少しだけ傾いている', [bend('z1', 300, 200, 420, 203)]],
+  ];
+  for (const [name, extra] of cases) {
+    const broken: Doc = { ...clean, items: [...clean.items, ...extra] };
+    if (skewed(broken) !== extra.length) fail(`${name}：試験の前提が崩れています`);
+    const r = tidyDrawing(broken, 'A4', 'portrait');
+    const left = skewed(r.doc);
+    if (left > 0) fail(`${name}：整えても斜めが ${left}本 残りました`);
+    else console.log(`  ${name}：斜め ${extra.length}本 → 0本`);
+  }
+
+  // つながっていた鎖が、まっすぐにしたあとも切れていないこと
+  const zig: Doc = {
+    ...clean,
+    items: [...clean.items, bend('z1', 300, 200, 340, 230), bend('z2', 340, 230, 300, 260)],
+  };
+  const tidied = tidyDrawing(zig, 'A4', 'portrait').doc;
+  const z1 = wires(tidied).find((w) => w.id === 'z1');
+  const z2 = wires(tidied).find((w) => w.id === 'z2');
+  if (!z1 || !z2) fail('まっすぐにしたら線が消えました');
+  else if (z1.x2 !== z2.x1 || z1.y2 !== z2.y1) {
+    fail(`まっすぐにしたら鎖が切れました：(${z1.x2},${z1.y2}) と (${z2.x1},${z2.y1})`);
+  } else console.log('  つながっていた線どうしは、まっすぐにしても離れません');
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

@@ -366,6 +366,71 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
 }
 
 /**
+ * つなぎ先が1つも無い斜めの線を、まっすぐにする。
+ *
+ * 接続点に結びついている線は applyAnchors が面倒を見てくれるが、
+ * どこにも結びついていない線は誰も直さず、斜めのまま残っていた。
+ * 短い斜めがいくつもつながると、稲妻のようなギザギザになる。
+ *
+ * 端を動かすときは、**同じ場所にあった他の線の端も一緒に動かす**。
+ * そうしないと、つながっていた鎖が切れてしまう。
+ */
+function straightenFreeWires(doc: Doc): { doc: Doc; fixed: number } {
+  const near = (a: number, b: number) => Math.abs(a - b) <= TOUCH;
+  let items = doc.items.map((it) => ({ ...it }));
+  let fixed = 0;
+
+  for (let pass = 0; pass < 3; pass++) {
+    const bent = items.filter(
+      (it): it is DocWire => it.kind === 'wire' && !it.at1 && !it.at2 && it.x1 !== it.x2 && it.y1 !== it.y2,
+    );
+    if (bent.length === 0) break;
+
+    for (const w of bent) {
+      // 接続点に乗っている端は動かさない。両方乗っていなければ終点を動かす
+      const onPort1 = nearestPort({ items }, w.x1, w.y1, TOUCH) !== null;
+      const onPort2 = nearestPort({ items }, w.x2, w.y2, TOUCH) !== null;
+      const moveEnd: 1 | 2 = onPort2 && !onPort1 ? 1 : 2;
+
+      const fx = moveEnd === 1 ? w.x2 : w.x1;
+      const fy = moveEnd === 1 ? w.y2 : w.y1;
+      const ox = moveEnd === 1 ? w.x1 : w.x2;
+      const oy = moveEnd === 1 ? w.y1 : w.y2;
+      // ずれが小さいほうの向きに合わせる（縦長なら縦、横長なら横）
+      const vertical = Math.abs(w.x2 - w.x1) <= Math.abs(w.y2 - w.y1);
+      const nx = vertical ? fx : ox;
+      const ny = vertical ? oy : fy;
+      if (nx === ox && ny === oy) continue;
+
+      // 同じ場所にあった他の線の端も、一緒に連れていく
+      for (const other of items) {
+        if (other.kind !== 'wire') continue;
+        if (other.id === w.id) {
+          if (moveEnd === 1) {
+            other.x1 = nx;
+            other.y1 = ny;
+          } else {
+            other.x2 = nx;
+            other.y2 = ny;
+          }
+          continue;
+        }
+        if (!other.at1 && near(other.x1, ox) && near(other.y1, oy)) {
+          other.x1 = nx;
+          other.y1 = ny;
+        }
+        if (!other.at2 && near(other.x2, ox) && near(other.y2, oy)) {
+          other.x2 = nx;
+          other.y2 = ny;
+        }
+      }
+      fixed++;
+    }
+  }
+  return { doc: { ...doc, items }, fixed };
+}
+
+/**
  * 斜めになっている線を、まっすぐ（縦か横）に直す。
  *
  * 両端ともつないである線は、片方の機器が動くと斜めになる。
@@ -579,7 +644,12 @@ export function tidyDrawing(doc: Doc, paper: PaperSize = 'A4', orientation: Orie
   next = applyAnchors(b2.doc);
   fixed.floating += b2.fixed;
 
-  // 斜めの線は、機器のほうを動かしてまっすぐにする
+  // まず、どこにもつながっていない斜めの線をまっすぐにする
+  const fw = straightenFreeWires(next);
+  next = fw.doc;
+  fixed.skew += fw.fixed;
+
+  // 残った斜めは、機器のほうを動かしてまっすぐにする
   const sk = straightenWires(next);
   next = sk.doc;
   fixed.skew += sk.fixed;
