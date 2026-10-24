@@ -226,7 +226,8 @@ if (tr) {
 
 /* ---------- 7. PASのように中に部品を抱えている記号 ---------- */
 console.log('\n■ 内蔵品をひとかたまりで扱う');
-const pas = symbols(base).find((s) => s.symbolId === 'pas');
+// 内蔵機器が入るときは枠を広げた pas-builtin になる。どちらもPASとして扱う
+const pas = symbols(base).find((s) => s.symbolId === 'pas' || s.symbolId === 'pas-builtin');
 if (!pas) fail('PASが見つかりません');
 else {
   const kids = descendantsOf(base, pas.id);
@@ -521,7 +522,11 @@ console.log('\n■ PASに内蔵したLA・VTが母線につながっているか
   };
   const doc = fromLayout(layout(buildComposition(a), a));
 
-  /** 内蔵機器の入口と、PASの中の主回路をつなぐ横線があるか */
+  /**
+   * 内蔵機器が、PASの中の主回路につながっているか。
+   * 入口が主回路の真上にあればそれでつながっている（VT）。
+   * 離れている場合は、入口から主回路まで横線が要る（LA）。
+   */
   const linked = (d: Doc, role: string): boolean => {
     const pas = symbols(d).find((x) => x.id === 'pas');
     const kid = symbols(d).find((x) => x.id === role);
@@ -529,13 +534,19 @@ console.log('\n■ PASに内蔵したLA・VTが母線につながっているか
     const inPort = portsOf(kid).find((p) => p.id === 'in');
     const spine = portsOf(pas).find((p) => p.id === 'in');
     if (!inPort || !spine) return false;
-    // 入口から主回路まで、長さのある線でつながっていること
+    if (Math.abs(inPort.x - spine.x) <= 0.5) return true;
     return wires(d).some(
       (w) =>
         Math.abs(w.x1 - w.x2) + Math.abs(w.y1 - w.y2) > 0.5 &&
         [[w.x1, w.y1], [w.x2, w.y2]].some(([x, y]) => Math.hypot(x! - inPort.x, y! - inPort.y) <= 1) &&
         [[w.x1, w.y1], [w.x2, w.y2]].some(([x, y]) => Math.abs(x! - spine.x) <= 1),
     );
+  };
+
+  /** 内蔵機器の線が、主回路より左へはみ出していないか（VTの横棒が貫いていた） */
+  const spineX = (d: Doc) => {
+    const pas = symbols(d).find((x) => x.id === 'pas')!;
+    return portsOf(pas).find((p) => p.id === 'in')!.x;
   };
 
   for (const [role, name] of [['pas-la', 'LA'], ['pas-vt', 'VT']] as const) {
@@ -549,6 +560,19 @@ console.log('\n■ PASに内蔵したLA・VTが母線につながっているか
     if (!linked(r.doc, role)) fail(`${name}の分岐線が「結線を整える」で消えました`);
     else console.log(`  ${name}：整えてもつながったままです`);
   }
+  // VTの横棒が主回路を貫いて左へはみ出していないこと
+  {
+    const sx = spineX(r.doc);
+    const vt = symbols(r.doc).find((x) => x.id === 'pas-vt');
+    const over = vt
+      ? getSymbolDef(vt.symbolId).shapes.filter(
+          (sh) => sh.k === 'line' && Math.min(vt.x + sh.x1, vt.x + sh.x2) < sx - 0.01,
+        ).length
+      : 0;
+    if (over > 0) fail(`VTの線が主回路（x=${sx}）より左へはみ出しています（${over}本）`);
+    else console.log('  VTの横棒は主回路より左へはみ出していません');
+  }
+
   const floating = r.issues.filter((i) => i.kind === 'floating').length;
   if (floating > 0) fail(`内蔵機器の分岐点が「浮いている」と誤って指摘されました（${floating}件）`);
   else console.log('  内蔵機器の分岐点を、浮いているとは指摘しません');

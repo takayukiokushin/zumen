@@ -151,7 +151,10 @@ for (const item of composition) {
 }
 
 /* 実図面と同じ並びになっているか（主要な機器の順序） */
-const order = composition.filter((i) => i.kind === 'series').map((i) => i.symbolId);
+// 別表記（PASの枠を広げたものなど）は、もとの記号と同じものとして見る
+const order = composition
+  .filter((i) => i.kind === 'series')
+  .map((i) => findSymbol(i.symbolId)?.altOf ?? i.symbolId);
 // 変圧器は主回路から分岐して並列に入るため、直列の並びには出てこない
 const expected = [
   'pole-utility', 'incoming-point', 'boundary-both', 'pas',

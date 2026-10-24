@@ -95,6 +95,8 @@ export function withDerived(answers: Answers): Answers {
   if (hasSog && answers.pasBuiltinVt === 'yes') builtin.push('VT');
   if (answers.pasBuiltinLa === 'yes') builtin.push('LA');
   d.pasBuiltinText = builtin.length ? `${builtin.join(',')}内蔵型` : '';
+  // 内蔵機器が入ると枠の中が窮屈になるので、入るときは枠を少し広げた図記号を使う
+  d.pasSymbol = builtin.length ? 'pas-builtin' : 'pas';
 
   // PASの定格（例: 7200V300A）。片方しか分からないときは分かる方だけ書く
   d.pasRatingText = [

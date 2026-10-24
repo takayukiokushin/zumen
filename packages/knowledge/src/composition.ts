@@ -116,7 +116,8 @@ export const UPSTREAM: Placement[] = [
   },
   {
     role: 'pas',
-    symbolId: 'pas',
+    // 内蔵機器（LA・VT）が入るときは、枠を少し広げたほうを使う（engine の pasSymbol）
+    symbolId: '{pasSymbol}',
     kind: 'series',
     when: { key: 'hasPas', eq: 'yes' },
     labelTemplate: ['PAS', '{pasRatingText}', '{pasBuiltinText}'],

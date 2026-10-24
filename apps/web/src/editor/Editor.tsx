@@ -152,7 +152,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [doc, selectedId, apply]);
 
-  const palette = SYMBOLS.filter((s) => s.category === paletteCategory);
+  // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
+  // 手で選ぶものではないので一覧に出さない
+  const palette = SYMBOLS.filter((s) => s.category === paletteCategory && !(s.altOf && s.optional));
   const categories = [...new Set(SYMBOLS.map((s) => s.category))];
 
   const onPaletteClick = (symbolId: string) => {

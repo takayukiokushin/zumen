@@ -33,6 +33,88 @@ const RATED_VOLTAGE: FieldDef = {
 
 const RATED_CURRENT: FieldDef = { key: 'ratedCurrent', label: '定格電流', type: 'number', unit: 'A' };
 
+/**
+ * PAS（区分開閉器）の図記号。
+ *
+ * 内蔵機器（ZCT・LA・VT）を入れると枠の中が窮屈になるので、
+ * 入れるとき用に枠を少し広げたものを別に用意している。
+ * 中身の寸法は共通で、枠だけを外へ広げ、中身はそのぶん右へずらす。
+ *
+ * @param pad 枠を外へ広げる量。l=左・r=右・t=上・b=下
+ */
+const pasDef = (
+  id: string,
+  pad: { l: number; r: number; t: number; b: number },
+  altOf?: string,
+): SymbolDef => {
+  const { l, r, t, b } = pad;
+  /** 主回路（縦に走る線）の位置 */
+  const x = 28 + l;
+  const h = 148 + b;
+  return {
+    id,
+    abbr: 'PAS',
+    nameJa: '区分開閉器（高圧気中開閉器）',
+    category: 'switchgear',
+    tags: ['区分開閉器', '電柱上', 'GR', 'DGR'],
+    ...(altOf ? { altOf, optional: true } : {}),
+    // 内蔵するZCT・VT・LAが収まる最小限の大きさにしてある。
+    // 以前は余白が多く、他の記号に比べて大きすぎた。
+    box: { w: 86 + l + r, h },
+    shapes: [
+      vline(x, 0, 10 - t),
+      rect(6, 10 - t, 74 + l + r, 126 + t + b),
+      ...loadContact(x, 62, 8),
+      line(x, 84, 16 + l, 66),
+      vline(x, 84, h),
+    ],
+    ports: [
+      { id: 'in', x, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x, y: h, dir: 'down', role: 'line' },
+    ],
+    // 並びは見本図面のまま（上からZCT・開閉部・LAとVT）。余白だけを詰めてある。
+    // VTは主回路の上に置く。少しでもずらすと、VTの横棒が主回路を貫いて左へはみ出す
+    slots: [
+      { id: 'zct', x, y: 12, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
+      { id: 'la', x: 20 + l, y: 88, label: 'LA内蔵', accepts: ['la'] },
+      { id: 'vt', x, y: 105, label: 'VT内蔵', accepts: ['vt'] },
+    ],
+    fields: [
+      RATED_VOLTAGE,
+      {
+        key: 'ratedCurrent',
+        label: '定格電流',
+        type: 'select',
+        options: [
+          { value: '100', label: '100A' },
+          { value: '200', label: '200A' },
+          { value: '300', label: '300A' },
+          { value: '400', label: '400A' },
+        ],
+        unit: 'A',
+      },
+      {
+        key: 'control',
+        label: '制御装置の種類',
+        type: 'select',
+        options: [
+          { value: 'none', label: 'なし' },
+          { value: 'gr', label: 'GR（無方向性）' },
+          { value: 'dgr', label: 'DGR（方向性）' },
+        ],
+        defaultValue: 'dgr',
+        help: 'GRはZCTが入る。DGRはZCTに加え零相電圧（内蔵VTまたはZPD）が必要。',
+      },
+      { key: 'builtinVt', label: 'VT内蔵', type: 'boolean', defaultValue: false },
+      { key: 'builtinLa', label: 'LA内蔵', type: 'boolean', defaultValue: false },
+    ],
+    status: 'confirmed',
+    statusNote:
+      '実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。',
+    note: '記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。',
+  };
+};
+
 export const switchgearSymbols: SymbolDef[] = [
   {
     id: 'as',
@@ -228,63 +310,7 @@ export const switchgearSymbols: SymbolDef[] = [
     statusNote: '固定接点をお椀（半円）で描き、断路器と見分けられるようにしました。',
     note: '進相コンデンサの開閉用。LBSと組み合わせて使う現場がある。',
   },
-  {
-    id: 'pas',
-    abbr: 'PAS',
-    nameJa: '区分開閉器（高圧気中開閉器）',
-    category: 'switchgear',
-    tags: ['区分開閉器', '電柱上', 'GR', 'DGR'],
-    // 内蔵するZCT・VT・LAが収まる最小限の大きさにしてある。
-    // 以前は余白が多く、他の記号に比べて大きすぎた。
-    box: { w: 86, h: 148 },
-    shapes: [
-      vline(28, 0, 10),
-      rect(6, 10, 74, 126),
-      ...loadContact(28, 62, 8),
-      line(28, 84, 16, 66),
-      vline(28, 84, 148),
-    ],
-    ports: [
-      { id: 'in', x: 28, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 28, y: 148, dir: 'down', role: 'line' },
-    ],
-    // 並びは見本図面のまま（上からZCT・開閉部・LAとVT）。余白だけを詰めてある
-    slots: [
-      { id: 'zct', x: 28, y: 12, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
-      { id: 'la', x: 20, y: 88, label: 'LA内蔵', accepts: ['la'] },
-      { id: 'vt', x: 24, y: 105, label: 'VT内蔵', accepts: ['vt'] },
-    ],
-    fields: [
-      RATED_VOLTAGE,
-      {
-        key: 'ratedCurrent',
-        label: '定格電流',
-        type: 'select',
-        options: [
-          { value: '100', label: '100A' },
-          { value: '200', label: '200A' },
-          { value: '300', label: '300A' },
-          { value: '400', label: '400A' },
-        ],
-        unit: 'A',
-      },
-      {
-        key: 'control',
-        label: '制御装置の種類',
-        type: 'select',
-        options: [
-          { value: 'none', label: 'なし' },
-          { value: 'gr', label: 'GR（無方向性）' },
-          { value: 'dgr', label: 'DGR（方向性）' },
-        ],
-        defaultValue: 'dgr',
-        help: 'GRはZCTが入る。DGRはZCTに加え零相電圧（内蔵VTまたはZPD）が必要。',
-      },
-      { key: 'builtinVt', label: 'VT内蔵', type: 'boolean', defaultValue: false },
-      { key: 'builtinLa', label: 'LA内蔵', type: 'boolean', defaultValue: false },
-    ],
-    status: 'confirmed',
-    statusNote: '実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。',
-    note: '記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。',
-  },
+  pasDef('pas', { l: 0, r: 0, t: 0, b: 0 }),
+  // 内蔵機器（LA・VT）を入れるとき用。枠を少しだけ広げてある（とくに左）
+  pasDef('pas-builtin', { l: 8, r: 2, t: 4, b: 4 }, 'pas'),
 ];
