@@ -363,25 +363,50 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
   return { doc: { ...doc, items }, fixed, issues };
 }
 
-/** 5 用紙に対して図面が大きすぎないか */
-function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation): Issue[] {
+/** 用紙に収めるときの倍率（renderSvg と同じ計算） */
+function fitScale(doc: Doc, paper: PaperSize, orientation: Orientation): number {
   const b = docBounds(doc);
   const s = sheetSize(paper, orientation);
-  // renderSvg と同じ余白の取り方
   const areaW = s.w - 24 * 2 - 12 * 2;
   const areaH = s.h - 24 * 2 - 44 - 12 * 2 - 18;
-  const scale = Math.min(areaW / Math.max(b.x1 - b.x0, 1), areaH / Math.max(b.y1 - b.y0, 1), 1);
-  if (scale >= 0.45) return [];
-  const other = orientation === 'portrait' ? '横向き' : '縦向き';
+  return Math.min(areaW / Math.max(b.x1 - b.x0, 1), areaH / Math.max(b.y1 - b.y0, 1), 1);
+}
+
+const PAPER_LABEL = (p: PaperSize, o: Orientation) => `${p}の${o === 'portrait' ? '縦' : '横'}`;
+
+/** 5 用紙に対して図面が大きすぎないか。もっと合う用紙があれば勧める */
+function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation): Issue[] {
+  const now = fitScale(doc, paper, orientation);
+  if (now >= 0.6) return [];
+
+  // 4通りのうち、いちばん大きく出せるものを探す
+  let best = { paper, orientation, scale: now };
+  for (const p2 of ['A4', 'A3'] as PaperSize[]) {
+    for (const o2 of ['portrait', 'landscape'] as Orientation[]) {
+      const sc = fitScale(doc, p2, o2);
+      if (sc > best.scale + 0.02) best = { paper: p2, orientation: o2, scale: sc };
+    }
+  }
+  const b = docBounds(doc);
+  const where = { x: (b.x0 + b.x1) / 2, y: b.y0 };
+  if (best.paper === paper && best.orientation === orientation) {
+    return [
+      {
+        kind: 'paper',
+        message:
+          `図面が大きく、${PAPER_LABEL(paper, orientation)}に ${Math.round(now * 100)}% まで` +
+          '縮めて収めています。用紙を変えても、これ以上は大きくなりません',
+        ...where,
+      },
+    ];
+  }
   return [
     {
       kind: 'paper',
       message:
-        `図面が用紙（${paper} ${orientation === 'portrait' ? '縦' : '横'}）に対して大きく、` +
-        `${Math.round(scale * 100)}% まで縮めて収めています。` +
-        `${paper === 'A4' ? 'A3にするか、' : ''}${other}にすると読みやすくなります`,
-      x: (b.x0 + b.x1) / 2,
-      y: b.y0,
+        `いまは${PAPER_LABEL(paper, orientation)}で ${Math.round(now * 100)}% まで縮めています。` +
+        `${PAPER_LABEL(best.paper, best.orientation)}にすると ${Math.round(best.scale * 100)}% で出せます`,
+      ...where,
     },
   ];
 }
