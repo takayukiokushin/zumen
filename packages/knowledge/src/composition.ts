@@ -55,6 +55,12 @@ export interface Placement {
   /** 文字を記号のどちら側に書くか（既定は右） */
   labelSide?: 'left' | 'right';
   /**
+   * kind==='feeder' のときの列番号の始まり。
+   * 低圧の回線と、あとから結線する発電機などが同じ列に重ならないよう、
+   * 種類ごとに離れた番号から始める。
+   */
+  laneBase?: number;
+  /**
    * 高圧母線から並列にぶら下がるときの「段」。
    * 同じ段の機器は、どの列でも同じ高さに揃う。
    * PCやLBSが無い列は、その段を空けたまま母線からの線を長く引く。
@@ -345,6 +351,8 @@ export const FEEDERS: Placement[] = [
     when: { key: 'feederCount', gt: 0 },
     repeatCountKey: 'feederCount',
     labelTemplate: ['{feederName}', '{feederBreaker}'],
+    // どの変圧器の下にぶら下げるか（作図が読む）
+    props: { transformer: 'feederTransformer' },
   },
   {
     role: 'feeder-pcs',
@@ -423,12 +431,27 @@ export const EXTRAS: Placement[] = [
     labelTemplate: ['SC', '{capacitorCapacity}'],
     repeatCountKey: 'capacitorCount',
   },
-  // 発電機・太陽光・蓄電池は結線せずに置く（つなぎ先は現地のメモを見て決める）
+  /*
+   * 発電機・太陽光・蓄電池。
+   * 「どの変圧器につなぐか」を答えていれば、その変圧器の低圧側からぶら下げる。
+   * 「つながない」なら、これまでどおり結線せずに図面の下に置く
+   * （つなぎ先が現地のメモを見ないと分からない場合）。
+   */
+  {
+    role: 'generator',
+    symbolId: 'generator',
+    kind: 'feeder',
+    when: { all: [{ key: 'hasGenerator', eq: 'yes' }, { key: 'generatorTransformer', ne: 'none' }] },
+    labelTemplate: ['G', '{generatorText}', '{generatorPlace}'],
+    props: { usage: 'generatorUsage', place: 'generatorPlace', fuel: 'generatorFuel', transformer: 'generatorTransformer' },
+    repeatCountKey: 'generatorCount',
+    laneBase: 100,
+  },
   {
     role: 'generator',
     symbolId: 'generator',
     kind: 'free',
-    when: { key: 'hasGenerator', eq: 'yes' },
+    when: { all: [{ key: 'hasGenerator', eq: 'yes' }, { key: 'generatorTransformer', eq: 'none' }] },
     labelTemplate: ['G', '{generatorText}', '{generatorPlace}'],
     props: { usage: 'generatorUsage', place: 'generatorPlace', fuel: 'generatorFuel' },
     repeatCountKey: 'generatorCount',
@@ -436,15 +459,33 @@ export const EXTRAS: Placement[] = [
   {
     role: 'pv',
     symbolId: 'pv',
+    kind: 'feeder',
+    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: 'pvTransformer', ne: 'none' }] },
+    labelTemplate: ['PV', '{pcsText}'],
+    props: { transformer: 'pvTransformer' },
+    laneBase: 200,
+  },
+  {
+    role: 'pv',
+    symbolId: 'pv',
     kind: 'free',
-    when: { key: 'hasPv', eq: 'yes' },
+    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: 'pvTransformer', eq: 'none' }] },
     labelTemplate: ['PV', '{pcsText}'],
   },
   {
     role: 'battery',
     symbolId: 'battery-unit',
+    kind: 'feeder',
+    when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', ne: 'none' }] },
+    labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
+    props: { transformer: 'batteryTransformer' },
+    laneBase: 300,
+  },
+  {
+    role: 'battery',
+    symbolId: 'battery-unit',
     kind: 'free',
-    when: { key: 'hasBattery', eq: 'yes' },
+    when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', eq: 'none' }] },
     labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
   },
 ];

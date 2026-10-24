@@ -322,7 +322,7 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
           dashedAfter: evaluate(p.dashedAfter, a) && p.dashedAfter !== undefined,
           connectFrom: p.connectFrom,
           labelSide: p.labelSide,
-          lane: p.kind === 'feeder' ? i : p.kind === 'parallel' ? laneBase + i : undefined,
+          lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' ? laneBase + i : undefined,
           row: p.row,
           unit: countKey ? i : undefined,
           note: p.note,

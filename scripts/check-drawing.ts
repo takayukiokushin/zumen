@@ -20,7 +20,7 @@ import {
   tidyDoc,
 } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
-import { buildComposition } from '../packages/knowledge/src/index.ts';
+import { buildComposition, indexedKey } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
@@ -713,6 +713,73 @@ console.log('\n■ 変圧器の下側の縦線（つなぐものがあるとき�
     else if (Math.abs(withFeeder.gap) > 0.01) { fail(`${kind}：縦線が出口から ${withFeeder.gap} 離れています`); bad++; }
   }
   if (bad === 0) console.log(`  ${kinds.length}種類すべて：つなぐものが無ければ出さず、あれば出口から途切れずにつながる`);
+}
+
+/* ---------- 16. 低圧側の分岐を、選んだ変圧器につなぐ ---------- */
+console.log('\n■ 低圧側の分岐を、選んだ変圧器につなぐ');
+{
+  const common: Answers = {
+    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', trConnection: 'tr-3p-dy', trCapacity: 100,
+  };
+  /** 変圧器ごとに、下へ線が出ているか */
+  const leads = (a: Answers): boolean[] => {
+    const r = layout(buildComposition(a), a);
+    return r.symbols
+      .filter((s) => s.id === 'transformer' || s.id.startsWith('transformer-'))
+      .map((t) => {
+        const out = getSymbolDef(t.symbolId).ports.find((p) => p.id === 'out')!;
+        const ox = t.x + out.x;
+        const oy = t.y + out.y;
+        return r.wires.some(
+          (w) => w.x1 === w.x2 && Math.abs(w.x1 - ox) < 1 && Math.abs(Math.min(w.y1, w.y2) - oy) < 1,
+        );
+      });
+  };
+  const same = (got: boolean[], want: boolean[]) => JSON.stringify(got) === JSON.stringify(want);
+  const cases: [string, Answers, boolean[]][] = [
+    ['変圧器1台・回線1本（自動で1台目）', { ...common, transformerCount: 1, feederCount: 1 }, [true]],
+    ['変圧器3台・回線なし', { ...common, transformerCount: 3, feederCount: 0 }, [false, false, false]],
+    ['変圧器3台・回線を3台目へ', { ...common, transformerCount: 3, feederCount: 1, feederTransformer: '3' }, [false, false, true]],
+    [
+      '変圧器3台・1本目は1台目／2本目は3台目',
+      { ...common, transformerCount: 3, feederCount: 2, feederTransformer: '1', [indexedKey('feederTransformer', 1)]: '3' },
+      [true, false, true],
+    ],
+    [
+      '発電機をつながない',
+      { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: 'none' },
+      [false, false],
+    ],
+    [
+      '発電機を2台目の変圧器へ',
+      { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: '2' },
+      [false, true],
+    ],
+    [
+      '台数より大きい番号を選んでも、最後の台に寄せる',
+      { ...common, transformerCount: 2, feederCount: 1, feederTransformer: '8' },
+      [false, true],
+    ],
+  ];
+  for (const [name, a, want] of cases) {
+    const got = leads(a);
+    if (!same(got, want)) {
+      fail(`${name}：線の出る変圧器が違います（期待 ${want.join('・')} ／ 実際 ${got.join('・')}）`);
+    } else {
+      console.log(`  ${name}：${got.map((v, i) => `${i + 1}台目${v ? '○' : '−'}`).join(' ')}`);
+    }
+  }
+
+  // つながない指定の発電機は、結線せずに置かれること
+  {
+    const a: Answers = { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: 'none' };
+    const kinds = buildComposition(a).filter((i) => i.role === 'generator').map((i) => i.kind);
+    if (kinds.join() !== 'free') fail(`「つながない」の発電機が ${kinds.join('・')} になっています`);
+    else console.log('  「つながない」の発電機は、結線せずに置かれます');
+  }
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

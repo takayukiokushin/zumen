@@ -151,6 +151,8 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   /** 低圧の回線をぶら下げる位置（最初の変圧器の下）。無ければ主回路の末端 */
   let feederAnchorX = SPINE;
   let feederAnchorY: number | null = null;
+  /** 変圧器ごとの低圧側の出口（1台目から順に）。低圧の回線はここからぶら下げる */
+  const transformerOut: { x: number; y: number }[] = [];
 
   /** 高圧母線を引き、変圧器や進相設備をそこから下へ並列にぶら下げる */
   function drawParallelSection(): void {
@@ -210,6 +212,7 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
         wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: top });
         add(item, def, x, yy, 0, 'right');
         ly = exit ? yy + exit.y : yy + def.box.h;
+        if (item.role === 'transformer') transformerOut[item.unit ?? 0] = { x: laneX(lane), y: ly };
       }
       // 低圧の回線は、1台目の変圧器の真下から出す
       if (lane === lanes[0]) {
@@ -386,32 +389,53 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
 
   /* ---- 低圧母線と、そこから下へ出る回線 ---- */
   if (feeders.length > 0) {
-    const laneCount = Math.max(...feeders.map((f) => f.lane ?? 0)) + 1;
-    const from = feederAnchorY ?? spineY;
-    const busY = from + GAP;
-    const base = feederAnchorX;
-    wires.push({ x1: base, y1: from, x2: base, y2: busY });
-    const laneX = (i: number) => base + (i - (laneCount - 1) / 2) * LANE_GAP;
-    wires.push({ x1: laneX(0), y1: busY, x2: laneX(laneCount - 1), y2: busY });
+    const laneIds = [...new Set(feeders.map((f) => f.lane ?? 0))].sort((a, b) => a - b);
 
-    for (let lane = 0; lane < laneCount; lane++) {
-      let ly = busY;
-      const inLane = feeders.filter((f) => (f.lane ?? 0) === lane);
-      for (const [i, item] of inLane.entries()) {
-        const def = getSymbol(item.symbolId);
-        const entry = portOf(def, 'in') ?? portOf(def, 'out')!;
-        const exit = portOf(def, 'out');
-        const x = laneX(lane) - entry.x;
-        const yy = ly + (i === 0 ? 0 : GAP) - entry.y;
-        if (i > 0) wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: yy + entry.y });
-        const side = i === 0 ? 'right' : 'right';
-        const sym = add(item, def, x, yy, 0, side);
-        if (i > 0) {
-          // 2つ目以降は記号の下に中央揃えで文字を書く
-          sym.labelAt = { x: laneX(lane) + def.box.w / 2 - entry.x, y: yy + def.box.h + 12, anchor: 'middle' };
+    /** その回線をつなぐ変圧器（0始まり）。台数を超えて選んでいたら最後の台に寄せる */
+    const targetOf = (lane: number): number => {
+      const head = feeders.find((f) => (f.lane ?? 0) === lane);
+      const n = Number(head?.props?.transformer ?? 1);
+      const last = Math.max(1, transformerOut.length);
+      return Math.min(Math.max(1, Number.isFinite(n) ? n : 1), last) - 1;
+    };
+
+    // 変圧器ごとに、その下へぶら下げる回線をまとめる
+    const byTransformer = new Map<number, number[]>();
+    for (const lane of laneIds) {
+      const t = targetOf(lane);
+      const list = byTransformer.get(t);
+      if (list) list.push(lane);
+      else byTransformer.set(t, [lane]);
+    }
+
+    for (const [t, lanes] of [...byTransformer.entries()].sort((a, b) => a[0] - b[0])) {
+      // 変圧器が見つからないときだけ、主回路の末端からぶら下げる
+      const anchor = transformerOut[t] ?? { x: feederAnchorX, y: feederAnchorY ?? spineY };
+      const busY = anchor.y + GAP;
+      const base = anchor.x;
+      wires.push({ x1: base, y1: anchor.y, x2: base, y2: busY });
+      const laneX = (i: number) => base + (i - (lanes.length - 1) / 2) * LANE_GAP;
+      // 1本だけなら母線は引かず、変圧器からその機器まで1本の線でつなぐ
+      if (lanes.length > 1) wires.push({ x1: laneX(0), y1: busY, x2: laneX(lanes.length - 1), y2: busY });
+
+      lanes.forEach((lane, slot) => {
+        let ly = busY;
+        const inLane = feeders.filter((f) => (f.lane ?? 0) === lane);
+        for (const [i, item] of inLane.entries()) {
+          const def = getSymbol(item.symbolId);
+          const entry = portOf(def, 'in') ?? portOf(def, 'out')!;
+          const exit = portOf(def, 'out');
+          const x = laneX(slot) - entry.x;
+          const yy = ly + (i === 0 ? 0 : GAP) - entry.y;
+          if (i > 0) wires.push({ x1: laneX(slot), y1: ly, x2: laneX(slot), y2: yy + entry.y });
+          const sym = add(item, def, x, yy, 0, 'right');
+          if (i > 0) {
+            // 2つ目以降は記号の下に中央揃えで文字を書く
+            sym.labelAt = { x: laneX(slot) + def.box.w / 2 - entry.x, y: yy + def.box.h + 12, anchor: 'middle' };
+          }
+          ly = exit ? yy + exit.y : yy + def.box.h;
         }
-        ly = exit ? yy + exit.y : yy + def.box.h;
-      }
+      });
     }
   }
 
