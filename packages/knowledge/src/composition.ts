@@ -333,7 +333,8 @@ export const TRANSFORMER: Placement[] = [
   },
   {
     role: 'transformer',
-    symbolId: '{trConnection}',
+    // 結線方式が未入力のときは、円の中が空の記号になる（engine の trSymbol）
+    symbolId: '{trSymbol}',
     kind: 'parallel',
     row: ROW.main,
     labelTemplate: ['{trUsage}', 'Tr', '{trCapacityLine}', '{trVoltage}', '{trComposition}'],

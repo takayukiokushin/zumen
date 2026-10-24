@@ -823,5 +823,31 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
   }
 }
 
+/* ---------- 17. 結線方式が未入力の変圧器 ---------- */
+console.log('\n■ 結線方式が未入力の変圧器');
+{
+  const a: Answers = {
+    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', transformerCount: 3, trCapacity: 100,
+    trConnection: 'tr-3p-dy', [indexedKey('trConnection', 1)]: 'tr-1p',
+    // 3台目は結線方式を入れない
+  };
+  const got = layout(buildComposition(a), a)
+    .symbols.filter((s) => s.id === 'transformer' || s.id.startsWith('transformer-'))
+    .map((s) => s.symbolId);
+  const want = ['tr-3p-dy', 'tr-1p', 'tr-blank'];
+  if (JSON.stringify(got) !== JSON.stringify(want)) {
+    fail(`未入力の変圧器の記号が違います（期待 ${want.join('・')} ／ 実際 ${got.join('・')}）`);
+  } else {
+    console.log(`  3台とも図面に出る：${got.join(' / ')}`);
+  }
+  // 中身が空であること（円以外の絵が入っていないこと）
+  const blank = getSymbolDef('tr-blank').shapes.filter((sh) => sh.k !== 'circle' && sh.k !== 'line').length;
+  if (blank > 0) fail(`結線方式が未入力の変圧器に、余計な絵が ${blank}個 入っています`);
+  else console.log('  未入力のものは、円の中が空のまま');
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

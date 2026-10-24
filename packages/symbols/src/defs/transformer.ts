@@ -113,6 +113,28 @@ const threePhase = (id: string, primary: Conn, secondary: Conn, label: string): 
 
 export const transformerSymbols: SymbolDef[] = [
   {
+    /*
+     * 結線方式がまだ決まっていない変圧器。
+     * 円の中は空けておく。決まっていないのに勝手にΔやYを描くと、
+     * 間違った図面がそのまま使われてしまうため。
+     * 入力が済めば、その結線方式の記号に入れ替わる。
+     */
+    id: 'tr-blank',
+    abbr: 'Tr',
+    nameJa: '変圧器（結線方式はこれから）',
+    category: 'transformer',
+    altOf: 'tr-3p-dy',
+    optional: true,
+    tags: ['変圧器', '未入力'],
+    box: BOX,
+    shapes: body([], []),
+    ports: PORTS,
+    fields: [USAGE, CAPACITY, VOLTAGE, COMPOSITION],
+    status: 'confirmed',
+    statusNote: '結線方式が未入力のときに使う。円の中は空のまま。',
+    note: 'ヒアリングで結線方式を選ぶと、その結線方式の記号に入れ替わる。',
+  },
+  {
     id: 'tr-1p',
     abbr: 'Tr',
     nameJa: '単相変圧器（単相三線式）',

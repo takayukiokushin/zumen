@@ -154,6 +154,12 @@ export function withDerived(answers: Answers): Answers {
     d[`pcsAtTr${t + 1}`] = perTransformer[t]?.join('\n') ?? '';
     d[`pcsTrNo${t + 1}`] = String(t + 1);
   }
+  /*
+   * 変圧器の記号。結線方式がまだ入っていないときは、円の中が空のものを使う。
+   * 決まっていないのに勝手にΔやYを描くと、間違った図面がそのまま使われてしまう。
+   */
+  d.trSymbol = answers.trConnection ? String(answers.trConnection) : 'tr-blank';
+
   /** PCSをどこかの変圧器につないだか（つないでいなければ太陽光は結線せずに置く） */
   d.pcsAssigned = answers.hasPv === 'yes' && perTransformer.some((v) => v.length > 0) ? 'yes' : 'no';
 
