@@ -7,21 +7,39 @@ import { CELL } from './switchgear.ts';
  * 変圧器の共通の形（縦に重なった2つの円）。
  * 見本図面（電灯Tr・V結線）に合わせ、上下の円を大きめに重ねている。
  */
-// 枠は主回路の記号と共通（CELL）。絵は枠の中で上下中央に置く
+// 枠は主回路の記号と共通（CELL）。絵は枠の中で上下中央に置く。
+/**
+ * 絵の大きさ。枠（48×72）は他の記号と共通のまま、中の絵だけを1.5倍にしている。
+ * 円の直径が36、上下あわせて63になり、48×72の枠に収まるぎりぎりの大きさ。
+ * 寸法はすべてこの値から決めるので、変えれば絵全体がまとめて拡大・縮小する。
+ */
+const SCALE = 1.5;
 const CX = 24;
-const CY1 = 27;
-const CY2 = 45;
-const R = 12;
+const R = 12 * SCALE;
+/** 枠の上下中央から、2つの円の中心までの距離 */
+const SEP = 9 * SCALE;
+const CY1 = CELL.h / 2 - SEP;
+const CY2 = CELL.h / 2 + SEP;
 const BOX = { ...CELL };
 
 const body = (primary: Shape[], secondary: Shape[]): Shape[] => [
-  vline(CX, 0, 15),
+  vline(CX, 0, CY1 - R),
   circle(CX, CY1, R),
   circle(CX, CY2, R),
   ...primary,
   ...secondary,
-  vline(CX, 57, CELL.h),
+  vline(CX, CY2 + R, CELL.h),
 ];
+
+/** 座標を直に書いている記号（並行運転）を、まるごと拡大する */
+const grow = (shapes: Shape[], k: number): Shape[] =>
+  shapes.map((s) =>
+    s.k === 'line'
+      ? { ...s, x1: s.x1 * k, y1: s.y1 * k, x2: s.x2 * k, y2: s.y2 * k }
+      : s.k === 'circle'
+        ? { ...s, cx: s.cx * k, cy: s.cy * k, r: s.r * k }
+        : s,
+  );
 
 const PORTS = [
   { id: 'in', x: CX, y: 0, dir: 'up' as const, role: 'line' as const },
@@ -30,9 +48,9 @@ const PORTS = [
 
 /** 巻線の線数（単相変圧器は一次1本・二次3本で単相三線式を表す） */
 const wires = (cy: number, count: number): Shape[] => {
-  const gap = 4;
+  const gap = 4 * SCALE;
   const top = cy - ((count - 1) * gap) / 2;
-  return Array.from({ length: count }, (_, i) => hline(top + i * gap, CX - 6, CX + 6));
+  return Array.from({ length: count }, (_, i) => hline(top + i * gap, CX - 6 * SCALE, CX + 6 * SCALE));
 };
 
 const VOLTAGE: FieldDef = {
@@ -63,7 +81,7 @@ const COMPOSITION: FieldDef = {
 
 type Conn = 'y' | 'd';
 const connMark = (conn: Conn, cy: number): Shape[] =>
-  conn === 'y' ? starMark(CX, cy, 6) : [deltaMark(CX, cy, 7)];
+  conn === 'y' ? starMark(CX, cy, 6 * SCALE) : [deltaMark(CX, cy, 7 * SCALE)];
 
 /** 三相変圧器（結線方式違い）を1つの定義から生成する */
 const threePhase = (id: string, primary: Conn, secondary: Conn, label: string): SymbolDef => ({
@@ -125,7 +143,7 @@ export const transformerSymbols: SymbolDef[] = [
     category: 'transformer',
     tags: ['変圧器', 'V結線', '単相2台'],
     box: BOX,
-    shapes: body([text(CX, CY1, 'V', { size: 13 })], [text(CX, CY2, 'V', { size: 13 })]),
+    shapes: body([text(CX, CY1, 'V', { size: 13 * SCALE })], [text(CX, CY2, 'V', { size: 13 * SCALE })]),
     ports: PORTS,
     fields: [
       { key: 'capacity1', label: '1台目の容量', type: 'number', unit: 'kVA' },
@@ -143,8 +161,8 @@ export const transformerSymbols: SymbolDef[] = [
     nameJa: '単相変圧器 並行運転（倍容量）',
     category: 'transformer',
     tags: ['変圧器', '単相', '並行運転'],
-    box: { w: 84, h: 68 },
-    shapes: [
+    box: { w: 84 * SCALE, h: 68 * SCALE },
+    shapes: grow([
       vline(42, 0, 8),
       hline(8, 22, 62),
       vline(22, 8, 12),
@@ -158,10 +176,10 @@ export const transformerSymbols: SymbolDef[] = [
       vline(62, 54, 60),
       hline(60, 22, 62),
       vline(42, 60, 68),
-    ],
+    ], SCALE),
     ports: [
-      { id: 'in', x: 42, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 42, y: 68, dir: 'down', role: 'line' },
+      { id: 'in', x: 42 * SCALE, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 42 * SCALE, y: 68 * SCALE, dir: 'down', role: 'line' },
     ],
     fields: [USAGE, CAPACITY, VOLTAGE],
     status: 'confirmed',
@@ -177,8 +195,11 @@ export const transformerSymbols: SymbolDef[] = [
     optional: true,
     box: BOX,
     shapes: body(
-      [hline(CY1 + 4, CX - 7, CX + 7), vline(CX, CY1 - 6, CY1 + 4)],
-      [vline(CX - 5, CY2 - 6, CY2 + 5), hline(CY2 + 5, CX - 5, CX + 6)],
+      [hline(CY1 + 4 * SCALE, CX - 7 * SCALE, CX + 7 * SCALE), vline(CX, CY1 - 6 * SCALE, CY1 + 4 * SCALE)],
+      [
+        vline(CX - 5 * SCALE, CY2 - 6 * SCALE, CY2 + 5 * SCALE),
+        hline(CY2 + 5 * SCALE, CX - 5 * SCALE, CX + 6 * SCALE),
+      ],
     ),
     ports: PORTS,
     fields: [CAPACITY, VOLTAGE],
