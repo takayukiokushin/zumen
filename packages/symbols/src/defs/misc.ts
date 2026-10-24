@@ -25,10 +25,13 @@ export const miscSymbols: SymbolDef[] = [
     category: 'compensation',
     tags: ['リアクトル', '進相設備'],
     box: { ...CELL },
-    // 見本の図記号どおり、真円の中に「⌐」を描く。
-    // 上からの線は円の中心まで下り、そこから左へ曲がって円のふちで止まる
+    // 見本の図記号どおり。円は左下の4分の1が欠けた「4分の3の円」で、
+    // 左のはしから上・右をまわって下のはしまで、きれいな円弧でつなぐ。
+    // 上からの線は円の中心まで下り、そこから左へ曲がって円弧のはしで止まる
     shapes: [
-      circle(COMP_CX, COMP_CY, COMP_SIDE / 2),
+      path(
+        `M ${COMP_LEFT} ${COMP_CY} A ${COMP_SIDE / 2} ${COMP_SIDE / 2} 0 1 1 ${COMP_CX} ${COMP_CY + COMP_SIDE / 2}`,
+      ),
       vline(COMP_CX, 0, COMP_CY),
       hline(COMP_CY, COMP_LEFT, COMP_CX),
       vline(COMP_CX, COMP_CY + COMP_SIDE / 2, CELL.h),
@@ -40,7 +43,7 @@ export const miscSymbols: SymbolDef[] = [
       { key: 'ratedVoltage', label: '定格電圧', type: 'text', unit: 'V' },
     ],
     status: 'confirmed',
-    statusNote: 'いただいた図記号のとおり、真円の中に「⌐」を描く形にしました。円の大きさはSCの正方形と同じです。',
+    statusNote: 'いただいた図記号のとおり、左下の4分の1が欠けた円の中に「⌐」を描く形にしました。円の大きさはSCの正方形と同じです。',
     note: 'コンデンサ「あり」の場合に、直列接続されるパターンとされないパターンがある。記載例「SR 3φ6.38kvar 243V」。',
   },
   {

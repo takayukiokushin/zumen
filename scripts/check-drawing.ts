@@ -565,17 +565,19 @@ console.log('\n■ 高圧コンデンサ（SC）と直列リアクトル（SR）
   const sc = getSymbolDef('sc').shapes;
   const sr = getSymbolDef('sr').shapes;
   const box = sc.find((sh) => sh.k === 'rect');
-  const ring = sr.find((sh) => sh.k === 'circle');
+  // SRの円は左下の4分の1が欠けているので、円ではなく円弧（path）で描いてある
+  const arc = sr.find((sh) => sh.k === 'path');
+  const arcR = arc?.k === 'path' ? Number(/A\s+([\d.]+)/.exec(arc.d)?.[1] ?? NaN) : NaN;
   if (!box || box.k !== 'rect') fail('SCに外枠の四角がありません');
-  else if (!ring || ring.k !== 'circle') fail('SRに円がありません');
+  else if (!Number.isFinite(arcR)) fail('SRに円弧がありません');
   else {
     if (box.w !== box.h) fail(`SCの外枠が正方形ではありません：${box.w}×${box.h}`);
     else console.log(`  SCの外枠は正方形（${box.w}×${box.h}）`);
 
-    if (Math.abs(ring.r * 2 - box.w) > 0.01) {
-      fail(`SCの正方形（${box.w}）とSRの円（直径 ${ring.r * 2}）の大きさが違います`);
+    if (Math.abs(arcR * 2 - box.w) > 0.01) {
+      fail(`SCの正方形（${box.w}）とSRの円（直径 ${arcR * 2}）の大きさが違います`);
     } else {
-      console.log(`  SRの円の直径もSCの正方形と同じ ${ring.r * 2}`);
+      console.log(`  SRの円の直径もSCの正方形と同じ ${arcR * 2}（左下の4分の1は欠け）`);
     }
 
     // 上の縦線は外枠を貫いていること／下の縦線は外枠に届かないこと
