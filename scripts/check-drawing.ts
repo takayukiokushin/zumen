@@ -407,5 +407,41 @@ console.log('\n■ 図面を整える');
   );
 }
 
+/* ---------- 11. 斜めになった線をまっすぐにする ---------- */
+console.log('\n■ 斜めの線を、機器を動かして直す');
+{
+  const a: Answers = {
+    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
+    transformerCount: 3, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
+    hasCapacitor: 'yes', capacitorCount: 2, hasReactor: 'yes',
+  };
+  const clean = fromLayout(layout(buildComposition(a), a));
+  const ws = wires(clean);
+  // 上下とも別の機器につながっている機器（動かすと線が斜めになる）
+  const inline = symbols(clean).find(
+    (s) =>
+      ws.some((w) => w.at1?.item === s.id && w.at2 && w.at2.item !== s.id) &&
+      ws.some((w) => w.at2?.item === s.id && w.at1 && w.at1.item !== s.id),
+  );
+  if (!inline) fail('上下とも別の機器につながっている機器が見つかりません');
+  else {
+    for (const [dx, dy] of [[40, 0], [26, 18], [-52, 0], [0, 34]] as const) {
+      const moved = moveItem(clean, inline.id, dx, dy);
+      const r = tidyDrawing(moved, 'A4', 'portrait');
+      const left = skewed(r.doc);
+      if (left > 0) fail(`(${dx},${dy}) 動かしたあと、整えても斜めが ${left}本 残りました`);
+    }
+    console.log('  4通りの動かし方すべてで、整えると斜めは0本になりました');
+  }
+
+  // 作りたての図面に、余計な動きが起きないこと
+  const same = tidyDrawing(clean, 'A4', 'portrait');
+  if (same.fixed.skew > 0) fail(`作りたての図面で、機器を ${same.fixed.skew}回 動かしてしまいました`);
+  else console.log('  作りたての図面では、機器を動かしません');
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

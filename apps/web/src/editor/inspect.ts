@@ -2,7 +2,7 @@ import { getSymbol } from '@zumen/symbols';
 import { sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
-import { applyAnchors, descendantsOf, docBounds, linkWires, nearestPort, portsOf } from './doc.ts';
+import { applyAnchors, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, moveItem, nearestPort, portsOf } from './doc.ts';
 
 /**
  * 図面全体を見まわして、おかしなところを直す。
@@ -20,7 +20,7 @@ import { applyAnchors, descendantsOf, docBounds, linkWires, nearestPort, portsOf
  * 直しきれなかったものは、図面の上に印を出して知らせる。
  */
 
-export type IssueKind = 'floating' | 'stray' | 'through' | 'overlap' | 'paper';
+export type IssueKind = 'floating' | 'stray' | 'through' | 'overlap' | 'skew' | 'paper';
 
 export interface Issue {
   kind: IssueKind;
@@ -45,6 +45,7 @@ export const ISSUE_LABEL: Record<IssueKind, string> = {
   stray: '余分な線',
   through: '記号を突き抜けている線',
   overlap: '重なっている文字',
+  skew: '斜めになっている線',
   paper: '用紙に収まりきらない',
 };
 
@@ -69,6 +70,7 @@ const emptyCount = (): Record<IssueKind, number> => ({
   stray: 0,
   through: 0,
   overlap: 0,
+  skew: 0,
   paper: 0,
 });
 
@@ -363,6 +365,68 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
   return { doc: { ...doc, items }, fixed, issues };
 }
 
+/**
+ * 斜めになっている線を、まっすぐ（縦か横）に直す。
+ *
+ * 両端ともつないである線は、片方の機器が動くと斜めになる。
+ * このとき線のほうを曲げるのではなく、**機器を動かして線に合わせる**。
+ * 母線はたいてい何本もの線がぶら下がっていて動かしにくいので、
+ * つないでいる線が少ないほうの機器を動かす。
+ */
+function straightenWires(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
+  let next = doc;
+  let fixed = 0;
+
+  /** その記号（かたまり）につながっている線の本数。動かす側を決めるのに使う */
+  const weightOf = (d: Doc, symbolId: string): number => {
+    const group = new Set(groupOf(d, symbolId));
+    return wiresOf(d).filter((w) => (w.at1 && group.has(w.at1.item)) || (w.at2 && group.has(w.at2.item))).length;
+  };
+
+  // 1本直すと別の線に影響することがあるので、何度か繰り返す
+  for (let pass = 0; pass < 4; pass++) {
+    const skewed = wiresOf(next).filter((w) => w.x1 !== w.x2 && w.y1 !== w.y2 && w.at1 && w.at2);
+    if (skewed.length === 0) break;
+    let movedSomething = false;
+
+    for (const w of skewed) {
+      const a1 = w.at1!;
+      const a2 = w.at2!;
+      if (a1.item === a2.item) continue;
+      const root1 = groupRootOf(next, a1.item);
+      const root2 = groupRootOf(next, a2.item);
+      if (root1 === root2) continue;
+
+      // 縦の線にするか、横の線にするか。ずれが小さいほうに合わせる
+      const vertical = Math.abs(w.x2 - w.x1) <= Math.abs(w.y2 - w.y1);
+      // つないでいる線が少ないほうを動かす（母線側は動かさない）
+      const move2 = weightOf(next, root2) <= weightOf(next, root1);
+      const target = move2 ? root2 : root1;
+      const dx = vertical ? (move2 ? w.x1 - w.x2 : w.x2 - w.x1) : 0;
+      const dy = vertical ? 0 : move2 ? w.y1 - w.y2 : w.y2 - w.y1;
+      if (dx === 0 && dy === 0) continue;
+
+      next = moveItem(next, target, dx, dy);
+      fixed++;
+      movedSomething = true;
+    }
+    if (!movedSomething) break;
+  }
+
+  const left = wiresOf(next)
+    .filter((w) => w.x1 !== w.x2 && w.y1 !== w.y2)
+    .map(
+      (w): Issue => ({
+        kind: 'skew',
+        message: '線が斜めになっています。両端とも別の機器につながっているため、動かして直せませんでした',
+        x: (w.x1 + w.x2) / 2,
+        y: (w.y1 + w.y2) / 2,
+        itemId: w.id,
+      }),
+    );
+  return { doc: next, fixed, issues: left };
+}
+
 /** 用紙に収めるときの倍率（renderSvg と同じ計算） */
 function fitScale(doc: Doc, paper: PaperSize, orientation: Orientation): number {
   const b = docBounds(doc);
@@ -446,6 +510,18 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
     }
   }
 
+  // 斜めの線
+  for (const w of wires) {
+    if (w.x1 === w.x2 || w.y1 === w.y2) continue;
+    issues.push({
+      kind: 'skew',
+      message: '線が斜めになっています',
+      x: (w.x1 + w.x2) / 2,
+      y: (w.y1 + w.y2) / 2,
+      itemId: w.id,
+    });
+  }
+
   // 文字の重なり
   const boxes: { box: Box; id: string; head: string }[] = [];
   for (const it of symbols) {
@@ -502,6 +578,11 @@ export function tidyDrawing(doc: Doc, paper: PaperSize = 'A4', orientation: Orie
   const b2 = attachFloatingEnds(next);
   next = applyAnchors(b2.doc);
   fixed.floating += b2.fixed;
+
+  // 斜めの線は、機器のほうを動かしてまっすぐにする
+  const sk = straightenWires(next);
+  next = sk.doc;
+  fixed.skew += sk.fixed;
 
   const d = spreadLabels(next);
   next = d.doc;
