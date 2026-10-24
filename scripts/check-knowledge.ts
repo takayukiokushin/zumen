@@ -35,6 +35,9 @@ const fail = (msg: string) => {
 console.log('■ 定義の整合性');
 const questionIds = new Set(QUESTIONS.map((q) => q.id));
 if (questionIds.size !== QUESTIONS.length) fail('質問IDが重複しています');
+/** 回答から組み立てる値（質問ではないが、構成ルールから参照してよい） */
+const derivedKeys = new Set(Object.keys(withDerived({})));
+const known = (key: string) => questionIds.has(key) || derivedKeys.has(key);
 
 for (const q of QUESTIONS) {
   for (const key of referencedKeys(q.showIf)) {
@@ -56,7 +59,7 @@ for (const p of allPlacements) {
     fail(`構成ルール ${p.role} が未登録の記号 ${p.symbolId} を参照しています`);
   }
   for (const key of referencedKeys(p.when)) {
-    if (!questionIds.has(key)) fail(`構成ルール ${p.role} が未定義の質問 ${key} を参照しています`);
+    if (!known(key)) fail(`構成ルール ${p.role} が未定義の質問 ${key} を参照しています`);
   }
   if (p.repeatCountKey && !questionIds.has(p.repeatCountKey)) {
     fail(`構成ルール ${p.role} の件数 ${p.repeatCountKey} が未定義です`);

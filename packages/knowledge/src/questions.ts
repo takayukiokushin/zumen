@@ -83,13 +83,6 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
   { id: 'receiving', label: '受電設備の構成' },
   { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台' },
-  {
-    id: 'feeder',
-    label: '低圧側の分岐',
-    description: '変圧器の低圧側から出る回線。無ければ回線数を0のままにしておけばよい',
-    repeatCountKey: 'feederCount',
-    repeatUnit: '回線',
-  },
   { id: 'compensation', label: '進相設備', repeatCountKey: 'capacitorCount', repeatUnit: '台' },
   { id: 'special', label: '特殊設備' },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' } },
@@ -666,65 +659,6 @@ export const QUESTIONS: Question[] = [
   { id: 'trHasPc', group: 'transformer', label: '変圧器の手前にPC（高圧カットアウト）が入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'trHasLbs', group: 'transformer', label: '変圧器の手前にLBSが入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
 
-  /* ---------------- 低圧側の分岐 ---------------- */
-  {
-    id: 'feederCount',
-    group: 'feeder',
-    label: '低圧側の分岐回線数',
-    type: 'number',
-    defaultValue: 0,
-    ask: 'ai-uncertain',
-    help: '変圧器の下の母線から出る回線の数。無ければ0',
-    fromSketch: true,
-  },
-  {
-    id: 'feederTransformer',
-    group: 'feeder',
-    label: 'どの変圧器につなぎますか？',
-    type: 'select',
-    // 変圧器が何台でも選べるよう、多めに用意してある。
-    // 台数より大きい番号を選んでしまっても、作図のほうで最後の台に寄せる
-    options: TRANSFORMER_CHOICES.filter((o) => o.value !== 'none'),
-    defaultValue: '1',
-    // 変圧器が1台しかないときは聞かない（自動でその1台につながる）
-    showIf: { all: [{ key: 'feederCount', gt: 0 }, { key: 'transformerCount', gt: 1 }] },
-    ask: 'always',
-    help: '選んだ変圧器の低圧側から、この回線が出る',
-  },
-  { id: 'feederName', group: 'feeder', label: '回線名', type: 'text', placeholder: 'PCSNo1〜No5', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain', fromSketch: true },
-  { id: 'feederBreaker', group: 'feeder', label: '遮断器の定格', type: 'text', placeholder: 'MCCB225A', showIf: { key: 'feederCount', gt: 0 }, ask: 'ai-uncertain', fromSketch: true },
-  {
-    id: 'feederDevice',
-    group: 'feeder',
-    label: '回線の先の機器',
-    type: 'select',
-    options: [
-      { value: 'none', label: 'なし（負荷へ）' },
-      { value: 'pcs', label: 'PCS' },
-    ],
-    defaultValue: 'none',
-    showIf: { key: 'feederCount', gt: 0 },
-    ask: 'ai-uncertain',
-    fromSketch: true,
-  },
-  { id: 'feederDeviceCapacity', group: 'feeder', label: 'PCSの容量', type: 'text', placeholder: '100kW×5', showIf: { key: 'feederDevice', eq: 'pcs' }, ask: 'ai-uncertain', fromSketch: true },
-  {
-    id: 'feederSource',
-    group: 'feeder',
-    label: 'PCSの先',
-    type: 'select',
-    options: [
-      { value: 'none', label: 'なし' },
-      { value: 'pv', label: '太陽電池パネル' },
-      { value: 'battery', label: '蓄電池ユニット' },
-    ],
-    defaultValue: 'none',
-    showIf: { key: 'feederDevice', eq: 'pcs' },
-    ask: 'ai-uncertain',
-    fromSketch: true,
-  },
-  { id: 'feederSourceLabel', group: 'feeder', label: '先の機器の表記', type: 'text', placeholder: '蓄電池ユニットNo.1', showIf: { key: 'feederSource', ne: 'none' }, ask: 'ai-uncertain', fromSketch: true },
-
 /* ---------------- 進相設備 ---------------- */
   {
     id: 'hasCapacitor',
@@ -816,28 +750,6 @@ export const QUESTIONS: Question[] = [
   { id: 'hasBattery', group: 'special', label: '系統用蓄電所ですか？', type: 'select', options: YES_NO_Q, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'batteryCapacity', group: 'special', label: '蓄電ユニットの規模', type: 'text', showIf: { key: 'hasBattery', eq: 'yes' }, ask: 'always' },
   {
-    id: 'generatorTransformer',
-    group: 'special',
-    label: '発電機は、どの変圧器につなぎますか？',
-    type: 'select',
-    options: TRANSFORMER_CHOICES,
-    defaultValue: 'none',
-    showIf: { key: 'hasGenerator', eq: 'yes' },
-    ask: 'always',
-    help: 'つなぎ先が決まっていなければ「つながない」のままでよい（図面の下に置くだけになる）',
-  },
-  {
-    id: 'pvTransformer',
-    group: 'special',
-    label: '太陽光発電設備は、どの変圧器につなぎますか？',
-    type: 'select',
-    options: TRANSFORMER_CHOICES,
-    defaultValue: 'none',
-    showIf: { key: 'hasPv', eq: 'yes' },
-    ask: 'always',
-    help: 'つなぎ先が決まっていなければ「つながない」のままでよい',
-  },
-  {
     id: 'batteryTransformer',
     group: 'special',
     label: '蓄電池ユニットは、どの変圧器につなぎますか？',
@@ -906,6 +818,17 @@ export const QUESTIONS: Question[] = [
     help: '非常用発電機の場合は図面に明記する',
   },
 
+  {
+    id: 'generatorTransformer',
+    group: 'generator',
+    label: 'この発電機は、どの変圧器につなぎますか？',
+    type: 'select',
+    options: TRANSFORMER_CHOICES,
+    defaultValue: 'none',
+    ask: 'always',
+    help: 'つなぎ先が決まっていなければ「つながない」のままでよい（図面の下に置くだけになる）',
+  },
+
   /* ---------------- 太陽光（PCS。容量ごとのまとまりで入力） ---------------- */
   {
     id: 'pvGroupCount',
@@ -939,6 +862,18 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     required: true,
   },
+  // 容量ごとに「何台目の変圧器に何台つなぐか」を入れる。
+  // 変圧器が1台しかないときは聞かない（全部その1台につながる）。
+  ...Array.from({ length: 8 }, (_, t) => ({
+    id: `pcsToTr${t + 1}`,
+    group: 'pv' as const,
+    label: `うち ${t + 1}台目の変圧器につなぐ台数`,
+    type: 'number' as const,
+    unit: '台',
+    showIf: { all: [{ key: 'transformerCount', gt: Math.max(1, t) }] },
+    ask: 'always' as const,
+    help: t === 0 ? 'どの変圧器にも入れなければ、全部1台目の変圧器につながる' : undefined,
+  })),
 
   /* ---------------- 表題欄 ---------------- */
   { id: 'drawingName', group: 'title', label: '図面名称', type: 'text', defaultValue: 'キュービクル式高圧受電設備単線結線図', ask: 'always' },

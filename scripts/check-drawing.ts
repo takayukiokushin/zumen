@@ -60,8 +60,12 @@ const answers: Answers = {
   hasCapacitor: 'yes',
   capacitorCount: 2,
   hasPv: 'yes',
+  pvGroupCount: '1',
+  pcsCapacity: 50,
+  pcsCount: '4',
+  pcsToTr1: 2,
+  pcsToTr2: 2,
   hasGenerator: 'yes',
-  feederCount: 2,
 };
 
 const build = (): Doc => fromLayout(layout(buildComposition(answers), answers));
@@ -377,7 +381,7 @@ console.log('\n■ 図面を整える');
       trHasPc: 'yes', trPcRating: '30A', trPcFuse: '10A',
       hasCapacitor: 'yes', capacitorCount: 2, capHasLbs: 'yes', capHasVcs: 'yes',
       capLbsRating: '200A', capPfG: '50A', capPfLoad: 'C', capPfLoadAmp: '30A', capPfKa: '40kA',
-      feederCount: 2 }],
+      hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '3', pcsToTr1: 1, pcsToTr2: 2 }],
     ['発電機・太陽光つき', { ...common, mainBreakerForm: 'pfs', transformerCount: 2, trConnection: 'tr-3p-dy',
       trUsage: '動力', trCapacity: 300, hasGenerator: 'yes', hasPv: 'yes', pvCapacity: '50kW×2' }],
   ];
@@ -706,7 +710,10 @@ console.log('\n■ 変圧器の下側の縦線（つなぐものがあるとき�
   let bad = 0;
   for (const kind of kinds) {
     const alone = below({ ...common, trConnection: kind }, kind);
-    const withFeeder = below({ ...common, trConnection: kind, feederCount: 2, feederForm: 'mccb' }, kind);
+    const withFeeder = below(
+      { ...common, trConnection: kind, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '2' },
+      kind,
+    );
     if (!alone || !withFeeder) { fail(`${kind} が図面に置かれませんでした`); bad++; continue; }
     if (alone.count !== 0) { fail(`${kind}：下に何も無いのに縦線が ${alone.count}本 出ています`); bad++; }
     if (withFeeder.count === 0) { fail(`${kind}：下に回線があるのに縦線が出ていません`); bad++; }
@@ -715,8 +722,8 @@ console.log('\n■ 変圧器の下側の縦線（つなぐものがあるとき�
   if (bad === 0) console.log(`  ${kinds.length}種類すべて：つなぐものが無ければ出さず、あれば出口から途切れずにつながる`);
 }
 
-/* ---------- 16. 低圧側の分岐を、選んだ変圧器につなぐ ---------- */
-console.log('\n■ 低圧側の分岐を、選んだ変圧器につなぐ');
+/* ---------- 16. PCS・発電機を、選んだ変圧器につなぐ ---------- */
+console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
 {
   const common: Answers = {
     customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
@@ -739,29 +746,19 @@ console.log('\n■ 低圧側の分岐を、選んだ変圧器につなぐ');
       });
   };
   const same = (got: boolean[], want: boolean[]) => JSON.stringify(got) === JSON.stringify(want);
+  const pv = (extra: Answers): Answers => ({ ...common, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '5', ...extra });
   const cases: [string, Answers, boolean[]][] = [
-    ['変圧器1台・回線1本（自動で1台目）', { ...common, transformerCount: 1, feederCount: 1 }, [true]],
-    ['変圧器3台・回線なし', { ...common, transformerCount: 3, feederCount: 0 }, [false, false, false]],
-    ['変圧器3台・回線を3台目へ', { ...common, transformerCount: 3, feederCount: 1, feederTransformer: '3' }, [false, false, true]],
+    ['変圧器1台・PCSあり（自動で1台目）', pv({ transformerCount: 1 }), [true]],
+    ['変圧器3台・PCSなし', { ...common, transformerCount: 3 }, [false, false, false]],
+    ['変圧器3台・どこにも入れない（全部1台目へ）', pv({ transformerCount: 3 }), [true, false, false]],
+    ['変圧器3台・3台目へ5台', pv({ transformerCount: 3, pcsToTr3: 5 }), [false, false, true]],
+    ['変圧器3台・1台目に2台／3台目に3台', pv({ transformerCount: 3, pcsToTr1: 2, pcsToTr3: 3 }), [true, false, true]],
+    ['発電機をつながない', { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: 'none' }, [false, false]],
+    ['発電機を2台目の変圧器へ', { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: '2' }, [false, true]],
     [
-      '変圧器3台・1本目は1台目／2本目は3台目',
-      { ...common, transformerCount: 3, feederCount: 2, feederTransformer: '1', [indexedKey('feederTransformer', 1)]: '3' },
+      '発電機2台を別々の変圧器へ',
+      { ...common, transformerCount: 3, hasGenerator: 'yes', generatorCount: 2, generatorTransformer: '1', [indexedKey('generatorTransformer', 1)]: '3' },
       [true, false, true],
-    ],
-    [
-      '発電機をつながない',
-      { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: 'none' },
-      [false, false],
-    ],
-    [
-      '発電機を2台目の変圧器へ',
-      { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: '2' },
-      [false, true],
-    ],
-    [
-      '台数より大きい番号を選んでも、最後の台に寄せる',
-      { ...common, transformerCount: 2, feederCount: 1, feederTransformer: '8' },
-      [false, true],
     ],
   ];
   for (const [name, a, want] of cases) {
@@ -773,12 +770,29 @@ console.log('\n■ 低圧側の分岐を、選んだ変圧器につなぐ');
     }
   }
 
-  // つながない指定の発電機は、結線せずに置かれること
+  // 2種類のPCSを1台の変圧器にまとめると、1つの枠に2行で書かれること
   {
-    const a: Answers = { ...common, transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, generatorTransformer: 'none' };
-    const kinds = buildComposition(a).filter((i) => i.role === 'generator').map((i) => i.kind);
-    if (kinds.join() !== 'free') fail(`「つながない」の発電機が ${kinds.join('・')} になっています`);
-    else console.log('  「つながない」の発電機は、結線せずに置かれます');
+    const a: Answers = {
+      ...common, transformerCount: 2, hasPv: 'yes', pvGroupCount: '2',
+      pcsCapacity: 50, pcsCount: '5', pcsToTr1: 2, pcsToTr2: 3,
+      [indexedKey('pcsCapacity', 1)]: 5, [indexedKey('pcsCount', 1)]: '1', [indexedKey('pcsToTr1', 1)]: 1,
+    };
+    const boxes = buildComposition(a).filter((i) => i.role.startsWith('pcs-tr'));
+    const first = boxes.find((i) => i.role === 'pcs-tr1');
+    if (boxes.length !== 2) fail(`PCSの枠が ${boxes.length}個 です（2個のはず）`);
+    else if (first?.label.join(' / ') !== '50kW×2台 / 5kW×1台') {
+      fail(`1台目のPCSの枠の文字が「${first?.label.join(' / ')}」になっています`);
+    } else {
+      console.log(`  2種類をまとめた枠：1台目「${first.label.join(' / ')}」／2台目「${boxes.find((i) => i.role === 'pcs-tr2')?.label.join(' / ')}」`);
+    }
+  }
+
+  // 低圧開閉器（MCCB）は描かないこと
+  {
+    const a: Answers = { ...common, transformerCount: 2, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '2' };
+    const mccb = layout(buildComposition(a), a).symbols.filter((s) => s.symbolId === 'mccb').length;
+    if (mccb > 0) fail(`低圧開閉器（MCCB）が ${mccb}個 描かれています`);
+    else console.log('  低圧開閉器（MCCB）は描かれません');
   }
 }
 

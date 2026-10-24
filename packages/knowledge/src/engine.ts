@@ -124,6 +124,39 @@ export function withDerived(answers: Answers): Answers {
   }
   d.pcsText = pcs.join('、');
 
+  /*
+   * 変圧器ごとのPCSの内訳。
+   * 容量の種類ごとに「何台目の変圧器に何台」を入れてあるので、
+   * それを変圧器ごとに集め直して「50kW×2台」「5kW×1台」の行にする。
+   * どの変圧器にも入れていない種類は、ぜんぶ1台目の変圧器につないだものとして扱う。
+   */
+  const trCount = Math.max(1, Number(answers.transformerCount ?? 1));
+  const perTransformer: string[][] = Array.from({ length: trCount }, () => []);
+  for (let i = 0; i < groups; i++) {
+    const kw = answers[indexedKey('pcsCapacity', i)];
+    if (kw === undefined || kw === null || kw === '') continue;
+    const total = Math.max(0, Number(answers[indexedKey('pcsCount', i)] ?? 1));
+    const share: number[] = [];
+    let assigned = 0;
+    for (let t = 0; t < trCount; t++) {
+      const n = Math.max(0, Number(answers[indexedKey(`pcsToTr${t + 1}`, i)] ?? 0) || 0);
+      share[t] = n;
+      assigned += n;
+    }
+    // どこにも入れていなければ、全部1台目へ。入れ残しがあれば1台目に足す
+    if (assigned === 0) share[0] = total;
+    else if (assigned < total) share[0] = (share[0] ?? 0) + (total - assigned);
+    for (let t = 0; t < trCount; t++) {
+      if ((share[t] ?? 0) > 0) perTransformer[t]!.push(`${kw}kW×${share[t]}台`);
+    }
+  }
+  for (let t = 0; t < 8; t++) {
+    d[`pcsAtTr${t + 1}`] = perTransformer[t]?.join('\n') ?? '';
+    d[`pcsTrNo${t + 1}`] = String(t + 1);
+  }
+  /** PCSをどこかの変圧器につないだか（つないでいなければ太陽光は結線せずに置く） */
+  d.pcsAssigned = answers.hasPv === 'yes' && perTransformer.some((v) => v.length > 0) ? 'yes' : 'no';
+
   // ケーブルの注記（3行目：定格電圧 断面積 長さ。長さ不明は「- m」）
   d.cableInstallationLabel = CABLE_INSTALLATION_LABEL[String(answers.cableInstallation)] ?? '';
   const third = [

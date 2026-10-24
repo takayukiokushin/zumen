@@ -343,42 +343,22 @@ export const TRANSFORMER: Placement[] = [
 ];
 
 /** 低圧母線から下へ出る回線（回線数ぶん横に並べる） */
-export const FEEDERS: Placement[] = [
-  {
-    role: 'feeder-breaker',
-    symbolId: 'mccb',
-    kind: 'feeder',
-    when: { key: 'feederCount', gt: 0 },
-    repeatCountKey: 'feederCount',
-    labelTemplate: ['{feederName}', '{feederBreaker}'],
-    // どの変圧器の下にぶら下げるか（作図が読む）
-    props: { transformer: 'feederTransformer' },
-  },
-  {
-    role: 'feeder-pcs',
-    symbolId: 'pcs',
-    kind: 'feeder',
-    when: { all: [{ key: 'feederCount', gt: 0 }, { key: 'feederDevice', eq: 'pcs' }] },
-    repeatCountKey: 'feederCount',
-    labelTemplate: ['{feederDeviceCapacity}'],
-  },
-  {
-    role: 'feeder-source',
-    symbolId: 'pv',
-    kind: 'feeder',
-    when: { all: [{ key: 'feederCount', gt: 0 }, { key: 'feederSource', eq: 'pv' }] },
-    repeatCountKey: 'feederCount',
-    labelTemplate: ['{feederSourceLabel}'],
-  },
-  {
-    role: 'feeder-source',
-    symbolId: 'battery-unit',
-    kind: 'feeder',
-    when: { all: [{ key: 'feederCount', gt: 0 }, { key: 'feederSource', eq: 'battery' }] },
-    repeatCountKey: 'feederCount',
-    labelTemplate: ['{feederSourceLabel}'],
-  },
-];
+/**
+ * 変圧器の低圧側にぶら下がるもの。
+ *
+ * PCSは「容量の種類ごとに、何台目の変圧器に何台」を入れてもらい、
+ * 変圧器ごとに1つの枠にまとめて（例「50kW×2台 / 5kW×1台」）ぶら下げる。
+ * 低圧開閉器（MCCB）の記号は、いまのところ描かない。
+ */
+export const FEEDERS: Placement[] = Array.from({ length: 8 }, (_, t) => ({
+  role: `pcs-tr${t + 1}`,
+  symbolId: 'pcs',
+  kind: 'feeder' as const,
+  when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }] },
+  labelTemplate: [`{pcsAtTr${t + 1}}`],
+  props: { transformer: `pcsTrNo${t + 1}` },
+  laneBase: 200 + t,
+}));
 
 /** 進相設備・特殊設備 */
 export const EXTRAS: Placement[] = [
@@ -457,19 +437,11 @@ export const EXTRAS: Placement[] = [
     repeatCountKey: 'generatorCount',
   },
   {
-    role: 'pv',
-    symbolId: 'pv',
-    kind: 'feeder',
-    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: 'pvTransformer', ne: 'none' }] },
-    labelTemplate: ['PV', '{pcsText}'],
-    props: { transformer: 'pvTransformer' },
-    laneBase: 200,
-  },
-  {
+    // PCSをどの変圧器にもつないでいないときだけ、太陽光を単独で置く
     role: 'pv',
     symbolId: 'pv',
     kind: 'free',
-    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: 'pvTransformer', eq: 'none' }] },
+    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: 'pcsAssigned', eq: 'no' }] },
     labelTemplate: ['PV', '{pcsText}'],
   },
   {

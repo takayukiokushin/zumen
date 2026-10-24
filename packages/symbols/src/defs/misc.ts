@@ -134,15 +134,17 @@ export const miscSymbols: SymbolDef[] = [
     category: 'source',
     tags: ['太陽光', '蓄電', 'PCS'],
     box: { w: 56, h: 48 },
+    // 下側の引き出し線は描かない。下に何もつながっていないのに線だけ伸びていると、
+    // 行き先のない線に見えるため（変圧器と同じ扱い）。
+    // 下につなぐものがあるときは、作図のほうが出口から線を引く
     shapes: [
       vline(28, 0, 10),
       rect(6, 10, 44, 28),
       text(28, 18, 'PCS', { size: 9 }),
-      vline(28, 38, 48),
     ],
     ports: [
       { id: 'in', x: 28, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 28, y: 48, dir: 'down', role: 'line' },
+      { id: 'out', x: 28, y: 38, dir: 'down', role: 'line' },
     ],
     fields: [{ key: 'capacity', label: '容量', type: 'text', help: '図面の記載例: 100kW×5' }],
     status: 'confirmed',

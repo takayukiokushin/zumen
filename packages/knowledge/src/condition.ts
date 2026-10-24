@@ -69,6 +69,9 @@ export function referencedKeys(cond: Condition | undefined, out: Set<string> = n
  * 「{questionId}」を回答で置き換える。
  * 差し込みの値が1つでも無い行は、その行ごと落とす（「7200VA」のような中途半端な
  * 文字が図面に出ないようにするため）。差し込みの無い行はそのまま残す。
+ *
+ * 差し込んだ値に改行が入っていたら、そこで行を分ける
+ * （変圧器ごとのPCSの内訳のように、行数が決まらないものを書けるようにするため）。
  */
 export function fillTemplate(lines: string[], answers: Answers): string[] {
   const out: string[] = [];
@@ -83,8 +86,10 @@ export function fillTemplate(lines: string[], answers: Answers): string[] {
       return String(v);
     });
     if (missing) continue;
-    const trimmed = filled.trim();
-    if (trimmed) out.push(trimmed);
+    for (const part of filled.split('\n')) {
+      const trimmed = part.trim();
+      if (trimmed) out.push(trimmed);
+    }
   }
   return out;
 }
