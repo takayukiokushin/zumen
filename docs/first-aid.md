@@ -171,9 +171,17 @@ cd ~/Desktop/zumen   # アプリのフォルダへ
 
 ### 控えから案件を戻す
 
-控えのフォルダ（`BACKUP_DIR` に書いた場所）の、日付のフォルダの中にある
-`zumen.db` と `files/` を、アプリのフォルダの `data/` に上書きする。
-先にサーバーを止めてから行うこと。
+**`zumen.db` だけを上書きしても戻らない**（`data/` にある `zumen.db-wal`・`zumen.db-shm` が残るため）。
+次の手順で、`data/` を**まるごと入れ替える**。
+
+1. サーバーを止める（自動起動のときは `launchctl unload ~/Library/LaunchAgents/jp.co.fuji-elex.zumen.plist`）
+2. `cd ~/Desktop/zumen` のあと、`mv data "data.戻す前-$(date +%Y%m%d-%H%M%S)"`（**捨てずに脇へ避ける**）
+3. `mkdir data` のあと、控えの日付フォルダから `zumen.db` と `files` を `data/` へコピーする
+4. サーバーを動かす（`launchctl load -w ~/Library/LaunchAgents/jp.co.fuji-elex.zumen.plist`）
+5. ブラウザで案件の一覧を見て、戻ったか確かめる
+
+**戻すと、その控えを取った時点まですべて戻る**（利用者やパスワードの変更も）。
+詳しい手順と、1件だけ見たいときの方法は、`docs/server-setup.md` の「控えから戻す（復元）」にある。
 
 ### 全部おかしくなった
 
