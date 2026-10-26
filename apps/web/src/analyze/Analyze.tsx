@@ -79,16 +79,10 @@ export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          images: images.map((i) => ({ mediaType: i.mediaType, data: i.data })),
-          answers,
-        }),
+      const json = await api.analyze({
+        images: images.map((i) => ({ mediaType: i.mediaType, data: i.data })),
+        answers,
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? '解析に失敗しました。');
       setResult(json.result as AnalysisResult);
       setReview(json.review as ReviewItem[]);
       // 自信がある項目は最初からチェックを入れておく
@@ -175,13 +169,7 @@ export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
           </>
         )}
 
-        {error && (
-          <p className="err">
-            {error}
-            <br />
-            <small>解析サーバーが起動しているかご確認ください（pnpm --filter @zumen/server dev）。</small>
-          </p>
-        )}
+        {error && <p className="err">{error}</p>}
       </section>
 
       {result && (

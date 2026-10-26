@@ -37,7 +37,7 @@ export function describeFailure(status: number | null, serverMessage?: string): 
   if (isGateway(status)) return GATEWAY;
   if (status >= 500) return SERVER_ERROR;
   if (status === 401) return 'ログインの有効期限が切れました。もう一度ログインしてください。';
-  if (status === 403) return 'この操作は許可されていません。';
+  if (status === 403) return 'この操作は許可されていません。必要なときは、管理者に頼んでください。';
   if (status === 413) return '送ろうとしたデータが大きすぎます。写真を送ったときは、枚数を減らして、もう一度お試しください。';
   return '通信に失敗しました。もう一度お試しください。';
 }

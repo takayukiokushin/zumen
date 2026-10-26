@@ -106,8 +106,8 @@ projects.post('/', async (c) => {
 
 projects.get('/:id', (c) => {
   const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(c.req.param('id')) as ProjectRow | undefined;
-  if (!row) return c.json({ error: '案件が見つかりません。' }, 404);
-  if (!canTouch(c.get('user'), row.id)) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (!row) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
+  if (!canTouch(c.get('user'), row.id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   const files = db
     .prepare('SELECT id, file_name, media_type, size, created_at FROM project_files WHERE project_id = ? ORDER BY created_at')
     .all(row.id);
@@ -127,22 +127,22 @@ projects.get('/:id', (c) => {
 projects.put('/:id', async (c) => {
   const id = c.req.param('id');
   const exists = db.prepare('SELECT id FROM projects WHERE id = ?').get(id);
-  if (!exists) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (!exists) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
 
   // 他の人が編集中なら保存させない（あとから保存したほうで上書きされるのを防ぐ）。
   // ただし管理用のアカウントは、編集中でも上書きできる
   const user = c.get('user');
-  if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   const lock = currentLock(id);
   if (lock && lock.userId !== user.id && user.role !== 'admin') {
-    return c.json({ error: `${lock.userName}さんが編集中のため保存できません。`, lock }, 409);
+    return c.json({ error: `${lock.userName}さんが編集中のため保存できません。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 409);
   }
   takeLock(id, user.id);
 
   const body = (await c.req.json().catch(() => null)) as
     | { name?: string; answers?: unknown; drawing?: unknown }
     | null;
-  if (!body) return c.json({ error: 'リクエストの形式が不正です。' }, 400);
+  if (!body) return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
 
   const sets: string[] = ['updated_at = ?', 'updated_by = ?'];
   const args: (string | null)[] = [now(), user.id];
@@ -171,15 +171,15 @@ projects.put('/:id', async (c) => {
 projects.post('/:id/lock', async (c) => {
   const id = c.req.param('id');
   if (!db.prepare('SELECT id FROM projects WHERE id = ?').get(id)) {
-    return c.json({ error: '案件が見つかりません。' }, 404);
+    return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   }
   const user = c.get('user');
-  if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   const { force } = (await c.req.json().catch(() => ({}))) as { force?: boolean };
   const lock = currentLock(id);
   // 管理用のアカウントは、確認なしで編集を引き継げる
   if (lock && lock.userId !== user.id && !force && user.role !== 'admin') {
-    return c.json({ error: `${lock.userName}さんが編集中です。`, lock }, 409);
+    return c.json({ error: `${lock.userName}さんが編集中です。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 409);
   }
   takeLock(id, user.id);
   return c.json({ lock: currentLock(id) });
@@ -197,10 +197,10 @@ projects.delete('/:id/lock', (c) => {
 
 projects.delete('/:id', (c) => {
   const id = c.req.param('id');
-  if (!canTouch(c.get('user'), id)) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (!canTouch(c.get('user'), id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   const held = currentLock(id);
   if (held && held.userId !== c.get('user').id && c.get('user').role !== 'admin') {
-    return c.json({ error: `${held.userName}さんが編集中のため削除できません。`, lock: held }, 409);
+    return c.json({ error: `${held.userName}さんが編集中のため削除できません。${held.userName}さんの編集が終わってから、もう一度お試しください。`, lock: held }, 409);
   }
   for (const f of db.prepare('SELECT id FROM project_files WHERE project_id = ?').all(id) as { id: string }[]) {
     try {
@@ -211,7 +211,7 @@ projects.delete('/:id', (c) => {
   }
   db.prepare('DELETE FROM project_files WHERE project_id = ?').run(id);
   const r = db.prepare('DELETE FROM projects WHERE id = ?').run(id);
-  if (Number(r.changes) === 0) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (Number(r.changes) === 0) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   return c.json({ ok: true });
 });
 
@@ -220,21 +220,21 @@ projects.delete('/:id', (c) => {
 projects.post('/:id/files', async (c) => {
   const projectId = c.req.param('id');
   if (!db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId)) {
-    return c.json({ error: '案件が見つかりません。' }, 404);
+    return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   }
-  if (!canTouch(c.get('user'), projectId)) return c.json({ error: '案件が見つかりません。' }, 404);
+  if (!canTouch(c.get('user'), projectId)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   const held = currentLock(projectId);
   if (held && held.userId !== c.get('user').id && c.get('user').role !== 'admin') {
-    return c.json({ error: `${held.userName}さんが編集中のため追加できません。`, lock: held }, 409);
+    return c.json({ error: `${held.userName}さんが編集中のため追加できません。${held.userName}さんの編集が終わってから、もう一度お試しください。`, lock: held }, 409);
   }
   const body = (await c.req.json().catch(() => null)) as
     | { fileName?: string; mediaType?: string; data?: string }
     | null;
-  if (!body?.data || !body.mediaType) return c.json({ error: '画像が添付されていません。' }, 400);
+  if (!body?.data || !body.mediaType) return c.json({ error: '画像が選ばれていません。画像を選んでから、もう一度お試しください。' }, 400);
 
   const buf = Buffer.from(body.data, 'base64');
   if (buf.byteLength > MAX_FILE_BYTES) {
-    return c.json({ error: `画像が大きすぎます（1枚${MAX_FILE_BYTES / 1024 / 1024}MBまで）。` }, 413);
+    return c.json({ error: `画像が大きすぎます（1枚${MAX_FILE_BYTES / 1024 / 1024}MBまで）。画像を小さくするか、別の画像でお試しください。` }, 413);
   }
   const id = newId();
   writeFileSync(resolve(FILES_DIR, id), buf);
@@ -248,7 +248,7 @@ projects.get('/:id/files/:fileId', (c) => {
   const row = db
     .prepare('SELECT id, media_type FROM project_files WHERE id = ? AND project_id = ?')
     .get(c.req.param('fileId'), c.req.param('id')) as { id: string; media_type: string } | undefined;
-  if (!row) return c.json({ error: '画像が見つかりません。' }, 404);
+  if (!row) return c.json({ error: '画像が見つかりません。すでに消されたようです。案件の画面を見直してください。' }, 404);
   try {
     const buf = readFileSync(resolve(FILES_DIR, row.id));
     return c.body(buf as unknown as ArrayBuffer, 200, {
@@ -256,14 +256,14 @@ projects.get('/:id/files/:fileId', (c) => {
       'cache-control': 'private, max-age=86400',
     });
   } catch {
-    return c.json({ error: '画像を読み込めませんでした。' }, 404);
+    return c.json({ error: '画像のデータが見つかりません。お手数ですが、画像をもう一度追加してください。' }, 404);
   }
 });
 
 projects.delete('/:id/files/:fileId', (c) => {
   const fileId = c.req.param('fileId');
   const r = db.prepare('DELETE FROM project_files WHERE id = ? AND project_id = ?').run(fileId, c.req.param('id'));
-  if (Number(r.changes) === 0) return c.json({ error: '画像が見つかりません。' }, 404);
+  if (Number(r.changes) === 0) return c.json({ error: '画像が見つかりません。すでに消されたようです。案件の画面を見直してください。' }, 404);
   try {
     unlinkSync(resolve(FILES_DIR, fileId));
   } catch {

@@ -44,9 +44,9 @@ admin.post('/users', async (c) => {
   if (password.length < MIN_PASSWORD) {
     return c.json({ error: `パスワードは${MIN_PASSWORD}文字以上にしてください。` }, 400);
   }
-  if (!ROLES.includes(role)) return c.json({ error: 'アカウントの種類が不正です。' }, 400);
+  if (!ROLES.includes(role)) return c.json({ error: 'アカウントの種類を、一覧から選び直してください。' }, 400);
   if (listUsers().some((u) => u.id === id)) {
-    return c.json({ error: `そのIDはすでに使われています: ${id}` }, 409);
+    return c.json({ error: `そのIDはすでに使われています: ${id}。別のIDにしてください。` }, 409);
   }
 
   createUser(id, name, password, role);
@@ -59,7 +59,7 @@ admin.put('/users/:id/password', async (c) => {
   if ((password ?? '').length < MIN_PASSWORD) {
     return c.json({ error: `パスワードは${MIN_PASSWORD}文字以上にしてください。` }, 400);
   }
-  if (!setPassword(id, password!)) return c.json({ error: `利用者が見つかりません: ${id}` }, 404);
+  if (!setPassword(id, password!)) return c.json({ error: `利用者が見つかりません: ${id}。すでに消されたかもしれません。一覧を開き直して確かめてください。` }, 404);
   // パスワードを変えたら、止まっていたログインも解除する（駆け込みの逃げ道）
   unlockUser(id);
   return c.json({ ok: true });
@@ -72,11 +72,11 @@ admin.post('/users/:id/unlock', (c) => {
 
 admin.delete('/users/:id', (c) => {
   const id = c.req.param('id');
-  if (id === c.get('user').id) return c.json({ error: '自分自身は消せません。' }, 400);
+  if (id === c.get('user').id) return c.json({ error: '自分自身は消せません。ほかの管理用アカウントでログインして消してください。' }, 400);
   const target = listUsers().find((u) => u.id === id);
-  if (!target) return c.json({ error: `利用者が見つかりません: ${id}` }, 404);
+  if (!target) return c.json({ error: `利用者が見つかりません: ${id}。すでに消されたかもしれません。一覧を開き直して確かめてください。` }, 404);
   if (target.role === 'admin' && adminCount() <= 1) {
-    return c.json({ error: '管理用のアカウントが無くなってしまうため、消せません。' }, 400);
+    return c.json({ error: '管理用のアカウントが1つも無くなってしまうため、消せません。先に、別の管理用アカウントを作ってください。' }, 400);
   }
   deleteUser(id);
   return c.json({ ok: true });

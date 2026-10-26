@@ -199,7 +199,7 @@ export function currentUser(c: Context): User | null {
 /** ログインしていなければ弾く */
 export async function requireAuth(c: Context, next: Next): Promise<Response | void> {
   const user = currentUser(c);
-  if (!user) return c.json({ error: 'ログインしてください。' }, 401);
+  if (!user) return c.json({ error: 'ログインの有効期限が切れました。もう一度ログインしてください。' }, 401);
   c.set('user', user);
   await next();
 }
@@ -207,8 +207,8 @@ export async function requireAuth(c: Context, next: Next): Promise<Response | vo
 /** 管理用のアカウントだけが通れる入口 */
 export async function requireAdmin(c: Context, next: Next): Promise<Response | void> {
   const user = currentUser(c);
-  if (!user) return c.json({ error: 'ログインしてください。' }, 401);
-  if (user.role !== 'admin') return c.json({ error: '管理用のアカウントでのみ操作できます。' }, 403);
+  if (!user) return c.json({ error: 'ログインの有効期限が切れました。もう一度ログインしてください。' }, 401);
+  if (user.role !== 'admin') return c.json({ error: 'この操作は、管理用のアカウントでないとできません。管理者に頼んでください。' }, 403);
   c.set('user', user);
   await next();
 }

@@ -8,6 +8,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { analyze } from './analyze.ts';
+import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
 import { currentUser, login, logout, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
 import type { User } from './auth.ts';
@@ -44,7 +45,7 @@ app.post('/api/auth/login', async (c) => {
   if (!r.ok && r.reason === 'locked') {
     return c.json(
       {
-        error: '何度もまちがえたため、このIDはしばらくログインできません。',
+        error: '何度もまちがえたため、このIDはしばらくログインできません。時間をおいてから、もう一度お試しください。',
         lockedSec: r.retryAfterSec,
       },
       429,
@@ -56,7 +57,7 @@ app.post('/api/auth/login', async (c) => {
     const warn = r.remaining > 0 && r.remaining <= MAX_FAILS - WARN_FROM;
     return c.json(
       {
-        error: 'IDまたはパスワードが違います。',
+        error: 'IDまたはパスワードが違います。確かめて、もう一度入れてください。',
         ...(warn ? { remaining: r.remaining, lockMinutes: Math.round(LOCK_MS / 60_000) } : {}),
       },
       401,
@@ -98,15 +99,15 @@ app.post('/api/analyze', requireAuth, async (c) => {
     images?: { mediaType: string; data: string }[];
     answers?: Answers;
   } | null;
-  if (!body) return c.json({ error: 'リクエストの形式が不正です。' }, 400);
-  if (!body.images?.length) return c.json({ error: '画像が添付されていません。' }, 400);
-  if (body.images.length > 10) return c.json({ error: '画像は一度に10枚までです。' }, 400);
+  if (!body) return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
+  if (!body.images?.length) return c.json({ error: '画像が選ばれていません。画像を1枚以上選んでから、もう一度お試しください。' }, 400);
+  if (body.images.length > 10) return c.json({ error: '画像は一度に10枚までです。何回かに分けて、読み取ってください。' }, 400);
 
   try {
     return c.json(await analyze(body.images, body.answers ?? {}));
   } catch (e) {
     console.error('解析に失敗しました', e);
-    return c.json({ error: e instanceof Error ? e.message : '解析に失敗しました。' }, 502);
+    return c.json({ error: describeAnalyzeFailure(e) }, 502);
   }
 });
 

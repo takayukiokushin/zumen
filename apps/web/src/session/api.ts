@@ -114,6 +114,9 @@ export const api = {
   /** サーバーの状態。手書きメモの読み取りが使えるかどうかもここで分かる */
   health: () => call<{ ok: true; hasApiKey: boolean; userCount: number; version?: string }>('/api/health'),
   me: () => call<{ user: User | null }>('/api/auth/me'),
+  /** 手書きメモの読み取り。通信の失敗も、ほかの呼び出しと同じ言葉で伝える */
+  analyze: (body: { images: { mediaType: string; data: string }[]; answers: Answers }) =>
+    call<{ result: unknown; review: unknown }>('/api/analyze', { method: 'POST', body: JSON.stringify(body) }),
   login: (userId: string, password: string) =>
     call<{ user: User }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId, password }) }),
   logout: () => call<{ ok: true }>('/api/auth/logout', { method: 'POST' }),

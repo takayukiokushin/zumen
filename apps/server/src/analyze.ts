@@ -50,7 +50,7 @@ function logUsage(usage: Anthropic.Usage, imageCount: number): void {
 export async function analyze(images: SketchImage[], answers: Answers): Promise<AnalyzeResponse> {
   const unsupported = images.find((i) => !SUPPORTED.includes(i.mediaType));
   if (unsupported) {
-    throw new Error(`対応していない画像形式です: ${unsupported.mediaType}`);
+    throw new Error(`対応していない画像形式です（${unsupported.mediaType}）。JPEG・PNG・GIF・WebP のいずれかの画像にしてください。`);
   }
 
   const content: Anthropic.ContentBlockParam[] = [
@@ -81,13 +81,13 @@ export async function analyze(images: SketchImage[], answers: Answers): Promise<
   }
 
   const text = response.content.find((b) => b.type === 'text');
-  if (!text || text.type !== 'text') throw new Error('解析結果を受け取れませんでした。');
+  if (!text || text.type !== 'text') throw new Error('解析結果を受け取れませんでした。もう一度お試しください。');
 
   let result: AnalysisResult;
   try {
     result = JSON.parse(text.text) as AnalysisResult;
   } catch {
-    throw new Error('解析結果を読み取れませんでした。');
+    throw new Error('解析結果を読み取れませんでした。もう一度お試しください。');
   }
 
   // 念のため既定値で埋めておく（人が確認する画面が壊れないように）
