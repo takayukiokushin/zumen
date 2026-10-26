@@ -1,5 +1,6 @@
 import type { Answers } from '@zumen/knowledge';
 import type { Doc } from '../editor/doc.ts';
+import { describeFailure, isGateway } from './messages.ts';
 
 /** サーバーとのやり取り。認証はCookieなので、どの呼び出しも credentials: 'include' で行う */
 
@@ -37,6 +38,17 @@ export class LoginError extends Error {
   }
 }
 
+/**
+ * サーバーまで届かなかったときのエラー（電波・Wi-Fi・サーバーの停止など）。
+ * 入力した内容は画面に残っているので、つながってからやり直せばよい。
+ */
+export class ConnectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConnectionError';
+  }
+}
+
 /** 編集中のため断られたときのエラー。誰が編集しているかを持つ */
 export class LockedError extends Error {
   constructor(
@@ -68,11 +80,17 @@ export interface ProjectDetail {
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    credentials: 'include',
-    headers: init?.body ? { 'content-type': 'application/json' } : undefined,
-    ...init,
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      credentials: 'include',
+      headers: init?.body ? { 'content-type': 'application/json' } : undefined,
+      ...init,
+    });
+  } catch {
+    // ブラウザは「Failed to fetch」のような英語の文を返すだけなので、分かる言葉に置き換える
+    throw new ConnectionError(describeFailure(null));
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const { error, lock, remaining, lockMinutes, lockedSec } = json as {
@@ -82,9 +100,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
       lockMinutes?: number;
       lockedSec?: number;
     };
-    const message = error ?? '通信に失敗しました。';
+    const message = describeFailure(res.status, error);
     if (res.status === 409) throw new LockedError(message, lock ?? null);
     if (path === '/api/auth/login') throw new LoginError(message, remaining, lockMinutes, lockedSec);
+    // 中継までは届いたが、先のサーバーが答えない場合も、つながらないのと同じ扱いにする
+    if (!error && isGateway(res.status)) throw new ConnectionError(message);
     throw new Error(message);
   }
   return json as T;

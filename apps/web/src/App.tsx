@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, LockedError } from './session/api.ts';
+import { api, ConnectionError, LockedError } from './session/api.ts';
+import { SAVE_RETRY } from './session/messages.ts';
 import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
@@ -152,7 +153,9 @@ export function App() {
       setDirty(false);
     } catch (e) {
       if (e instanceof LockedError) setLockedBy(e.lock);
-      setError(e instanceof Error ? e.message : '保存できませんでした。');
+      // 通信が届かなかったときは、つながってからもう一度保存すればよいと伝える
+      const retry = e instanceof ConnectionError ? SAVE_RETRY : '';
+      setError(`${e instanceof Error ? e.message : '保存できませんでした。'}${retry}`);
     } finally {
       setSaving(false);
     }
