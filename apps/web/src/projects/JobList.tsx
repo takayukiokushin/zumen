@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../session/api.ts';
-import type { ProjectSummary } from '../session/api.ts';
+import type { ProjectSummary, TrashItem } from '../session/api.ts';
 import { useLang, useT } from '../i18n/useT.ts';
 
 /**
@@ -41,11 +41,17 @@ export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
   const [list, setList] = useState<ProjectSummary[] | null>(null);
   const [q, setQ] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** ごみ箱（消してから30日以内の案件） */
+  const [trash, setTrash] = useState<TrashItem[]>([]);
+  /** 消した・戻した直後の知らせ。消した直後は「元に戻す」を添える */
+  const [notice, setNotice] = useState<{ id: string; name: string; text: string; undo: boolean } | null>(null);
 
   const reload = () =>
-    api
-      .listProjects()
-      .then((r) => setList(r.projects))
+    Promise.all([api.listProjects(), api.listTrash()])
+      .then(([l, tr]) => {
+        setList(l.projects);
+        setTrash(tr.projects);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : '案件を読み込めませんでした。'));
 
   useEffect(() => {
@@ -69,10 +75,23 @@ export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
   const remove = async (p: ProjectSummary) => {
     if (!window.confirm(`「${p.name}」${t('project.deleteConfirm')}`)) return;
     try {
+      setError(null);
       await api.deleteProject(p.id);
-      setList((prev) => prev?.filter((x) => x.id !== p.id) ?? null);
+      setNotice({ id: p.id, name: p.name, text: `「${p.name}」${t('project.deletedNote')}`, undo: true });
+      await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : '削除できませんでした。');
+    }
+  };
+
+  const restore = async (id: string, name: string) => {
+    try {
+      setError(null);
+      await api.restoreProject(id);
+      setNotice({ id, name, text: `「${name}」${t('project.restoredNote')}`, undo: false });
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '戻せませんでした。');
     }
   };
 
@@ -100,6 +119,17 @@ export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
         </div>
 
         {error && <p className="err">{error}</p>}
+
+        {notice && (
+          <p className="job-notice" role="status">
+            {notice.text}
+            {notice.undo && (
+              <button type="button" className="btn" onClick={() => void restore(notice.id, notice.name)}>
+                {t('project.undo')}
+              </button>
+            )}
+          </p>
+        )}
 
         {shown === null ? (
           <p className="hint">{t('common.loading')}</p>
@@ -155,6 +185,45 @@ export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
               ))}
             </tbody>
           </table>
+        )}
+
+        {trash.length > 0 && (
+          <details className="trash">
+            <summary>
+              {t('project.trash')}（{trash.length}{t('project.count')}）
+            </summary>
+            <p className="hint">{t('project.trashHint')}</p>
+            <table className="jobs">
+              <thead>
+                <tr>
+                  <th>{t('project.name')}</th>
+                  <th>{t('project.trashDeleted')}</th>
+                  <th>{t('project.trashPurge')}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {trash.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      <span className="name">{p.name}</span>
+                      {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
+                    </td>
+                    <td className="when">
+                      {new Date(p.deletedAt).toLocaleString(lang)}
+                      {p.deletedBy ? `（${p.deletedBy}）` : ''}
+                    </td>
+                    <td className="when">{new Date(p.purgeAt).toLocaleDateString(lang)}</td>
+                    <td className="row-actions">
+                      <button type="button" className="btn primary" onClick={() => void restore(p.id, p.name)}>
+                        {t('project.restore')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
         )}
       </div>
     </div>

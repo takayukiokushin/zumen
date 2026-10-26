@@ -80,6 +80,9 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
 addColumnIfMissing('projects', 'locked_by', 'TEXT');
 addColumnIfMissing('projects', 'locked_at', 'TEXT');
 addColumnIfMissing('projects', 'owner', 'TEXT');
+// 消した日時と、消した人。入っている案件は「ごみ箱」にあり、一覧には出ない（一定期間は戻せる）
+addColumnIfMissing('projects', 'deleted_at', 'TEXT');
+addColumnIfMissing('projects', 'deleted_by', 'TEXT');
 addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'member'");
 
 export const now = (): string => new Date().toISOString();

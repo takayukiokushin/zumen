@@ -12,7 +12,7 @@ import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
 import { currentUser, login, logout, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
 import type { User } from './auth.ts';
-import { projects } from './projects.ts';
+import { projects, purgeExpiredTrash } from './projects.ts';
 import { admin } from './admin.ts';
 import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
@@ -150,6 +150,9 @@ serve({ fetch: app.fetch, port }, (info) => {
     console.warn('※ ANTHROPIC_API_KEY が設定されていないため、スケッチの読み取りは使えません。');
   }
   startAutoBackup();
+  // ごみ箱の期限切れを片づける（起動時と、1時間ごと）
+  purgeExpiredTrash();
+  setInterval(() => purgeExpiredTrash(), 3600_000).unref();
   if (!hasWeb) {
     console.warn(`※ 画面のビルドが見つかりません（${webDist}）。'pnpm build' を実行してください。`);
   }

@@ -488,6 +488,10 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .projectbar button.need-save { background: var(--accent-soft); border-color: var(--accent); }
 .joblist .panel { max-width: 1000px; }
 .joblist .row-actions { justify-content: flex-end; }
+.joblist .job-notice { display: flex; align-items: center; gap: 12px; margin: 10px 0; padding: 8px 12px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 2px; font-size: calc(13px * var(--text-scale)); }
+.joblist .trash { margin-top: 28px; border-top: 1px solid var(--rule); padding-top: 12px; }
+.joblist .trash summary { cursor: pointer; font-weight: 600; font-size: calc(14px * var(--text-scale)); padding: 4px 0; }
+.joblist .trash .hint { margin: 8px 0 10px; }
 .seg .btn { min-width: calc(66px * var(--text-scale)); }
 .settings-row { align-items: start; }
 .settings-row > .lbl { padding-top: calc(8px * var(--text-scale)); }

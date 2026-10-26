@@ -16,6 +16,10 @@ const MAX_FILE_BYTES = 12 * 1024 * 1024;
  */
 const LOCK_TIMEOUT_MS = 3 * 60 * 1000;
 
+/** 消した案件を、ごみ箱に残しておく日数。過ぎたら、写真も含めて完全に消える */
+export const TRASH_DAYS = 30;
+const TRASH_MS = TRASH_DAYS * 86400_000;
+
 interface ProjectRow {
   id: string;
   name: string;
@@ -69,18 +73,41 @@ function takeLock(projectId: string, userId: string): void {
   db.prepare('UPDATE projects SET locked_by = ?, locked_at = ? WHERE id = ?').run(userId, now(), projectId);
 }
 
+/** 練習用のアカウントは自分のものだけ。ほかの人には練習用のものを見せない（一覧・ごみ箱で共通） */
+function visibleTo(user: User): { where: string; args: string[] } {
+  return user.role === 'sandbox'
+    ? { where: 'p.owner = ?', args: [user.id] }
+    : { where: "(p.owner IS NULL OR p.owner NOT IN (SELECT id FROM users WHERE role = 'sandbox'))", args: [] };
+}
+
+/** ごみ箱に入れてから期限を過ぎた案件を、写真ごと完全に消す。消した件数を返す */
+export function purgeExpiredTrash(): number {
+  const cutoff = new Date(Date.now() - TRASH_MS).toISOString();
+  const old = db.prepare('SELECT id FROM projects WHERE deleted_at IS NOT NULL AND deleted_at < ?').all(cutoff) as {
+    id: string;
+  }[];
+  for (const { id } of old) {
+    for (const f of db.prepare('SELECT id FROM project_files WHERE project_id = ?').all(id) as { id: string }[]) {
+      try {
+        unlinkSync(resolve(FILES_DIR, f.id));
+      } catch {
+        // ファイルが既に無くても消せていれば問題ない
+      }
+    }
+    db.prepare('DELETE FROM project_files WHERE project_id = ?').run(id);
+    db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  }
+  return old.length;
+}
+
 export const projects = new Hono<{ Variables: { user: User } }>();
 projects.use('*', requireAuth);
 
 /** 一覧（中身は返さない） */
 projects.get('/', (c) => {
   const user = c.get('user');
-  // 練習用のアカウントは自分のものだけ。ほかの人には練習用のものを見せない
-  const where =
-    user.role === 'sandbox'
-      ? 'WHERE p.owner = ?'
-      : "WHERE p.owner IS NULL OR p.owner NOT IN (SELECT id FROM users WHERE role = 'sandbox')";
-  const args = user.role === 'sandbox' ? [user.id] : [];
+  const { where: visible, args } = visibleTo(user);
+  const where = `WHERE p.deleted_at IS NULL AND ${visible}`;
   const rows = db
     .prepare(
       `SELECT p.id, p.name, p.created_at, p.updated_at, p.updated_by,
@@ -91,6 +118,45 @@ projects.get('/', (c) => {
   return c.json({
     projects: rows.map((r) => ({ ...r, lock: currentLock(r.id) })),
   });
+});
+
+/** ごみ箱（消してから30日以内の案件）。見える範囲は一覧と同じ。全員が戻せる */
+projects.get('/trash', (c) => {
+  purgeExpiredTrash();
+  const { where, args } = visibleTo(c.get('user'));
+  const rows = db
+    .prepare(
+      `SELECT p.id, p.name, p.deleted_at, u.name AS deleted_by_name, p.deleted_by,
+              (SELECT COUNT(*) FROM project_files f WHERE f.project_id = p.id) AS file_count
+       FROM projects p LEFT JOIN users u ON u.id = p.deleted_by
+       WHERE p.deleted_at IS NOT NULL AND ${where} ORDER BY p.deleted_at DESC`,
+    )
+    .all(...args) as { id: string; name: string; deleted_at: string; deleted_by_name: string | null; deleted_by: string | null; file_count: number }[];
+  return c.json({
+    retainDays: TRASH_DAYS,
+    projects: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      deletedAt: r.deleted_at,
+      deletedBy: r.deleted_by_name ?? r.deleted_by,
+      purgeAt: new Date(Date.parse(r.deleted_at) + TRASH_MS).toISOString(),
+      fileCount: r.file_count,
+    })),
+  });
+});
+
+/** ごみ箱から戻す */
+projects.post('/:id/restore', (c) => {
+  purgeExpiredTrash();
+  const id = c.req.param('id');
+  // ごみ箱に見えるものだけ戻せる（練習用の案件を、ほかの人がIDを直接指定して戻すことはできない）
+  const { where, args } = visibleTo(c.get('user'));
+  const row = db.prepare(`SELECT p.id FROM projects p WHERE p.id = ? AND p.deleted_at IS NOT NULL AND ${where}`).get(id, ...args);
+  if (!row) {
+    return c.json({ error: 'その案件は、ごみ箱にありません。30日を過ぎて完全に消えたか、すでに戻されています。「図面一覧」を見直してください。' }, 404);
+  }
+  db.prepare('UPDATE projects SET deleted_at = NULL, deleted_by = NULL WHERE id = ?').run(id);
+  return c.json({ ok: true });
 });
 
 projects.post('/', async (c) => {
@@ -105,7 +171,7 @@ projects.post('/', async (c) => {
 });
 
 projects.get('/:id', (c) => {
-  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(c.req.param('id')) as ProjectRow | undefined;
+  const row = db.prepare('SELECT * FROM projects WHERE id = ? AND deleted_at IS NULL').get(c.req.param('id')) as ProjectRow | undefined;
   if (!row) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   if (!canTouch(c.get('user'), row.id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   const files = db
@@ -126,7 +192,7 @@ projects.get('/:id', (c) => {
 
 projects.put('/:id', async (c) => {
   const id = c.req.param('id');
-  const exists = db.prepare('SELECT id FROM projects WHERE id = ?').get(id);
+  const exists = db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(id);
   if (!exists) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
 
   // 他の人が編集中なら保存させない（あとから保存したほうで上書きされるのを防ぐ）。
@@ -195,7 +261,7 @@ projects.put('/:id', async (c) => {
  */
 projects.post('/:id/lock', async (c) => {
   const id = c.req.param('id');
-  if (!db.prepare('SELECT id FROM projects WHERE id = ?').get(id)) {
+  if (!db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(id)) {
     return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   }
   const user = c.get('user');
@@ -227,15 +293,10 @@ projects.delete('/:id', (c) => {
   if (held && held.userId !== c.get('user').id && c.get('user').role !== 'admin') {
     return c.json({ error: `${held.userName}さんが編集中のため削除できません。${held.userName}さんの編集が終わってから、もう一度お試しください。`, lock: held }, 409);
   }
-  for (const f of db.prepare('SELECT id FROM project_files WHERE project_id = ?').all(id) as { id: string }[]) {
-    try {
-      unlinkSync(resolve(FILES_DIR, f.id));
-    } catch {
-      // ファイルが既に無くても消せていれば問題ない
-    }
-  }
-  db.prepare('DELETE FROM project_files WHERE project_id = ?').run(id);
-  const r = db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  // 本当には消さず、ごみ箱へ入れる（30日間は戻せる）。写真もそのまま残す
+  const r = db
+    .prepare('UPDATE projects SET deleted_at = ?, deleted_by = ?, locked_by = NULL, locked_at = NULL WHERE id = ? AND deleted_at IS NULL')
+    .run(now(), c.get('user').id, id);
   if (Number(r.changes) === 0) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   return c.json({ ok: true });
 });
@@ -244,7 +305,7 @@ projects.delete('/:id', (c) => {
 
 projects.post('/:id/files', async (c) => {
   const projectId = c.req.param('id');
-  if (!db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId)) {
+  if (!db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(projectId)) {
     return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   }
   if (!canTouch(c.get('user'), projectId)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
@@ -271,7 +332,10 @@ projects.post('/:id/files', async (c) => {
 
 projects.get('/:id/files/:fileId', (c) => {
   const row = db
-    .prepare('SELECT id, media_type FROM project_files WHERE id = ? AND project_id = ?')
+    .prepare(
+      `SELECT f.id, f.media_type FROM project_files f JOIN projects p ON p.id = f.project_id
+       WHERE f.id = ? AND f.project_id = ? AND p.deleted_at IS NULL`,
+    )
     .get(c.req.param('fileId'), c.req.param('id')) as { id: string; media_type: string } | undefined;
   if (!row) return c.json({ error: '画像が見つかりません。すでに消されたようです。案件の画面を見直してください。' }, 404);
   try {

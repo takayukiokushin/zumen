@@ -85,6 +85,17 @@ export interface ProjectSummary {
   lock: Lock | null;
 }
 
+/** ごみ箱に入っている案件 */
+export interface TrashItem {
+  id: string;
+  name: string;
+  deletedAt: string;
+  deletedBy: string | null;
+  /** この日時を過ぎると、完全に消える */
+  purgeAt: string;
+  fileCount: number;
+}
+
 export interface ProjectDetail {
   id: string;
   name: string;
@@ -154,7 +165,10 @@ export const api = {
     patch: { name?: string; answers?: Answers; drawing?: Doc | null; baseUpdatedAt?: string; force?: boolean },
   ) =>
     call<{ ok: true; updatedAt: string }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+  /** 消す。本当には消えず、ごみ箱へ入る（30日間は戻せる） */
   deleteProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}`, { method: 'DELETE' }),
+  listTrash: () => call<{ retainDays: number; projects: TrashItem[] }>('/api/projects/trash'),
+  restoreProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}/restore`, { method: 'POST' }),
 
   /** 編集を始める・続けていることを伝える。1分ごとに呼ぶ */
   takeLock: (id: string, force = false) =>

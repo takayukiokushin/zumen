@@ -349,6 +349,58 @@ try {
     check('更新時刻を送らない古い画面は、これまでどおり保存できる', legacy.ok, `${legacy.status}`);
   }
 
+  /* ---------- 6c. 案件を消す・戻す（ごみ箱） ---------- */
+  say('\n■ 案件の削除とごみ箱');
+  {
+    const mine = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: 'ごみ箱の試験' }) })).json()) as { id: string };
+    const photo = (await (
+      await call(a, `/api/projects/${mine.id}/files`, {
+        method: 'POST',
+        body: JSON.stringify({ fileName: 'a.png', mediaType: 'image/png', data: Buffer.from('dummy-image').toString('base64') }),
+      })
+    ).json()) as { id: string };
+    await call(a, `/api/projects/${mine.id}`, { method: 'PUT', body: JSON.stringify({ answers: { customerName: '消す前の内容' } }) });
+    await call(a, `/api/projects/${mine.id}/lock`, { method: 'DELETE' });
+
+    const names = async (c: string) =>
+      ((await (await call(c, '/api/projects')).json()) as { projects: { id: string }[] }).projects.map((p) => p.id);
+    const trashOf = async (c: string) =>
+      (await (await call(c, '/api/projects/trash')).json()) as {
+        retainDays: number;
+        projects: { id: string; name: string; deletedBy: string; purgeAt: string; fileCount: number }[];
+      };
+
+    const del = await call(a, `/api/projects/${mine.id}`, { method: 'DELETE' });
+    check('案件を消せる', del.ok, `${del.status}`);
+    check('消した案件は、一覧に出ない', !(await names(a)).includes(mine.id));
+    check('消した案件は、開けない', (await call(a, `/api/projects/${mine.id}`)).status === 404);
+    check('消した案件には、保存できない', (await call(a, `/api/projects/${mine.id}`, { method: 'PUT', body: JSON.stringify({ name: 'x' }) })).status === 404);
+    check('消した案件の写真は、見られない', (await call(a, `/api/projects/${mine.id}/files/${photo.id}`)).status === 404);
+
+    const t1 = await trashOf(b); // 別の人（tester2）からも見える
+    const inTrash = t1.projects.find((p) => p.id === mine.id);
+    check('ごみ箱に入っている（別の人にも見える）', Boolean(inTrash), `${t1.projects.length}件`);
+    check('ごみ箱に、消した人・完全に消える日・写真の枚数がある', Boolean(inTrash?.deletedBy) && Boolean(inTrash?.purgeAt) && inTrash?.fileCount === 1 && t1.retainDays === 30);
+
+    const rb = await call(b, `/api/projects/${mine.id}/restore`, { method: 'POST' }); // 消した人とは別の人が戻す
+    check('別の人でも、戻せる', rb.ok, `${rb.status}`);
+    check('戻した案件は、一覧に出る', (await names(a)).includes(mine.id));
+    const back2 = (await (await call(a, `/api/projects/${mine.id}`)).json()) as { answers: Record<string, unknown>; files: unknown[] };
+    check('戻すと、回答も写真もそのまま', back2.answers.customerName === '消す前の内容' && back2.files.length === 1);
+    check('戻したあと、ごみ箱は空', !(await trashOf(a)).projects.some((p) => p.id === mine.id));
+    check('ごみ箱に無い案件は、戻せない', (await call(a, `/api/projects/${mine.id}/restore`, { method: 'POST' })).status === 404);
+
+    // 30日を過ぎたら、写真ごと完全に消える
+    await call(a, `/api/projects/${mine.id}`, { method: 'DELETE' });
+    const sdb = new DatabaseSync(join(dataDir, 'zumen.db'));
+    sdb.prepare('UPDATE projects SET deleted_at = ? WHERE id = ?').run(new Date(Date.now() - 31 * 86400_000).toISOString(), mine.id);
+    check('期限切れの案件は、ごみ箱から消える', !(await trashOf(a)).projects.some((p) => p.id === mine.id));
+    check('期限切れの案件は、戻せない', (await call(a, `/api/projects/${mine.id}/restore`, { method: 'POST' })).status === 404);
+    check('完全に消えたあとは、写真のファイルも無い', !existsSync(join(dataDir, 'files', photo.id)));
+    check('データベースにも残っていない', sdb.prepare('SELECT 1 FROM projects WHERE id = ?').get(mine.id) === undefined);
+    sdb.close();
+  }
+
   /* ---------- 7. 同時編集の排他 ---------- */
   say('\n■ 同時編集の排他');
   const grab = await call(b, `/api/projects/${created.id}/lock`, { method: 'POST', body: '{}' });
@@ -410,6 +462,14 @@ try {
     !memberPeek.projects.some((x) => x.id === renshuMade.id),
     `${memberPeek.projects.length}件`,
   );
+  // 練習用の案件を消しても、ごみ箱で他の人に見えない（自分には見えて、戻せる）
+  await call(renshu, `/api/projects/${renshuMade.id}`, { method: 'DELETE' });
+  const trashIds = async (c: string) =>
+    ((await (await call(c, '/api/projects/trash')).json()) as { projects: { id: string }[] }).projects.map((p) => p.id);
+  check('練習用の消した案件は、他の人のごみ箱に出ない', !(await trashIds(a)).includes(renshuMade.id));
+  check('練習用の消した案件は、本人のごみ箱に出る', (await trashIds(renshu)).includes(renshuMade.id));
+  check('他の人は、練習用の消した案件を戻せない', (await call(a, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).status === 404);
+  check('練習用は、自分の消した案件を戻せる', (await call(renshu, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).ok);
 
   // 利用者の管理は管理用だけ
   const memberAdmin = await call(a, '/api/admin/users');
