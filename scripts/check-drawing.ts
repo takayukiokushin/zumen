@@ -862,7 +862,15 @@ console.log('\n■ 3点不一致：保安上の責任分界点（主遮断装置
     { name: 'CB形・VCB', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'split', boundarySafetyDevice: 'vcb' }), expect: 'vcb' },
     { name: 'PFS形・LBS', a: base({ mainBreakerForm: 'pfs', boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }), expect: 'lbs-pf' },
     { name: '3点一致（横線は主遮断装置に引かない）', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'coincident' }), expect: null },
-    { name: 'CB形なのにLBSと答えた（主遮断装置と合わない）', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }), expect: null },
+    // 主遮断装置の形式が決まっていれば、答えは見ずに、そこから決まる
+    { name: 'CB形（質問に答えていない）→VCB', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'split' }), expect: 'vcb' },
+    { name: 'PFS形（質問に答えていない）→LBS', a: base({ mainBreakerForm: 'pfs', boundaryPattern: 'split' }), expect: 'lbs-pf' },
+    { name: 'CB形なのに以前「LBS」と答えていた→VCB（答えより主遮断装置を優先）', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }), expect: 'vcb' },
+    { name: 'PFS形なのに以前「VCB」と答えていた→LBS', a: base({ mainBreakerForm: 'pfs', boundaryPattern: 'split', boundarySafetyDevice: 'vcb' }), expect: 'lbs-pf' },
+    // 主遮断装置が未入力のときだけ、質問の答えを見る
+    { name: '主遮断装置が未入力・LBSと答えた', a: base({ boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }), expect: 'lbs-pf' },
+    { name: '主遮断装置が未入力・何も答えていない', a: base({ boundaryPattern: 'split' }), expect: null },
+    { name: '主遮断装置が無い構成（電柱上）', a: base({ mainBreakerForm: 'pole-top', boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }), expect: null },
   ];
   for (const c of cases) {
     const d = layout(buildComposition(c.a), c.a);

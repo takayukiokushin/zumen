@@ -289,15 +289,19 @@ export const QUESTIONS: Question[] = [
   {
     id: 'boundarySafetyDevice',
     group: 'boundary',
-    label: '責任分界点はどの機器の上にありますか？',
+    label: '責任分界点は、LBSですか、VCBですか？',
     type: 'select',
     options: [
       { value: 'lbs', label: 'LBS' },
       { value: 'vcb', label: 'VCB' },
     ],
-    showIf: { key: 'boundaryPattern', eq: 'split' },
+    // 主遮断装置の形式が決まっていれば聞かない（CB形ならVCB、PFS形ならLBSに決まる）。
+    // 未入力のときだけ聞く
+    showIf: {
+      all: [{ key: 'boundaryPattern', eq: 'split' }, { not: { key: 'mainBreakerForm', in: ['cb', 'pfs'] } }],
+    },
     ask: 'always',
-    help: '3点不一致の約99%はLBSかVCBのどちらか。その記号の中央に横線を引いて記載する',
+    help: '3点不一致のときは、主遮断装置の図記号の中央に横線を引いて記載する。主遮断装置の形式を入力すれば、この質問は不要（CB形はVCB、PFS形はLBSに自動で決まる）',
   },
 
   /* ---------------- PAS ---------------- */

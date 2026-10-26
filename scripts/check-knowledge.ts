@@ -329,6 +329,29 @@ if (!sogless.some((r) => r.level === 'error' && r.label.includes('内蔵VT'))) {
 console.log(`  矛盾の検出: ${bad.filter((r) => r.level === 'error').length}件のエラー / 全${bad.length}件の確認事項`);
 for (const r of bad.filter((x) => x.level === 'error')) console.log(`    ${r.label}: ${r.message}`);
 
+console.log('\n■ 責任分界点の質問（3点不一致のとき、主遮断装置が未入力のときだけ聞く）');
+{
+  const asked = (a: Answers) => visibleQuestions(withDerived(a), {}).some((q) => q.id === 'boundarySafetyDevice');
+  const reviewAsks = (a: Answers) =>
+    buildReview({ answers: a as Record<string, string | number | boolean>, uncertain: [], evidence: {}, notes: [], questions: [] }, {}).some(
+      (r) => r.questionId === 'boundarySafetyDevice',
+    );
+  const cases: [string, Answers, boolean][] = [
+    ['3点一致', { boundaryPattern: 'coincident' }, false],
+    ['3点不一致・CB形', { boundaryPattern: 'split', mainBreakerForm: 'cb' }, false],
+    ['3点不一致・PFS形', { boundaryPattern: 'split', mainBreakerForm: 'pfs' }, false],
+    ['3点不一致・主遮断装置が未入力', { boundaryPattern: 'split' }, true],
+    ['3点不一致・主遮断装置が電柱上構成（それ以外）', { boundaryPattern: 'split', mainBreakerForm: 'pole-top' }, true],
+  ];
+  for (const [name, ans, want] of cases) {
+    if (asked(ans) !== want) fail(`${name}：質問を${asked(ans) ? '出して' : '出さずに'}います（期待：${want ? '出す' : '出さない'}）`);
+    else console.log(`  ${name}：${want ? '聞く' : '聞かない'}`);
+  }
+  // AIの読み取り結果の確認事項も、同じ条件にそろえる
+  if (reviewAsks({ boundaryPattern: 'split', mainBreakerForm: 'cb' })) fail('CB形なのに、責任分界点の位置を確認事項に出しています');
+  if (!reviewAsks({ boundaryPattern: 'split' })) fail('主遮断装置が未入力なのに、責任分界点の位置を確認事項に出していません');
+}
+
 console.log('\n■ 図面名称（受電設備の形態から自動で決まる）');
 {
   const cases: [string, Answers, string][] = [

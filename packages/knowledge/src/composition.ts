@@ -264,13 +264,22 @@ export const DOWNSTREAM: Placement[] = [
     symbolId: 'boundary-safety',
     kind: 'overlay',
     attachTo: 'main-breaker',
+    // どの機器の上かは、主遮断装置の形式から自動で決まる（CB形ならVCB、PFS形ならLBS）。
+    // 形式が未入力のときだけ、「責任分界点はLBSですか、VCBですか？」の答えを見る
+    // （未入力のときの主遮断装置はLBSとして描かれるので、LBSと答えたときだけ引ける）
     when: {
       all: [
         { key: 'boundaryPattern', eq: 'split' },
         {
           any: [
-            { all: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'boundarySafetyDevice', eq: 'vcb' }] },
-            { all: [{ key: 'mainBreakerForm', eq: 'pfs' }, { key: 'boundarySafetyDevice', eq: 'lbs' }] },
+            { key: 'mainBreakerForm', eq: 'cb' },
+            { key: 'mainBreakerForm', eq: 'pfs' },
+            {
+              all: [
+                { not: { key: 'mainBreakerForm', answered: true } },
+                { key: 'boundarySafetyDevice', eq: 'lbs' },
+              ],
+            },
           ],
         },
       ],

@@ -142,8 +142,10 @@ export function checkConsistency(a: Answers): ReviewItem[] {
     });
   }
 
-  // 3点不一致のときは、どの機器の上に責任分界点があるか要る
-  if (a.boundaryPattern === 'split' && !a.boundarySafetyDevice) {
+  // 3点不一致のときは、どの機器の上に責任分界点があるか要る。
+  // ただし主遮断装置の形式が決まっていれば、そこから決まる（CB形ならVCB、PFS形ならLBS）ので聞かない
+  const mainKnown = a.mainBreakerForm === 'cb' || a.mainBreakerForm === 'pfs';
+  if (a.boundaryPattern === 'split' && !mainKnown && !a.boundarySafetyDevice) {
     items.push({
       level: 'ask',
       questionId: 'boundarySafetyDevice',
