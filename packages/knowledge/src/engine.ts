@@ -226,6 +226,41 @@ const AREA_PLACEMENT_LABEL: Record<string, string> = {
   'semi-outdoor': '半屋外',
 };
 
+/** 受電設備の形態から、図面名称に入れる「〜式」。電気室の中のキュービクルは、キュービクル式として扱う */
+const FORM_KIND: Record<string, string> = {
+  cubicle: 'キュービクル式',
+  'room-cubicle': 'キュービクル式',
+  'room-open': 'オープンフレーム式',
+};
+
+const DRAWING_NAME_TAIL = '高圧受電設備単線結線図';
+
+/**
+ * 受電設備の形態（各エリアの「形態は？」）から決まる図面名称。
+ *
+ * - 全部のエリアがキュービクル式（電気室の中のキュービクルを含む）→「キュービクル式高圧受電設備単線結線図」
+ * - 全部のエリアがオープンフレーム式 →「オープンフレーム式高圧受電設備単線結線図」
+ * - エリアによって形態が違う →「高圧受電設備単線結線図」（形態は書かない）
+ * - まだ形態が入力されていない →「キュービクル式高圧受電設備単線結線図」（これまでと同じ）
+ */
+export function drawingNameFromForm(answers: Answers): string {
+  const count = Math.max(1, Number(answers.areaCount ?? 1));
+  const kinds = new Set<string>();
+  for (let i = 0; i < count; i++) {
+    const kind = FORM_KIND[String(answers[indexedKey('areaForm', i)])];
+    if (kind) kinds.add(kind);
+  }
+  if (kinds.size === 0) return `${FORM_KIND.cubicle}${DRAWING_NAME_TAIL}`;
+  if (kinds.size > 1) return DRAWING_NAME_TAIL;
+  return `${[...kinds][0]}${DRAWING_NAME_TAIL}`;
+}
+
+/** 図面に書く図面名称。ヒアリングの「図面名称」に書いてあればそれを優先し、空なら形態から決める */
+export function resolveDrawingName(answers: Answers): string {
+  const typed = String(answers.drawingName ?? '').trim();
+  return typed || drawingNameFromForm(answers);
+}
+
 export function areaLabel(answers: Answers): string {
   const head = AREA_FORM_LABEL[String(answers.areaForm)] ?? '受電設備';
   const inner = [

@@ -3,7 +3,7 @@ import { CATEGORY_LABEL, SYMBOLS, getSymbol, symbolToSvg } from '@zumen/symbols'
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, layout, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
-import { buildComposition } from '@zumen/knowledge';
+import { buildComposition, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT } from '../i18n/useT.ts';
@@ -71,9 +71,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   const doc = history.present;
   const sheetTitle = {
-    title: `${String(answers.customerNameForTitleBlock ?? answers.siteName ?? '')}　${String(
-      answers.drawingName ?? 'キュービクル式高圧受電設備単線結線図',
-    )}`.trim(),
+    title: `${String(answers.customerNameForTitleBlock ?? answers.siteName ?? '')}　${resolveDrawingName(answers)}`.trim(),
     // 右下は常に社名（作成者や図面番号は図面に入れない方針）
     footer: COMPANY_NAME,
   };

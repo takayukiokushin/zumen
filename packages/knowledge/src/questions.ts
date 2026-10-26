@@ -874,7 +874,14 @@ export const QUESTIONS: Question[] = [
   })),
 
   /* ---------------- 表題欄 ---------------- */
-  { id: 'drawingName', group: 'title', label: '図面名称', type: 'text', defaultValue: 'キュービクル式高圧受電設備単線結線図', ask: 'always' },
+  {
+    id: 'drawingName',
+    group: 'title',
+    label: '図面名称',
+    type: 'text',
+    ask: 'always',
+    help: '空欄のときは、受電設備の形態から自動で決まります（例：キュービクル式高圧受電設備単線結線図）。書いた場合は、それを優先します',
+  },
 
   // PC・LBSの定格電流とヒューズ（変圧器の手前／コンデンサの手前）
   ...breakerRatings('tr', 'transformer', { key: 'transformerCount', gt: 0 }, 'T'),
