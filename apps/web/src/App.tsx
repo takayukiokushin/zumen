@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, ConnectionError, LockedError } from './session/api.ts';
+import { api, ConnectionError, LockedError, StaleError } from './session/api.ts';
 import { SAVE_RETRY } from './session/messages.ts';
 import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
@@ -47,6 +47,10 @@ export function App() {
   /** 他の人が編集中のときの、その人の情報。閲覧のみになる */
   const [lockedBy, setLockedBy] = useState<Lock | null>(null);
   const readOnly = lockedBy !== null;
+  /** この画面が読み込んだ（最後に保存した）時点の、サーバー側の更新時刻。別の端末での更新に気づくために使う */
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null);
+  /** 保存しようとしたら、ほかの端末・画面で更新されていたときの、その情報 */
+  const [stale, setStale] = useState<{ updatedAt: string; by: string | null } | null>(null);
 
   useEffect(() => {
     api
@@ -120,6 +124,8 @@ export function App() {
       setDirty(false);
       setSavedAt(null);
       setError(null);
+      setStale(null);
+      setBaseUpdatedAt(p.updatedAt);
       setShowList(false);
       try {
         await api.takeLock(id, force);
@@ -136,13 +142,15 @@ export function App() {
   const newProject = async (name: string) => {
     try {
       await leaveCurrent();
-      const { id } = await api.createProject(name);
+      const { id, updatedAt } = await api.createProject(name);
       setProjectId(id);
       setProjectName(name || '無題の案件');
       setAnswers({});
       setDrawing(null);
       setDirty(false);
       setError(null);
+      setStale(null);
+      setBaseUpdatedAt(updatedAt);
       setLockedBy(null);
       setShowList(false);
     } catch (e) {
@@ -150,15 +158,28 @@ export function App() {
     }
   };
 
-  const save = async () => {
+  const save = async (force = false) => {
     if (!projectId) return;
     setSaving(true);
     setError(null);
     try {
-      const r = await api.saveProject(projectId, { name: projectName, answers, drawing });
+      const r = await api.saveProject(projectId, {
+        name: projectName,
+        answers,
+        drawing,
+        ...(baseUpdatedAt ? { baseUpdatedAt } : {}),
+        ...(force ? { force: true } : {}),
+      });
       setSavedAt(r.updatedAt);
+      setBaseUpdatedAt(r.updatedAt);
+      setStale(null);
       setDirty(false);
     } catch (e) {
+      if (e instanceof StaleError) {
+        // 画面の内容はそのまま残し、上書きするか読み込み直すかを選んでもらう
+        setStale({ updatedAt: e.updatedAt, by: e.updatedByName });
+        return;
+      }
       if (e instanceof LockedError) setLockedBy(e.lock);
       // 通信が届かなかったときは、つながってからもう一度保存すればよいと伝える
       const retry = e instanceof ConnectionError ? SAVE_RETRY : '';
@@ -209,6 +230,33 @@ export function App() {
       />
 
       {error && <p className="bar-error">{error}</p>}
+
+      {stale && !listing && (
+        <p className="bar-lock">
+          <b>{t('stale.title')}</b>
+          （{stale.by ? `${stale.by} / ` : ''}
+          {new Date(stale.updatedAt).toLocaleString(lang)}）{t('stale.warn')}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              if (window.confirm(t('stale.overwriteConfirm'))) void save(true);
+            }}
+          >
+            {t('stale.overwrite')}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              if (!window.confirm(t('stale.reloadConfirm'))) return;
+              void openProject(projectId!);
+            }}
+          >
+            {t('stale.reload')}
+          </button>
+        </p>
+      )}
 
       {lockedBy && !listing && (
         <p className="bar-lock">

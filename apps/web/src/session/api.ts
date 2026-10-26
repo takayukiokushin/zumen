@@ -49,6 +49,21 @@ export class ConnectionError extends Error {
   }
 }
 
+/**
+ * 保存しようとしたら、読み込んだあとに別の端末・画面で更新されていたときのエラー。
+ * 上書きするか、最新を読み込み直すかを、利用者に選んでもらう
+ */
+export class StaleError extends Error {
+  constructor(
+    message: string,
+    readonly updatedAt: string,
+    readonly updatedByName: string | null,
+  ) {
+    super(message);
+    this.name = 'StaleError';
+  }
+}
+
 /** 編集中のため断られたときのエラー。誰が編集しているかを持つ */
 export class LockedError extends Error {
   constructor(
@@ -73,6 +88,7 @@ export interface ProjectSummary {
 export interface ProjectDetail {
   id: string;
   name: string;
+  updatedAt: string;
   answers: Answers;
   drawing: Doc | null;
   files: { id: string; file_name: string; media_type: string; size: number }[];
@@ -93,14 +109,18 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const { error, lock, remaining, lockMinutes, lockedSec } = json as {
+    const { error, lock, remaining, lockMinutes, lockedSec, stale, updatedAt, updatedByName } = json as {
       error?: string;
       lock?: Lock;
+      stale?: boolean;
+      updatedAt?: string;
+      updatedByName?: string | null;
       remaining?: number;
       lockMinutes?: number;
       lockedSec?: number;
     };
     const message = describeFailure(res.status, error);
+    if (res.status === 409 && stale && updatedAt) throw new StaleError(message, updatedAt, updatedByName ?? null);
     if (res.status === 409) throw new LockedError(message, lock ?? null);
     if (path === '/api/auth/login') throw new LoginError(message, remaining, lockMinutes, lockedSec);
     // 中継までは届いたが、先のサーバーが答えない場合も、つながらないのと同じ扱いにする
@@ -123,9 +143,16 @@ export const api = {
 
   listProjects: () => call<{ projects: ProjectSummary[] }>('/api/projects'),
   createProject: (name: string) =>
-    call<{ id: string }>('/api/projects', { method: 'POST', body: JSON.stringify({ name }) }),
+    call<{ id: string; updatedAt: string }>('/api/projects', { method: 'POST', body: JSON.stringify({ name }) }),
   getProject: (id: string) => call<ProjectDetail>(`/api/projects/${id}`),
-  saveProject: (id: string, patch: { name?: string; answers?: Answers; drawing?: Doc | null }) =>
+  /**
+   * baseUpdatedAt：この画面が読み込んだ（最後に保存した）時点の更新時刻。
+   * 違っていたら StaleError で断られる。force なら確かめずに上書きする
+   */
+  saveProject: (
+    id: string,
+    patch: { name?: string; answers?: Answers; drawing?: Doc | null; baseUpdatedAt?: string; force?: boolean },
+  ) =>
     call<{ ok: true; updatedAt: string }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
   deleteProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}`, { method: 'DELETE' }),
 

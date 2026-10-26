@@ -320,6 +320,35 @@ try {
   check('保存した内容がそのまま戻る', back.answers.customerName === answers.customerName, String(back.answers.customerName ?? ''));
   check('日本語が化けていない', back.name === '診断用の案件', back.name);
 
+  /* ---------- 6b. 同じ人が別の端末で保存したとき ---------- */
+  say('\n■ 別の端末での更新の検知');
+  {
+    const get = async (c: string) =>
+      (await (await call(c, `/api/projects/${created.id}`)).json()) as { name: string; updatedAt: string };
+    const put = (c: string, body: unknown) =>
+      call(c, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify(body) });
+    const a2 = await login('tester1'); // 同じ人の、もう1台の端末
+    const loaded = (await get(a)).updatedAt;
+
+    const first = await put(a2, { name: '別の端末で直した', baseUpdatedAt: loaded });
+    check('読み込んだ時点のままなら、保存できる', first.ok, `${first.status}`);
+    const firstAt = ((await first.json()) as { updatedAt: string }).updatedAt;
+
+    const clash = await put(a, { name: '古い画面からの保存', baseUpdatedAt: loaded });
+    const clashBody = (await clash.json()) as { stale?: boolean; updatedAt?: string; updatedByName?: string };
+    check('別の端末が先に保存していたら、上書きせず断る', clash.status === 409 && clashBody.stale === true, `${clash.status}`);
+    check('断るとき、いつ・だれが更新したかを返す', clashBody.updatedAt === firstAt && Boolean(clashBody.updatedByName), `${clashBody.updatedByName ?? ''}`);
+    check('断られたあとも、先に保存された内容が残っている', (await get(a)).name === '別の端末で直した');
+
+    const forcedPut = await put(a, { name: '上書きした', baseUpdatedAt: loaded, force: true });
+    check('「上書きする」を選べば保存できる', forcedPut.ok, `${forcedPut.status}`);
+    const latest = ((await forcedPut.json()) as { updatedAt: string }).updatedAt;
+    const again = await put(a, { name: '続けて保存', baseUpdatedAt: latest });
+    check('保存したあとは、続けて保存できる', again.ok, `${again.status}`);
+    const legacy = await put(a, { name: '診断用の案件' });
+    check('更新時刻を送らない古い画面は、これまでどおり保存できる', legacy.ok, `${legacy.status}`);
+  }
+
   /* ---------- 7. 同時編集の排他 ---------- */
   say('\n■ 同時編集の排他');
   const grab = await call(b, `/api/projects/${created.id}/lock`, { method: 'POST', body: '{}' });

@@ -101,7 +101,7 @@ projects.post('/', async (c) => {
     'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, owner) VALUES (?, ?, ?, ?, ?, ?, ?)',
   ).run(id, (name ?? '').trim() || '無題の案件', t, t, c.get('user').id, '{}', c.get('user').id);
   takeLock(id, c.get('user').id);
-  return c.json({ id }, 201);
+  return c.json({ id, updatedAt: t }, 201);
 });
 
 projects.get('/:id', (c) => {
@@ -140,9 +140,34 @@ projects.put('/:id', async (c) => {
   takeLock(id, user.id);
 
   const body = (await c.req.json().catch(() => null)) as
-    | { name?: string; answers?: unknown; drawing?: unknown }
+    | { name?: string; answers?: unknown; drawing?: unknown; baseUpdatedAt?: string; force?: boolean }
     | null;
   if (!body) return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
+
+  // 同じ人が別の端末や別の画面で保存していたら、そのまま上書きしない。
+  // 「読み込んだ（または最後に保存した）時点の更新時刻」と、いまの更新時刻が違えば、あいだに誰かが保存している。
+  // baseUpdatedAt を送らない古い画面は、これまでどおり確かめない
+  if (body.baseUpdatedAt !== undefined && !body.force) {
+    const cur = db.prepare('SELECT updated_at, updated_by FROM projects WHERE id = ?').get(id) as
+      | { updated_at: string; updated_by: string | null }
+      | undefined;
+    if (cur && cur.updated_at !== body.baseUpdatedAt) {
+      const by = cur.updated_by
+        ? ((db.prepare('SELECT name FROM users WHERE id = ?').get(cur.updated_by) as { name: string } | undefined)?.name ??
+          cur.updated_by)
+        : null;
+      return c.json(
+        {
+          error:
+            'この案件は、この画面で読み込んだあとに、ほかの端末や画面で更新されています。上書きするか、最新を読み込み直すかを選んでください。',
+          stale: true,
+          updatedAt: cur.updated_at,
+          updatedByName: by,
+        },
+        409,
+      );
+    }
+  }
 
   const sets: string[] = ['updated_at = ?', 'updated_by = ?'];
   const args: (string | null)[] = [now(), user.id];
