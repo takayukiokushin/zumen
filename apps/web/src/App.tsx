@@ -97,6 +97,13 @@ export function App() {
     setDirty(true);
   }, []);
 
+  /**
+   * 保存していない変更があるとき、別の案件へ移ってよいかを確かめる。
+   * 移ってよい（または、失うものが無い）なら true。
+   */
+  const confirmLeave = (): boolean =>
+    !dirty || window.confirm(`「${projectName}」${t('project.unsavedLeave')}`);
+
   /** 開いている案件から離れるとき、編集中の印を外しておく */
   const leaveCurrent = async () => {
     if (projectId && !readOnly) await api.releaseLock(projectId).catch(() => undefined);
@@ -238,8 +245,17 @@ export function App() {
             <JobList
               meId={user.id}
               currentId={projectId}
-              onOpen={(id) => void openProject(id)}
+              onOpen={(id) => {
+                // 開いている案件に戻るだけなら、読み直さずにそのまま見せる。
+                // 読み直すと、保存していない変更が消えてしまう
+                if (id === projectId && !readOnly) {
+                  setShowList(false);
+                  return;
+                }
+                void openProject(id);
+              }}
               onNew={(name) => void newProject(name)}
+              canLeave={confirmLeave}
             />
           ) : tab === 'drawing' ? (
             <Editor

@@ -14,6 +14,11 @@ interface Props {
   currentId: string | null;
   onOpen: (id: string) => void;
   onNew: (name: string) => void;
+  /**
+   * 開いている案件に、保存していない変更があるときの確認。
+   * 別の案件を開く・新しく作る前に呼ぶ。false なら取りやめる。
+   */
+  canLeave: () => boolean;
 }
 
 /** 名前の中の、探した言葉のところを目立たせる */
@@ -30,7 +35,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
   );
 }
 
-export function JobList({ meId, currentId, onOpen, onNew }: Props) {
+export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
   const t = useT();
   const lang = useLang();
   const [list, setList] = useState<ProjectSummary[] | null>(null);
@@ -55,6 +60,8 @@ export function JobList({ meId, currentId, onOpen, onNew }: Props) {
   }, [list, q]);
 
   const create = () => {
+    // 名前を聞く前に確かめる（入力した名前が無駄にならないように）
+    if (!canLeave()) return;
     const name = window.prompt(t('project.newName'), q.trim() || t('project.newDefault'));
     if (name !== null) onNew(name);
   };
@@ -123,7 +130,15 @@ export function JobList({ meId, currentId, onOpen, onNew }: Props) {
                   </td>
                   <td className="when">{new Date(p.updated_at).toLocaleString(lang)}</td>
                   <td className="row-actions">
-                    <button type="button" className="btn primary" onClick={() => onOpen(p.id)}>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => {
+                        // 開いている案件に戻るだけなら、何も失わないので確認しない
+                        if (p.id !== currentId && !canLeave()) return;
+                        onOpen(p.id);
+                      }}
+                    >
                       {t('project.open')}
                     </button>
                     <button

@@ -123,6 +123,7 @@ const ja = {
   'project.savedAt': 'に保存',
   'project.newDefault': '新しい案件',
   'project.deleteConfirm': 'を削除します。元に戻せません。よろしいですか。',
+  'project.unsavedLeave': 'には、保存していない変更があります。別の案件を開いたり新しく作ったりすると、その変更は消えます。続けますか。',
 
   'role.admin': '管理用',
   'role.member': '標準',
@@ -263,6 +264,7 @@ const en: Dict = {
   'project.savedAt': 'saved',
   'project.newDefault': 'New job',
   'project.deleteConfirm': ' will be deleted. This cannot be undone. Are you sure?',
+  'project.unsavedLeave': ' has unsaved changes. Opening or creating another job will discard them. Continue?',
 
   'role.admin': 'Admin',
   'role.member': 'Standard',
@@ -401,6 +403,7 @@ const fr: Dict = {
   'project.savedAt': 'enregistré',
   'project.newDefault': 'Nouvelle affaire',
   'project.deleteConfirm': ' va être supprimée. C’est irréversible. Continuer ?',
+  'project.unsavedLeave': ' contient des modifications non enregistrées. Ouvrir ou créer une autre affaire les fera perdre. Continuer ?',
 
   'role.admin': 'Administrateur',
   'role.member': 'Standard',
@@ -535,6 +538,7 @@ const zh: Dict = {
   'project.savedAt': '已保存',
   'project.newDefault': '新建项目',
   'project.deleteConfirm': ' 将被删除，且无法恢复。确定吗？',
+  'project.unsavedLeave': ' 中有尚未保存的更改。打开或新建其他项目后，这些更改将丢失。要继续吗？',
 
   'role.admin': '管理',
   'role.member': '标准',
@@ -671,6 +675,7 @@ const ko: Dict = {
   'project.savedAt': '에 저장',
   'project.newDefault': '새 건',
   'project.deleteConfirm': '을(를) 지웁니다. 되돌릴 수 없습니다. 괜찮으십니까?',
+  'project.unsavedLeave': '에 저장하지 않은 변경이 있습니다. 다른 건을 열거나 새로 만들면 그 변경이 사라집니다. 계속하시겠습니까?',
 
   'role.admin': '관리용',
   'role.member': '표준',
