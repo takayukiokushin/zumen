@@ -112,7 +112,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   /** サーバーの状態。手書きメモの読み取りが使えるかどうかもここで分かる */
-  health: () => call<{ ok: true; hasApiKey: boolean; userCount: number }>('/api/health'),
+  health: () => call<{ ok: true; hasApiKey: boolean; userCount: number; version?: string }>('/api/health'),
   me: () => call<{ user: User | null }>('/api/auth/me'),
   login: (userId: string, password: string) =>
     call<{ user: User }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId, password }) }),

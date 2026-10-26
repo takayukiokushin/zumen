@@ -3,6 +3,7 @@ import { api, LoginError } from './api.ts';
 import { useT } from '../i18n/useT.ts';
 import { EyeIcon, EyeOffIcon } from '../icons.tsx';
 import { TEXT_STEPS, useSettings } from '../settings/settings.tsx';
+import { APP_VERSION } from '../version.ts';
 import type { User } from './api.ts';
 
 /** 残り時間を「29分40秒」の形にする */
@@ -151,6 +152,10 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
             ))}
           </div>
         </div>
+
+        <p className="login-version">
+          {t('settings.version')} {APP_VERSION}
+        </p>
       </form>
     </div>
   );

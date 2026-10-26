@@ -1,6 +1,6 @@
 {
   "name": "@zumen/desktop",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "単線結線図作成",
   "author": "株式会社フジエレックス",

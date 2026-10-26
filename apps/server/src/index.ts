@@ -15,6 +15,7 @@ import { projects } from './projects.ts';
 import { admin } from './admin.ts';
 import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
+import { SERVER_VERSION } from './version.ts';
 
 /**
  * 案件の保管と解析を行うサーバー。
@@ -23,7 +24,12 @@ import type { Answers } from '@zumen/knowledge';
 const app = new Hono<{ Variables: { user: User } }>();
 
 app.get('/api/health', (c) =>
-  c.json({ ok: true, hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY), userCount: listUsers().length }),
+  c.json({
+    ok: true,
+    hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY),
+    userCount: listUsers().length,
+    version: SERVER_VERSION,
+  }),
 );
 
 /* ---------------- ログイン ---------------- */

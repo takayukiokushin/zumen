@@ -1,6 +1,9 @@
 import { LANGS, LANG_LABEL } from '../i18n/index.ts';
 import type { Lang } from '../i18n/index.ts';
+import { useEffect, useState } from 'react';
 import { useT } from '../i18n/useT.ts';
+import { api } from '../session/api.ts';
+import { APP_VERSION, BUILD_DATE } from '../version.ts';
 import { useEscapeToClose } from '../useEscapeToClose.ts';
 import { TEXT_STEPS, UI_STEPS, useSettings } from './settings.tsx';
 import type { Theme } from './settings.tsx';
@@ -55,6 +58,15 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const t = useT();
   const { settings, set, reset } = useSettings();
   useEscapeToClose(onClose);
+
+  // サーバーの版も見せる（画面とサーバーの版が違えば、画面が古いと分かる）
+  const [serverVersion, setServerVersion] = useState<string | null>(null);
+  useEffect(() => {
+    api
+      .health()
+      .then((h) => setServerVersion(h.version ?? null))
+      .catch(() => setServerVersion(null));
+  }, []);
 
   const themes: [Theme, string][] = [
     ['light', t('settings.theme.light')],
@@ -135,6 +147,10 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <button type="button" className="btn" onClick={reset}>
             {t('settings.reset')}
           </button>
+          <p className="hint version">
+            {t('settings.version')}　{t('settings.version.screen')} {APP_VERSION}
+            {BUILD_DATE && `（${BUILD_DATE}）`}　／　{t('settings.version.server')} {serverVersion ?? '—'}
+          </p>
         </section>
       </div>
     </div>

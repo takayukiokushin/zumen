@@ -69,6 +69,9 @@ const ja = {
     '文字だけ大きくしたいときは「文字の大きさ」、ボタンや余白も含めて大きくしたいときは「画面全体の大きさ」を変えてください。',
   'settings.preview': '見本：この大きさで表示されます',
   'settings.reset': '初期値に戻す',
+  'settings.version': 'バージョン',
+  'settings.version.screen': '画面',
+  'settings.version.server': 'サーバー',
 
   'login.size': '文字の大きさ',
   'login.size.small': '小',
@@ -211,6 +214,9 @@ const en: Dict = {
     'Use “Text size” to enlarge only the text, and “Overall size” to enlarge buttons and spacing as well.',
   'settings.preview': 'Sample: text appears at this size',
   'settings.reset': 'Restore defaults',
+  'settings.version': 'Version',
+  'settings.version.screen': 'Screen',
+  'settings.version.server': 'Server',
 
   'login.size': 'Text size',
   'login.size.small': 'S',
@@ -350,6 +356,9 @@ const fr: Dict = {
     'Utilisez « Taille du texte » pour agrandir seulement le texte, et « Taille générale » pour agrandir aussi les boutons et les marges.',
   'settings.preview': 'Exemple : le texte s’affiche à cette taille',
   'settings.reset': 'Valeurs par défaut',
+  'settings.version': 'Version',
+  'settings.version.screen': 'Écran',
+  'settings.version.server': 'Serveur',
 
   'login.size': 'Taille du texte',
   'login.size.small': 'P',
@@ -489,6 +498,9 @@ const zh: Dict = {
   'settings.sizeNote': '只想放大文字时请调整“文字大小”；想连按钮和间距一起放大时请调整“整体大小”。',
   'settings.preview': '示例：文字将以此大小显示',
   'settings.reset': '恢复初始设置',
+  'settings.version': '版本',
+  'settings.version.screen': '界面',
+  'settings.version.server': '服务器',
 
   'login.size': '文字大小',
   'login.size.small': '小',
@@ -626,6 +638,9 @@ const ko: Dict = {
     '글자만 크게 하려면 「글자 크기」를, 버튼과 여백까지 크게 하려면 「화면 전체 크기」를 바꾸세요.',
   'settings.preview': '보기: 이 크기로 표시됩니다',
   'settings.reset': '초기값으로 되돌리기',
+  'settings.version': '버전',
+  'settings.version.screen': '화면',
+  'settings.version.server': '서버',
 
   'login.size': '글자 크기',
   'login.size.small': '작게',

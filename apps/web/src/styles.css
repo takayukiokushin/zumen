@@ -548,3 +548,7 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .canvas .issue-mark circle { fill: none; stroke: #d2334a; stroke-width: 1.6; }
 .canvas .issue-mark line { stroke: #d2334a; stroke-width: 1.8; }
 .canvas .issue-mark .dot { fill: #d2334a; stroke: none; }
+
+/* ---- 版の表示 ---- */
+.login-version { margin: 6px 0 0; text-align: center; font-size: calc(11px * var(--text-scale)); color: var(--muted); }
+.settings-version, .hint.version { font-variant-numeric: tabular-nums; margin-top: 12px; }

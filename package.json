@@ -1,7 +1,7 @@
 {
   "name": "zumen",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "単線結線図作成アプリ",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
@@ -9,7 +9,7 @@
     "catalog": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-catalog.ts",
     "typecheck": "tsc -b",
     "sample": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-sample-drawing.ts",
-    "check": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-knowledge.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-symbols.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-drawing.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-messages.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-contrast.ts",
+    "check": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-knowledge.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-symbols.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-drawing.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-messages.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-contrast.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version.ts",
     "selftest": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/selftest.ts",
     "dev": "pnpm --filter @zumen/web dev",
     "build": "pnpm --filter @zumen/web build",
