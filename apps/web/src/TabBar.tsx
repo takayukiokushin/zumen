@@ -85,9 +85,11 @@ interface Props {
   onSettings: () => void;
   onUsers: () => void;
   onLogout: () => void;
+  /** 開いている案件に、保存していない変更があるか（ログアウトの確認に使う） */
+  dirty?: boolean;
 }
 
-export function TabBar({ user, tab, onTab, enabled, onSettings, onUsers, onLogout }: Props) {
+export function TabBar({ user, tab, onTab, enabled, onSettings, onUsers, onLogout, dirty = false }: Props) {
   const t = useT();
   return (
     <div className="tabbar">
@@ -120,7 +122,8 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onUsers, onLogou
       <button
         type="button"
         onClick={() => {
-          if (window.confirm(t('nav.logout.confirm'))) onLogout();
+          // 保存していない変更があるときは、それが消えることを先に伝える
+          if (window.confirm(t(dirty ? 'nav.logout.confirmUnsaved' : 'nav.logout.confirm'))) onLogout();
         }}
       >
         {t('nav.logout')}

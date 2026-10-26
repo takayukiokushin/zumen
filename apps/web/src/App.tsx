@@ -183,6 +183,7 @@ export function App() {
           setShowList(false);
         }}
         enabled={projectId !== null && !listing}
+        dirty={dirty}
         onSettings={() => setSettingsOpen(true)}
         onUsers={() => setUsersOpen(true)}
         onLogout={() => {

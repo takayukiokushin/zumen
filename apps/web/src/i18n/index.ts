@@ -32,6 +32,7 @@ const ja = {
   'nav.users': '利用者の管理',
   'nav.logout': 'ログアウト',
   'nav.logout.confirm': 'ログアウトします。よろしいですか。',
+  'nav.logout.confirmUnsaved': '保存していない変更があります。ログアウトすると、その変更は消えます。ログアウトしますか。',
 
   'project.choose': '案件を選ぶ',
   'project.list': '図面一覧',
@@ -173,6 +174,7 @@ const en: Dict = {
   'nav.users': 'Manage users',
   'nav.logout': 'Sign out',
   'nav.logout.confirm': 'Sign out. Are you sure?',
+  'nav.logout.confirmUnsaved': 'You have unsaved changes. Signing out will discard them. Sign out anyway?',
 
   'project.choose': 'Choose a job',
   'project.list': 'All drawings',
@@ -311,6 +313,7 @@ const fr: Dict = {
   'nav.users': 'Gérer les utilisateurs',
   'nav.logout': 'Se déconnecter',
   'nav.logout.confirm': 'Vous allez être déconnecté. Continuer ?',
+  'nav.logout.confirmUnsaved': 'Des modifications ne sont pas enregistrées. Vous les perdrez en vous déconnectant. Se déconnecter quand même ?',
 
   'project.choose': 'Choisir une affaire',
   'project.list': 'Tous les schémas',
@@ -450,6 +453,7 @@ const zh: Dict = {
   'nav.users': '用户管理',
   'nav.logout': '退出登录',
   'nav.logout.confirm': '即将退出登录，确定吗？',
+  'nav.logout.confirmUnsaved': '有尚未保存的更改。退出登录后这些更改将丢失。仍要退出登录吗？',
 
   'project.choose': '选择项目',
   'project.list': '图纸一览',
@@ -585,6 +589,7 @@ const ko: Dict = {
   'nav.users': '사용자 관리',
   'nav.logout': '로그아웃',
   'nav.logout.confirm': '로그아웃합니다. 괜찮으십니까?',
+  'nav.logout.confirmUnsaved': '저장하지 않은 변경이 있습니다. 로그아웃하면 그 변경이 사라집니다. 그래도 로그아웃하시겠습니까?',
 
   'project.choose': '건을 고르기',
   'project.list': '도면 목록',
