@@ -104,7 +104,7 @@ pnpm dev         # 画面を起動
 pnpm dev:server  # 解析サーバーを起動（別の端末で）
 pnpm typecheck   # 型チェック
 pnpm check       # 質問定義・構成ルールの検証（実図面との一致確認を含む）
-pnpm selftest    # 通しの動作確認（サーバーを一時的に立ち上げて38項目を確かめる）
+pnpm selftest    # 通しの動作確認（サーバーを一時的に立ち上げて66項目を確かめる）
 pnpm catalog     # docs/symbol-catalog.html を再生成
 pnpm sample      # docs/sample-drawing.svg を再生成
 pnpm start       # 画面をビルドしてサーバーを起動（実際に使うとき）

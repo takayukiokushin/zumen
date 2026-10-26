@@ -201,6 +201,24 @@ try {
   const noCookie = await fetch(`${base}/api/projects`);
   check('ログインせずには案件を見られない', noCookie.status === 401, `${noCookie.status}`);
 
+  // 使っている間は、ログインの期限が延びる（開いたまま10日を超えても、保存できるように）
+  {
+    const c = await login('tester1');
+    const token = c.split('=')[1] ?? '';
+    const sdb = new DatabaseSync(join(dataDir, 'zumen.db'));
+    const left = () =>
+      (new Date((sdb.prepare('SELECT expires_at FROM sessions WHERE token = ?').get(token) as { expires_at: string }).expires_at).getTime() - Date.now()) /
+      86400_000;
+    sdb.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(new Date(Date.now() + 2 * 86400_000).toISOString(), token);
+    const used = await call(c, '/api/projects');
+    check('使うと、ログインの期限が10日先まで延びる', used.status === 200 && left() > 9.9, `残り${left().toFixed(1)}日`);
+    check('延ばしたことが、ブラウザにも伝わる', (used.headers.get('set-cookie') ?? '').includes('zumen_session='));
+    sdb.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(new Date(Date.now() - 1000).toISOString(), token);
+    const late = await call(c, '/api/projects');
+    check('期限が切れたあとは、延ばさずに断る', late.status === 401, `${late.status}`);
+    sdb.close();
+  }
+
   // SQLインジェクション：IDやパスワードに細工をして、認証をすり抜けられないか
   const attacks: [string, string][] = [
     ["' OR '1'='1", "' OR '1'='1"],

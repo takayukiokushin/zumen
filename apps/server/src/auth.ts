@@ -6,8 +6,13 @@ import { db, now } from './db.ts';
 /** ログインの仕組み。社内数名を想定し、ID＋パスワードとセッションだけの最小構成 */
 
 const COOKIE = 'zumen_session';
-/** ログインが続く日数。これを過ぎたら入れ直してもらう */
+/**
+ * ログインが続く日数。使わずに、これを過ぎたら入れ直してもらう。
+ * 使っている間は延びていく（開いたまま編集していれば、10日を超えても切れない）
+ */
 const SESSION_DAYS = 10;
+/** 延ばすのは、残りがこれだけ減ったとき。毎回の書き込みを避けるため（1時間に1回まで） */
+const RENEW_AFTER_MS = 60 * 60_000;
 
 /* ---------------- 総当たり対策 ---------------- */
 
@@ -162,6 +167,11 @@ export function login(c: Context, userId: string, password: string): LoginResult
     now(),
     expires.toISOString(),
   );
+  setSessionCookie(c, token);
+  return { ok: true, user: { id: row.id, name: row.name, role: row.role } };
+}
+
+function setSessionCookie(c: Context, token: string): void {
   setCookie(c, COOKIE, token, {
     httpOnly: true,
     sameSite: 'Lax',
@@ -169,7 +179,6 @@ export function login(c: Context, userId: string, password: string): LoginResult
     maxAge: SESSION_DAYS * 86400,
     secure: process.env.NODE_ENV === 'production',
   });
-  return { ok: true, user: { id: row.id, name: row.name, role: row.role } };
 }
 
 export function logout(c: Context): void {
@@ -178,7 +187,10 @@ export function logout(c: Context): void {
   deleteCookie(c, COOKIE, { path: '/' });
 }
 
-/** 期限切れのセッションはその場で捨てる */
+/**
+ * 期限切れのセッションはその場で捨てる。
+ * 使われているセッションは、そのつど期限を先へ延ばす（ブラウザ側の期限も延ばす）
+ */
 export function currentUser(c: Context): User | null {
   const token = getCookie(c, COOKIE);
   if (!token) return null;
@@ -189,9 +201,15 @@ export function currentUser(c: Context): User | null {
     )
     .get(token) as { id: string; name: string; role: Role; expires_at: string } | undefined;
   if (!row) return null;
-  if (new Date(row.expires_at).getTime() < Date.now()) {
+  const left = new Date(row.expires_at).getTime() - Date.now();
+  if (left < 0) {
     db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
     return null;
+  }
+  if (left < SESSION_DAYS * 86400_000 - RENEW_AFTER_MS) {
+    const expires = new Date(Date.now() + SESSION_DAYS * 86400_000).toISOString();
+    db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(expires, token);
+    setSessionCookie(c, token);
   }
   return { id: row.id, name: row.name, role: row.role };
 }
