@@ -83,13 +83,14 @@ interface Props {
   /** 案件を開いていないときはタブを押せない */
   enabled: boolean;
   onSettings: () => void;
+  onHelp: () => void;
   onUsers: () => void;
   onLogout: () => void;
   /** 開いている案件に、保存していない変更があるか（ログアウトの確認に使う） */
   dirty?: boolean;
 }
 
-export function TabBar({ user, tab, onTab, enabled, onSettings, onUsers, onLogout, dirty = false }: Props) {
+export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers, onLogout, dirty = false }: Props) {
   const t = useT();
   return (
     <div className="tabbar">
@@ -107,6 +108,9 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onUsers, onLogou
 
       <span className="spacer" />
 
+      <button type="button" onClick={onHelp}>
+        {t('help.button')}
+      </button>
       <button type="button" className="icon-btn" title={t('nav.settings')} aria-label={t('nav.settings')} onClick={onSettings}>
         <GearIcon />
       </button>

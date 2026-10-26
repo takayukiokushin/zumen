@@ -13,6 +13,8 @@ import { TabBar } from './TabBar.tsx';
 import type { Tab } from './TabBar.tsx';
 import { UserAdmin } from './projects/UserAdmin.tsx';
 import { SettingsPanel } from './settings/SettingsPanel.tsx';
+import { HelpPanel } from './help/HelpPanel.tsx';
+import { helpSeen, markHelpSeen } from './help/seen.ts';
 import { useLang, useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
@@ -32,6 +34,9 @@ export function App() {
   const [showList, setShowList] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  /** はじめて使うときの、「使い方」への案内。一度閉じたら、このブラウザでは出さない */
+  const [firstHint, setFirstHint] = useState(() => !helpSeen());
   /** ㉖㉗ ヒアリング画面の左の目次・右の「いまの構成」を出すか */
   const [showNav, setShowNav] = useState(true);
   const [showPreview, setShowPreview] = useState(true);
@@ -206,6 +211,11 @@ export function App() {
         enabled={projectId !== null && !listing}
         dirty={dirty}
         onSettings={() => setSettingsOpen(true)}
+        onHelp={() => {
+          setHelpOpen(true);
+          markHelpSeen();
+          setFirstHint(false);
+        }}
         onUsers={() => setUsersOpen(true)}
         onLogout={() => {
           void leaveCurrent();
@@ -228,6 +238,31 @@ export function App() {
         onSave={() => void save()}
         readOnly={readOnly}
       />
+
+      {firstHint && (
+        <p className="bar-lock">
+          {t('help.firstTime')}
+          <button
+            type="button"
+            onClick={() => {
+              setHelpOpen(true);
+              markHelpSeen();
+              setFirstHint(false);
+            }}
+          >
+            {t('help.firstTimeOpen')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              markHelpSeen();
+              setFirstHint(false);
+            }}
+          >
+            {t('help.firstTimeClose')}
+          </button>
+        </p>
+      )}
 
       {error && <p className="bar-error">{error}</p>}
 
@@ -347,6 +382,7 @@ export function App() {
       </div>
 
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       {usersOpen && <UserAdmin me={user} onClose={() => setUsersOpen(false)} />}
     </div>
   );

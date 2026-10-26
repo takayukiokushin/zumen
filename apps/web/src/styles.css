@@ -332,6 +332,10 @@ table.picked tr.uncertain { background: var(--accent-soft); }
 .modal section h3 { margin: 0 0 10px; font-size: calc(13px * var(--text-scale)); }
 .modal .err, .modal .ok-note { margin: 12px 20px 0; padding: 9px 12px; border-radius: 3px; font-size: calc(12.5px * var(--text-scale)); }
 .modal .ok-note { background: var(--ok-soft); border: 1px solid var(--ok); color: var(--ok); }
+.modal .help .hint { margin: 0 0 6px; color: var(--muted); font-size: calc(12.5px * var(--text-scale)); }
+.modal .help-item { padding: 12px 0; border-top: 1px solid var(--rule-soft); }
+.modal .help-item h3 { margin: 0 0 6px; font-size: calc(14px * var(--text-scale)); }
+.modal .help-item p { margin: 0; font-size: calc(13px * var(--text-scale)); line-height: 1.8; color: var(--ink-2); }
 
 /* ---- 利用者の一覧 ---- */
 table.users { width: 100%; border-collapse: collapse; font-size: calc(12.5px * var(--text-scale)); }
