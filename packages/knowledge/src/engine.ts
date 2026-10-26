@@ -305,6 +305,8 @@ export interface PlacedItem {
   connectFrom?: string[];
   /** 文字を記号のどちら側に書くか */
   labelSide?: 'left' | 'right';
+  /** kind==='overlay' のとき、重ねる先の記号のロール */
+  attachTo?: string;
   /** 低圧の回線のとき、何本目か（0始まり） */
   lane?: number;
   /**
@@ -419,6 +421,7 @@ export function buildComposition(rawAnswers: Answers): PlacedItem[] {
           dashedAfter: evaluate(p.dashedAfter, a) && p.dashedAfter !== undefined,
           connectFrom: p.connectFrom,
           labelSide: p.labelSide,
+          attachTo: p.attachTo,
           lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' ? laneBase + i : undefined,
           row: p.row,
           unit: countKey ? i : undefined,

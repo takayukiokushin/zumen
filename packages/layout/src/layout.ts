@@ -1,4 +1,4 @@
-import { findSymbol, getSymbol } from '@zumen/symbols';
+import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol } from '@zumen/symbols';
 import type { Port, SymbolDef } from '@zumen/symbols';
 import { ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
@@ -245,6 +245,20 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
         drawParallelSection();
         parallelDrawn = true;
       }
+      continue;
+    }
+
+    /* ---- 別の記号に重ねる横線（3点不一致の責任分界点） ---- */
+    if (item.kind === 'overlay') {
+      const target = item.attachTo ? placed.get(item.attachTo) : undefined;
+      if (!target) continue;
+      // 重ねる先の記号の中央の高さ・主回路の縦線の位置に合わせる
+      const inPort = portOf(target.def, 'in');
+      const axisX = target.sym.x + (inPort ? inPort.x : target.def.box.w / 2);
+      const centerY = target.sym.y + target.def.box.h / 2;
+      const sym = add(item, def, axisX - BOUNDARY_SAFETY_LEFT, centerY - def.box.h / 2, 0, 'left');
+      // 文言は線の左上（線の上、左端にそろえる）
+      sym.labelAt = { x: sym.x + 2, y: sym.y - 6, anchor: 'start' };
       continue;
     }
 

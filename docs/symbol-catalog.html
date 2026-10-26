@@ -198,8 +198,8 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>62</b><span>記号</span></div>
-      <div class="stat"><b>62</b><span>確定</span></div>
+      <div class="stat"><b>65</b><span>記号</span></div>
+      <div class="stat"><b>65</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
       <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
@@ -229,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>5</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>3</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>9</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>17</i></a><a class="navchip" href="#cat-transformer">変圧器<i>9</i></a><a class="navchip" href="#cat-compensation">進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>5</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>3</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>11</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>17</i></a><a class="navchip" href="#cat-transformer">変圧器<i>10</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -408,6 +408,31 @@
         <span class="count">3</span>
       </header>
       <div class="grid">
+      <article class="card card--confirmed" id="sym-boundary-safety" data-search="保安上の責任分界点（3点不一致のとき）  保安上の責任分界点 boundary-safety 分界点 責任分界点" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 18" width="289" height="30.599999999999998" role="img" aria-label="保安上の責任分界点（3点不一致のとき）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="0" y1="1" x2="154" y2="1" stroke-width="1" />
+    <g class="ports">
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">保安上の責任分界点</span>
+            <h3>保安上の責任分界点（3点不一致のとき）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>boundary-safety</code> ・ 接続点 0</p>
+          <p class="deflabel">既定の記載文言：<b>保安上の責任分界点</b></p>
+          
+          
+          <p class="statusnote">主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「保安上の責任分界点」と記載します。</p>
+          <p class="note">3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。CB形ならVCB、PFS形ならLBS。</p>
+          
+        </div>
+      </article>
       <article class="card card--confirmed" id="sym-boundary-both" data-search="財産・責任分界点（3点一致）  財産・責任分界点 boundary-both 分界点" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 136 40" width="231.2" height="68" role="img" aria-label="財産・責任分界点（3点一致）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -463,49 +488,21 @@
           <p class="note">3点不一致（全体の約1%）。引込点と同一地点に記載する。</p>
           
         </div>
-      </article>
-      <article class="card card--confirmed" id="sym-boundary-safety" data-search="責任分界点（3点不一致のとき）  責任分界点 boundary-safety 分界点" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 136 40" width="231.2" height="68" role="img" aria-label="責任分界点（3点不一致のとき）">
-  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="96" y1="0" x2="96" y2="24" stroke-width="1" />
-    <line x1="0" y1="12" x2="120" y2="12" stroke-width="1" />
-    <g class="ports">
-      <circle cx="96" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="96" cy="24" r="2.2" fill="currentColor" stroke="none" class="port" />
-    </g>
-  </g>
-</svg></div>
-        <div class="card-body">
-          <div class="card-head">
-            <span class="abbr">責任分界点</span>
-            <h3>責任分界点（3点不一致のとき）</h3>
-            <span class="badge badge--confirmed">確定</span>
-          </div>
-          
-          
-          <p class="idline"><code>boundary-safety</code> ・ 接続点 2</p>
-          <p class="deflabel">既定の記載文言：<b>責任分界点</b></p>
-          
-          
-          <p class="statusnote">見本図面のとおり、横線を左へ長く伸ばし、その左上に文言を太字で記載します。</p>
-          <p class="note">3点不一致のとき、該当するLBSまたはVCBの図記号の中央に横線を引いて記載する。</p>
-          
-        </div>
       </article></div>
     </section>
     <section class="group" id="cat-switchgear" data-cat="switchgear">
       <header class="group-head">
         <h2>開閉器・遮断器</h2>
-        <span class="count">9</span>
+        <span class="count">11</span>
       </header>
       <div class="grid">
-      <article class="card card--confirmed" id="sym-as" data-search="エアースイッチ 気中開閉器 as as 電力会社 引込元 屋側" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 88" width="122.39999999999999" height="149.6" role="img" aria-label="エアースイッチ">
+      <article class="card card--confirmed" id="sym-as" data-search="気中開閉器  as as 電力会社 引込元 屋側" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 88" width="122.39999999999999" height="149.6" role="img" aria-label="気中開閉器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
     <rect x="6" y="10" width="44" height="52" fill="none" stroke-width="1" />
-    <line x1="28" y1="10" x2="28" y2="26" stroke-width="1" />
-    <line x1="20" y1="26" x2="36" y2="26" stroke-width="1" />
+    <line x1="28" y1="10" x2="28" y2="27" stroke-width="1" />
+    <line x1="20" y1="27" x2="36" y2="27" stroke-width="1" />
     <circle cx="28" cy="31" r="4" fill="none" stroke-width="1" />
     <line x1="28" y1="54" x2="16" y2="38" stroke-width="1" />
     <line x1="28" y1="54" x2="28" y2="72" stroke-width="1" />
@@ -518,11 +515,11 @@
         <div class="card-body">
           <div class="card-head">
             <span class="abbr">AS</span>
-            <h3>エアースイッチ</h3>
+            <h3>気中開閉器</h3>
             <span class="badge badge--confirmed">確定</span>
           </div>
           
-          <p class="formal">気中開閉器</p>
+          
           <p class="idline"><code>as</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">設置場所</span></div>
@@ -564,16 +561,15 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-ds" data-search="断路器（ディスコン）  ds ds cb形 ディスコン 受電設備" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 80" width="102" height="136" role="img" aria-label="断路器（ディスコン）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="断路器（ディスコン）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="14" y1="0" x2="14" y2="8" stroke-width="1" />
-    <line x1="3" y1="8" x2="25" y2="8" stroke-width="1" />
-    <circle cx="14" cy="46" r="4" fill="none" stroke-width="1" />
-    <line x1="14" y1="42" x2="34" y2="13" stroke-width="1" />
-    <line x1="14" y1="50" x2="14" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="15" stroke-width="1" />
+    <line x1="13" y1="15" x2="35" y2="15" stroke-width="1" />
+    <line x1="24" y1="53" x2="44" y2="20" stroke-width="1" />
+    <line x1="24" y1="53" x2="24" y2="72" stroke-width="1" />
     <g class="ports">
-      <circle cx="14" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="14" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="72" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -589,7 +585,7 @@
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span></div>
           
-          <p class="statusnote">見本図面のとおり、上に横バー（固定接点）、下に丸（可動接点）、可動刃は右上がりにしました。</p>
+          <p class="statusnote">見本図面のとおり、上に横バー（固定接点）、可動刃は右上がり。下の丸は付けず、可動刃と下の縦線を直につなぎます。</p>
           <p class="note">CB形の基本構成で、高圧ケーブル端末の次に入る。DSの次にVTが並列接続、VCBが直列接続される。記載例「DS 7200V 400A」。</p>
           
         </div>
@@ -597,9 +593,9 @@
       <article class="card card--confirmed" id="sym-lbs" data-search="高圧負荷開閉器  lbs lbs pfs形 主遮断装置 責任分界点" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 78" width="108.8" height="132.6" role="img" aria-label="高圧負荷開閉器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="8" stroke-width="1" />
-    <line x1="15" y1="8" x2="33" y2="8" stroke-width="1" />
-    <circle cx="24" cy="14.5" r="5.5" fill="none" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="10.5" stroke-width="1" />
+    <line x1="15" y1="10.5" x2="33" y2="10.5" stroke-width="1" />
+    <circle cx="24" cy="14.5" r="4" fill="none" stroke-width="1" />
     <line x1="24" y1="48" x2="13" y2="24" stroke-width="1" />
     <line x1="24" y1="48" x2="24" y2="62" stroke-width="1" />
     <g class="ports">
@@ -626,17 +622,17 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-lbs-pf" data-search="限流ヒューズ付高圧負荷開閉器  lbs(pf付) lbs-pf pfs形 主遮断装置 pf・s形" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 94" width="108.8" height="159.79999999999998" role="img" aria-label="限流ヒューズ付高圧負荷開閉器">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="限流ヒューズ付高圧負荷開閉器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="8" stroke-width="1" />
-    <line x1="15" y1="8" x2="33" y2="8" stroke-width="1" />
-    <circle cx="24" cy="14.5" r="5.5" fill="none" stroke-width="1" />
-    <line x1="24" y1="62" x2="12" y2="26" stroke-width="1" />
-    <polygon points="26.843,54.719 18.643,30.119 9.157,33.281 17.357,57.881" fill="none" stroke-width="1" />
-    <line x1="24" y1="62" x2="24" y2="78" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="11.5" stroke-width="1" />
+    <line x1="15" y1="11.5" x2="33" y2="11.5" stroke-width="1" />
+    <circle cx="24" cy="15.5" r="4" fill="none" stroke-width="1" />
+    <line x1="24" y1="63" x2="12" y2="27" stroke-width="1" />
+    <polygon points="26.843,55.719 18.643,31.119 9.157,34.281 17.357,58.881" fill="none" stroke-width="1" />
+    <line x1="24" y1="63" x2="24" y2="72" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="78" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="72" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -688,13 +684,13 @@
       <article class="card card--confirmed" id="sym-pc" data-search="高圧カットアウト  pc pc カットアウトスイッチ 変圧器一次側" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="高圧カットアウト">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="26" y1="0" x2="26" y2="14" stroke-width="1" />
-    <line x1="26" y1="62" x2="10" y2="14" stroke-width="1" />
-    <polygon points="28.718,52.761 17.718,19.761 7.282,23.239 18.282,56.239" fill="none" stroke-width="1" />
-    <line x1="26" y1="62" x2="26" y2="72" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="12" stroke-width="1" />
+    <line x1="24" y1="60" x2="8" y2="12" stroke-width="1" />
+    <polygon points="26.718,50.761 15.718,17.761 5.282,21.239 16.282,54.239" fill="none" stroke-width="1" />
+    <line x1="24" y1="60" x2="24" y2="72" stroke-width="1" />
     <g class="ports">
-      <circle cx="26" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="26" cy="72" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="72" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -716,17 +712,16 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-vcb" data-search="真空遮断器  vcb vcb cb形 主遮断装置 責任分界点" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="真空遮断器">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="真空遮断器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="20" y1="0" x2="20" y2="12" stroke-width="1" />
-    <line x1="16.4" y1="8.4" x2="23.6" y2="15.6" stroke-width="1" />
-    <line x1="23.6" y1="8.4" x2="16.4" y2="15.6" stroke-width="1" />
-    <circle cx="20" cy="30" r="4" fill="none" stroke-width="1" />
-    <line x1="20" y1="26" x2="34" y2="14" stroke-width="1" />
-    <line x1="20" y1="30" x2="20" y2="44" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="15" stroke-width="1" />
+    <line x1="19.5" y1="10.5" x2="28.5" y2="19.5" stroke-width="1" />
+    <line x1="28.5" y1="10.5" x2="19.5" y2="19.5" stroke-width="1" />
+    <line x1="24" y1="53" x2="44" y2="20" stroke-width="1" />
+    <line x1="24" y1="53" x2="24" y2="72" stroke-width="1" />
     <g class="ports">
-      <circle cx="20" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="20" cy="44" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="72" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -742,23 +737,54 @@
           
           
           
-          <p class="statusnote">×印付き開閉器（JIS式）。可動刃は右上がり、下に丸（可動接点）を付けます。上の丸は付けません。</p>
+          <p class="statusnote">×印付き開閉器（JIS式）。可動刃は右上がり。丸は上にも下にも付けません。</p>
           <p class="note">CB形の主遮断装置。設備容量301kVA以上では必須。すぐ下にCTが入る。</p>
           
         </div>
       </article>
-      <article class="card card--confirmed" id="sym-pas" data-search="区分開閉器（高圧気中開閉器）  pas pas 区分開閉器 電柱上 gr dgr" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 186" width="190.4" height="316.2" role="img" aria-label="区分開閉器（高圧気中開閉器）">
+      <article class="card card--confirmed" id="sym-vcs" data-search="真空電磁接触器  vcs vcs 電磁接触器 高圧進相設備 コンデンサ開閉" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="真空電磁接触器">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="28" y1="0" x2="28" y2="60" stroke-width="1" />
-    <rect x="8" y="14" width="80" height="142" fill="none" stroke-width="1" />
-    <line x1="20" y1="64" x2="36" y2="64" stroke-width="1" />
-    <circle cx="28" cy="70" r="4.5" fill="none" stroke-width="1" />
-    <line x1="28" y1="104" x2="16" y2="80" stroke-width="1" />
-    <line x1="28" y1="104" x2="28" y2="170" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="15" stroke-width="1" />
+    <path d="M 17 15 A 7 7 0 0 0 31 15" fill="none" stroke-width="1" />
+    <circle cx="24" cy="53" r="4" fill="none" stroke-width="1" />
+    <line x1="24" y1="49" x2="42" y2="22" stroke-width="1" />
+    <line x1="24" y1="57" x2="24" y2="72" stroke-width="1" />
+    <g class="ports">
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="72" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">VCS</span>
+            <h3>真空電磁接触器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>vcs</code> ・ 接続点 2</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span></div>
+          
+          <p class="statusnote">固定接点をお椀（半円）で描き、断路器と見分けられるようにしました。</p>
+          <p class="note">進相コンデンサの開閉用。LBSと組み合わせて使う現場がある。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-pas" data-search="区分開閉器（高圧気中開閉器）  pas pas 区分開閉器 電柱上 gr dgr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 102 164" width="173.4" height="278.8" role="img" aria-label="区分開閉器（高圧気中開閉器）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
+    <rect x="6" y="10" width="74" height="126" fill="none" stroke-width="1" />
+    <line x1="20" y1="58" x2="36" y2="58" stroke-width="1" />
+    <circle cx="28" cy="62" r="4" fill="none" stroke-width="1" />
+    <line x1="28" y1="84" x2="16" y2="66" stroke-width="1" />
+    <line x1="28" y1="84" x2="28" y2="148" stroke-width="1" />
     <g class="ports">
       <circle cx="28" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="28" cy="170" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="28" cy="148" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -773,7 +799,39 @@
           <p class="idline"><code>pas</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">制御装置の種類<i>3択</i></span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
-          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
+          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span></div>
+          <p class="statusnote">実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。</p>
+          <p class="note">記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-pas-builtin" data-search="区分開閉器（高圧気中開閉器）  pas pas-builtin 区分開閉器 電柱上 gr dgr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 188" width="190.4" height="319.59999999999997" role="img" aria-label="区分開閉器（高圧気中開閉器）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="36" y1="0" x2="36" y2="6" stroke-width="1" />
+    <rect x="6" y="6" width="84" height="142" fill="none" stroke-width="1" />
+    <line x1="28" y1="58" x2="44" y2="58" stroke-width="1" />
+    <circle cx="36" cy="62" r="4" fill="none" stroke-width="1" />
+    <line x1="36" y1="84" x2="24" y2="66" stroke-width="1" />
+    <line x1="36" y1="84" x2="36" y2="172" stroke-width="1" />
+    <g class="ports">
+      <circle cx="36" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="36" cy="172" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">PAS</span>
+            <h3>区分開閉器（高圧気中開閉器）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          <p class="optional">既定では図面に描かない（指示があったときだけ配置）</p>
+          
+          <p class="idline"><code>pas-builtin</code> ・ 接続点 2 ・ <span class="alt">pas の別表記</span></p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">制御装置の種類<i>3択</i></span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
+          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span></div>
           <p class="statusnote">実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。</p>
           <p class="note">記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。</p>
           
@@ -891,8 +949,8 @@
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="20" y1="0" x2="20" y2="44" stroke-width="1" />
     <circle cx="20" cy="22" r="11" fill="none" stroke-width="1" />
-    <line x1="9" y1="33" x2="31" y2="11" stroke-width="1" />
-    <text x="26" y="29" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">3</text>
+    <line x1="12.929" y1="29.071" x2="27.071" y2="14.929" stroke-width="1" />
+    <text x="24.75" y="25" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">3</text>
     <line x1="31" y1="22" x2="52" y2="22" stroke-width="1" />
     <g class="ports">
       <circle cx="20" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
@@ -1562,23 +1620,51 @@
     <section class="group" id="cat-transformer" data-cat="transformer">
       <header class="group-head">
         <h2>変圧器</h2>
-        <span class="count">9</span>
+        <span class="count">10</span>
       </header>
       <div class="grid">
-      <article class="card card--confirmed" id="sym-tr-1p" data-search="単相変圧器（単相三線式）  tr tr-1p 変圧器 単相 電灯 単相三線" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="単相変圧器（単相三線式）">
+      <article class="card card--confirmed" id="sym-tr-blank" data-search="変圧器（結線方式はこれから）  tr tr-blank 変圧器 未入力" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="変圧器（結線方式はこれから）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <line x1="18" y1="22" x2="30" y2="22" stroke-width="1" />
-    <line x1="18" y1="36" x2="30" y2="36" stroke-width="1" />
-    <line x1="18" y1="40" x2="30" y2="40" stroke-width="1" />
-    <line x1="18" y1="44" x2="30" y2="44" stroke-width="1" />
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">Tr</span>
+            <h3>変圧器（結線方式はこれから）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          <p class="optional">既定では図面に描かない（指示があったときだけ配置）</p>
+          
+          <p class="idline"><code>tr-blank</code> ・ 接続点 2 ・ <span class="alt">tr-3p-dy の別表記</span></p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">用途<i>2択</i></span><span class="chip">容量<i>kVA</i></span><span class="chip">電圧</span><span class="chip">構成</span></div>
+          
+          <p class="statusnote">結線方式が未入力のときに使う。円の中は空のまま。</p>
+          <p class="note">ヒアリングで結線方式を選ぶと、その結線方式の記号に入れ替わる。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-tr-1p" data-search="単相変圧器（単相三線式）  tr tr-1p 変圧器 単相 電灯 単相三線" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="単相変圧器（単相三線式）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <line x1="15" y1="22.5" x2="33" y2="22.5" stroke-width="1" />
+    <line x1="15" y1="43.5" x2="33" y2="43.5" stroke-width="1" />
+    <line x1="15" y1="49.5" x2="33" y2="49.5" stroke-width="1" />
+    <line x1="15" y1="55.5" x2="33" y2="55.5" stroke-width="1" />
+    <g class="ports">
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1600,18 +1686,17 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-1p-2w" data-search="単相変圧器（単相2線式）  tr tr-1p-2w 変圧器 単相 単相2線" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="単相変圧器（単相2線式）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="単相変圧器（単相2線式）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <line x1="18" y1="22" x2="30" y2="22" stroke-width="1" />
-    <line x1="18" y1="38" x2="30" y2="38" stroke-width="1" />
-    <line x1="18" y1="42" x2="30" y2="42" stroke-width="1" />
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <line x1="15" y1="22.5" x2="33" y2="22.5" stroke-width="1" />
+    <line x1="15" y1="46.5" x2="33" y2="46.5" stroke-width="1" />
+    <line x1="15" y1="52.5" x2="33" y2="52.5" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1633,21 +1718,20 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-3p-yy" data-search="三相変圧器（y-y結線）  tr tr-3p-yy 変圧器 三相 y-y結線" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="三相変圧器（Y-Y結線）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="三相変圧器（Y-Y結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <line x1="24" y1="22" x2="24" y2="16" stroke-width="1" />
-    <line x1="24" y1="22" x2="29.196" y2="25" stroke-width="1" />
-    <line x1="24" y1="22" x2="18.804" y2="25" stroke-width="1" />
-    <line x1="24" y1="40" x2="24" y2="34" stroke-width="1" />
-    <line x1="24" y1="40" x2="29.196" y2="43" stroke-width="1" />
-    <line x1="24" y1="40" x2="18.804" y2="43" stroke-width="1" />
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <line x1="24" y1="22.5" x2="24" y2="13.5" stroke-width="1" />
+    <line x1="24" y1="22.5" x2="31.794" y2="27" stroke-width="1" />
+    <line x1="24" y1="22.5" x2="16.206" y2="27" stroke-width="1" />
+    <line x1="24" y1="49.5" x2="24" y2="40.5" stroke-width="1" />
+    <line x1="24" y1="49.5" x2="31.794" y2="54" stroke-width="1" />
+    <line x1="24" y1="49.5" x2="16.206" y2="54" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1669,17 +1753,16 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-3p-dd" data-search="三相変圧器（δ-δ結線）  tr tr-3p-dd 変圧器 三相 δ-δ結線" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="三相変圧器（Δ-Δ結線）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="三相変圧器（Δ-Δ結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <polygon points="24,15 30.062,25.5 17.938,25.5" fill="none" stroke-width="1" />
-    <polygon points="24,33 30.062,43.5 17.938,43.5" fill="none" stroke-width="1" />
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <polygon points="24,12 33.093,27.75 14.907,27.75" fill="none" stroke-width="1" />
+    <polygon points="24,39 33.093,54.75 14.907,54.75" fill="none" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1701,19 +1784,18 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-3p-yd" data-search="三相変圧器（y-δ結線）  tr tr-3p-yd 変圧器 三相 y-δ結線" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="三相変圧器（Y-Δ結線）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="三相変圧器（Y-Δ結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <line x1="24" y1="22" x2="24" y2="16" stroke-width="1" />
-    <line x1="24" y1="22" x2="29.196" y2="25" stroke-width="1" />
-    <line x1="24" y1="22" x2="18.804" y2="25" stroke-width="1" />
-    <polygon points="24,33 30.062,43.5 17.938,43.5" fill="none" stroke-width="1" />
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <line x1="24" y1="22.5" x2="24" y2="13.5" stroke-width="1" />
+    <line x1="24" y1="22.5" x2="31.794" y2="27" stroke-width="1" />
+    <line x1="24" y1="22.5" x2="16.206" y2="27" stroke-width="1" />
+    <polygon points="24,39 33.093,54.75 14.907,54.75" fill="none" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1735,19 +1817,18 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-3p-dy" data-search="三相変圧器（δ-y結線）  tr tr-3p-dy 変圧器 三相 δ-y結線" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="三相変圧器（Δ-Y結線）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="三相変圧器（Δ-Y結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <polygon points="24,15 30.062,25.5 17.938,25.5" fill="none" stroke-width="1" />
-    <line x1="24" y1="40" x2="24" y2="34" stroke-width="1" />
-    <line x1="24" y1="40" x2="29.196" y2="43" stroke-width="1" />
-    <line x1="24" y1="40" x2="18.804" y2="43" stroke-width="1" />
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <polygon points="24,12 33.093,27.75 14.907,27.75" fill="none" stroke-width="1" />
+    <line x1="24" y1="49.5" x2="24" y2="40.5" stroke-width="1" />
+    <line x1="24" y1="49.5" x2="31.794" y2="54" stroke-width="1" />
+    <line x1="24" y1="49.5" x2="16.206" y2="54" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1769,17 +1850,16 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-vv" data-search="三相変圧器（v結線）  tr tr-vv 変圧器 v結線 単相2台" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="三相変圧器（V結線）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="三相変圧器（V結線）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <text x="24" y="22" font-size="13" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">V</text>
-    <text x="24" y="40" font-size="13" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">V</text>
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <text x="24" y="22.5" font-size="19.5" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">V</text>
+    <text x="24" y="49.5" font-size="19.5" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">V</text>
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1801,31 +1881,30 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-1p-parallel" data-search="単相変圧器 並行運転（倍容量）  tr tr-1p-parallel 変圧器 単相 並行運転" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 84" width="170" height="142.79999999999998" role="img" aria-label="単相変圧器 並行運転（倍容量）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 142 118" width="241.4" height="200.6" role="img" aria-label="単相変圧器 並行運転（倍容量）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="42" y1="0" x2="42" y2="8" stroke-width="1" />
-    <line x1="22" y1="8" x2="62" y2="8" stroke-width="1" />
-    <line x1="22" y1="8" x2="22" y2="12" stroke-width="1" />
-    <line x1="62" y1="8" x2="62" y2="12" stroke-width="1" />
-    <circle cx="22" cy="24" r="12" fill="none" stroke-width="1" />
-    <circle cx="22" cy="42" r="12" fill="none" stroke-width="1" />
-    <circle cx="62" cy="24" r="12" fill="none" stroke-width="1" />
-    <circle cx="62" cy="42" r="12" fill="none" stroke-width="1" />
-    <line x1="16" y1="24" x2="28" y2="24" stroke-width="1" />
-    <line x1="56" y1="24" x2="68" y2="24" stroke-width="1" />
-    <line x1="16" y1="38" x2="28" y2="38" stroke-width="1" />
-    <line x1="16" y1="42" x2="28" y2="42" stroke-width="1" />
-    <line x1="16" y1="46" x2="28" y2="46" stroke-width="1" />
-    <line x1="56" y1="38" x2="68" y2="38" stroke-width="1" />
-    <line x1="56" y1="42" x2="68" y2="42" stroke-width="1" />
-    <line x1="56" y1="46" x2="68" y2="46" stroke-width="1" />
-    <line x1="22" y1="54" x2="22" y2="60" stroke-width="1" />
-    <line x1="62" y1="54" x2="62" y2="60" stroke-width="1" />
-    <line x1="22" y1="60" x2="62" y2="60" stroke-width="1" />
-    <line x1="42" y1="60" x2="42" y2="68" stroke-width="1" />
+    <line x1="63" y1="0" x2="63" y2="12" stroke-width="1" />
+    <line x1="33" y1="12" x2="93" y2="12" stroke-width="1" />
+    <line x1="33" y1="12" x2="33" y2="18" stroke-width="1" />
+    <line x1="93" y1="12" x2="93" y2="18" stroke-width="1" />
+    <circle cx="33" cy="36" r="18" fill="none" stroke-width="1" />
+    <circle cx="33" cy="63" r="18" fill="none" stroke-width="1" />
+    <circle cx="93" cy="36" r="18" fill="none" stroke-width="1" />
+    <circle cx="93" cy="63" r="18" fill="none" stroke-width="1" />
+    <line x1="24" y1="36" x2="42" y2="36" stroke-width="1" />
+    <line x1="84" y1="36" x2="102" y2="36" stroke-width="1" />
+    <line x1="24" y1="57" x2="42" y2="57" stroke-width="1" />
+    <line x1="24" y1="63" x2="42" y2="63" stroke-width="1" />
+    <line x1="24" y1="69" x2="42" y2="69" stroke-width="1" />
+    <line x1="84" y1="57" x2="102" y2="57" stroke-width="1" />
+    <line x1="84" y1="63" x2="102" y2="63" stroke-width="1" />
+    <line x1="84" y1="69" x2="102" y2="69" stroke-width="1" />
+    <line x1="33" y1="81" x2="33" y2="90" stroke-width="1" />
+    <line x1="93" y1="81" x2="93" y2="90" stroke-width="1" />
+    <line x1="33" y1="90" x2="93" y2="90" stroke-width="1" />
     <g class="ports">
-      <circle cx="42" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="42" cy="68" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="63" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="63" cy="90" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1847,19 +1926,18 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-tr-scott" data-search="スコット変圧器（低圧）  tr tr-scott 変圧器 スコット 単相三線 低圧" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="108.8" height="136" role="img" aria-label="スコット変圧器（低圧）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="スコット変圧器（低圧）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="24" y1="0" x2="24" y2="10" stroke-width="1" />
-    <circle cx="24" cy="22" r="12" fill="none" stroke-width="1" />
-    <circle cx="24" cy="40" r="12" fill="none" stroke-width="1" />
-    <line x1="17" y1="26" x2="31" y2="26" stroke-width="1" />
-    <line x1="24" y1="16" x2="24" y2="26" stroke-width="1" />
-    <line x1="19" y1="34" x2="19" y2="45" stroke-width="1" />
-    <line x1="19" y1="45" x2="30" y2="45" stroke-width="1" />
-    <line x1="24" y1="52" x2="24" y2="64" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
+    <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
+    <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
+    <line x1="13.5" y1="28.5" x2="34.5" y2="28.5" stroke-width="1" />
+    <line x1="24" y1="13.5" x2="24" y2="28.5" stroke-width="1" />
+    <line x1="16.5" y1="40.5" x2="16.5" y2="57" stroke-width="1" />
+    <line x1="16.5" y1="57" x2="33" y2="57" stroke-width="1" />
     <g class="ports">
       <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="24" cy="64" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="67.5" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1883,20 +1961,20 @@
     </section>
     <section class="group" id="cat-compensation" data-cat="compensation">
       <header class="group-head">
-        <h2>進相設備</h2>
+        <h2>高圧進相設備</h2>
         <span class="count">2</span>
       </header>
       <div class="grid">
-      <article class="card card--confirmed" id="sym-sr" data-search="直列リアクトル  sr sr リアクトル 進相設備" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 72" width="102" height="122.39999999999999" role="img" aria-label="直列リアクトル">
+      <article class="card card--confirmed" id="sym-sr" data-search="直列リアクトル  sr sr リアクトル 高圧進相設備" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="直列リアクトル">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="22" y1="0" x2="22" y2="16" stroke-width="1" />
-    <rect x="7" y="10" width="30" height="36" fill="none" stroke-width="1" />
-    <path d="M 22 16 A 6 6 0 0 0 22 24 A 6 6 0 0 0 22 32 A 6 6 0 0 0 22 40" fill="none" stroke-width="1" />
-    <line x1="22" y1="40" x2="22" y2="56" stroke-width="1" />
+    <path d="M 9 36 A 15 15 0 1 1 24 51" fill="none" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="36" stroke-width="1" />
+    <line x1="9" y1="36" x2="24" y2="36" stroke-width="1" />
+    <line x1="24" y1="51" x2="24" y2="72" stroke-width="1" />
     <g class="ports">
-      <circle cx="22" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="22" cy="56" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="72" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1912,21 +1990,21 @@
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">相</span><span class="chip">容量<i>kvar</i></span><span class="chip">定格電圧<i>V</i></span></div>
           
-          <p class="statusnote">見本図面のとおり、四角の中にコイルを描く形にしました。</p>
+          <p class="statusnote">いただいた図記号のとおり、左下の4分の1が欠けた円の中に「⌐」を描く形にしました。円の大きさはSCの正方形と同じです。</p>
           <p class="note">コンデンサ「あり」の場合に、直列接続されるパターンとされないパターンがある。記載例「SR 3φ6.38kvar 243V」。</p>
           
         </div>
       </article>
-      <article class="card card--confirmed" id="sym-sc" data-search="進相コンデンサ  sc sc コンデンサ 進相設備 力率改善" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 64" width="102" height="108.8" role="img" aria-label="進相コンデンサ">
+      <article class="card card--confirmed" id="sym-sc" data-search="進相コンデンサ  sc sc コンデンサ 高圧進相設備 力率改善" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="進相コンデンサ">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="22" y1="0" x2="22" y2="10" stroke-width="1" />
-    <rect x="7" y="10" width="30" height="30" fill="none" stroke-width="1" />
-    <line x1="22" y1="10" x2="22" y2="21" stroke-width="1" />
-    <line x1="11" y1="21" x2="33" y2="21" stroke-width="1" />
-    <line x1="11" y1="26" x2="33" y2="26" stroke-width="1" />
+    <rect x="9" y="21" width="30" height="30" fill="none" stroke-width="1" />
+    <line x1="24" y1="0" x2="24" y2="31.8" stroke-width="1" />
+    <line x1="16.35" y1="31.8" x2="31.65" y2="31.8" stroke-width="1" />
+    <line x1="16.35" y1="39" x2="31.65" y2="39" stroke-width="1" />
+    <line x1="24" y1="39" x2="24" y2="45.6" stroke-width="1" />
     <g class="ports">
-      <circle cx="22" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1942,7 +2020,7 @@
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">相</span><span class="chip">容量<i>kvar</i></span><span class="chip">定格電圧<i>V</i></span></div>
           
-          <p class="statusnote">見本図面のとおり、四角の中にコンデンサ（2枚の板）を描く形にしました。</p>
+          <p class="statusnote">いただいた図記号のとおり、正方形の中に2枚の極板を描く形にしました。下の縦線は外枠に接しません。</p>
           <p class="note">変圧器と並列に入るパターンがある。台数は1台〜複数台。記載例「SC 3φ106kvar 7020V」。</p>
           
         </div>
@@ -2018,10 +2096,9 @@
     <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
     <rect x="6" y="10" width="44" height="28" fill="none" stroke-width="1" />
     <text x="28" y="18" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">PCS</text>
-    <line x1="28" y1="38" x2="28" y2="48" stroke-width="1" />
     <g class="ports">
       <circle cx="28" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="28" cy="48" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="28" cy="38" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>

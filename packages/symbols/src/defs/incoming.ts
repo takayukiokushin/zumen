@@ -149,7 +149,31 @@ const boundary = (id: string, nameJa: string, label: string, note: string): Symb
   note,
 });
 
+/**
+ * 保安上の責任分界点（3点不一致のとき）。
+ * 主遮断装置（VCBまたはLBS）の図記号の**中央に重ねる横線**で、縦線は持たない（縦線は主遮断装置自身のもの）。
+ * 横線は主回路の左へ長く伸ばし（文言の幅ぶん）、右へは図記号の外まで少しだけ出す。文言はその線の左上に書く。
+ * 箱の高さを2にしてあるのは、線の太さを持たせるため。置き場所は layout が決める（主遮断装置の中央）。
+ */
+export const BOUNDARY_SAFETY_LEFT = 130;
+export const BOUNDARY_SAFETY_RIGHT = 24;
+
 incomingSymbols.push(
+  {
+    id: 'boundary-safety',
+    abbr: '保安上の責任分界点',
+    nameJa: '保安上の責任分界点（3点不一致のとき）',
+    category: 'boundary',
+    tags: ['分界点', '責任分界点'],
+    box: { w: BOUNDARY_SAFETY_LEFT + BOUNDARY_SAFETY_RIGHT, h: 2 },
+    shapes: [hline(1, 0, BOUNDARY_SAFETY_LEFT + BOUNDARY_SAFETY_RIGHT)],
+    ports: [],
+    overlay: true,
+    defaultLabel: '保安上の責任分界点',
+    status: 'confirmed',
+    statusNote: '主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「保安上の責任分界点」と記載します。',
+    note: '3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。CB形ならVCB、PFS形ならLBS。',
+  },
   boundary(
     'boundary-both',
     '財産・責任分界点（3点一致）',
@@ -161,11 +185,5 @@ incomingSymbols.push(
     '財産分界点（3点不一致のとき）',
     '財産分界点',
     '3点不一致（全体の約1%）。引込点と同一地点に記載する。',
-  ),
-  boundary(
-    'boundary-safety',
-    '責任分界点（3点不一致のとき）',
-    '責任分界点',
-    '3点不一致のとき、該当するLBSまたはVCBの図記号の中央に横線を引いて記載する。',
   ),
 );

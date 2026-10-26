@@ -30,7 +30,12 @@ export type PlacementKind =
    * 発電機・太陽光・蓄電池は、変圧器のどこにつながるかが現地のメモで初めて分かるため、
    * たたき台の段階では線をつながずに置いておき、あとから図面上で結線する。
    */
-  | 'free';
+  | 'free'
+  /**
+   * 別の記号（attachTo）の上に重ねて描くだけの印。主回路の長さや並びは変えない。
+   * 3点不一致のとき、主遮断装置（VCBまたはLBS）の中央に引く責任分界点の横線がこれ。
+   */
+  | 'overlay';
 
 export interface Placement {
   role: string;
@@ -54,6 +59,8 @@ export interface Placement {
   connectFrom?: string[];
   /** 文字を記号のどちら側に書くか（既定は右） */
   labelSide?: 'left' | 'right';
+  /** kind==='overlay' のとき、重ねる先の記号のロール */
+  attachTo?: string;
   /**
    * kind==='feeder' のときの列番号の始まり。
    * 低圧の回線と、あとから結線する発電機などが同じ列に重ならないよう、
@@ -250,6 +257,27 @@ export const CB_CHAIN: Placement[] = [
 
 /** 主遮断装置の下流（PFS形・CB形で共通） */
 export const DOWNSTREAM: Placement[] = [
+  {
+    // 3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。
+    // 図記号の中央に横線を引き、その線に文言を書く（CB形ならVCB、PFS形ならLBS）
+    role: 'boundary-safety',
+    symbolId: 'boundary-safety',
+    kind: 'overlay',
+    attachTo: 'main-breaker',
+    when: {
+      all: [
+        { key: 'boundaryPattern', eq: 'split' },
+        {
+          any: [
+            { all: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'boundarySafetyDevice', eq: 'vcb' }] },
+            { all: [{ key: 'mainBreakerForm', eq: 'pfs' }, { key: 'boundarySafetyDevice', eq: 'lbs' }] },
+          ],
+        },
+      ],
+    },
+    labelTemplate: ['保安上の責任分界点'],
+    note: '3点不一致（約1%）。主遮断装置の図記号の中央に横線を引き、「保安上の責任分界点」と記載する',
+  },
   {
     role: 'ct',
     symbolId: 'ct',

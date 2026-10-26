@@ -848,5 +848,53 @@ console.log('\n■ 結線方式が未入力の変圧器');
   else console.log('  未入力のものは、円の中が空のまま');
 }
 
+/* ---------- 18. 3点不一致のときの、保安上の責任分界点 ---------- */
+console.log('\n■ 3点不一致：保安上の責任分界点（主遮断装置の中央に横線）');
+{
+  const base = (over: Answers): Answers => ({
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy',
+    ...over,
+  });
+  const cases: { name: string; a: Answers; expect: 'vcb' | 'lbs-pf' | null }[] = [
+    { name: 'CB形・VCB', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'split', boundarySafetyDevice: 'vcb' }), expect: 'vcb' },
+    { name: 'PFS形・LBS', a: base({ mainBreakerForm: 'pfs', boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }), expect: 'lbs-pf' },
+    { name: '3点一致（横線は主遮断装置に引かない）', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'coincident' }), expect: null },
+    { name: 'CB形なのにLBSと答えた（主遮断装置と合わない）', a: base({ mainBreakerForm: 'cb', boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }), expect: null },
+  ];
+  for (const c of cases) {
+    const d = layout(buildComposition(c.a), c.a);
+    const marks = d.symbols.filter((s) => s.symbolId === 'boundary-safety');
+    const main = d.symbols.find((s) => s.role === 'main-breaker');
+    if (c.expect === null) {
+      if (marks.length > 0) fail(`${c.name}：横線が引かれています`);
+      else console.log(`  ${c.name}：横線なし`);
+      continue;
+    }
+    const m = marks[0];
+    if (marks.length !== 1 || !m || !main) {
+      fail(`${c.name}：横線が ${marks.length}本です（1本のはず）`);
+      continue;
+    }
+    if (main.symbolId !== c.expect) fail(`${c.name}：主遮断装置が ${main.symbolId} です（期待 ${c.expect}）`);
+    const mainDef = getSymbolDef(main.symbolId);
+    const markDef = getSymbolDef(m.symbolId);
+    // 主遮断装置の図記号の中央の高さに、主回路の縦線をまたいで引かれていること
+    const lineY = m.y + markDef.box.h / 2;
+    const centerY = main.y + mainDef.box.h / 2;
+    const axisX = main.x + (mainDef.ports.find((p) => p.id === 'in')?.x ?? mainDef.box.w / 2);
+    const x0 = m.x;
+    const x1 = m.x + markDef.box.w;
+    if (Math.abs(lineY - centerY) > 1) fail(`${c.name}：横線の高さが図記号の中央から ${(lineY - centerY).toFixed(1)} ずれています`);
+    else if (!(x0 < axisX - 100 && x1 > axisX + 10)) fail(`${c.name}：横線が主回路の縦線をまたいでいません（${x0}〜${x1}、縦線 ${axisX}）`);
+    else if (m.label.join('') !== '保安上の責任分界点') fail(`${c.name}：文言が「${m.label.join('')}」です`);
+    else console.log(`  ${c.name}：${main.symbolId} の中央（y=${centerY}）に横線、「${m.label.join('')}」`);
+    // 文言が横線の上・左端にあること（主回路の縦線から離れていて、重ならない）
+    if (!(m.labelAt.y < lineY && m.labelAt.x <= axisX - 100 && m.labelAt.anchor === 'start')) fail(`${c.name}：文言の位置が線の左上ではありません`);
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

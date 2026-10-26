@@ -10,6 +10,7 @@ import { miscSymbols } from './defs/misc.ts';
 
 export * from './shape.ts';
 export * from './types.ts';
+export { BOUNDARY_SAFETY_LEFT } from './defs/incoming.ts';
 
 /**
  * 記号マスタ。新しい機器はここに定義を1件足すだけで、

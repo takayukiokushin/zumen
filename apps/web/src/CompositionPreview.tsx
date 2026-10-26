@@ -9,6 +9,7 @@ const KIND_LABEL: Record<string, string> = {
   inside: '内蔵',
   frame: '枠',
   feeder: '回線',
+  overlay: '横線',
 };
 
 /**

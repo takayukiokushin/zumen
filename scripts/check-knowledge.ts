@@ -144,7 +144,7 @@ const composition = buildComposition(answers);
 console.log(`\n  組み立てた構成（${composition.length}件）:`);
 for (const item of composition) {
   const kind =
-    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線', free: '独立' }[
+    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線', free: '独立', overlay: '重ね' }[
       item.kind
     ] ?? item.kind;
   const label = item.label.length ? `  「${item.label.join(' / ')}」` : '';
