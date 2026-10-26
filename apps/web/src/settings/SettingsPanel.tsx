@@ -1,6 +1,7 @@
 import { LANGS, LANG_LABEL } from '../i18n/index.ts';
 import type { Lang } from '../i18n/index.ts';
 import { useT } from '../i18n/useT.ts';
+import { useEscapeToClose } from '../useEscapeToClose.ts';
 import { TEXT_STEPS, UI_STEPS, useSettings } from './settings.tsx';
 import type { Theme } from './settings.tsx';
 
@@ -53,6 +54,7 @@ function SizeRow({
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const t = useT();
   const { settings, set, reset } = useSettings();
+  useEscapeToClose(onClose);
 
   const themes: [Theme, string][] = [
     ['light', t('settings.theme.light')],
