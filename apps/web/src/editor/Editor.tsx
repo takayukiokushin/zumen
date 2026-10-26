@@ -71,13 +71,13 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   const doc = history.present;
   const sheetTitle = {
-    title: `${String(answers.customerNameForTitleBlock ?? answers.siteName ?? answers.customerName ?? '')}　${String(
+    title: `${String(answers.customerNameForTitleBlock ?? answers.siteName ?? '')}　${String(
       answers.drawingName ?? 'キュービクル式高圧受電設備単線結線図',
     )}`.trim(),
     // 右下は常に社名（作成者や図面番号は図面に入れない方針）
     footer: COMPANY_NAME,
   };
-  const fileBase = String(answers.siteName ?? answers.customerName ?? '単線結線図');
+  const fileBase = String(answers.siteName ?? '単線結線図');
   const selected = doc.items.find((i) => i.id === selectedId) ?? null;
   /** 印刷・保存用の1枚のSVG（図枠と表題欄つき） */
   const paper: PaperSize = doc.paper ?? 'A4';

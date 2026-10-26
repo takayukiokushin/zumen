@@ -81,7 +81,6 @@ console.log(`  質問 ${QUESTIONS.length}件 / 構成ルール ${allPlacements.l
 console.log('\n■ カニエ竹原太陽光発電所（PFS形・PAS VT/LA内蔵・DGR・VCT2台）');
 
 const answers: Answers = {
-  customerName: 'カニエ竹原太陽光発電所',
   siteName: 'カニエ竹原太陽光発電所',
   receivingType: 'high',
   receivingVoltage: 6600,

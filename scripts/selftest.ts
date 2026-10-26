@@ -298,7 +298,6 @@ try {
   check('案件を作れる', Boolean(created.id));
 
   const answers = {
-    customerName: 'フジエレックス株式会社',
     siteName: '試験事業場',
     hasPas: 'yes',
     pasControl: 'dgr',
@@ -317,7 +316,7 @@ try {
     name: string;
     answers: Record<string, unknown>;
   };
-  check('保存した内容がそのまま戻る', back.answers.customerName === answers.customerName, String(back.answers.customerName ?? ''));
+  check('保存した内容がそのまま戻る', back.answers.siteName === answers.siteName, String(back.answers.siteName ?? ''));
   check('日本語が化けていない', back.name === '診断用の案件', back.name);
 
   /* ---------- 6b. 同じ人が別の端末で保存したとき ---------- */
@@ -359,7 +358,7 @@ try {
         body: JSON.stringify({ fileName: 'a.png', mediaType: 'image/png', data: Buffer.from('dummy-image').toString('base64') }),
       })
     ).json()) as { id: string };
-    await call(a, `/api/projects/${mine.id}`, { method: 'PUT', body: JSON.stringify({ answers: { customerName: '消す前の内容' } }) });
+    await call(a, `/api/projects/${mine.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '消す前の内容' } }) });
     await call(a, `/api/projects/${mine.id}/lock`, { method: 'DELETE' });
 
     const names = async (c: string) =>
@@ -386,7 +385,7 @@ try {
     check('別の人でも、戻せる', rb.ok, `${rb.status}`);
     check('戻した案件は、一覧に出る', (await names(a)).includes(mine.id));
     const back2 = (await (await call(a, `/api/projects/${mine.id}`)).json()) as { answers: Record<string, unknown>; files: unknown[] };
-    check('戻すと、回答も写真もそのまま', back2.answers.customerName === '消す前の内容' && back2.files.length === 1);
+    check('戻すと、回答も写真もそのまま', back2.answers.siteName === '消す前の内容' && back2.files.length === 1);
     check('戻したあと、ごみ箱は空', !(await trashOf(a)).projects.some((p) => p.id === mine.id));
     check('ごみ箱に無い案件は、戻せない', (await call(a, `/api/projects/${mine.id}/restore`, { method: 'POST' })).status === 404);
 

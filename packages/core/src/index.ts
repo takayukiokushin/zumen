@@ -34,12 +34,10 @@ export type BoundaryPattern =
   | 'split';      // 3点不一致（約1%）
 
 export interface HearingAnswers {
-  /** 1. お客様名称 */
-  customerName?: string;
-  /** 表題欄への記載方法（略称を使う等の指定） */
-  customerNameForTitleBlock?: string;
-  /** 2. 事業場名称・現場住所 */
+  /** 1. 事業場名称・現場住所 */
   siteName?: string;
+  /** 表題欄への記載方法（略称を使う等の指定）。入力すると、図面のタイトルの頭が事業場名称の代わりにこれになる */
+  customerNameForTitleBlock?: string;
   siteAddress?: string;
   /** 3. 受電方式・契約電力・受電電圧 */
   receivingType?: ReceivingType;

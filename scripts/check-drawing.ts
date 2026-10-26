@@ -34,7 +34,6 @@ const fail = (msg: string) => {
 
 /** 変圧器3台・コンデンサ2組・低圧回線2本の、いちばん込み入った構成 */
 const answers: Answers = {
-  customerName: '検証用',
   siteName: '検証用',
   receivingType: 'high',
   receivingVoltage: 6600,
@@ -301,7 +300,7 @@ else {
 console.log('\n■ 段ぞろえ（変圧器・コンデンサの高さ）');
 {
   const common: Answers = spreadUnits({
-    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
@@ -391,7 +390,7 @@ console.log('\n■ 記号の大きさ');
 console.log('\n■ 図面を整える');
 {
   const common: Answers = {
-    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr', pasBuiltinVt: 'yes',
     vctLocation: 'indoor', vctCount: 2, areaCount: 1, areaForm: 'cubicle', hasSiteCt: 'yes',
   };
@@ -467,7 +466,7 @@ console.log('\n■ 図面を整える');
 console.log('\n■ 斜めの線を、機器を動かして直す');
 {
   const a: Answers = spreadUnits({
-    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
@@ -542,7 +541,7 @@ console.log('\n■ 稲妻のような斜めの線をまっすぐにする');
 console.log('\n■ PASに内蔵したLA・VTが母線につながっているか');
 {
   const a: Answers = {
-    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     pasBuiltinVt: 'yes', pasBuiltinLa: 'yes',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
@@ -711,7 +710,7 @@ console.log('\n■ 変圧器の下側の縦線（つなぐものがあるとき�
 {
   const kinds = ['tr-1p', 'tr-1p-2w', 'tr-3p-yy', 'tr-3p-dd', 'tr-3p-yd', 'tr-3p-dy', 'tr-vv', 'tr-1p-parallel', 'tr-scott'];
   const common: Answers = {
-    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', transformerCount: 1, trCapacity: 100,
@@ -751,7 +750,7 @@ console.log('\n■ 変圧器の下側の縦線（つなぐものがあるとき�
 console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
 {
   const common: Answers = {
-    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', trConnection: 'tr-3p-dy', trCapacity: 100,
@@ -827,7 +826,7 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
 console.log('\n■ 結線方式が未入力の変圧器');
 {
   const a: Answers = {
-    customerName: 'x', siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', transformerCount: 3, trCapacity: 100,

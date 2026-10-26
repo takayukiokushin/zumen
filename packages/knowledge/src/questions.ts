@@ -180,16 +180,15 @@ const TRANSFORMER_CHOICES = [
 
 export const QUESTIONS: Question[] = [
   /* ---------------- お客様・現場 ---------------- */
-  { id: 'customerName', group: 'customer', label: 'お客様名称', type: 'text', ask: 'always', required: true },
+  { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true },
   {
     id: 'customerNameForTitleBlock',
     group: 'customer',
     label: '表題欄への記載名',
     type: 'text',
     ask: 'always',
-    help: 'お客様名称と異なる書き方をする場合に入力する',
+    help: '事業場名称と異なる書き方（略称など）をする場合に入力する',
   },
-  { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true },
   {
     id: 'receivingType',
     group: 'customer',
