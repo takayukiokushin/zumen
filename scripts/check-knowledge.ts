@@ -389,6 +389,21 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
 }
 
+console.log('\n■ 区分開閉器の定格電圧');
+{
+  const q = QUESTIONS.find((x) => x.id === 'pasRatedVoltage');
+  const vals = q?.options?.map((o) => o.value) ?? [];
+  if (q?.type !== 'select' || !q.dropdown || JSON.stringify(vals) !== JSON.stringify(['3300', '6600', '7200', '22000'])) {
+    fail(`区分開閉器の定格電圧が、3300・6600・7200・22000のドロップダウンになっていません（${q?.type}／${vals.join('・')}）`);
+  } else console.log('  ドロップダウン（3300V／6600V／7200V／22000V）');
+  // 選んだ値が、図面の「PAS 22000V200A」のように書かれる
+  for (const v of ['3300', '6600', '7200', '22000']) {
+    const t = String(withDerived({ sectionalizer: 'pas', pasRatedVoltage: v, pasRatedCurrent: '200' }).pasRatingText);
+    if (t !== `${v}V${200}A`) fail(`定格 ${v}V の書き方が違います（${t}）`);
+  }
+  console.log('  図面の書き方：7200V200A／22000V200A のように、選んだ電圧が書かれる');
+}
+
 console.log('\n■ 引込ケーブル（埋設・架空・なし）と定格電圧');
 {
   const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));

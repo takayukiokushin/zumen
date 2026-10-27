@@ -381,13 +381,11 @@ export const QUESTIONS: Question[] = [
     group: 'pas',
     label: '定格電圧は？',
     type: 'select',
-    options: [
-      { value: '7200', label: '7200V' },
-      { value: '6600', label: '6600V' },
-    ],
+    dropdown: true,
+    options: [3300, 6600, 7200, 22000].map((v) => ({ value: String(v), label: `${v}V` })),
     showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
     ask: 'ai-uncertain',
-    help: '7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
+    help: '3300V・6600V・7200V・22000Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
   },
   {
     id: 'pasRatedCurrent',
