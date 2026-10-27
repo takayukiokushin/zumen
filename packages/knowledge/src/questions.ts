@@ -46,6 +46,11 @@ export interface Question {
   defaultValue?: Value;
   help?: string;
   placeholder?: string;
+  /**
+   * 文字を入れる欄のとき、数字だけが入力されたら、欄を離れたときに、この文字を後ろに足す。
+   * 例：CTの変流比で「100」と入れると「100/5A」になる（2次側は必ず5A）
+   */
+  appendOnBlur?: string;
   /** この条件を満たすときだけ表示する */
   showIf?: Condition;
   ask: AskWhen;
@@ -622,7 +627,9 @@ export const QUESTIONS: Question[] = [
     group: 'receiving',
     label: 'CTの変流比',
     type: 'text',
-    placeholder: '300A/5A',
+    placeholder: '100',
+    appendOnBlur: '/5A',
+    help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、必ず5A',
     showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
     ask: 'ai-uncertain',
   },
@@ -632,6 +639,9 @@ export const QUESTIONS: Question[] = [
     label: 'VTの変圧比',
     type: 'text',
     placeholder: '6600/110V',
+    // VTの変圧比は 6600/110V のほかには無い。最初から入れておき、違うときだけ手で直す
+    defaultValue: '6600/110V',
+    help: '6600/110V に決まっているので、最初から入っている。違うときだけ手で直す',
     showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteVt', eq: 'yes' }] },
     ask: 'ai-uncertain',
   },

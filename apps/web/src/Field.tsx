@@ -121,6 +121,11 @@ export function Field({ question: question, fieldKey, value, onChange, context }
           value={String(current)}
           placeholder={q.placeholder}
           onChange={(e) => set(e.target.value || undefined)}
+          onBlur={(e) => {
+            // 数字だけが入っていたら、決まった後ろの文字を足す（CTの「100」→「100/5A」）
+            const v = e.target.value.trim();
+            if (q.appendOnBlur && /^\d+(\.\d+)?$/.test(v)) set(`${v}${q.appendOnBlur}`);
+          }}
         />
       )}
 

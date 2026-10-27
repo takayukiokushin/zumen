@@ -232,6 +232,11 @@ export function withDerived(rawAnswers: Answers): Answers {
   ].filter(Boolean);
   d.cableSpecLine = third.join(' ');
 
+  // CTの変流比。数字（100）だけなら、2次側の「/5A」を足して「100/5A」にする。
+  // 2次側は必ず5Aなので、「100/5A」「40A/5A」のように、すでに書いてあるものは、そのまま使う
+  const ct = String(answers.ctRatio ?? '').trim();
+  d.ctRatioText = /^\d+(\.\d+)?$/.test(ct) ? `${ct}/5A` : ct;
+
   // PC・LBSの定格の書き方
   //   PC  … 1行目「30A」／2行目「F:10A」
   //   LBS … 1行目「200A」／2行目「G50A T30A 40kA」（半角スペース区切り）

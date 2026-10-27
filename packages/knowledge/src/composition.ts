@@ -306,8 +306,8 @@ export const DOWNSTREAM: Placement[] = [
     symbolId: 'ct',
     kind: 'series',
     when: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
-    labelTemplate: ['CT', '{ctRatio}'],
-    props: { ratio: 'ctRatio' },
+    labelTemplate: ['CT', '{ctRatioText}'],
+    props: { ratio: 'ctRatioText' },
   },
   {
     role: 'ct-test-terminal',

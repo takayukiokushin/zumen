@@ -95,7 +95,7 @@ export const instrumentSymbols: SymbolDef[] = [
       { id: 'out', x: 24, y: 44, dir: 'down', role: 'line' },
       { id: 'sec', x: 56, y: 22, dir: 'right', role: 'secondary', label: '試験端子・OCRへ' },
     ],
-    fields: [{ key: 'ratio', label: '変流比', type: 'text', help: '図面の記載例: 300A/5A' }],
+    fields: [{ key: 'ratio', label: '変流比', type: 'text', help: '図面の記載例: 100/5A（2次側は必ず5A）' }],
     status: 'confirmed',
     statusNote: '実図面のとおり、導体に巻いたコイルの形にしました。',
     note: 'CB形では、VCBのすぐ下にCT、その次に試験端子を挟んでOCRが入る。',

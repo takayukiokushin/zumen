@@ -391,6 +391,32 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
 }
 
+console.log('\n■ VTの変圧比（6600/110V固定の初期値）とCTの変流比（/5Aを自動で付ける）');
+{
+  const vt = QUESTIONS.find((q) => q.id === 'vtRatio');
+  if (vt?.defaultValue !== '6600/110V' || vt.type !== 'text') fail(`VTの変圧比の初期値が 6600/110V の入力欄になっていません（${String(vt?.defaultValue)}）`);
+  else console.log('  VTの変圧比：最初から 6600/110V が入っていて、手で直せる（文字を入れる欄）');
+  const ct = QUESTIONS.find((q) => q.id === 'ctRatio');
+  if (ct?.appendOnBlur !== '/5A') fail('CTの変流比の欄に、「/5A」を自動で付ける指定がありません');
+  const text = (v: unknown) => String(withDerived({ ctRatio: v as string }).ctRatioText);
+  const rows: [string, unknown, string][] = [
+    ['数字だけ（文字）', '100', '100/5A'],
+    ['数字だけ（数）', 100, '100/5A'],
+    ['小数', '7.5', '7.5/5A'],
+    ['すでに /5A まで書いてある', '100/5A', '100/5A'],
+    ['古い案件の書き方', '40A/5A', '40A/5A'],
+    ['空', '', ''],
+  ];
+  for (const [name, input, want] of rows) {
+    if (text(input) !== want) fail(`CT ${name}：「${text(input)}」になっています（期待：「${want}」）`);
+  }
+  console.log('  CTの変流比：100 → 100/5A（数でも文字でも）。すでに /5A まで書いてあるもの・古い案件の書き方は、そのまま。空は空');
+  const ctLabel = buildComposition({ ...answers, mainBreakerForm: 'cb', ctRatio: '100' }).find((i) => i.role === 'ct')?.label ?? [];
+  const vtLabel = buildComposition({ ...answers, mainBreakerForm: 'cb', vtRatio: '6600/110V' }).find((i) => i.role === 'ds-vt-pf')?.label ?? [];
+  if (JSON.stringify(ctLabel) !== JSON.stringify(['CT', '100/5A'])) fail(`CTの図面の文字が違います（${ctLabel.join(' / ')}）`);
+  else console.log(`  図面の文字：CT → ${ctLabel.join(' / ')}、VT → ${vtLabel.join(' / ')}`);
+}
+
 console.log('\n■ 発電機・太陽光発電設備：「なし」のときは、入力欄を出さない');
 {
   const shown = (a: Answers) => visibleQuestions(a, {});
