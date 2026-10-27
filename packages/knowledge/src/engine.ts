@@ -59,7 +59,11 @@ export function normalizeAnswers(answers: Answers): Answers {
 export function visibleQuestions(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
   const answers = normalizeAnswers(rawAnswers);
   const resolved = opts.resolvedByAi ?? new Set<string>();
+  // まとまり（発電機・太陽光発電設備など）に付いている表示条件。
+  // 「発電機はありますか？」が「いいえ」なら、発電機のまとまり全体（台数・用途・容量…）を出さない
+  const groupCond = new Map(QUESTION_GROUPS.filter((g) => g.showIf).map((g) => [g.id, g.showIf]));
   return QUESTIONS.filter((q) => {
+    if (!evaluate(groupCond.get(q.group), answers)) return false;
     if (!evaluate(q.showIf, answers)) return false;
     if (q.ask === 'ai-uncertain' && resolved.has(q.id)) return false;
     return true;

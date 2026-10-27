@@ -391,6 +391,36 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
 }
 
+console.log('\n■ 発電機・太陽光発電設備：「なし」のときは、入力欄を出さない');
+{
+  const shown = (a: Answers) => visibleQuestions(a, {});
+  const ofGroup = (a: Answers, g: string) => shown(a).filter((q) => q.group === g).map((q) => q.id);
+  const rows: [string, Answers, { gen: boolean; pv: boolean }][] = [
+    ['まだ何も答えていない', {}, { gen: false, pv: false }],
+    ['発電機なし・太陽光なし', { hasGenerator: 'no', hasPv: 'no' }, { gen: false, pv: false }],
+    ['発電機あり', { hasGenerator: 'yes', hasPv: 'no' }, { gen: true, pv: false }],
+    ['太陽光あり', { hasGenerator: 'no', hasPv: 'yes' }, { gen: false, pv: true }],
+    ['両方あり', { hasGenerator: 'yes', hasPv: 'yes' }, { gen: true, pv: true }],
+  ];
+  for (const [name, a, want] of rows) {
+    const gen = ofGroup(a, 'generator');
+    const pv = ofGroup(a, 'pv');
+    if ((gen.length > 0) !== want.gen) fail(`${name}：発電機の入力欄を${gen.length > 0 ? '出して' : '出さずに'}います（期待：${want.gen ? '出す' : '出さない'}）`);
+    else if ((pv.length > 0) !== want.pv) fail(`${name}：PCSの入力欄を${pv.length > 0 ? '出して' : '出さずに'}います（期待：${want.pv ? '出す' : '出さない'}）`);
+    else console.log(`  ${name}：発電機の入力欄 ${want.gen ? `あり（${gen.length}問）` : 'なし'}／PCSの入力欄 ${want.pv ? `あり（${pv.length}問）` : 'なし'}`);
+  }
+  // 「ありますか？」の質問そのものは、いつも出る。なしのときに、必須の入力漏れとして数えない
+  const always = ['hasGenerator', 'hasPv', 'hasBattery'];
+  const miss = new Set(missingRequired({ hasGenerator: 'no', hasPv: 'no' }).map((q) => q.id));
+  const ids = new Set(shown({ hasGenerator: 'no', hasPv: 'no' }).map((q) => q.id));
+  if (!always.every((id) => ids.has(id))) fail('「ありますか？」の質問が出なくなっています');
+  if (miss.has('generatorCapacity') || miss.has('generatorUsage') || miss.has('pcsCapacity')) fail('なしのときに、発電機・PCSの質問が、必須の入力漏れになっています');
+  // 蓄電所：「いいえ」なら、規模や変圧器の質問を出さない
+  const bat = (a: Answers) => shown(a).filter((q) => ['batteryCapacity', 'batteryTransformer'].includes(q.id)).map((q) => q.id);
+  if (bat({ hasBattery: 'no' }).length > 0 || bat({ hasBattery: 'yes' }).length === 0) fail('蓄電所の質問の出方が違います');
+  else console.log('  「ありますか？」の3つの質問は、いつも出る。蓄電所も、いいえなら規模・変圧器の質問は出ない');
+}
+
 console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／電灯および動力のV結線の容量');
 {
   const conn = QUESTIONS.find((q) => q.id === 'trConnection')!;
