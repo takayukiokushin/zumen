@@ -437,7 +437,7 @@ console.log('\n■ CT・VTの台数（「CT×2」「VT＋PF×2」）と、受電
   if (pfs[0] !== 'VT＋PF×2') fail(`PFS形のVT：「${pfs[0]}」です（「VT＋PF×2」のはず）`);
   for (const id of ['vtCount', 'ctCount']) {
     const q = QUESTIONS.find((x) => x.id === id);
-    if (!q || q.type !== 'select' || q.defaultValue !== '1' || !q.showIf) fail(`${id} の質問が、台数を選ぶ形（初期値1・条件つき）になっていません`);
+    if (!q || q.type !== 'select' || q.defaultValue !== '2' || !q.showIf) fail(`${id} の質問が、台数を選ぶ形（初期値2・条件つき）になっていません`);
   }
   // 受電設備の構成が、見出しつきの行に分かれ、同じ見出しの質問が続けて並んでいる
   const recv = QUESTIONS.filter((q) => q.group === 'receiving');
