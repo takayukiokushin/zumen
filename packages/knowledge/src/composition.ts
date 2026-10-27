@@ -192,6 +192,8 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'vct',
     kind: 'series',
     when: { key: 'vctLocation', eq: 'pole' },
+    // 図記号の中に「VCT」の文字は無いので、右横に書く
+    labelTemplate: ['VCT'],
     repeatCountKey: 'vctCount',
     props: { location: 'vctLocation' },
   },
@@ -210,8 +212,13 @@ export const UPSTREAM: Placement[] = [
     role: 'area-frame',
     symbolId: 'enclosure-cubicle',
     kind: 'frame',
+    // 高圧マンション（電柱上構成）は、箱やエリアで分かれているのではなく、区分開閉器と同じ場所
+    // （電柱の上）に設備があるので、エリアの外枠は描かない
+    when: {
+      not: { any: [{ key: 'areaForm', eq: 'apartment-pole' }, { key: 'mainBreakerForm', eq: 'pole-top' }] },
+    },
     labelTemplate: ['{areaLabel}'],
-    note: 'この枠から下がキュービクル（電気室）の中',
+    note: 'この枠から下がキュービクル（電気室）の中。高圧マンション（電柱上構成）のときは描かない',
   },
   {
     role: 'cable-head-site',
@@ -225,6 +232,7 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'vct',
     kind: 'series',
     when: { key: 'vctLocation', eq: 'indoor' },
+    labelTemplate: ['VCT'],
     repeatCountKey: 'vctCount',
     props: { location: 'vctLocation' },
     note: 'PFS形ならケーブルとLBSの間、CB形ならケーブルとDSの間に入る',

@@ -1196,5 +1196,47 @@ console.log('\n■ 引込ケーブル：埋設（点線）・架空（実線）�
   }
 }
 
+/* ---------- 25. 受電設備の枠（エリアの外枠）と、VCTの文字 ---------- */
+console.log('\n■ 受電設備の枠は高圧マンション（電柱上構成）では描かない／VCTの図記号の右横に「VCT」と書く');
+{
+  const base: Answers = { ...answers, areaCount: 1 };
+  const frames = (a: Answers) => layout(buildComposition(a), a).frames.length;
+  const cases: [string, Answers, number][] = [
+    ['キュービクル式', { ...base, areaForm: 'cubicle' }, 1],
+    ['オープンフレーム式', { ...base, areaForm: 'room-open' }, 1],
+    ['形態が未入力', { ...base, areaForm: undefined }, 1],
+    ['高圧マンション（電柱上構成）', { ...base, areaForm: 'apartment-pole' }, 0],
+    ['主遮断装置が「それ以外（電柱上構成）」', { ...base, areaForm: 'cubicle', mainBreakerForm: 'pole-top' }, 0],
+  ];
+  for (const [name, a, want] of cases) {
+    const n = frames(a);
+    if (n !== want) fail(`${name}：受電設備の枠が ${n}個です（${want}個のはず）`);
+    else console.log(`  ${name}：受電設備の枠 ${want ? 'あり' : 'なし'}`);
+  }
+  // 枠が無いとき、図面の文字（エリアの名前）も出ない・ほかの記号はそのまま描かれる
+  const apt = layout(buildComposition({ ...base, areaForm: 'apartment-pole' }), { ...base, areaForm: 'apartment-pole' });
+  if (apt.symbols.length < 8) fail('高圧マンションのとき、ほかの記号まで消えています');
+  const found = findLabelCollisions(apt);
+  if (found.length) fail(`高圧マンション：${[...new Set(found)].slice(0, 2).join(' / ')}`);
+
+  // VCT：すべてのVCTの右横に「VCT」と書く（電柱上・受電設備内の両方、2台でも）
+  for (const [name, a] of [
+    ['VCT 電柱上・1台', { ...base, vctLocation: 'pole', vctCount: 1 }],
+    ['VCT 電柱上・2台', { ...base, vctLocation: 'pole', vctCount: 2 }],
+    ['VCT 受電設備内・1台', { ...base, vctLocation: 'indoor', vctCount: 1 }],
+    ['VCT 受電設備内・2台', { ...base, vctLocation: 'indoor', vctCount: 2 }],
+  ] as [string, Answers][]) {
+    const d = layout(buildComposition(a), a);
+    const vcts = d.symbols.filter((s) => s.symbolId === 'vct');
+    const want = Number(a.vctCount);
+    const bad = vcts.filter((s) => s.label[0] !== 'VCT' || s.labelAt.anchor !== 'start' || s.labelAt.x < s.x + getSymbolDef('vct').box.w);
+    if (vcts.length !== want) fail(`${name}：VCTの記号が ${vcts.length}個です（${want}個のはず）`);
+    else if (bad.length) fail(`${name}：「VCT」の文字が、図記号の右横にありません`);
+    else console.log(`  ${name}：図記号 ${want}個、すべての右横に「VCT」`);
+    const cols = findLabelCollisions(d);
+    if (cols.length) fail(`${name}：${[...new Set(cols)].slice(0, 2).join(' / ')}`);
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

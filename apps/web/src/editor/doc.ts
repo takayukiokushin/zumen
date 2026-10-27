@@ -1,5 +1,5 @@
 import { getSymbol } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
 
 /**
@@ -705,12 +705,20 @@ export function docBounds(doc: Doc): { x0: number; y0: number; x1: number; y1: n
   let y0 = Infinity;
   let x1 = -Infinity;
   let y1 = -Infinity;
+  const ext = (a: number, b: number, c: number, d: number) => {
+    x0 = Math.min(x0, a);
+    y0 = Math.min(y0, b);
+    x1 = Math.max(x1, c);
+    y1 = Math.max(y1, d);
+  };
   for (const it of doc.items) {
     const b = itemBounds(it);
-    x0 = Math.min(x0, b.x0);
-    y0 = Math.min(y0, b.y0);
-    x1 = Math.max(x1, b.x1);
-    y1 = Math.max(y1, b.y1);
+    ext(b.x0, b.y0, b.x1, b.y1);
+    // 記号の横の文字も、図面の範囲に入れる（枠が無いとき、左端の文字が画面や用紙で切れないように）
+    if (it.kind === 'symbol' && it.label.length > 0) {
+      const r = labelRect({ x: it.x + it.labelDx, y: it.y + it.labelDy, anchor: it.labelAnchor }, it.label);
+      ext(r.x0, r.y0, r.x1, r.y1);
+    }
   }
   if (!Number.isFinite(x0)) return { x0: 0, y0: 0, x1: 100, y1: 100 };
   return { x0, y0, x1, y1 };

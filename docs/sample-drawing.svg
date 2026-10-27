@@ -116,6 +116,7 @@
       <circle cx="22" cy="42" r="9" fill="none" stroke-width="1" />
       <line x1="31" y1="42" x2="72" y2="42" stroke-width="1" />
     </g>
+    <text x="60" y="520" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="60" dy="0">VCT</tspan></text>
     <g transform="translate(-22 590)">
       <line x1="22" y1="0" x2="22" y2="64" stroke-width="1" />
       <rect x="6" y="8" width="56" height="48" fill="none" stroke-width="1" />
@@ -126,6 +127,7 @@
       <circle cx="22" cy="42" r="9" fill="none" stroke-width="1" />
       <line x1="31" y1="42" x2="72" y2="42" stroke-width="1" />
     </g>
+    <text x="60" y="600" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="60" dy="0">VCT</tspan></text>
     <g transform="translate(-24 670)">
       <line x1="24" y1="0" x2="24" y2="11.5" stroke-width="1" />
       <line x1="15" y1="11.5" x2="33" y2="11.5" stroke-width="1" />
