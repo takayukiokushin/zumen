@@ -62,7 +62,7 @@ export interface FieldDef {
   key: string;
   label: string;
   type: 'text' | 'number' | 'select' | 'boolean';
-  options?: { value: string; label: string }[];
+  options?: { value: string; label: string; /** 図面に書く文字（無ければ value をそのまま書く） */ text?: string }[];
   /** selectのとき、一覧にない値の手入力を許すか */
   allowFreeInput?: boolean;
   unit?: string;
@@ -105,6 +105,13 @@ export interface SymbolDef {
   slots?: Slot[];
   /** 記号の脇に既定で表示する文字 */
   defaultLabel?: string;
+  /**
+   * 編集画面で記号を足したときに、最初から記号の脇へ出す文字の雛形（1行ずつ）。
+   * {キー} は fields の入力値に置き換わる。値が空のところは単位などの文字だけが残る
+   * （例：「{ratedCurrent}A」→「A」。あとから数字を入れると「100A」になる）。
+   * 置き換えたあとに空になった行は書かない。
+   */
+  labelLines?: string[];
   /** 作図上の注意・ナレッジベース由来の補足 */
   note?: string;
   /** 別表記（同じ機器の描き方違い）のとき、基準となる記号ID */
@@ -137,4 +144,33 @@ export function validateSymbol(def: SymbolDef): string[] {
   }
   if (def.box.w <= 0 || def.box.h <= 0) errors.push(`${def.id}: boxの大きさが不正`);
   return errors;
+}
+
+/** 雛形（labelLines）に入っている {キー} を取り出す */
+const placeholdersOf = (lines: string[]): string[] => [...new Set(lines.flatMap((l) => [...l.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!)))];
+
+/** 編集画面で数字などを入れる欄（雛形に使われている項目だけ） */
+export function labelFields(def: SymbolDef): FieldDef[] {
+  const keys = new Set(placeholdersOf(def.labelLines ?? []));
+  return (def.fields ?? []).filter((f) => keys.has(f.key));
+}
+
+/** 記号を足した直後の入力値（既定値のある項目だけ） */
+export function initialLabelValues(def: SymbolDef): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const f of labelFields(def)) if (f.defaultValue !== undefined) values[f.key] = String(f.defaultValue);
+  return values;
+}
+
+/** 入力値を雛形に当てはめて、図面に書く行を作る。雛形が無ければ空 */
+export function fillLabelLines(def: SymbolDef, values: Record<string, string>): string[] {
+  const fields = new Map((def.fields ?? []).map((f) => [f.key, f]));
+  const text = (key: string): string => {
+    const v = (values[key] ?? '').trim();
+    if (v === '') return '';
+    return fields.get(key)?.options?.find((o) => o.value === v)?.text ?? v;
+  };
+  return (def.labelLines ?? [])
+    .map((line) => line.replace(/\{(\w+)\}/g, (_, key: string) => text(key)))
+    .filter((line) => line.trim() !== '');
 }

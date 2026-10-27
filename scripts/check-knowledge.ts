@@ -9,7 +9,7 @@
  *
  *   node --experimental-strip-types scripts/check-knowledge.ts
  */
-import { findSymbol, SYMBOLS } from '../packages/symbols/src/index.ts';
+import { fillLabelLines, findSymbol, initialLabelValues, labelFields, SYMBOLS } from '../packages/symbols/src/index.ts';
 import {
   buildComposition,
   evaluate,
@@ -655,6 +655,41 @@ console.log('\n■ 図面名称（受電設備の形態から自動で決まる�
     if (got !== want) fail(`${name}：「${got}」になっています（期待：「${want}」）`);
     else console.log(`  ${name}：${got}`);
   }
+}
+
+console.log('\n■ 編集画面で記号を足したときの文字（定格電圧・定格電流などの入力欄）');
+{
+  const withLines = SYMBOLS.filter((d) => d.labelLines);
+  for (const d of withLines) {
+    const keys = new Set((d.fields ?? []).map((f) => f.key));
+    const used = [...new Set((d.labelLines ?? []).flatMap((l) => [...l.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!)))];
+    const unknown = used.filter((k) => !keys.has(k));
+    if (unknown.length > 0) fail(`${d.id}：文字の雛形に、入力欄のない項目 ${unknown.join('、')} があります`);
+    const blank = fillLabelLines(d, initialLabelValues(d));
+    if (blank.length === 0) fail(`${d.id}：足した直後に何も書かれません`);
+    if (blank.some((l) => l.includes('{'))) fail(`${d.id}：足した直後の文字に {…} が残っています`);
+    if (labelFields(d).length !== used.length) fail(`${d.id}：入力欄の数が雛形と合いません`);
+  }
+  // 定格電圧・定格電流の入力欄を持つ記号は、すべて雛形も持っている（足しても空白のままにしない）
+  for (const d of SYMBOLS) {
+    const rated = (d.fields ?? []).some((f) => f.key === 'ratedVoltage' || f.key === 'ratedCurrent');
+    if (rated && !d.labelLines) fail(`${d.id}：定格の入力欄があるのに、足したときの文字の雛形がありません`);
+  }
+  const at = (id: string, v: Record<string, string>) => fillLabelLines(findSymbol(id)!, { ...initialLabelValues(findSymbol(id)!), ...v });
+  const rows: [string, string[], string[]][] = [
+    ['PC（足した直後）', at('pc', {}), ['PC', '7200V', 'A', 'F:A']],
+    ['PC（数字を入れたあと）', at('pc', { ratedCurrent: '100', fuseCurrent: '50' }), ['PC', '7200V', '100A', 'F:50A']],
+    ['DS（足した直後）', at('ds', {}), ['DS', '7200V', 'A']],
+    ['LBS（PF付）', at('lbs-pf', { ratedCurrent: '200', fuseSpec: '7200V G50A T40A' }), ['LBS', '7200V', '200A', 'PF×3', '7200V G50A T40A']],
+    ['変圧器（用途を選ぶと、日本語で書く）', at('tr-3p-dy', { usage: 'light', capacity: '100' }), ['電灯', 'Tr', '3φ100kVA']],
+    ['CT（変流比が空なら、記号名だけ）', at('ct', {}), ['CT']],
+    ['VT（変圧比は 6600/110V が最初から）', at('vt', {}), ['VT', '6600/110V']],
+  ];
+  for (const [name, got, want] of rows) {
+    if (JSON.stringify(got) !== JSON.stringify(want)) fail(`${name}：「${got.join(' / ')}」になっています（期待：「${want.join(' / ')}」）`);
+    else console.log(`  ${name}：${got.join(' / ')}`);
+  }
+  console.log(`  雛形のある記号：${withLines.length}種類`);
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

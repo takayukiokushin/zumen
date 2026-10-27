@@ -20,6 +20,7 @@ const COMP_LEFT = COMP_CX - COMP_SIDE / 2;
 export const miscSymbols: SymbolDef[] = [
   {
     id: 'sr',
+    labelLines: ['SR', '{phase}{capacity}kvar', '{ratedVoltage}V'],
     abbr: 'SR',
     nameJa: '直列リアクトル',
     category: 'compensation',
@@ -48,6 +49,7 @@ export const miscSymbols: SymbolDef[] = [
   },
   {
     id: 'sc',
+    labelLines: ['SC', '{phase}{capacity}kvar', '{ratedVoltage}V'],
     abbr: 'SC',
     nameJa: '進相コンデンサ',
     category: 'compensation',
@@ -75,6 +77,7 @@ export const miscSymbols: SymbolDef[] = [
   },
   {
     id: 'generator',
+    labelLines: ['G', '{capacity}kVA', '{place}'],
     abbr: 'G',
     nameJa: '発電機',
     category: 'source',
@@ -109,6 +112,7 @@ export const miscSymbols: SymbolDef[] = [
   },
   {
     id: 'pv',
+    labelLines: ['PV', '{capacity}kW'],
     abbr: 'PV',
     nameJa: '太陽電池パネル',
     category: 'source',
@@ -129,6 +133,7 @@ export const miscSymbols: SymbolDef[] = [
   },
   {
     id: 'pcs',
+    labelLines: ['PCS', '{capacity}'],
     abbr: 'PCS',
     nameJa: 'パワーコンディショナ',
     category: 'source',
@@ -153,6 +158,7 @@ export const miscSymbols: SymbolDef[] = [
   },
   {
     id: 'battery-unit',
+    labelLines: ['蓄電池ユニット', '{unitNo}', '{capacity}kWh'],
     abbr: 'BATT',
     nameJa: '蓄電池ユニット',
     category: 'source',

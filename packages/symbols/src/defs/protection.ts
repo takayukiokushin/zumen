@@ -64,6 +64,7 @@ export const protectionSymbols: SymbolDef[] = [
   ...RELAY_TYPES.map(relay),
   {
     id: 'la',
+    labelLines: ['LA', '{ratedVoltage}V'],
     abbr: 'LA',
     nameJa: '避雷器',
     category: 'protection',

@@ -77,6 +77,7 @@ export const instrumentSymbols: SymbolDef[] = [
   },
   {
     id: 'ct',
+    labelLines: ['CT', '{ratio}'],
     abbr: 'CT',
     nameJa: '計器用変流器',
     category: 'instrument',
@@ -153,6 +154,7 @@ export const instrumentSymbols: SymbolDef[] = [
   },
   {
     id: 'vt',
+    labelLines: ['VT', '{ratio}'],
     abbr: 'VT',
     nameJa: '計器用変圧器',
     nameFormal: 'ボルテージトランスフォーマー',
@@ -164,7 +166,7 @@ export const instrumentSymbols: SymbolDef[] = [
       { id: 'in', x: 0, y: 15, dir: 'left', role: 'line' },
       { id: 'sec', x: 60, y: 15, dir: 'right', role: 'secondary', label: '計器・継電器へ' },
     ],
-    fields: [{ key: 'ratio', label: '変圧比', type: 'text', help: '図面の記載例: 6600/110V' }],
+    fields: [{ key: 'ratio', label: '変圧比', type: 'text', defaultValue: '6600/110V', help: '図面の記載例: 6600/110V' }],
     status: 'confirmed',
     statusNote: '見本図面のとおり、横向きに並べた二重丸（接地なし）にしました。',
     note: '母線から横に分岐し、手前にPFが入る。図面の記載例「VT＋PF 6600/110V」。CB形ではDSの次に並列接続（直列ではない）。',

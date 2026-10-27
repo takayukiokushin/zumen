@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CATEGORY_LABEL, SYMBOLS, getSymbol, symbolToSvg } from '@zumen/symbols';
+import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
@@ -11,7 +11,7 @@ import { buildSheetSvg, downloadPng, downloadSvg } from './exportSheet.ts';
 import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, rotateSymbol, setLabel, snapWireToPorts, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, rotateSymbol, setLabel, setLabelValue, snapWireToPorts, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -430,6 +430,62 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                   <p className="hint">
                     {getSymbol(selectedSymbol.symbolId).nameJa}
                   </p>
+                  {(() => {
+                    const def = getSymbol(selectedSymbol.symbolId);
+                    const fields = labelFields(def);
+                    if (fields.length === 0) return null;
+                    const values = selectedSymbol.values;
+                    return (
+                      <div className="ratings">
+                        <label className="lbl">{t('editor.ratings')}</label>
+                        {values ? (
+                          <>
+                            <p className="hint">{t('editor.ratings.help')}</p>
+                            {fields.map((f) => {
+                              const listId = `rating-${selectedSymbol.id}-${f.key}`;
+                              const free = f.type !== 'select' || f.allowFreeInput;
+                              return (
+                                <label className="rating" key={f.key}>
+                                  <span>{f.label}</span>
+                                  {f.type === 'select' && !f.allowFreeInput ? (
+                                    <select value={values[f.key] ?? ''} onChange={(e) => apply(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value))}>
+                                      <option value="">{t('editor.ratings.blank')}</option>
+                                      {f.options?.map((o) => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      inputMode={f.type === 'number' ? 'decimal' : undefined}
+                                      list={f.type === 'select' ? listId : undefined}
+                                      value={values[f.key] ?? ''}
+                                      onChange={(e) => apply(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value))}
+                                    />
+                                  )}
+                                  {f.unit && <span className="unit">{f.unit}</span>}
+                                  {free && f.type === 'select' && (
+                                    <datalist id={listId}>
+                                      {f.options?.map((o) => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                      ))}
+                                    </datalist>
+                                  )}
+                                </label>
+                              );
+                            })}
+                          </>
+                        ) : (
+                          <>
+                            <p className="hint">{t('editor.ratings.manual')}</p>
+                            <button type="button" className="btn" onClick={() => apply(resetLabelFromFields(doc, selectedSymbol.id))}>
+                              {t('editor.ratings.reset')}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <label className="lbl">{t('editor.labelText')}</label>
                   <textarea
                     rows={4}

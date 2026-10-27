@@ -73,8 +73,8 @@ const USAGE: FieldDef = {
   label: '用途',
   type: 'select',
   options: [
-    { value: 'light', label: '電灯' },
-    { value: 'power', label: '動力' },
+    { value: 'light', label: '電灯', text: '電灯' },
+    { value: 'power', label: '動力', text: '動力' },
   ],
   allowFreeInput: true,
   help: '図面の1行目に記載する（例: 電灯）',
@@ -88,6 +88,9 @@ const COMPOSITION: FieldDef = {
   help: '単相変圧器を組み合わせて構成する場合に記載する。例: 単相変圧器×3',
 };
 
+const TR_1P_LINES = ['{usage}', 'Tr', '1φ{capacity}kVA', '{voltage}'];
+const TR_3P_LINES = ['{usage}', 'Tr', '3φ{capacity}kVA', '{voltage}', '{composition}'];
+
 type Conn = 'y' | 'd';
 const connMark = (conn: Conn, cy: number): Shape[] =>
   conn === 'y' ? starMark(CX, cy, 6 * SCALE) : [deltaMark(CX, cy, 7 * SCALE)];
@@ -96,6 +99,7 @@ const connMark = (conn: Conn, cy: number): Shape[] =>
 const threePhase = (id: string, primary: Conn, secondary: Conn, label: string): SymbolDef => ({
   id,
   abbr: 'Tr',
+  labelLines: TR_3P_LINES,
   nameJa: `三相変圧器（${label}）`,
   category: 'transformer',
   tags: ['変圧器', '三相', label],
@@ -120,6 +124,7 @@ export const transformerSymbols: SymbolDef[] = [
      * 入力が済めば、その結線方式の記号に入れ替わる。
      */
     id: 'tr-blank',
+    labelLines: TR_3P_LINES,
     abbr: 'Tr',
     nameJa: '変圧器（結線方式はこれから）',
     category: 'transformer',
@@ -136,6 +141,7 @@ export const transformerSymbols: SymbolDef[] = [
   },
   {
     id: 'tr-1p',
+    labelLines: TR_1P_LINES,
     abbr: 'Tr',
     nameJa: '単相変圧器（単相三線式）',
     category: 'transformer',
@@ -150,6 +156,7 @@ export const transformerSymbols: SymbolDef[] = [
   },
   {
     id: 'tr-1p-2w',
+    labelLines: TR_1P_LINES,
     abbr: 'Tr',
     nameJa: '単相変圧器（単相2線式）',
     category: 'transformer',
@@ -169,6 +176,7 @@ export const transformerSymbols: SymbolDef[] = [
   threePhase('tr-3p-dy', 'd', 'y', 'Δ-Y結線'),
   {
     id: 'tr-vv',
+    labelLines: ['{usage}', 'Tr', '1φ{capacity1}kVA', '1φ{capacity2}kVA', '{voltage}', '{composition}'],
     abbr: 'Tr',
     nameJa: '三相変圧器（V結線）',
     category: 'transformer',
@@ -177,6 +185,7 @@ export const transformerSymbols: SymbolDef[] = [
     shapes: body([text(CX, CY1, 'V', { size: 13 * SCALE })], [text(CX, CY2, 'V', { size: 13 * SCALE })]),
     ports: PORTS,
     fields: [
+      USAGE,
       { key: 'capacity1', label: '1台目の容量', type: 'number', unit: 'kVA' },
       { key: 'capacity2', label: '2台目の容量', type: 'number', unit: 'kVA' },
       VOLTAGE,
@@ -188,6 +197,7 @@ export const transformerSymbols: SymbolDef[] = [
   },
   {
     id: 'tr-1p-parallel',
+    labelLines: TR_1P_LINES,
     abbr: 'Tr',
     nameJa: '単相変圧器 並行運転（倍容量）',
     category: 'transformer',
@@ -219,6 +229,7 @@ export const transformerSymbols: SymbolDef[] = [
   },
   {
     id: 'tr-scott',
+    labelLines: ['Tr', '3φ{capacity}kVA', '{voltage}'],
     abbr: 'Tr',
     nameJa: 'スコット変圧器（低圧）',
     category: 'transformer',

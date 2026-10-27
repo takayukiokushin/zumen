@@ -1,4 +1,5 @@
-import { getSymbol } from '@zumen/symbols';
+import { fillLabelLines, getSymbol, initialLabelValues } from '@zumen/symbols';
+import type { SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
 
@@ -26,6 +27,12 @@ export interface DocSymbol {
   y: number;
   rotate: number;
   label: string[];
+  /**
+   * 定格電圧・定格電流などの入力値（キーは記号定義の fields）。
+   * あるときは、label を入力値から作り直す（足した記号の、数字の入力欄に使う）。
+   * 文字を手で書き換えたときは無くなる
+   */
+  values?: Record<string, string>;
   labelDx: number;
   labelDy: number;
   labelAnchor: 'start' | 'middle' | 'end';
@@ -478,7 +485,9 @@ export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
   if (!old || old.kind !== 'symbol' || old.symbolId === symbolId) return doc;
 
   const oldPorts = portsOf(old);
-  const next: DocSymbol = { ...old, symbolId };
+  const { values: oldValues, ...oldRest } = old;
+  // 入力欄から文字を作っていた記号は、差し替え先の記号の入力欄で作り直す
+  const next: DocSymbol = { ...oldRest, symbolId, ...(oldValues ? labelFromFields(getSymbol(symbolId)) : {}) };
   const newPorts = portsOf(next);
   if (oldPorts.length === 0 || newPorts.length === 0) {
     return applyAnchors({ ...doc, items: doc.items.map((it) => (it.id === id ? next : it)) });
@@ -544,6 +553,13 @@ export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
   return applyAnchors({ ...doc, items });
 };
 
+/** 雛形のある記号は、足した直後から「V」「A」などの文字を出す。無い記号は何も書かない */
+const labelFromFields = (def: SymbolDef): Pick<DocSymbol, 'label' | 'values'> => {
+  if (!def.labelLines) return { label: [] };
+  const values = initialLabelValues(def);
+  return { label: fillLabelLines(def, values), values };
+};
+
 export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { doc: Doc; id: string } => {
   const def = getSymbol(symbolId);
   const id = nextId('sym');
@@ -554,7 +570,7 @@ export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { d
     x: snap(x - def.box.w / 2),
     y: snap(y - def.box.h / 2),
     rotate: 0,
-    label: [],
+    ...labelFromFields(def),
     labelDx: def.box.w + 10,
     labelDy: 10,
     labelAnchor: 'start',
@@ -569,9 +585,33 @@ export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Do
 
 export const setLabel = (doc: Doc, id: string, lines: string[]): Doc => ({
   ...doc,
-  items: doc.items.map((it) =>
-    it.id !== id ? it : it.kind === 'symbol' ? { ...it, label: lines } : it.kind === 'text' ? { ...it, lines } : it,
-  ),
+  items: doc.items.map((it) => {
+    if (it.id !== id) return it;
+    if (it.kind === 'symbol') {
+      // 文字を直接書き換えたら、入力欄から文字を作り直さない（書き換えた内容を消さないため）
+      const { values: _manual, ...rest } = it;
+      return { ...rest, label: lines };
+    }
+    return it.kind === 'text' ? { ...it, lines } : it;
+  }),
+});
+
+/** 定格などの入力欄を1つ変えて、図面に書く文字を作り直す */
+export const setLabelValue = (doc: Doc, id: string, key: string, value: string): Doc => ({
+  ...doc,
+  items: doc.items.map((it) => {
+    if (it.id !== id || it.kind !== 'symbol' || !it.values) return it;
+    const values = { ...it.values };
+    if (value.trim() === '') delete values[key];
+    else values[key] = value;
+    return { ...it, values, label: fillLabelLines(getSymbol(it.symbolId), values) };
+  }),
+});
+
+/** 手で書き換えた文字を捨てて、入力欄から作る形に戻す */
+export const resetLabelFromFields = (doc: Doc, id: string): Doc => ({
+  ...doc,
+  items: doc.items.map((it) => (it.id === id && it.kind === 'symbol' ? { ...it, ...labelFromFields(getSymbol(it.symbolId)) } : it)),
 });
 
 /** 記号を回す。つないである線の端も、回ったあとの接続点について回る */

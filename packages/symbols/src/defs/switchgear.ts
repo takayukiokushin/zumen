@@ -79,6 +79,7 @@ const pasDef = (
   return {
     id,
     abbr: 'PAS',
+    labelLines: ['PAS', '{ratedVoltage}V', '{ratedCurrent}A'],
     nameJa: '区分開閉器（高圧気中開閉器）',
     category: 'switchgear',
     tags: ['区分開閉器', '電柱上', 'GR', 'DGR'],
@@ -147,6 +148,7 @@ const pasDef = (
 export const switchgearSymbols: SymbolDef[] = [
   {
     id: 'as',
+    labelLines: ['AS', '{ratedVoltage}V', '{ratedCurrent}A'],
     abbr: 'AS',
     // 呼び方は「気中開閉器」で統一する（「エアースイッチ」とは書かない）
     nameJa: '気中開閉器',
@@ -171,6 +173,7 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'mccb',
+    labelLines: ['MCCB', '{ratedCurrent}A'],
     abbr: 'MCCB',
     nameJa: '配線用遮断器',
     category: 'switchgear',
@@ -194,6 +197,7 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'ds',
+    labelLines: ['DS', '{ratedVoltage}V', '{ratedCurrent}A'],
     abbr: 'DS',
     nameJa: '断路器（ディスコン）',
     category: 'switchgear',
@@ -214,6 +218,7 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'lbs',
+    labelLines: ['LBS', '{ratedVoltage}V', '{ratedCurrent}A'],
     abbr: 'LBS',
     nameJa: '高圧負荷開閉器',
     category: 'switchgear',
@@ -235,6 +240,7 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'lbs-pf',
+    labelLines: ['LBS', '{ratedVoltage}V', '{ratedCurrent}A', 'PF×{fuseCount}', '{fuseSpec}'],
     abbr: 'LBS(PF付)',
     nameJa: '限流ヒューズ付高圧負荷開閉器',
     category: 'switchgear',
@@ -259,6 +265,7 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'pf',
+    labelLines: ['PF', '{ratedCurrent}A'],
     abbr: 'PF',
     nameJa: '限流ヒューズ',
     category: 'switchgear',
@@ -276,6 +283,7 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'pc',
+    labelLines: ['PC', '{ratedVoltage}V', '{ratedCurrent}A', 'F:{fuseCurrent}A'],
     abbr: 'PC',
     nameJa: '高圧カットアウト',
     category: 'switchgear',
@@ -291,6 +299,7 @@ export const switchgearSymbols: SymbolDef[] = [
     fields: [
       RATED_VOLTAGE,
       RATED_CURRENT,
+      { key: 'fuseCurrent', label: 'ヒューズの定格電流', type: 'number', unit: 'A', help: '図面の記載例: F:50A' },
       { key: 'fuseCount', label: 'ヒューズ本数', type: 'number', unit: '本', defaultValue: 2, help: '図面の記載例: F×2' },
     ],
     status: 'confirmed',
@@ -299,6 +308,7 @@ export const switchgearSymbols: SymbolDef[] = [
   },
   {
     id: 'vcb',
+    labelLines: ['VCB', '{ratedVoltage}V', '{ratedCurrent}A'],
     abbr: 'VCB',
     nameJa: '真空遮断器',
     category: 'switchgear',
@@ -314,12 +324,14 @@ export const switchgearSymbols: SymbolDef[] = [
       vline(24, 53, 72),
     ],
     ports: CELL_PORTS,
+    fields: [RATED_VOLTAGE, RATED_CURRENT],
     status: 'confirmed',
     statusNote: '×印付き開閉器（JIS式）。可動刃は右上がり。丸は上にも下にも付けません。',
     note: 'CB形の主遮断装置。設備容量301kVA以上では必須。すぐ下にCTが入る。',
   },
   {
     id: 'vcs',
+    labelLines: ['VCS', '{ratedVoltage}V', '{ratedCurrent}A'],
     abbr: 'VCS',
     nameJa: '真空電磁接触器',
     category: 'switchgear',
