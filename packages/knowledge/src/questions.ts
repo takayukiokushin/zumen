@@ -51,6 +51,11 @@ export interface Question {
    * 例：CTの変流比で「100」と入れると「100/5A」になる（2次側は必ず5A）
    */
   appendOnBlur?: string;
+  /**
+   * 同じまとまりの中を、見出しつきの小さな区切り（行）に分けるための名前。
+   * 同じ名前の質問が続くと、1つの区切りにまとまる（画面では、区切りごとに行を分けて見出しを付ける）。
+   */
+  section?: string;
   /** この条件を満たすときだけ表示する */
   showIf?: Condition;
   ask: AskWhen;
@@ -570,7 +575,7 @@ export const QUESTIONS: Question[] = [
   /* ---------------- 受電設備の構成 ---------------- */
   {
     id: 'mainBreakerForm',
-    group: 'receiving',
+    group: 'receiving', section: '主遮断装置の形式',
     label: '主遮断装置の形式は？',
     type: 'select',
     options: [
@@ -586,7 +591,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: 'lbsRatedVoltage',
-    group: 'receiving',
+    group: 'receiving', section: 'LBS（PFS形）',
     label: 'LBSの定格電圧',
     type: 'select',
     options: [
@@ -597,14 +602,14 @@ export const QUESTIONS: Question[] = [
     ask: 'ai-uncertain',
     help: '7200Vと6600Vは機器によって使い分ける。手書きメモの記載を優先し、記載が無いときだけ確認する',
   },
-  { id: 'lbsRatedCurrent', group: 'receiving', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
-  { id: 'lbsFuseCount', group: 'receiving', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
-  { id: 'lbsFuseSpec', group: 'receiving', label: 'LBSのヒューズ定格', type: 'text', placeholder: '7200V G50A T40A', showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
-  { id: 'dsRating', group: 'receiving', label: 'DSの定格', type: 'text', placeholder: '7200V 400A', showIf: { key: 'mainBreakerForm', eq: 'cb' }, ask: 'always' },
-  { id: 'vcbRating', group: 'receiving', label: 'VCBの定格', type: 'text', placeholder: '7200V 600A 12.5kA', showIf: { key: 'mainBreakerForm', eq: 'cb' }, ask: 'always' },
+  { id: 'lbsRatedCurrent', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
+  { id: 'lbsFuseCount', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
+  { id: 'lbsFuseSpec', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ定格', type: 'text', placeholder: '7200V G50A T40A', showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
+  { id: 'dsRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'DSの定格', type: 'text', placeholder: '7200V 400A', showIf: { key: 'mainBreakerForm', eq: 'cb' }, ask: 'always' },
+  { id: 'vcbRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'VCBの定格', type: 'text', placeholder: '7200V 600A 12.5kA', showIf: { key: 'mainBreakerForm', eq: 'cb' }, ask: 'always' },
   {
     id: 'hasSiteVt',
-    group: 'receiving',
+    group: 'receiving', section: 'VT（計器用変圧器）',
     label: '受電設備内にVTはありますか？',
     type: 'select',
     options: YES_NO,
@@ -613,29 +618,21 @@ export const QUESTIONS: Question[] = [
     help: 'PFS形はVTが入る現場と入らない現場がある。CB形はDSの次に必ず入る',
   },
   {
-    id: 'hasSiteCt',
-    group: 'receiving',
-    label: '受電設備内にCTはありますか？',
+    id: 'vtCount',
+    group: 'receiving', section: 'VT（計器用変圧器）',
+    label: 'VTの台数',
     type: 'select',
-    options: YES_NO,
-    showIf: { key: 'mainBreakerForm', eq: 'pfs' },
+    options: COUNT_OPTIONS.slice(0, 6),
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '1',
+    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteVt', eq: 'yes' }] },
     ask: 'ai-uncertain',
-    help: 'PFS形はCTが入る現場と入らない現場がある。CB形はVCBのすぐ下に必ず入る',
-  },
-  {
-    id: 'ctRatio',
-    group: 'receiving',
-    label: 'CTの変流比',
-    type: 'text',
-    placeholder: '100',
-    appendOnBlur: '/5A',
-    help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、必ず5A',
-    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
-    ask: 'ai-uncertain',
+    help: '2台以上のときは、図面に「VT＋PF×2」のように書く',
   },
   {
     id: 'vtRatio',
-    group: 'receiving',
+    group: 'receiving', section: 'VT（計器用変圧器）',
     label: 'VTの変圧比',
     type: 'text',
     placeholder: '6600/110V',
@@ -646,8 +643,42 @@ export const QUESTIONS: Question[] = [
     ask: 'ai-uncertain',
   },
   {
+    id: 'hasSiteCt',
+    group: 'receiving', section: 'CT（変流器）',
+    label: '受電設備内にCTはありますか？',
+    type: 'select',
+    options: YES_NO,
+    showIf: { key: 'mainBreakerForm', eq: 'pfs' },
+    ask: 'ai-uncertain',
+    help: 'PFS形はCTが入る現場と入らない現場がある。CB形はVCBのすぐ下に必ず入る',
+  },
+  {
+    id: 'ctCount',
+    group: 'receiving', section: 'CT（変流器）',
+    label: 'CTの台数',
+    type: 'select',
+    options: COUNT_OPTIONS.slice(0, 6),
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '1',
+    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
+    ask: 'ai-uncertain',
+    help: '2台以上のときは、図面に「CT×2」のように書く',
+  },
+  {
+    id: 'ctRatio',
+    group: 'receiving', section: 'CT（変流器）',
+    label: 'CTの変流比',
+    type: 'text',
+    placeholder: '100',
+    appendOnBlur: '/5A',
+    help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、必ず5A',
+    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
+    ask: 'ai-uncertain',
+  },
+  {
     id: 'hasZpd',
-    group: 'receiving',
+    group: 'receiving', section: 'ZPD・LA・接地',
     label: 'ZPD（OVGR用）はありますか？',
     type: 'select',
     options: YES_NO,
@@ -657,14 +688,14 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: 'hasLa',
-    group: 'receiving',
+    group: 'receiving', section: 'ZPD・LA・接地',
     label: '受電設備内にLA（避雷器）はありますか？',
     type: 'select',
     options: YES_NO,
     defaultValue: 'no',
     ask: 'ai-uncertain',
   },
-  { id: 'earthingNotes', group: 'receiving', label: '接地方式・接地抵抗値等の特記事項', type: 'text', ask: 'always' },
+  { id: 'earthingNotes', group: 'receiving', section: 'ZPD・LA・接地', label: '接地方式・接地抵抗値等の特記事項', type: 'text', ask: 'always' },
 
   /* ---------------- 変圧器 ---------------- */
   {

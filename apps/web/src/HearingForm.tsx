@@ -103,6 +103,36 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
     };
   }).filter((s): s is NonNullable<typeof s> => s !== null);
 
+  /**
+   * 質問の並びを描く。質問に section（小見出し）が付いているものは、同じ名前が続くところを1つの「行」にまとめて、
+   * 見出しを付ける（例：受電設備の構成の、VT・CT・LBSなど）。見出しの無いものは、これまでどおり並べる。
+   */
+  const renderRows = (rows: Row[]) => {
+    const chunks: { section?: string; rows: Row[] }[] = [];
+    for (const r of rows) {
+      const last = chunks.at(-1);
+      if (last && last.section === r.question.section) last.rows.push(r);
+      else chunks.push({ section: r.question.section, rows: [r] });
+    }
+    const fields = (list: Row[]) => (
+      <div className="fields">
+        {list.map((r) => (
+          <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={viewAt(effective, r.unit)} />
+        ))}
+      </div>
+    );
+    return chunks.map((c, i) =>
+      c.section ? (
+        <div className="subgroup" key={`${c.section}-${i}`}>
+          <h4 className="subhead">{c.section}</h4>
+          {fields(c.rows)}
+        </div>
+      ) : (
+        <div key={`plain-${i}`}>{fields(c.rows)}</div>
+      ),
+    );
+  };
+
   return (
     <>
       {showNav && (
@@ -156,11 +186,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
 
             {s.blocks.map((b) =>
               b.heading === null ? (
-                <div className="fields" key={b.index}>
-                  {b.rows.map((r) => (
-                    <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={viewAt(effective, r.unit)} />
-                  ))}
-                </div>
+                <div key={b.index}>{renderRows(b.rows)}</div>
               ) : (
                 // 何台目を入力しているのかが一目で分かるよう、1件ずつ枠で囲んで交互に色を変える
                 <div className={`repeat-block ${b.index % 2 ? 'alt' : ''}`} key={b.index}>
@@ -170,11 +196,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
                       {b.need ? '未入力あり' : `${b.answered}/${b.rows.length}`}
                     </span>
                   </div>
-                  <div className="fields">
-                    {b.rows.map((r) => (
-                      <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={viewAt(effective, r.unit)} />
-                    ))}
-                  </div>
+                  {renderRows(b.rows)}
                 </div>
               ),
             )}

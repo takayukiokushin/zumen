@@ -232,6 +232,14 @@ export function withDerived(rawAnswers: Answers): Answers {
   ].filter(Boolean);
   d.cableSpecLine = third.join(' ');
 
+  // CT・VTの台数。2台以上のときだけ「CT×2」「VT＋PF×2」のように書く
+  const times = (v: unknown) => {
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) && n >= 2 ? `×${n}` : '';
+  };
+  d.ctHead = `CT${times(answers.ctCount)}`;
+  d.vtPfHead = `VT＋PF${times(answers.vtCount)}`;
+
   // CTの変流比。数字（100）だけなら、2次側の「/5A」を足して「100/5A」にする。
   // 2次側は必ず5Aなので、「100/5A」「40A/5A」のように、すでに書いてあるものは、そのまま使う
   const ct = String(answers.ctRatio ?? '').trim();

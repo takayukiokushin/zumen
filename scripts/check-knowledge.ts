@@ -417,6 +417,41 @@ console.log('\n■ VTの変圧比（6600/110V固定の初期値）とCTの変流
   else console.log(`  図面の文字：CT → ${ctLabel.join(' / ')}、VT → ${vtLabel.join(' / ')}`);
 }
 
+console.log('\n■ CT・VTの台数（「CT×2」「VT＋PF×2」）と、受電設備の構成の見出し');
+{
+  const lab = (a: Answers, role: string) => buildComposition({ ...answers, mainBreakerForm: 'cb', ...a }).find((i) => i.role === role)?.label ?? [];
+  const rows: [string, string[], string[]][] = [
+    ['CT 1台', lab({ ctCount: '1', ctRatio: '100' }, 'ct'), ['CT', '100/5A']],
+    ['CT 台数が未入力', lab({ ctCount: undefined, ctRatio: '100' }, 'ct'), ['CT', '100/5A']],
+    ['CT 2台', lab({ ctCount: '2', ctRatio: '100' }, 'ct'), ['CT×2', '100/5A']],
+    ['CT 3台（数）', lab({ ctCount: 3, ctRatio: '100' }, 'ct'), ['CT×3', '100/5A']],
+    ['VT＋PF 1台', lab({ vtCount: '1' }, 'ds-vt-pf'), ['VT＋PF', '6600/110V']],
+    ['VT＋PF 2台', lab({ vtCount: '2' }, 'ds-vt-pf'), ['VT＋PF×2', '6600/110V']],
+  ];
+  for (const [name, got, want] of rows) {
+    if (JSON.stringify(got) !== JSON.stringify(want)) fail(`${name}：「${got.join(' / ')}」になっています（期待：「${want.join(' / ')}」）`);
+    else console.log(`  ${name}：${got.join(' / ')}`);
+  }
+  // PFS形の「受電設備内のVT」も同じ書き方
+  const pfs = buildComposition({ ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'yes', vtCount: '2' }).find((i) => i.role === 'site-vt-pf')?.label ?? [];
+  if (pfs[0] !== 'VT＋PF×2') fail(`PFS形のVT：「${pfs[0]}」です（「VT＋PF×2」のはず）`);
+  for (const id of ['vtCount', 'ctCount']) {
+    const q = QUESTIONS.find((x) => x.id === id);
+    if (!q || q.type !== 'select' || q.defaultValue !== '1' || !q.showIf) fail(`${id} の質問が、台数を選ぶ形（初期値1・条件つき）になっていません`);
+  }
+  // 受電設備の構成が、見出しつきの行に分かれ、同じ見出しの質問が続けて並んでいる
+  const recv = QUESTIONS.filter((q) => q.group === 'receiving');
+  const secs = recv.map((q) => q.section);
+  const order: string[] = [];
+  for (const sc of secs) if (sc !== order.at(-1)) order.push(String(sc));
+  if (secs.some((sc) => !sc)) fail('受電設備の構成に、見出しの無い質問があります');
+  else if (new Set(order).size !== order.length) fail(`同じ見出しが、離れて何度も出ます（${order.join(' → ')}）`);
+  else console.log(`  受電設備の構成の見出し（上から）：${order.join(' → ')}`);
+  const vtRow = recv.filter((q) => q.section === 'VT（計器用変圧器）').map((q) => q.id).join('・');
+  const ctRow = recv.filter((q) => q.section === 'CT（変流器）').map((q) => q.id).join('・');
+  console.log(`  VTの行：${vtRow} ／ CTの行：${ctRow}`);
+}
+
 console.log('\n■ 発電機・太陽光発電設備：「なし」のときは、入力欄を出さない');
 {
   const shown = (a: Answers) => visibleQuestions(a, {});

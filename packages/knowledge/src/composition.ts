@@ -257,7 +257,7 @@ export const CB_CHAIN: Placement[] = [
     role: 'ds-vt-pf',
     symbolId: 'pf',
     kind: 'branch-right',
-    labelTemplate: ['VT＋PF', '{vtRatio}'],
+    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
     note: 'DSの次にVTを並列接続する（直列ではない）。VTの手前にPFが入る',
   },
   { role: 'ds-vt', symbolId: 'vt', kind: 'branch-right', props: { ratio: 'vtRatio' } },
@@ -306,7 +306,7 @@ export const DOWNSTREAM: Placement[] = [
     symbolId: 'ct',
     kind: 'series',
     when: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
-    labelTemplate: ['CT', '{ctRatioText}'],
+    labelTemplate: ['{ctHead}', '{ctRatioText}'],
     props: { ratio: 'ctRatioText' },
   },
   {
@@ -328,7 +328,7 @@ export const DOWNSTREAM: Placement[] = [
     symbolId: 'pf',
     kind: 'branch-right',
     when: { all: [{ key: 'mainBreakerForm', eq: 'pfs' }, { key: 'hasSiteVt', eq: 'yes' }] },
-    labelTemplate: ['VT＋PF', '{vtRatio}'],
+    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
   },
   {
     role: 'site-vt',
