@@ -117,9 +117,9 @@ export function cableLineStyle(spec: CableSpec): 'dashed' | 'solid' {
 /* ------------------------------------------------------------------ */
 
 /** 受電設備の形態。「開放型」等の表記は使わず「オープンフレーム式」に統一する */
-export type AreaForm = 'cubicle' | 'room-cubicle' | 'room-open';
+export type AreaForm = 'cubicle' | 'room-cubicle' | 'room-open' | 'apartment-pole';
 
-export type AreaPlacement = 'indoor' | 'rooftop' | 'outdoor' | 'semi-outdoor';
+export type AreaPlacement = 'indoor' | 'rooftop' | 'outdoor' | 'semi-outdoor' | 'pole';
 
 export interface SubstationArea {
   id: Id;
@@ -238,12 +238,14 @@ export function formatAreaLabel(area: SubstationArea): string {
     cubicle: 'キュービクル',
     'room-cubicle': '電気室',
     'room-open': 'オープンフレーム式',
+    'apartment-pole': '高圧マンション',
   };
   const placeLabel: Record<AreaPlacement, string> = {
     indoor: '屋内',
     rooftop: '屋上',
     outdoor: '屋外',
     'semi-outdoor': '半屋外',
+    pole: '電柱上',
   };
   const head = area.form ? formLabel[area.form] : '受電設備';
   const inner = [area.floor, area.placement ? placeLabel[area.placement] : undefined, area.detail]

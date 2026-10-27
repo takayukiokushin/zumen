@@ -389,6 +389,31 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
 }
 
+console.log('\n■ 受電設備エリア：高圧マンション（電柱上構成）');
+{
+  const form = QUESTIONS.find((q) => q.id === 'areaForm');
+  const vals = form?.options?.map((o) => o.value) ?? [];
+  if (JSON.stringify(vals) !== JSON.stringify(['cubicle', 'room-cubicle', 'room-open', 'apartment-pole'])) {
+    fail(`形態の選択肢が違います（${vals.join('・')}）`);
+  } else console.log(`  形態の選択肢：${form?.options?.map((o) => o.label).join(' ／ ')}`);
+  const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  if (shown({ areaForm: 'apartment-pole' }).has('areaPlacement')) fail('高圧マンションなのに、設置場所の質問が出ています');
+  else if (!shown({ areaForm: 'cubicle' }).has('areaPlacement') || !shown({}).has('areaPlacement')) fail('高圧マンション以外で、設置場所の質問が出ません');
+  else console.log('  設置場所の質問：高圧マンションのときは出ない（電柱上に決まる）。ほかの形態・未入力のときは聞く');
+  // 必須の設置場所が、高圧マンションのときは「未入力」にならない
+  const miss = (a: Answers) => missingRequired(a).some((q) => q.id === 'areaPlacement');
+  if (miss({ areaForm: 'apartment-pole' }) || !miss({ areaForm: 'cubicle' })) fail('設置場所の「必須」の扱いが違います');
+  // 図面のラベルと名前
+  const label = String(withDerived({ areaForm: 'apartment-pole', areaPlacement: 'outdoor' }).areaLabel);
+  const label2 = String(withDerived({ areaForm: 'apartment-pole', areaFloor: '2階' }).areaLabel);
+  if (label !== '高圧マンション（電柱上）') fail(`ラベルが「${label}」です（以前の設置場所の回答が残っていても、電柱上になるはず）`);
+  else console.log(`  図面のラベル：「${label}」（以前の設置場所の回答が残っていても電柱上）／ 階層ありなら「${label2}」`);
+  const nm = resolveDrawingName({ areaCount: 1, areaForm: 'apartment-pole' });
+  const nm2 = resolveDrawingName({ areaCount: 2, areaForm: 'apartment-pole', areaForm__2: 'cubicle' });
+  if (nm !== '高圧受電設備単線結線図' || nm2 !== '高圧受電設備単線結線図') fail(`図面名称が違います（${nm} ／ ${nm2}）`);
+  else console.log(`  図面名称：「${nm}」（「〜式」は付けない）`);
+}
+
 console.log('\n■ 区分開閉器の定格電圧');
 {
   const q = QUESTIONS.find((x) => x.id === 'pasRatedVoltage');

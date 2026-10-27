@@ -522,15 +522,19 @@ export const QUESTIONS: Question[] = [
       { value: 'cubicle', label: 'キュービクル式' },
       { value: 'room-cubicle', label: '電気室（内にキュービクル）' },
       { value: 'room-open', label: 'オープンフレーム式' },
+      { value: 'apartment-pole', label: '高圧マンション（電柱上構成）' },
     ],
     ask: 'ai-uncertain',
     required: true,
+    help: '「高圧マンション（電柱上構成）」を選ぶと、設置場所は「電柱上」に決まる（設置場所の質問は出ない）',
   },
   {
     id: 'areaPlacement',
     group: 'area',
     label: '設置場所は？',
     type: 'select',
+    // 高圧マンション（電柱上構成）のときは、設置場所は電柱上に決まっているので聞かない
+    showIf: { not: { key: 'areaForm', eq: 'apartment-pole' } },
     options: [
       { value: 'indoor', label: '屋内' },
       { value: 'rooftop', label: '屋上' },

@@ -245,12 +245,14 @@ const AREA_FORM_LABEL: Record<string, string> = {
   cubicle: 'キュービクル式',
   'room-cubicle': '電気室',
   'room-open': 'オープンフレーム式',
+  'apartment-pole': '高圧マンション',
 };
 const AREA_PLACEMENT_LABEL: Record<string, string> = {
   indoor: '屋内',
   rooftop: '屋上',
   outdoor: '地上',
   'semi-outdoor': '半屋外',
+  pole: '電柱上',
 };
 
 /** 受電設備の形態から、図面名称に入れる「〜式」。電気室の中のキュービクルは、キュービクル式として扱う */
@@ -258,6 +260,8 @@ const FORM_KIND: Record<string, string> = {
   cubicle: 'キュービクル式',
   'room-cubicle': 'キュービクル式',
   'room-open': 'オープンフレーム式',
+  // 高圧マンション（電柱上構成）は、キュービクル式でもオープンフレーム式でもないので、「〜式」を付けない
+  'apartment-pole': '',
 };
 
 const DRAWING_NAME_TAIL = '高圧受電設備単線結線図';
@@ -268,6 +272,7 @@ const DRAWING_NAME_TAIL = '高圧受電設備単線結線図';
  * - 全部のエリアがキュービクル式（電気室の中のキュービクルを含む）→「キュービクル式高圧受電設備単線結線図」
  * - 全部のエリアがオープンフレーム式 →「オープンフレーム式高圧受電設備単線結線図」
  * - エリアによって形態が違う →「高圧受電設備単線結線図」（形態は書かない）
+ * - 高圧マンション（電柱上構成）→「高圧受電設備単線結線図」（「〜式」は付けない）
  * - まだ形態が入力されていない →「キュービクル式高圧受電設備単線結線図」（これまでと同じ）
  */
 export function drawingNameFromForm(answers: Answers): string {
@@ -275,10 +280,10 @@ export function drawingNameFromForm(answers: Answers): string {
   const kinds = new Set<string>();
   for (let i = 0; i < count; i++) {
     const kind = FORM_KIND[String(answers[indexedKey('areaForm', i)])];
-    if (kind) kinds.add(kind);
+    if (kind !== undefined) kinds.add(kind);
   }
   if (kinds.size === 0) return `${FORM_KIND.cubicle}${DRAWING_NAME_TAIL}`;
-  if (kinds.size > 1) return DRAWING_NAME_TAIL;
+  if (kinds.size > 1 || kinds.has('')) return DRAWING_NAME_TAIL;
   return `${[...kinds][0]}${DRAWING_NAME_TAIL}`;
 }
 
@@ -290,9 +295,11 @@ export function resolveDrawingName(answers: Answers): string {
 
 export function areaLabel(answers: Answers): string {
   const head = AREA_FORM_LABEL[String(answers.areaForm)] ?? '受電設備';
+  // 高圧マンション（電柱上構成）の設置場所は、必ず電柱上
+  const placement = answers.areaForm === 'apartment-pole' ? 'pole' : answers.areaPlacement;
   const inner = [
     answers.areaFloor,
-    AREA_PLACEMENT_LABEL[String(answers.areaPlacement)] ?? answers.areaPlacement,
+    AREA_PLACEMENT_LABEL[String(placement)] ?? placement,
     answers.areaDetail,
   ]
     .filter((v) => v !== undefined && v !== null && v !== '')
