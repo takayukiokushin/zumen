@@ -12,11 +12,13 @@
 import { findSymbol, SYMBOLS } from '../packages/symbols/src/index.ts';
 import {
   buildComposition,
+  evaluate,
   missingRequired,
   questionsByGroup,
   QUESTIONS,
   referencedKeys,
   normalizeAnswers,
+  dropHiddenChoices,
   resolveDrawingName,
   suggestMainBreakerForm,
   visibleQuestions,
@@ -387,6 +389,63 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   if (legacyNo.sectionalizer !== 'none' || legacyYes.sectionalizer !== 'pas' || both.sectionalizer !== 'pgs') {
     fail('古い回答（hasPas）の読み替えが違います');
   } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
+}
+
+console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／電灯および動力のV結線の容量');
+{
+  const conn = QUESTIONS.find((q) => q.id === 'trConnection')!;
+  const offered = (a: Answers) => (conn.options ?? []).filter((o) => evaluate(o.showIf, a)).map((o) => o.value);
+  const single = ['tr-1p', 'tr-1p-2w', 'tr-1p-parallel'];
+  const three = ['tr-3p-dy', 'tr-3p-yd', 'tr-3p-dd', 'tr-3p-yy'];
+  const sameSet = (x: string[], y: string[]) => JSON.stringify([...x].sort()) === JSON.stringify([...y].sort());
+  const rows: [string, Answers, string[]][] = [
+    ['電灯', { trUsage: '電灯' }, [...single, 'tr-vv']],
+    ['動力', { trUsage: '動力' }, [...three, 'tr-vv']],
+    ['電灯および動力', { trUsage: '電灯・動力' }, [...single, ...three, 'tr-vv']],
+    ['まだ用途を選んでいない', {}, [...single, ...three, 'tr-vv']],
+  ];
+  for (const [name, a, want] of rows) {
+    const got = offered(a);
+    if (!sameSet(got, want)) fail(`用途「${name}」：出る結線方式が違います（${got.join('・')}）`);
+    else console.log(`  用途「${name}」：結線方式 ${got.length}個（${single.some((s) => got.includes(s)) ? '単相系' : '単相系なし'}／${three.some((s) => got.includes(s)) ? '三相' : '三相なし'}／V結線あり）`);
+  }
+  // 用途を変えて、選んでいた結線方式が出なくなったら、空に戻す
+  const a1 = dropHiddenChoices({ trUsage: '電灯', trConnection: 'tr-3p-dy' });
+  const a2 = dropHiddenChoices({ trUsage: '動力', trConnection: 'tr-1p' });
+  const a3 = dropHiddenChoices({ trUsage: '電灯', trConnection: 'tr-vv' });
+  const a4 = dropHiddenChoices({ trUsage: '電灯・動力', trConnection: 'tr-3p-dy' });
+  const a5 = dropHiddenChoices({ trUsage: '動力', trConnection: 'tr-3p-dy', trUsage__2: '電灯', trConnection__2: 'tr-3p-yy', trConnection__3: 'tr-3p-dd' });
+  if (a1.trConnection !== undefined || a2.trConnection !== undefined) fail('用途に合わない結線方式が、空に戻っていません');
+  else if (a3.trConnection !== 'tr-vv' || a4.trConnection !== 'tr-3p-dy') fail('合う結線方式まで空に戻っています');
+  else if (a5.trConnection !== 'tr-3p-dy' || a5.trConnection__2 !== undefined || a5.trConnection__3 !== 'tr-3p-dd') fail('2台目以降の結線方式の扱いが違います');
+  else console.log('  用途を変えて、選んでいた結線方式が出なくなったとき：空に戻す（V結線と、合うものは残す。2台目以降はその台の用途で見る）');
+  // 容量の聞き方
+  const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const mixedV = shown({ trUsage: '電灯・動力', trConnection: 'tr-vv' });
+  const plainV = shown({ trUsage: '電灯', trConnection: 'tr-vv' });
+  const mixed3 = shown({ trUsage: '電灯・動力', trConnection: 'tr-3p-dy' });
+  if (!mixedV.has('trCapacityLight') || !mixedV.has('trCapacityPower') || mixedV.has('trCapacity') || mixedV.has('trCapacity2')) {
+    fail('電灯および動力のV結線：容量は「電灯の容量」「動力の容量」の2つだけを聞くはず');
+  } else if (plainV.has('trCapacityLight') || !plainV.has('trCapacity') || !plainV.has('trCapacity2')) {
+    fail('電灯のみのV結線：これまでどおり「容量」と「2台目の容量」を聞くはず');
+  } else if (mixed3.has('trCapacityLight') || !mixed3.has('trCapacity')) {
+    fail('電灯および動力の三相：「容量」を1つだけ聞くはず');
+  } else console.log('  電灯および動力のV結線：「電灯の容量」「動力の容量」を聞く。ほかは、これまでどおり「容量」（V結線は2台目も）');
+  const req = (a: Answers) => missingRequired(a).map((q) => q.id);
+  if (!req({ trUsage: '電灯・動力', trConnection: 'tr-vv' }).includes('trCapacityLight') || req({ trUsage: '電灯・動力', trConnection: 'tr-vv' }).includes('trCapacity')) fail('必須の扱いが違います');
+  // 図面の文字
+  const lbl = (a: Answers) => buildComposition({ ...answers, transformerCount: 1, ...a }).find((i) => i.role === 'transformer')?.label ?? [];
+  const m = lbl({ trUsage: '電灯・動力', trConnection: 'tr-vv', trCapacityLight: 30, trCapacityPower: 50, trVoltage: '6600V/210-105V', trComposition: '' });
+  const wantM = ['Tr', '電灯 30kVA', '動力 50kVA', '6600V/210-105V'];
+  if (JSON.stringify(m) !== JSON.stringify(wantM)) fail(`電灯および動力のV結線の文字が違います（${m.join(' / ')}）`);
+  else console.log(`  図面の文字（電灯および動力・V結線）：${m.join(' / ')}`);
+  const only = lbl({ trUsage: '電灯・動力', trConnection: 'tr-vv', trCapacityLight: 30, trVoltage: '', trComposition: '' });
+  if (JSON.stringify(only) !== JSON.stringify(['Tr', '電灯 30kVA'])) fail(`動力が未入力のとき：${only.join(' / ')}`);
+  const lightV = lbl({ trUsage: '電灯', trConnection: 'tr-vv', trCapacity: 30, trCapacity2: 30, trVoltage: '', trComposition: '' });
+  if (JSON.stringify(lightV) !== JSON.stringify(['電灯', 'Tr', '1φ30kVA / 1φ30kVA'])) fail(`電灯のV結線の文字が、これまでと違います（${lightV.join(' / ')}）`);
+  else console.log(`  電灯のみのV結線の文字は、これまでどおり：${lightV.join(' / ')}`);
+  const mixed3p = lbl({ trUsage: '電灯・動力', trConnection: 'tr-3p-dy', trCapacity: 300, trVoltage: '', trComposition: '' });
+  console.log(`  電灯および動力の三相の文字：${mixed3p.join(' / ')}`);
 }
 
 console.log('\n■ 主遮断装置「それ以外（高圧マンション・電柱上構成）」と、ヒューズの選択肢');

@@ -90,7 +90,31 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
   const num = (v: unknown) => (typeof v === 'number' ? v : Number(v));
 
   // 設備容量と主遮断装置の形式
-  const total = num(a.trCapacity) * Math.max(1, num(a.transformerCount) || 1);
+  // 電灯および動力のV結線は、電灯の容量と動力の容量の合計（ふつうは、1台目の容量）
+  const mixedV = a.trConnection === 'tr-vv' && a.trUsage === '電灯・動力';
+  const unitCapacity = mixedV ? num(a.trCapacityLight) + num(a.trCapacityPower) : num(a.trCapacity);
+  const total = unitCapacity * Math.max(1, num(a.transformerCount) || 1);
+
+  // 用途と結線方式の組み合わせ（電灯は単相系とV結線、動力は三相とV結線）
+  const conn = String(a.trConnection ?? '');
+  if (a.trUsage === '電灯' && conn.startsWith('tr-3p')) {
+    items.push({
+      level: 'confirm',
+      questionId: 'trConnection',
+      label: '変圧器の結線方式',
+      value: '三相',
+      message: '用途が電灯なのに、三相の結線方式になっています。電灯は、ふつう単相（またはV結線）です。確認してください。',
+    });
+  }
+  if (a.trUsage === '動力' && (conn === 'tr-1p' || conn === 'tr-1p-2w' || conn === 'tr-1p-parallel')) {
+    items.push({
+      level: 'confirm',
+      questionId: 'trConnection',
+      label: '変圧器の結線方式',
+      value: '単相',
+      message: '用途が動力なのに、単相の結線方式になっています。動力は、ふつう三相（またはV結線）です。確認してください。',
+    });
+  }
   if (Number.isFinite(total) && total > 0 && a.mainBreakerForm) {
     if (total > 300 && a.mainBreakerForm === 'pfs') {
       items.push({

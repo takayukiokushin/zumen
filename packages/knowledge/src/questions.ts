@@ -14,6 +14,12 @@ export interface Choice {
   label: string;
   /** 現場での出現割合（ユーザーに目安として見せる） */
   share?: string;
+  /**
+   * この選択肢を出す条件。満たさないときは、一覧に出さない。
+   * 例：用途が「電灯」のときは、三相の結線方式を出さない。
+   * 条件の見方は、質問の showIf と同じ（繰り返しの2件目以降は、その件の答えで見る）
+   */
+  showIf?: Condition;
 }
 
 /** いつ聞くか */
@@ -67,6 +73,14 @@ const COUNT_OPTIONS: Choice[] = Array.from({ length: 50 }, (_, i) => ({
   value: String(i + 1),
   label: String(i + 1),
 }));
+
+/** 変圧器の用途で、結線方式の選択肢を絞るための条件 */
+const NOT_POWER_ONLY: Condition = { not: { key: 'trUsage', eq: '動力' } };
+const NOT_LIGHT_ONLY: Condition = { not: { key: 'trUsage', eq: '電灯' } };
+/** 用途が「電灯および動力」で、結線方式がV結線のとき（容量を電灯・動力に分けて聞く） */
+const MIXED_V: Condition = {
+  all: [{ key: 'trUsage', eq: '電灯・動力' }, { key: 'trConnection', eq: 'tr-vv' }],
+};
 
 /** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
 const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
@@ -663,30 +677,37 @@ export const QUESTIONS: Question[] = [
     options: [
       { value: '電灯', label: '電灯' },
       { value: '動力', label: '動力' },
+      // 図面には「電灯・動力」と書く。V結線のときは、電灯と動力の容量を分けて聞く
+      { value: '電灯・動力', label: '電灯および動力' },
     ],
     allowFreeInput: true,
     ask: 'ai-uncertain',
+    help: '用途によって、選べる結線方式が変わる（電灯＝単相系とV結線、動力＝三相とV結線、電灯および動力＝すべて）',
   },
   {
     id: 'trConnection',
     group: 'transformer',
     label: '結線方式',
     type: 'select',
+    // 用途で選べるものを絞る。電灯＝単相系とV結線、動力＝三相とV結線、電灯および動力・未入力＝すべて
     options: [
-      { value: 'tr-1p', label: '単相（単相三線式）' },
-      { value: 'tr-1p-2w', label: '単相（単相2線式）' },
-      { value: 'tr-3p-dy', label: '三相 Δ-Y結線' },
-      { value: 'tr-3p-yd', label: '三相 Y-Δ結線' },
-      { value: 'tr-3p-dd', label: '三相 Δ-Δ結線' },
-      { value: 'tr-3p-yy', label: '三相 Y-Y結線' },
+      { value: 'tr-1p', label: '単相（単相三線式）', showIf: NOT_POWER_ONLY },
+      { value: 'tr-1p-2w', label: '単相（単相2線式）', showIf: NOT_POWER_ONLY },
+      { value: 'tr-3p-dy', label: '三相 Δ-Y結線', showIf: NOT_LIGHT_ONLY },
+      { value: 'tr-3p-yd', label: '三相 Y-Δ結線', showIf: NOT_LIGHT_ONLY },
+      { value: 'tr-3p-dd', label: '三相 Δ-Δ結線', showIf: NOT_LIGHT_ONLY },
+      { value: 'tr-3p-yy', label: '三相 Y-Y結線', showIf: NOT_LIGHT_ONLY },
       { value: 'tr-vv', label: 'V結線（単相変圧器2台）' },
-      { value: 'tr-1p-parallel', label: '単相変圧器 並行運転（倍容量）' },
+      { value: 'tr-1p-parallel', label: '単相変圧器 並行運転（倍容量）', showIf: NOT_POWER_ONLY },
     ],
     ask: 'ai-uncertain',
     required: true,
   },
-  { id: 'trCapacity', group: 'transformer', label: '容量', type: 'number', unit: 'kVA', ask: 'ai-uncertain', required: true },
-  { id: 'trCapacity2', group: 'transformer', label: '2台目の容量', type: 'number', unit: 'kVA', showIf: { key: 'trConnection', eq: 'tr-vv' }, ask: 'always', help: 'V結線は2台の容量が異なる場合がある' },
+  { id: 'trCapacity', group: 'transformer', label: '容量', type: 'number', unit: 'kVA', showIf: { not: MIXED_V }, ask: 'ai-uncertain', required: true },
+  { id: 'trCapacity2', group: 'transformer', label: '2台目の容量', type: 'number', unit: 'kVA', showIf: { all: [{ key: 'trConnection', eq: 'tr-vv' }, { not: MIXED_V }] }, ask: 'always', help: 'V結線は2台の容量が異なる場合がある' },
+  // 電灯および動力のV結線だけは、変圧器ごとではなく、全体の容量を電灯・動力に分けて聞く
+  { id: 'trCapacityLight', group: 'transformer', label: '電灯の容量', type: 'number', unit: 'kVA', showIf: MIXED_V, ask: 'always', required: true, help: 'V結線（単相変圧器2台）全体のうち、電灯の分の容量' },
+  { id: 'trCapacityPower', group: 'transformer', label: '動力の容量', type: 'number', unit: 'kVA', showIf: MIXED_V, ask: 'always', required: true, help: 'V結線（単相変圧器2台）全体のうち、動力の分の容量' },
   { id: 'trVoltage', group: 'transformer', label: '電圧', type: 'text', placeholder: '6600V/210-105V', ask: 'ai-uncertain' },
   { id: 'trComposition', group: 'transformer', label: '構成', type: 'text', placeholder: '単相変圧器×3', showIf: { key: 'trConnection', in: ['tr-3p-dd', 'tr-vv'] }, ask: 'always' },
   { id: 'trHasPc', group: 'transformer', label: '変圧器の手前にPC（高圧カットアウト）が入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },

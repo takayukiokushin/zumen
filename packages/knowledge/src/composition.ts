@@ -380,7 +380,7 @@ export const TRANSFORMER: Placement[] = [
     symbolId: '{trSymbol}',
     kind: 'parallel',
     row: ROW.main,
-    labelTemplate: ['{trUsage}', 'Tr', '{trCapacityLine}', '{trVoltage}', '{trComposition}'],
+    labelTemplate: ['{trUsageLine}', 'Tr', '{trCapacityLine}', '{trVoltage}', '{trComposition}'],
     props: { usage: 'trUsage', capacity: 'trCapacity', voltage: 'trVoltage', composition: 'trComposition' },
     repeatCountKey: 'transformerCount',
   },

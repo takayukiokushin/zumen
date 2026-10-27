@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Question } from '@zumen/knowledge';
-import type { Value } from '@zumen/knowledge';
+import type { Answers, Value } from '@zumen/knowledge';
+import { evaluate } from '@zumen/knowledge';
 
 interface Props {
   question: Question;
@@ -8,13 +9,22 @@ interface Props {
   fieldKey: string;
   value: Value;
   onChange: (key: string, value: Value) => void;
+  /**
+   * この項目が属する件の答え（選択肢の showIf を見るのに使う）。
+   * 繰り返しの2件目以降は、その件だけの答え。無ければ、選択肢はすべて出す
+   */
+  context?: Answers;
 }
 
 /** 手入力に切り替えるための、一覧の中の特別な値 */
 const OTHER = '__other__';
 
 /** 選択肢が3つ以下で短ければ押しボタン、それ以外はプルダウンにする */
-export function Field({ question: q, fieldKey, value, onChange }: Props) {
+export function Field({ question: question, fieldKey, value, onChange, context }: Props) {
+  // 選択肢に出す条件（Choice.showIf）がある質問は、いまの答えで出すものを絞る
+  const q = context && question.options?.some((o) => o.showIf)
+    ? { ...question, options: question.options.filter((o) => evaluate(o.showIf, context)) }
+    : question;
   const [pickedOther, setPickedOther] = useState(false);
   const set = (v: Value) => onChange(fieldKey, v);
   const current = value ?? q.defaultValue ?? '';

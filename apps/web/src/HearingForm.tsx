@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
+import { dropHiddenChoices, evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, Question, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 
@@ -26,6 +26,8 @@ interface Props {
 interface Row {
   key: string;
   question: Question;
+  /** 繰り返しの何件目か（0始まり）。選択肢を絞る条件を、その件の答えで見るのに使う */
+  unit: number;
 }
 
 interface Block {
@@ -52,7 +54,9 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
       const next = { ...prev };
       if (value === undefined) delete next[key];
       else next[key] = value;
-      return next;
+      // 答えを変えたせいで、選んでいた選択肢が一覧に出なくなったら、空に戻す
+      // （例：結線方式に三相を選んであるのに、用途を「電灯」に変えた）
+      return dropHiddenChoices(next);
     });
 
   const sections = QUESTION_GROUPS.map((group) => {
@@ -67,7 +71,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
 
     // 質問は畳まず、対象になったものは全部出す。
     // 隠れている項目に気づかないまま入力漏れになるほうが困るため
-    const lead: Row[] = leading.map((q) => ({ key: q.id, question: q }));
+    const lead: Row[] = leading.map((q) => ({ key: q.id, question: q, unit: 0 }));
 
     /** 1台目・2台目…のまとまり。count が1なら見出しの無い1つだけ */
     const blocks: Block[] = [];
@@ -76,7 +80,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
       for (const q of repeated) {
         // 表示条件も件ごとに見る（他の件の答えは引き継がない）
         if (i > 0 && !evaluate(q.showIf, viewAt(effective, i))) continue;
-        rows.push({ key: indexedKey(q.id, i), question: q });
+        rows.push({ key: indexedKey(q.id, i), question: q, unit: i });
       }
       if (rows.length === 0) continue;
       blocks.push({
@@ -145,7 +149,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
             {s.lead.length > 0 && (
               <div className="fields">
                 {s.lead.map((r) => (
-                  <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} />
+                  <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={viewAt(effective, r.unit)} />
                 ))}
               </div>
             )}
@@ -154,7 +158,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
               b.heading === null ? (
                 <div className="fields" key={b.index}>
                   {b.rows.map((r) => (
-                    <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} />
+                    <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={viewAt(effective, r.unit)} />
                   ))}
                 </div>
               ) : (
@@ -168,7 +172,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
                   </div>
                   <div className="fields">
                     {b.rows.map((r) => (
-                      <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} />
+                      <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={viewAt(effective, r.unit)} />
                     ))}
                   </div>
                 </div>

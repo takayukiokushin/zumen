@@ -19,6 +19,32 @@ export interface AskOptions {
 
 /** いま聞くべき質問を、表示条件を評価して返す */
 /**
+ * 選んである答えのうち、いまは一覧に出ない選択肢（Choice.showIf を満たさない）になったものを外す。
+ * 例：結線方式に「三相 Δ-Y結線」を選んであるのに、用途を「電灯」に変えた → 結線方式を空に戻す。
+ * 繰り返しの2件目以降の答え（trConnection__2 など）も、その件の答えで見る。
+ */
+export function dropHiddenChoices(answers: Answers): Answers {
+  let out = answers;
+  for (const q of QUESTIONS) {
+    if (!q.options?.some((o) => o.showIf)) continue;
+    const prefix = `${q.id}__`;
+    for (const key of Object.keys(answers)) {
+      let index = -1;
+      if (key === q.id) index = 0;
+      else if (key.startsWith(prefix) && /^\d+$/.test(key.slice(prefix.length))) index = Number(key.slice(prefix.length)) - 1;
+      if (index < 0) continue;
+      const chosen = answers[key];
+      const opt = q.options.find((o) => o.value === chosen);
+      if (opt?.showIf && !evaluate(opt.showIf, viewAt(answers, index))) {
+        if (out === answers) out = { ...answers };
+        delete out[key];
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * 古い回答を、いまの質問に合わせる。
  *
  * 以前は「PASの設置はありますか？」（hasPas：yes／no）だったが、いまは区分開閉器（sectionalizer：PAS／PGS／なし）。
@@ -226,7 +252,21 @@ export function withDerived(rawAnswers: Answers): Answers {
 
   // 変圧器の容量表記（V結線は2台分を別行にする）
   const phase = String(answers.trConnection ?? '').startsWith('tr-1p') || answers.trConnection === 'tr-vv' ? '1φ' : '3φ';
-  if (answers.trConnection === 'tr-vv') {
+  const mixedV = answers.trConnection === 'tr-vv' && answers.trUsage === '電灯・動力';
+  // 用途の行。電灯および動力のV結線は、容量の行に「電灯」「動力」と書くので、ここには出さない
+  d.trUsageLine = mixedV ? '' : answers.trUsage ?? '';
+  if (mixedV) {
+    // 電灯 ○kVA ／ 動力 ○kVA の2行（変圧器ごとではなく、V結線全体の容量）
+    d.trCapacityLine = (
+      [
+        ['電灯', answers.trCapacityLight],
+        ['動力', answers.trCapacityPower],
+      ] as const
+    )
+      .filter(([, v]) => v !== undefined && v !== null && v !== '')
+      .map(([name, v]) => `${name} ${v}kVA`)
+      .join('\n');
+  } else if (answers.trConnection === 'tr-vv') {
     d.trCapacityLine = [answers.trCapacity, answers.trCapacity2]
       .filter((v) => v !== undefined && v !== null && v !== '')
       .map((v) => `1φ${v}kVA`)
