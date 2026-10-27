@@ -16,6 +16,7 @@ import {
   questionsByGroup,
   QUESTIONS,
   referencedKeys,
+  normalizeAnswers,
   resolveDrawingName,
   suggestMainBreakerForm,
   visibleQuestions,
@@ -350,6 +351,42 @@ console.log('\n■ 責任分界点の質問（3点不一致のとき、主遮断
   // AIの読み取り結果の確認事項も、同じ条件にそろえる
   if (reviewAsks({ boundaryPattern: 'split', mainBreakerForm: 'cb' })) fail('CB形なのに、責任分界点の位置を確認事項に出しています');
   if (!reviewAsks({ boundaryPattern: 'split' })) fail('主遮断装置が未入力なのに、責任分界点の位置を確認事項に出していません');
+}
+
+console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネットの質問');
+{
+  const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const rows: [string, Answers, string[], string[]][] = [
+    // [名前, 回答, 出る質問, 出ない質問]
+    ['PAS', { sectionalizer: 'pas' }, ['pasControl', 'pasBuiltinLa', 'pasRatedVoltage'], ['groundCabinet', 'groundCabinetType']],
+    ['PGS（SOGなどの質問はPASと同じ）', { sectionalizer: 'pgs' }, ['pasControl', 'pasBuiltinLa', 'pasRatedVoltage'], ['groundCabinet', 'groundCabinetType']],
+    ['なし', { sectionalizer: 'none' }, ['groundCabinet'], ['pasControl', 'pasBuiltinVt', 'pasBuiltinLa', 'pasRatedVoltage', 'groundCabinetType']],
+    ['なし・地上キャビネットあり', { sectionalizer: 'none', groundCabinet: 'yes' }, ['groundCabinet', 'groundCabinetType'], ['pasControl']],
+    ['なし・地上キャビネットなし', { sectionalizer: 'none', groundCabinet: 'no' }, ['groundCabinet'], ['groundCabinetType', 'pasControl']],
+  ];
+  for (const [name, ans, want, notWant] of rows) {
+    const ids = shown(ans);
+    const miss = want.filter((id) => !ids.has(id));
+    const extra = notWant.filter((id) => ids.has(id));
+    if (miss.length) fail(`${name}：出るはずの質問が出ません（${miss.join('・')}）`);
+    else if (extra.length) fail(`${name}：出ないはずの質問が出ています（${extra.join('・')}）`);
+    else console.log(`  ${name}：質問の出方が正しい`);
+  }
+  // 引込元は電柱だけ。電柱かキャビネットかの質問・キャビネットの名称や中身の質問は無い
+  const ids = new Set(QUESTIONS.map((q) => q.id));
+  for (const gone of ['sourceType', 'cabinetName', 'cabinetContent', 'hasPas']) {
+    if (ids.has(gone)) fail(`なくしたはずの質問 ${gone} が残っています`);
+  }
+  const labels = (id: string) => QUESTIONS.find((q) => q.id === id)?.label;
+  if (labels('polePrefix') !== '電柱番号の区分') fail(`「電柱番号の区分」の名前が違います（${labels('polePrefix')}）`);
+  else console.log('  引込元：電柱番号の区分 → 電柱の名称 → ASの有無（電柱かキャビネットかの質問は無い）');
+  // 古い回答（hasPas だけ入っている）を読み替える
+  const legacyNo = normalizeAnswers({ hasPas: 'no' });
+  const legacyYes = normalizeAnswers({ hasPas: 'yes' });
+  const both = normalizeAnswers({ hasPas: 'no', sectionalizer: 'pgs' });
+  if (legacyNo.sectionalizer !== 'none' || legacyYes.sectionalizer !== 'pas' || both.sectionalizer !== 'pgs') {
+    fail('古い回答（hasPas）の読み替えが違います');
+  } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
 }
 
 console.log('\n■ 図面名称（受電設備の形態から自動で決まる）');

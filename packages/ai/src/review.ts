@@ -1,4 +1,4 @@
-import { QUESTIONS, missingRequired } from '@zumen/knowledge';
+import { QUESTIONS, missingRequired, normalizeAnswers } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import type { AnalysisResult } from './schema.ts';
 
@@ -81,8 +81,12 @@ export function buildReview(result: AnalysisResult, current: Answers): ReviewIte
 }
 
 /** ナレッジベースの決まりごとに反しないかを見る */
-export function checkConsistency(a: Answers): ReviewItem[] {
+export function checkConsistency(raw: Answers): ReviewItem[] {
+  const a = normalizeAnswers(raw);
   const items: ReviewItem[] = [];
+  // 区分開閉器（PAS・PGS）があるか。まだ答えていないときは、これまでどおりPASありとして見る
+  const hasPas = (a.sectionalizer ?? 'pas') !== 'none';
+  const noPas = a.sectionalizer === 'none';
   const num = (v: unknown) => (typeof v === 'number' ? v : Number(v));
 
   // 設備容量と主遮断装置の形式
@@ -109,7 +113,7 @@ export function checkConsistency(a: Answers): ReviewItem[] {
   }
 
   // DGRは零相電圧が必要（内蔵VTかZPDのどちらか）
-  if (a.hasPas === 'yes' && a.pasControl === 'dgr' && a.pasBuiltinVt !== 'yes' && a.hasZpd !== 'yes') {
+  if (hasPas && a.pasControl === 'dgr' && a.pasBuiltinVt !== 'yes' && a.hasZpd !== 'yes') {
     items.push({
       level: 'error',
       questionId: 'pasBuiltinVt',
@@ -119,7 +123,7 @@ export function checkConsistency(a: Answers): ReviewItem[] {
   }
 
   // GR・DGRはZCTが要る（記号は構成ルールが自動で入れるため、SOGなしとの取り違えを見る）
-  if (a.hasPas === 'yes' && a.pasControl === 'none' && a.hasZpd === 'yes') {
+  if (hasPas && a.pasControl === 'none' && a.hasZpd === 'yes') {
     items.push({
       level: 'confirm',
       questionId: 'pasControl',
@@ -130,7 +134,7 @@ export function checkConsistency(a: Answers): ReviewItem[] {
   }
 
   // SOGが無いPASにVTは入らない
-  if (a.hasPas === 'yes' && a.pasControl === 'none' && a.pasBuiltinVt === 'yes') {
+  if (hasPas && a.pasControl === 'none' && a.pasBuiltinVt === 'yes') {
     items.push({
       level: 'error',
       questionId: 'pasControl',
@@ -154,14 +158,15 @@ export function checkConsistency(a: Answers): ReviewItem[] {
     });
   }
 
-  // 3点一致なのにPASが無い
-  if (a.boundaryPattern === 'coincident' && a.hasPas === 'no') {
+  // 3点一致なのに、区分開閉器も地上キャビネットも無い
+  // （区分開閉器が無くても、電力会社の地上キャビネットで受電する場合は、3点一致でよい）
+  if (a.boundaryPattern === 'coincident' && noPas && a.groundCabinet === 'no') {
     items.push({
       level: 'confirm',
       questionId: 'boundaryPattern',
       label: '責任分界点',
       value: '3点一致',
-      message: 'PASが無い場合、3点一致ではない可能性が高いです（ナレッジベース3-1）。確認してください。',
+      message: '区分開閉器も地上キャビネットも無い場合、3点一致ではない可能性が高いです（ナレッジベース3-1）。確認してください。',
     });
   }
 
@@ -171,7 +176,7 @@ export function checkConsistency(a: Answers): ReviewItem[] {
     ['lbsRatedVoltage', 'LBSの定格電圧'],
   ] as const) {
     if (a[id] === undefined || a[id] === '') {
-      const relevant = id === 'pasRatedVoltage' ? a.hasPas === 'yes' : a.mainBreakerForm === 'pfs';
+      const relevant = id === 'pasRatedVoltage' ? hasPas : a.mainBreakerForm === 'pfs';
       if (relevant) {
         items.push({
           level: 'ask',

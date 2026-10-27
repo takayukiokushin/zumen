@@ -31,6 +31,11 @@ export interface Question {
   options?: Choice[];
   /** selectのとき、一覧にない値の手入力を許すか */
   allowFreeInput?: boolean;
+  /**
+   * selectのとき、選択肢が少なくても、ボタンではなくドロップダウン（一覧から選ぶ形）で出す。
+   * 指定が無ければ、選択肢が3つ以下で短いものはボタン、それ以外はドロップダウン。
+   */
+  dropdown?: boolean;
   unit?: string;
   defaultValue?: Value;
   help?: string;
@@ -65,9 +70,9 @@ const COUNT_OPTIONS: Choice[] = Array.from({ length: 50 }, (_, i) => ({
 
 export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'customer', label: 'お客様・現場', description: '表題欄と図面の基本情報' },
-  { id: 'source', label: '引込元', description: '電柱かキャビネットか' },
+  { id: 'source', label: '引込元', description: '電力会社所有の電柱' },
   { id: 'boundary', label: '責任分界点' },
-  { id: 'pas', label: 'PAS（区分開閉器）' },
+  { id: 'pas', label: '区分開閉器' },
   { id: 'vct', label: 'VCT（計器用変成器）' },
   { id: 'cable', label: '引込ケーブル' },
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
@@ -206,26 +211,13 @@ export const QUESTIONS: Question[] = [
 
   /* ---------------- 引込元 ---------------- */
   {
-    id: 'sourceType',
-    group: 'source',
-    label: '引込元は？',
-    type: 'select',
-    options: [
-      { value: 'pole', label: '電柱（電力会社所有）' },
-      { value: 'cabinet', label: 'キャビネット（地上設置）' },
-    ],
-    ask: 'ai-uncertain',
-    required: true,
-  },
-  {
     id: 'polePrefix',
     group: 'source',
-    label: '電力会社の区分',
+    label: '電柱番号の区分',
     type: 'text',
     defaultValue: '中電柱：',
-    showIf: { key: 'sourceType', eq: 'pole' },
     ask: 'always',
-    help: '中電柱＝中国電力の電柱。この部分は全現場で共通',
+    help: '引込元は、すべて電力会社所有の電柱。中電柱＝中国電力の電柱。この部分は全現場で共通',
   },
   {
     id: 'poleName',
@@ -233,40 +225,19 @@ export const QUESTIONS: Question[] = [
     label: '電柱名称',
     type: 'text',
     placeholder: '猪子山（分）81',
-    showIf: { key: 'sourceType', eq: 'pole' },
     ask: 'always',
     help: '「中電柱：」に続く部分。（分）（幹）（支）（連絡）などの区分は電柱の記載をそのまま反映する',
-  },
-  {
-    id: 'cabinetName',
-    group: 'source',
-    label: 'キャビネット名称',
-    type: 'text',
-    placeholder: '高圧キャビネット（地下佐東西11号）',
-    showIf: { key: 'sourceType', eq: 'cabinet' },
-    ask: 'always',
-  },
-  {
-    id: 'cabinetContent',
-    group: 'source',
-    label: 'キャビネットの中身',
-    type: 'select',
-    options: [
-      { value: 'mold-discon', label: 'モールドディスコン' },
-      { value: 'tee-shelter', label: '三極連動ティー型シェルター' },
-    ],
-    showIf: { key: 'sourceType', eq: 'cabinet' },
-    ask: 'always',
-    help: 'どちらも図記号は同じ。図面上の区別はしない',
   },
   {
     id: 'hasAs',
     group: 'source',
     label: 'AS（気中開閉器）はありますか？',
     type: 'select',
-    options: YES_NO,
+    options: [
+      { value: 'yes', label: 'あり' },
+      { value: 'no', label: 'なし' },
+    ],
     defaultValue: 'no',
-    showIf: { key: 'sourceType', eq: 'pole' },
     ask: 'ai-uncertain',
     help: '電力会社側の開閉器。引込元〜責任分界点の間に入る場合がある',
   },
@@ -306,14 +277,52 @@ export const QUESTIONS: Question[] = [
 
   /* ---------------- PAS ---------------- */
   {
-    id: 'hasPas',
+    id: 'sectionalizer',
     group: 'pas',
-    label: 'PASの設置はありますか？',
+    label: '区分開閉器は？',
     type: 'select',
-    options: YES_NO,
-    defaultValue: 'yes',
+    dropdown: true,
+    options: [
+      { value: 'pas', label: 'PAS（電柱上）' },
+      { value: 'pgs', label: 'PGS（キャビネット内）' },
+      { value: 'none', label: 'なし' },
+    ],
+    defaultValue: 'pas',
     ask: 'ai-uncertain',
     required: true,
+    help:
+      'PAS＝電柱上の区分開閉器（高圧気中開閉器）。PGS＝キャビネット内に設置される区分開閉器で、図面には「PGS」と書く。' +
+      'どちらも、SOG（制御装置）などの質問は同じ。なしのときは、地上キャビネット（電力会社のキャビネットで受電）の有無を聞く',
+  },
+  {
+    id: 'groundCabinet',
+    group: 'pas',
+    label: '地上キャビネットはありますか？',
+    type: 'select',
+    dropdown: true,
+    options: [
+      { value: 'yes', label: 'あり' },
+      { value: 'no', label: 'なし' },
+    ],
+    defaultValue: 'yes',
+    showIf: { key: 'sectionalizer', eq: 'none' },
+    ask: 'ai-uncertain',
+    help: '区分開閉器が無いのは、電力会社のキャビネットで受電する場合がほとんど。ありなら、区分開閉器の場所に断路器（DS）を描く',
+  },
+  {
+    id: 'groundCabinetType',
+    group: 'pas',
+    label: '地上キャビネットの種類は？',
+    type: 'select',
+    dropdown: true,
+    options: [
+      { value: 'mold-discon', label: 'モールドディスコン' },
+      { value: 't-shelter', label: 'T型シェルター' },
+      { value: 'three-pole', label: '三極連動' },
+    ],
+    showIf: { all: [{ key: 'sectionalizer', eq: 'none' }, { key: 'groundCabinet', eq: 'yes' }] },
+    ask: 'ai-uncertain',
+    help: '断路器（DS）の図記号の横に、「地上キャビネット」と、この種類の名前を書く',
   },
   {
     id: 'pasControl',
@@ -326,7 +335,7 @@ export const QUESTIONS: Question[] = [
       { value: 'dgr', label: 'DGR（方向性）' },
     ],
     defaultValue: 'dgr',
-    showIf: { key: 'hasPas', eq: 'yes' },
+    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
     ask: 'ai-uncertain',
     help:
       'SOGがあればZCTが内蔵される（GRはZCTのみ、DGRはZCTに加えて零相電圧＝内蔵VTかZPDが必要）。' +
@@ -340,7 +349,7 @@ export const QUESTIONS: Question[] = [
     options: YES_NO,
     defaultValue: 'yes',
     // SOGが無ければVTは入らないので、聞く必要そのものが無い
-    showIf: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasControl', in: ['gr', 'dgr'] }] },
+    showIf: { all: [{ key: 'sectionalizer', in: ['pas', 'pgs'] }, { key: 'pasControl', in: ['gr', 'dgr'] }] },
     ask: 'ai-uncertain',
   },
   {
@@ -350,7 +359,7 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     options: YES_NO,
     defaultValue: 'yes',
-    showIf: { key: 'hasPas', eq: 'yes' },
+    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
     ask: 'ai-uncertain',
     help: 'SOGが無いPASでも内蔵されていることがある',
   },
@@ -363,7 +372,7 @@ export const QUESTIONS: Question[] = [
       { value: '7200', label: '7200V' },
       { value: '6600', label: '6600V' },
     ],
-    showIf: { key: 'hasPas', eq: 'yes' },
+    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
     ask: 'ai-uncertain',
     help: '7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
   },
@@ -378,7 +387,7 @@ export const QUESTIONS: Question[] = [
       { value: '300', label: '300A' },
       { value: '400', label: '400A' },
     ],
-    showIf: { key: 'hasPas', eq: 'yes' },
+    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
     ask: 'always',
   },
 

@@ -1077,5 +1077,62 @@ console.log('\n■ PASの内部の縦線（枠の上端から開閉部まで・�
   console.log(`  ${n}通り（制御3種 × VT × LA）で、枠の上端から横バーまで・刃の下から出口まで、縦線がつながっている`);
 }
 
+/* ---------- 23. 区分開閉器（PAS／PGS／なし）と地上キャビネット ---------- */
+console.log('\n■ 区分開閉器の場所に描くもの（PAS・PGS・地上キャビネットの断路器）');
+{
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', boundaryPattern: 'coincident' };
+  const at = (a: Answers) => {
+    const d = layout(buildComposition(a), a);
+    return {
+      pas: d.symbols.find((s) => s.role === 'pas'),
+      cab: d.symbols.find((s) => s.role === 'ground-cabinet'),
+      incoming: d.symbols.find((s) => s.role === 'incoming-point'),
+      cable: d.symbols.find((s) => s.role === 'cable-head' || s.role === 'cable-head-site'),
+      d,
+    };
+  };
+  const pas = at({ ...base, sectionalizer: 'pas' });
+  if (!pas.pas || pas.pas.label[0] !== 'PAS' || pas.cab) fail('PASのとき、PASと書かれた区分開閉器が1つだけ描かれていません');
+  else console.log(`  PAS：区分開閉器に「${pas.pas.label[0]}」と書く`);
+
+  const pgs = at({ ...base, sectionalizer: 'pgs' });
+  if (!pgs.pas || pgs.pas.label[0] !== 'PGS' || pgs.pas.symbolId !== pas.pas?.symbolId) fail('PGSのとき、PASと同じ図記号で「PGS」と書かれていません');
+  else console.log(`  PGS：PASと同じ図記号（${pgs.pas.symbolId}）で、「${pgs.pas.label[0]}」と書く`);
+
+  const cases: [string, Answers, string][] = [
+    ['モールドディスコン', { ...base, sectionalizer: 'none', groundCabinet: 'yes', groundCabinetType: 'mold-discon' }, 'モールドディスコン'],
+    ['T型シェルター', { ...base, sectionalizer: 'none', groundCabinet: 'yes', groundCabinetType: 't-shelter' }, 'T型シェルター'],
+    ['三極連動', { ...base, sectionalizer: 'none', groundCabinet: 'yes', groundCabinetType: 'three-pole' }, '三極連動'],
+  ];
+  for (const [name, a, typeName] of cases) {
+    const r = at(a);
+    if (r.pas) fail(`${name}：区分開閉器なしなのに、PAS・PGSが描かれています`);
+    else if (!r.cab) fail(`${name}：区分開閉器の場所に、断路器が描かれていません`);
+    else if (r.cab.symbolId !== 'ds') fail(`${name}：描かれたのが断路器（ds）ではありません（${r.cab.symbolId}）`);
+    else if (r.cab.label[0] !== '地上キャビネット' || r.cab.label[1] !== typeName) fail(`${name}：文字が「${r.cab.label.join(' / ')}」です`);
+    else console.log(`  なし・${name}：断路器（DS）に「${r.cab.label.join('」「')}」と書く`);
+    // PASが描かれる場所（引込点の下、ケーブル端末の上）に来ていること
+    if (r.cab && r.incoming && !(r.cab.y > r.incoming.y)) fail(`${name}：断路器が引込点より下に描かれていません`);
+    if (r.cab && r.cable && !(r.cab.y < r.cable.y)) fail(`${name}：断路器が、ケーブル端末より上に描かれていません`);
+  }
+  const none = at({ ...base, sectionalizer: 'none', groundCabinet: 'no' });
+  if (none.pas || none.cab) fail('区分開閉器なし・キャビネットなしなのに、何かが描かれています');
+  else console.log('  なし・地上キャビネットなし：何も描かない（縦線のまま）');
+
+  const noType = at({ ...base, sectionalizer: 'none', groundCabinet: 'yes' });
+  if (!noType.cab || noType.cab.label.join('') !== '地上キャビネット') fail('種類が未入力のとき、「地上キャビネット」だけを書く形になっていません');
+  else console.log('  なし・種類が未入力：「地上キャビネット」とだけ書く');
+
+  // 古い案件（hasPas だけ）も、同じように描かれる
+  const legacyNo = at({ ...base, hasPas: 'no' });
+  if (legacyNo.pas) fail('古い回答（PASなし）なのに、PASが描かれています');
+  else console.log('  古い回答（PASの設置：なし）：PASは描かない');
+  // 文字が線・記号にぶつからない
+  for (const [name, r] of [['PGS', pgs], ['地上キャビネット', at(cases[0]![1])]] as const) {
+    const found = findLabelCollisions(r.d);
+    if (found.length) fail(`${name}：${[...new Set(found)].slice(0, 2).join(' / ')}`);
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

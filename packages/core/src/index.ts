@@ -22,11 +22,11 @@ export type MainBreakerForm =
   | 'cb'        // CB形。主遮断装置はVCB。設備容量301kVA以上では必須
   | 'pole-top'; // 主遮断装置なし（高圧マンションで受電設備を電柱上に構成する例外パターン）
 
-/** 引込元のパターン */
-export type ServiceSourceType = 'pole' | 'cabinet';
+/** 区分開閉器の種類。PAS＝電柱上、PGS＝キャビネット内、none＝設置なし */
+export type Sectionalizer = 'pas' | 'pgs' | 'none';
 
-/** キャビネットの中身 */
-export type CabinetContent = 'mold-discon' | 'tee-shelter';
+/** 区分開閉器が無いときの、地上キャビネットの種類 */
+export type GroundCabinetType = 'mold-discon' | 't-shelter' | 'three-pole';
 
 /** 責任分界点のパターン */
 export type BoundaryPattern =
@@ -43,9 +43,10 @@ export interface HearingAnswers {
   receivingType?: ReceivingType;
   contractPower?: number;      // kW
   receivingVoltage?: number;   // V
-  /** 引込元 */
-  sourceType?: ServiceSourceType;
-  cabinetContent?: CabinetContent;
+  /** 区分開閉器（PAS／PGS／なし）。なしのときは地上キャビネットの有無と種類 */
+  sectionalizer?: Sectionalizer;
+  groundCabinet?: 'yes' | 'no';
+  groundCabinetType?: GroundCabinetType;
   /** 責任分界点 */
   boundaryPattern?: BoundaryPattern;
   /** 8. 接地方式・接地抵抗値等の特記事項 */

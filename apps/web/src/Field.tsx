@@ -34,6 +34,7 @@ export function Field({ question: q, fieldKey, value, onChange }: Props) {
 
       {q.type === 'select' &&
       !q.allowFreeInput &&
+      !q.dropdown &&
       (q.options?.length ?? 0) <= 3 &&
       (q.options ?? []).every((o) => o.label.length <= 12) ? (
         <div className="radio-row" id={fieldKey}>

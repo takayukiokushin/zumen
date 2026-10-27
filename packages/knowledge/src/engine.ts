@@ -18,7 +18,20 @@ export interface AskOptions {
 }
 
 /** いま聞くべき質問を、表示条件を評価して返す */
-export function visibleQuestions(answers: Answers, opts: AskOptions = {}): Question[] {
+/**
+ * 古い回答を、いまの質問に合わせる。
+ *
+ * 以前は「PASの設置はありますか？」（hasPas：yes／no）だったが、いまは区分開閉器（sectionalizer：PAS／PGS／なし）。
+ * 区分開閉器の回答がまだ無くて、古い hasPas の回答だけが入っているときは、そこから決める
+ * （no→なし、それ以外→PAS）。区分開閉器の回答があれば、そちらを使う。
+ */
+export function normalizeAnswers(answers: Answers): Answers {
+  if (answers.sectionalizer !== undefined || answers.hasPas === undefined) return answers;
+  return { ...answers, sectionalizer: answers.hasPas === 'no' ? 'none' : 'pas' };
+}
+
+export function visibleQuestions(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
+  const answers = normalizeAnswers(rawAnswers);
   const resolved = opts.resolvedByAi ?? new Set<string>();
   return QUESTIONS.filter((q) => {
     if (!evaluate(q.showIf, answers)) return false;
@@ -40,7 +53,8 @@ export function questionsByGroup(answers: Answers, opts: AskOptions = {}): {
 }
 
 /** 未回答の必須項目 */
-export function missingRequired(answers: Answers, opts: AskOptions = {}): Question[] {
+export function missingRequired(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
+  const answers = normalizeAnswers(rawAnswers);
   return visibleQuestions(answers, opts).filter(
     (q) => q.required && (answers[q.id] === undefined || answers[q.id] === null || answers[q.id] === ''),
   );
@@ -85,8 +99,21 @@ const GENERATOR_FUEL_LABEL: Record<string, string> = {
 };
 
 /** 回答そのものに加えて、図面の文字に使う導出値を足した集まりを作る */
-export function withDerived(answers: Answers): Answers {
+export function withDerived(rawAnswers: Answers): Answers {
+  const answers = normalizeAnswers(rawAnswers);
   const d: Answers = { ...answers };
+
+  // 区分開閉器（PAS／PGS／なし）。まだ答えていないときは、これまでどおりPAS
+  const sectionalizer = String(answers.sectionalizer ?? 'pas');
+  // 内部の条件式は、これまでの「PASがあるか」の形（hasPas）のまま使えるようにしておく
+  d.hasPas = sectionalizer === 'none' ? 'no' : 'yes';
+  // 図面に書く名前。PGSはキャビネット内の区分開閉器で、PASとは書かない
+  d.sectionalizerName = sectionalizer === 'pgs' ? 'PGS' : 'PAS';
+  // 区分開閉器が無いとき、地上キャビネットの種類の名前（図面に書く）
+  d.groundCabinetTypeName =
+    ({ 'mold-discon': 'モールドディスコン', 't-shelter': 'T型シェルター', 'three-pole': '三極連動' } as Record<string, string>)[
+      String(answers.groundCabinetType)
+    ] ?? '';
 
   // PASの内蔵表記（例: VT,LA内蔵型）。
   // VTはSOG（GR/DGR）があるときだけ入る。回答が残っていても、SOGが無ければ書かない

@@ -91,22 +91,14 @@ export const UPSTREAM: Placement[] = [
     role: 'source-pole',
     symbolId: 'pole-utility',
     kind: 'series',
-    when: { key: 'sourceType', eq: 'pole' },
+    // 引込元は、すべて電力会社所有の電柱
     labelTemplate: ['{polePrefix}{poleName}'],
-  },
-  {
-    role: 'source-cabinet',
-    symbolId: 'cabinet',
-    kind: 'series',
-    when: { key: 'sourceType', eq: 'cabinet' },
-    labelTemplate: ['{cabinetName}'],
-    props: { content: 'cabinetContent' },
   },
   {
     role: 'as',
     symbolId: 'as',
     kind: 'series',
-    when: { all: [{ key: 'sourceType', eq: 'pole' }, { key: 'hasAs', eq: 'yes' }] },
+    when: { key: 'hasAs', eq: 'yes' },
     labelTemplate: ['AS'],
   },
   { role: 'incoming-point', symbolId: 'incoming-point', kind: 'series' },
@@ -128,12 +120,23 @@ export const UPSTREAM: Placement[] = [
     labelTemplate: ['財産分界点'],
   },
   {
+    // 区分開閉器が無いとき、電力会社の地上キャビネットで受電する。
+    // 区分開閉器が描かれる場所に、断路器（DS）の図記号と「地上キャビネット／種類の名前」を書く
+    role: 'ground-cabinet',
+    symbolId: 'ds',
+    kind: 'series',
+    when: { all: [{ key: 'hasPas', eq: 'no' }, { key: 'groundCabinet', eq: 'yes' }] },
+    labelTemplate: ['地上キャビネット', '{groundCabinetTypeName}'],
+    note: '区分開閉器なし＋地上キャビネットあり。種類（モールドディスコン／T型シェルター／三極連動）は名前の文字だけで区別する',
+  },
+  {
     role: 'pas',
     // 内蔵機器（LA・VT）が入るときは、枠を少し広げたほうを使う（engine の pasSymbol）
+    // PGS（キャビネット内の区分開閉器）も、同じ図記号で、名前だけ「PGS」と書く
     symbolId: '{pasSymbol}',
     kind: 'series',
     when: { key: 'hasPas', eq: 'yes' },
-    labelTemplate: ['PAS', '{pasRatingText}', '{pasBuiltinText}'],
+    labelTemplate: ['{sectionalizerName}', '{pasRatingText}', '{pasBuiltinText}'],
     props: { ratedVoltage: 'pasRatedVoltage', ratedCurrent: 'pasRatedCurrent', control: 'pasControl' },
   },
   {
