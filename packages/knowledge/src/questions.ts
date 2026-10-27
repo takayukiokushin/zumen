@@ -68,6 +68,9 @@ const COUNT_OPTIONS: Choice[] = Array.from({ length: 50 }, (_, i) => ({
   label: String(i + 1),
 }));
 
+/** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
+const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
+
 export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'customer', label: 'お客様・現場', description: '表題欄と図面の基本情報' },
   { id: 'source', label: '引込元', description: '電力会社所有の電柱' },
@@ -421,14 +424,17 @@ export const QUESTIONS: Question[] = [
   {
     id: 'cableInstallation',
     group: 'cable',
-    label: '付設方法は？',
+    label: '引込ケーブルは？',
     type: 'select',
     options: [
       { value: 'buried', label: '埋設（埋ケ）' },
       { value: 'overhead', label: '架空（架ケ）' },
+      { value: 'none', label: 'なし（ケーブルを介さない）' },
     ],
     ask: 'ai-uncertain',
-    help: '埋設のみ図面の線を点線で描く',
+    help:
+      '埋設のみ図面の線を点線で描く。「なし」は、電柱の上に受電設備を構成する場合などで、' +
+      '区分開閉器の後をケーブルを介さず、ふつうの電線でつなぐとき（ケーブル端末も描かない）',
   },
   {
     id: 'cableStructure',
@@ -440,9 +446,21 @@ export const QUESTIONS: Question[] = [
       { value: 'CV', label: 'CV' },
     ],
     defaultValue: 'CVT',
+    showIf: CABLE_EXISTS,
     ask: 'ai-uncertain',
   },
-  { id: 'cableVoltage', group: 'cable', label: '定格電圧は？', type: 'number', unit: 'V', defaultValue: 6600, ask: 'always' },
+  {
+    id: 'cableVoltage',
+    group: 'cable',
+    label: '定格電圧は？',
+    type: 'select',
+    dropdown: true,
+    unit: 'V',
+    options: [3300, 6600, 22000].map((v) => ({ value: String(v), label: `${v}V` })),
+    defaultValue: '6600',
+    showIf: CABLE_EXISTS,
+    ask: 'always',
+  },
   {
     id: 'cableCrossSection',
     group: 'cable',
@@ -451,6 +469,7 @@ export const QUESTIONS: Question[] = [
     unit: 'mm2',
     options: [14, 22, 38, 60, 100, 150].map((v) => ({ value: String(v), label: `${v} mm2` })),
     allowFreeInput: true,
+    showIf: CABLE_EXISTS,
     ask: 'always',
     help: '一覧にない値は手入力できる',
   },
@@ -460,6 +479,7 @@ export const QUESTIONS: Question[] = [
     label: '長さは？',
     type: 'number',
     unit: 'm',
+    showIf: CABLE_EXISTS,
     ask: 'always',
     help: '不明な場合は空欄にする（図面には「- m」と記載する）',
   },
@@ -470,7 +490,7 @@ export const QUESTIONS: Question[] = [
     type: 'boolean',
     // 既定値を持たせると「既定のままでよい質問」として畳まれてしまうので置かない。
     // 未回答は「付けない」と同じ扱いになる
-    showIf: { key: 'cableLength', gt: 0 },
+    showIf: { all: [CABLE_EXISTS, { key: 'cableLength', gt: 0 }] },
     ask: 'always',
     help: '歩測などで、きっちりした実測ではないとき。「約20m」と書かれる',
   },

@@ -196,9 +196,11 @@ export const UPSTREAM: Placement[] = [
     props: { location: 'vctLocation' },
   },
   {
+    // 引込ケーブルが「なし」のとき（電柱の上に受電設備を構成する場合など）は、ケーブル端末も描かない
     role: 'cable-head-source',
     symbolId: 'cable-head',
     kind: 'series',
+    when: { key: 'cableInstallation', ne: 'none' },
     labelTemplate: ['{cableInstallationLabel}', '{cableStructure}', '{cableSpecLine}'],
     gapAfter: 56,
     dashedAfter: { key: 'cableInstallation', eq: 'buried' },
@@ -215,6 +217,7 @@ export const UPSTREAM: Placement[] = [
     role: 'cable-head-site',
     symbolId: 'cable-head',
     kind: 'series',
+    when: { key: 'cableInstallation', ne: 'none' },
     note: '受電側の端末。同じ記号を180°回転して使う',
   },
   {

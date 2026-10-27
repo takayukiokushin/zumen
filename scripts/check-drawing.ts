@@ -1134,5 +1134,67 @@ console.log('\n■ 区分開閉器の場所に描くもの（PAS・PGS・地上�
   }
 }
 
+/* ---------- 24. 引込ケーブルが「なし」のとき ---------- */
+console.log('\n■ 引込ケーブル：埋設（点線）・架空（実線）・なし（ケーブル端末を描かない）');
+{
+  const base: Answers = { ...answers, hasPas: 'yes' };
+  const run = (cableInstallation: string) => {
+    const a: Answers = { ...base, cableInstallation };
+    const d = layout(buildComposition(a), a);
+    const heads = d.symbols.filter((s) => s.symbolId === 'cable-head');
+    const dashed = d.wires.filter((w) => w.dashed).length;
+    const pas = d.symbols.find((s) => s.role === 'pas');
+    const frame = d.frames[0];
+    // 区分開閉器の出口（PASの下端）から受電設備の枠の上端まで、縦線が途切れずつながっているか
+    const axis = 0;
+    const segs = d.wires
+      .filter((w) => Math.abs(w.x1 - axis) < 0.6 && Math.abs(w.x2 - axis) < 0.6)
+      .map((w) => [Math.min(w.y1, w.y2), Math.max(w.y1, w.y2)] as const)
+      .sort((p, q) => p[0] - q[0]);
+    return { d, heads, dashed, pas, frame, segs };
+  };
+  const buried = run('buried');
+  const overhead = run('overhead');
+  const none = run('none');
+  if (buried.heads.length !== 2 || buried.dashed < 1) fail(`埋設：ケーブル端末が ${buried.heads.length}個、点線が ${buried.dashed}本です（端末2個・点線1本以上のはず）`);
+  else console.log(`  埋設：ケーブル端末 2個、点線 ${buried.dashed}本`);
+  if (overhead.heads.length !== 2 || overhead.dashed !== 0) fail(`架空：ケーブル端末が ${overhead.heads.length}個、点線が ${overhead.dashed}本です（端末2個・点線なしのはず）`);
+  else console.log('  架空：ケーブル端末 2個、実線');
+  if (none.heads.length !== 0) fail(`なし：ケーブル端末が ${none.heads.length}個 描かれています`);
+  else if (none.dashed !== 0) fail(`なし：点線が ${none.dashed}本 描かれています`);
+  else console.log('  なし：ケーブル端末も点線も描かない');
+  // 「なし」のとき、区分開閉器の出口から次の機器まで、ふつうの線でつながっている
+  const pas = none.pas;
+  if (!pas) fail('なし：区分開閉器が描かれていません');
+  else {
+    const pdef = getSymbolDef(pas.symbolId);
+    const exitY = pas.y + (pdef.ports.find((p) => p.id === 'out')?.y ?? pdef.box.h);
+    const below = none.d.symbols.filter((s) => s.y > exitY - 1 && s.role !== 'pas' && s.parent === undefined).sort((p, q) => p.y - q.y)[0];
+    if (!below) fail('なし：区分開閉器の下に、つながる機器がありません');
+    else {
+      const bdef = getSymbolDef(below.symbolId);
+      const entryY = below.y + (bdef.ports.find((p) => p.id === 'in')?.y ?? 0);
+      // 出口から入口までの区間を、縦線がすきまなくおおっているか
+      let cur = exitY;
+      for (const [a0, a1] of none.segs) {
+        if (a1 < cur - 0.01) continue;
+        if (a0 > cur + 0.01) break;
+        cur = Math.max(cur, a1);
+      }
+      if (cur < entryY - 0.01) fail(`なし：区分開閉器（${pas.symbolId}）の出口と次の機器（${below.symbolId}）のあいだが、つながっていません（y=${cur.toFixed(1)}〜${entryY.toFixed(1)}）`);
+      else console.log(`  なし：区分開閉器の下は、ふつうの線で ${below.symbolId} につながる（ケーブルを介さない）`);
+    }
+  }
+  // 「なし」は、ケーブルの分だけ図面が短くなる
+  const hOf = (r: { d: ReturnType<typeof layout> }) => r.d.bounds.y1 - r.d.bounds.y0;
+  if (!(hOf(none) < hOf(buried))) fail(`なし：図面が短くなっていません（${hOf(none).toFixed(0)} ／ 埋設 ${hOf(buried).toFixed(0)}）`);
+  else console.log(`  なし：図面の高さ ${hOf(none).toFixed(0)}（埋設 ${hOf(buried).toFixed(0)}）。ケーブルの間隔のぶん短い`);
+  // 文字が線・記号に近づかない
+  for (const [name, r] of [['埋設', buried], ['架空', overhead], ['なし', none]] as const) {
+    const found = findLabelCollisions(r.d);
+    if (found.length) fail(`${name}：${[...new Set(found)].slice(0, 2).join(' / ')}`);
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

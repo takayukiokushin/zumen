@@ -389,6 +389,36 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
 }
 
+console.log('\n■ 引込ケーブル（埋設・架空・なし）と定格電圧');
+{
+  const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const detail = ['cableStructure', 'cableVoltage', 'cableCrossSection', 'cableLength'];
+  for (const [name, ans, expectShown] of [
+    ['埋設', { cableInstallation: 'buried' }, true],
+    ['架空', { cableInstallation: 'overhead' }, true],
+    ['なし', { cableInstallation: 'none' }, false],
+    ['まだ答えていない', {}, true],
+  ] as [string, Answers, boolean][]) {
+    const ids = shown(ans);
+    const bad = detail.filter((id) => ids.has(id) !== expectShown);
+    if (!ids.has('cableInstallation')) fail(`${name}：引込ケーブルの質問そのものが出ません`);
+    else if (bad.length) fail(`${name}：ケーブルの詳細の質問が${expectShown ? '出ない' : '出てしまう'}（${bad.join('・')}）`);
+    else console.log(`  ${name}：構造・定格電圧・断面積・長さの質問を${expectShown ? '聞く' : '聞かない'}`);
+  }
+  const opts = QUESTIONS.find((q) => q.id === 'cableInstallation')?.options?.map((o) => o.value) ?? [];
+  if (JSON.stringify(opts) !== JSON.stringify(['buried', 'overhead', 'none'])) fail(`付設方法の選択肢が違います（${opts.join('・')}）`);
+  const volt = QUESTIONS.find((q) => q.id === 'cableVoltage');
+  const vOpts = volt?.options?.map((o) => o.value) ?? [];
+  if (volt?.type !== 'select' || !volt.dropdown || JSON.stringify(vOpts) !== JSON.stringify(['3300', '6600', '22000'])) {
+    fail(`定格電圧が、3300・6600・22000のドロップダウンになっていません（${volt?.type}／${vOpts.join('・')}）`);
+  } else console.log('  定格電圧：ドロップダウン（3300V／6600V／22000V）。初期値は6600V');
+  // 古い案件の数値（6600）も、ケーブルの注記にそのまま出る
+  const spec = String(withDerived({ cableVoltage: 6600, cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
+  const spec2 = String(withDerived({ cableVoltage: '22000', cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
+  if (spec !== '6600V 38mm2 14m' || spec2 !== '22000V 38mm2 14m') fail(`注記が違います（${spec} ／ ${spec2}）`);
+  else console.log(`  ケーブルの注記：${spec}（数値でも文字でも同じ）／ ${spec2}`);
+}
+
 console.log('\n■ 図面名称（受電設備の形態から自動で決まる）');
 {
   const cases: [string, Answers, string][] = [
