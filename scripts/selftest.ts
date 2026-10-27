@@ -538,7 +538,8 @@ try {
   const drawing = layout(items, answers);
   check('記号を組み立てられる', drawing.symbols.length > 5, `記号${drawing.symbols.length}個 / 線${drawing.wires.length}本`);
   const svg = renderSvg(drawing, {
-    title: '試験事業場　キュービクル式高圧受電設備単線結線図',
+    site: '試験事業場',
+    name: 'キュービクル式高圧受電設備単線結線図',
     footer: '試験',
   });
   check('図面を描き出せる', svg.includes('<svg') && svg.length > 2000, `${(svg.length / 1024).toFixed(0)}KB`);

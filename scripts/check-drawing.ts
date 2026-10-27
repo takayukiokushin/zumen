@@ -22,7 +22,7 @@ import {
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
-import { layout } from '../packages/layout/src/index.ts';
+import { layout, layoutTitle, sheetSize, textWidth } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
 import { inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
@@ -902,6 +902,52 @@ console.log('\n■ 3点不一致：保安上の責任分界点（主遮断装置
     // 文言が横線の上・左端にあること（主回路の縦線から離れていて、重ならない）
     if (!(m.labelAt.y < lineY && m.labelAt.x <= axisX - 100 && m.labelAt.anchor === 'start')) fail(`${c.name}：文言の位置が線の左上ではありません`);
   }
+}
+
+/* ---------- 19. 表題の枠：幅の自動調整と2行化 ---------- */
+console.log('\n■ 表題の枠（文字量に合わせた幅・長いときだけ2行・はみ出さない）');
+{
+  const NAME = 'キュービクル式高圧受電設備単線結線図';
+  const unit = '一二三四五六七八九十';
+  const papers: ['A4' | 'A3', 'portrait' | 'landscape'][] = [['A4', 'portrait'], ['A4', 'landscape'], ['A3', 'portrait'], ['A3', 'landscape']];
+  let checked = 0;
+  for (const [paper, orient] of papers) {
+    const W = sheetSize(paper, orient).w;
+    const maxBoxW = W - 24 * 2 - 120;
+    let prevW = 0;
+    let prevTwo = false;
+    for (const n of [1, 4, 8, 12, 16, 20, 24, 30, 40, 70, 150]) {
+      const site = unit.repeat(Math.ceil(n / 10)).slice(0, n);
+      const t = layoutTitle({ site, name: NAME }, W, 24);
+      const room = maxBoxW - 40;
+      // 1. どんな長さでも、文字が枠の中に収まる
+      for (const l of t.lines) {
+        if (textWidth(l.text, l.size) > room + 0.01) fail(`${paper}${orient}・事業場名称${n}字：「${l.text.slice(0, 6)}…」が枠からはみ出します`);
+      }
+      if (t.boxW > maxBoxW + 0.01) fail(`${paper}${orient}・${n}字：枠が図枠の幅を超えています（${t.boxW}）`);
+      // 2. 枠の幅は、文字量に合わせて広がる（短ければ狭く、長ければ広く）。同じ行数のあいだは逆戻りしない
+      //    （1行から2行に切り替わる所だけは、1行ぶんの長さでなく長いほうの行の長さになるので、狭くなってよい）
+      if (t.twoLines === prevTwo && t.boxW + 0.01 < prevW) fail(`${paper}${orient}・${n}字：文字が増えたのに枠が狭くなりました`);
+      prevW = t.boxW;
+      prevTwo = t.twoLines;
+      // 3. 1行にして収まるときは1行、収まらないときだけ2行（上が事業場名称・下が図面名称）
+      const oneW = textWidth(`${site}　${NAME}`, 14);
+      const wantTwo = oneW > room;
+      if (t.twoLines !== wantTwo) fail(`${paper}${orient}・${n}字：${wantTwo ? '2行' : '1行'}になるはずが${t.twoLines ? '2行' : '1行'}です`);
+      if (t.twoLines && (t.lines[0]?.text !== site || t.lines[1]?.text !== NAME)) fail(`${paper}${orient}・${n}字：2行の分け方が違います`);
+      checked++;
+    }
+  }
+  console.log(`  ${checked}通り（用紙4種 × 事業場名称の長さ11段階）で、はみ出し・幅・行数が正しい`);
+  // 短い名前は、枠が小さくなりすぎず、基準より狭い
+  const short = layoutTitle({ site: '山田工場', name: NAME }, sheetSize('A4', 'portrait').w, 24);
+  const long = layoutTitle({ site: unit.repeat(2), name: NAME }, sheetSize('A4', 'portrait').w, 24);
+  if (!(short.boxW < long.boxW)) fail('短い名前の枠が、長い名前の枠より狭くなっていません');
+  else console.log(`  短い名前の枠 ${Math.round(short.boxW)} ＜ 長い名前の枠 ${Math.round(long.boxW)}（上限 ${sheetSize('A4', 'portrait').w - 168}）`);
+  // 事業場名称が空でも崩れない
+  const none = layoutTitle({ site: '', name: NAME }, sheetSize('A4', 'portrait').w, 24);
+  if (none.lines.length !== 1 || none.lines[0]?.text !== NAME) fail('事業場名称が空のとき、図面名称だけの1行になっていません');
+  else console.log('  事業場名称が空のときは、図面名称だけを1行で書く');
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

@@ -6,8 +6,84 @@ import type { DrawingLayout } from './layout.ts';
 export const COMPANY_NAME = '株式会社フジエレックス';
 
 export interface TitleBlock {
-  title: string;
+  /** 上の行（または1行にしたときの頭）。事業場名称、または表題欄への記載名 */
+  site: string;
+  /** 図面名称。「キュービクル式高圧受電設備単線結線図」など */
+  name: string;
   footer?: string;
+}
+
+/* ---------------- 表題の枠（幅の自動調整と2行化） ---------------- */
+
+/** 表題の文字の大きさ（作図単位） */
+const TITLE_FONT = 14;
+/** 枠の内側の左右の余白 */
+const TITLE_PAD_X = 20;
+/** 枠のいちばん狭い幅。短い名前でも、枠が小さくなりすぎないように */
+const TITLE_MIN_W = 220;
+/** 1行のときの枠の高さ／2行のときの枠の高さ */
+const TITLE_BOX_H1 = 32;
+const TITLE_BOX_H2 = 52;
+/** 図枠の端から表題の枠までの、最低限の空き（左右） */
+const TITLE_SIDE = 60;
+
+/**
+ * 文字列の幅の見積もり（作図単位）。
+ * 全角の文字は1文字ぶん、半角の英数字は0.5〜0.7文字ぶん。実際のフォントで測った値より
+ * わずかに大きめに見積もる（枠からはみ出さないように）。
+ */
+export function textWidth(s: string, size: number): number {
+  let w = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    if (c === 0x20) w += 0.35;
+    else if (c < 0x80) w += /[A-Z0-9]/.test(ch) ? 0.68 : /[.,:;!|'`()]/.test(ch) ? 0.4 : 0.58;
+    else if (c >= 0xff61 && c <= 0xff9f) w += 0.55; // 半角カナ
+    else w += 1;
+  }
+  return w * size;
+}
+
+export interface TitleLayout {
+  /** 書く行（上から順）。size はその行の文字の大きさ */
+  lines: { text: string; size: number }[];
+  /** 枠の幅と高さ */
+  boxW: number;
+  boxH: number;
+  /** 表題の枠まわりが使う高さ（図枠の上端から、作図範囲の手前まで） */
+  titleH: number;
+  twoLines: boolean;
+}
+
+/**
+ * 表題の文字量から、枠の大きさと行の分け方を決める。
+ *
+ * - 枠の幅は文字量に合わせる（短ければ狭く、長ければ広く）。上限は図枠の幅から左右 60 ずつ引いた幅
+ * - 「事業場名称＋図面名称」を1行に書いて上限に収まらないときだけ、2行にする
+ *   （上の行は事業場名称、下の行は図面名称）
+ * - どんな長さでも枠からはみ出さない。1行がそれでも収まらないときは、その行の文字を小さくして収める
+ */
+export function layoutTitle(title: TitleBlock, sheetW: number, margin: number): TitleLayout {
+  const maxBoxW = sheetW - margin * 2 - TITLE_SIDE * 2;
+  const room = maxBoxW - TITLE_PAD_X * 2;
+  const site = title.site.trim();
+  const name = title.name.trim();
+  const one = site ? `${site}　${name}` : name;
+
+  if (textWidth(one, TITLE_FONT) <= room) {
+    const boxW = Math.min(maxBoxW, Math.max(TITLE_MIN_W, textWidth(one, TITLE_FONT) + TITLE_PAD_X * 2));
+    return { lines: [{ text: one, size: TITLE_FONT }], boxW, boxH: TITLE_BOX_H1, titleH: TITLE_BOX_H1 + 12, twoLines: false };
+  }
+
+  // 2行。それでも収まらない行は、文字を小さくして枠の中に収める
+  const fit = (text: string) => {
+    const w = textWidth(text, TITLE_FONT);
+    return { text, size: w <= room ? TITLE_FONT : (TITLE_FONT * room) / w };
+  };
+  const lines = [fit(site), fit(name)];
+  const widest = Math.max(...lines.map((l) => textWidth(l.text, l.size)));
+  const boxW = Math.min(maxBoxW, Math.max(TITLE_MIN_W, widest + TITLE_PAD_X * 2));
+  return { lines, boxW, boxH: TITLE_BOX_H2, titleH: TITLE_BOX_H2 + 12, twoLines: true };
 }
 
 export type PaperSize = 'A4' | 'A3';
@@ -64,7 +140,8 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   const W = opts.width ?? size.w;
   const H = opts.height ?? size.h;
   const M = opts.margin ?? 24;
-  const TITLE_H = opts.titleHeight ?? 44;
+  const tl = layoutTitle(title, W, M);
+  const TITLE_H = opts.titleHeight ?? tl.titleH;
   const PAD = opts.pad ?? 12;
 
   const areaX = M + PAD;
@@ -128,13 +205,23 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
     }
   }
 
+  // 1行のときは枠の中央に、2行のときは上の行・下の行の順に、枠の中央にそろえて書く
+  const boxTop = M + 6;
+  const baselines = tl.twoLines ? [boxTop + 22, boxTop + 42] : [boxTop + tl.boxH / 2 + 5];
+  const titleText = tl.lines
+    .map(
+      (l, i) =>
+        `  <text x="${W / 2}" y="${baselines[i]}" font-size="${round(l.size)}" font-weight="700" text-anchor="middle" font-family="${FONT_FAMILY}" fill="#000">${esc(l.text)}</text>`,
+    )
+    .join('\n');
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
   <rect x="0" y="0" width="${W}" height="${H}" fill="#fff" />
   <g stroke="#000" fill="none">
     <rect x="${M}" y="${M}" width="${W - M * 2}" height="${H - M * 2}" stroke-width="1" />
-    <rect x="${M + 60}" y="${M + 6}" width="${W - M * 2 - 120}" height="${TITLE_H - 12}" stroke-width="1" />
+    <rect x="${round((W - tl.boxW) / 2)}" y="${M + 6}" width="${round(tl.boxW)}" height="${tl.boxH}" stroke-width="1" />
   </g>
-  <text x="${W / 2}" y="${M + 6 + (TITLE_H - 12) / 2 + 5}" font-size="14" font-weight="700" text-anchor="middle" font-family="${FONT_FAMILY}" fill="#000">${esc(title.title)}</text>
+${titleText}
   <text x="${W - M - 14}" y="${H - M - 12}" font-size="9" text-anchor="end" font-family="${FONT_FAMILY}" fill="#000">${esc(title.footer ?? COMPANY_NAME)}</text>
   <g transform="translate(${round(tx)} ${round(ty)}) scale(${scale.toFixed(4)})">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">

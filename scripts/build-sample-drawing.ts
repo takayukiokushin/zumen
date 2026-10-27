@@ -74,7 +74,8 @@ export const SAMPLE_ANSWERS: Answers = {
 const composition = buildComposition(SAMPLE_ANSWERS);
 const drawing = layout(composition, SAMPLE_ANSWERS);
 const svg = renderSvg(drawing, {
-  title: 'カニエ竹原太陽光発電所　キュービクル式高圧受電設備単線結線図',
+  site: 'カニエ竹原太陽光発電所',
+  name: 'キュービクル式高圧受電設備単線結線図',
   footer: '株式会社フジエレックス',
 });
 

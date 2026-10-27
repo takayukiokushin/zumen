@@ -71,7 +71,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   const doc = history.present;
   const sheetTitle = {
-    title: `${String(answers.customerNameForTitleBlock ?? answers.siteName ?? '')}　${resolveDrawingName(answers)}`.trim(),
+    site: String(answers.customerNameForTitleBlock ?? answers.siteName ?? ''),
+    name: resolveDrawingName(answers),
     // 右下は常に社名（作成者や図面番号は図面に入れない方針）
     footer: COMPANY_NAME,
   };
@@ -82,7 +83,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const orientation: Orientation = doc.orientation ?? 'portrait';
   const sheetSvg = useMemo(
     () => buildSheetSvg(doc, sheetTitle, paper, orientation),
-    [doc, sheetTitle.title, sheetTitle.footer, paper, orientation],
+    [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
   );
   /** 印刷のときの用紙の実寸。@page と図面の大きさを合わせるのに使う */
   const sheetMm = sheetSize(paper, orientation);
