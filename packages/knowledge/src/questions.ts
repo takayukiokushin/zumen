@@ -108,9 +108,9 @@ const YES_NO_Q: Choice[] = [
 /* 開閉器とヒューズの定格電流。一覧から選べて、手入力もできる */
 const amps = (...vals: string[]): Choice[] => vals.map((v) => ({ value: v, label: v }));
 const PC_RATINGS = amps('30A', '50A', '75A', '100A');
-const PC_FUSES = amps('5A', '7.5A', '10A', '15A', '20A', '30A', '50A');
+const PC_FUSES = amps('5A', '7.5A', '10A', '15A', '20A', '25A', '30A', '50A', '75A', '100A');
 const LBS_RATINGS = amps('100A', '200A', '300A', '400A');
-const PF_RATINGS = amps('10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A', '150A');
+const PF_RATINGS = amps('5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A');
 const LOAD_AMPS = amps('5A', '10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A');
 const SHORT_CIRCUIT = amps('12.5kA', '20kA', '31.5kA', '40kA');
 /** パワーヒューズの負荷側。つなぐ相手で記号が変わる */
@@ -561,16 +561,9 @@ export const QUESTIONS: Question[] = [
     ],
     ask: 'ai-uncertain',
     required: true,
-    help: 'この選択で受電設備の構成が大きく変わる。高圧変圧器の合計容量から自動で提案する',
-  },
-  {
-    id: 'isHighRiseApartment',
-    group: 'receiving',
-    label: '高圧マンションで、電柱上に受電設備が構成されていますか？',
-    type: 'select',
-    options: YES_NO,
-    showIf: { key: 'mainBreakerForm', eq: 'pole-top' },
-    ask: 'always',
+    help:
+      'この選択で受電設備の構成が大きく変わる。高圧変圧器の合計容量から自動で提案する。' +
+      '「それ以外（高圧マンション・電柱上構成）」を選んだ場合は、電柱上に受電設備が構成されているものとして扱う（追加の質問は無い）',
   },
   {
     id: 'lbsRatedVoltage',

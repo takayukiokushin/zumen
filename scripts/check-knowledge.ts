@@ -389,6 +389,27 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   } else console.log('  古い案件の回答（PASの設置：なし／あり）は、区分開閉器の回答（なし／PAS）に読み替える');
 }
 
+console.log('\n■ 主遮断装置「それ以外（高圧マンション・電柱上構成）」と、ヒューズの選択肢');
+{
+  const ids = new Set(QUESTIONS.map((q) => q.id));
+  if (ids.has('isHighRiseApartment')) fail('「高圧マンションで、電柱上に受電設備が構成されていますか？」の質問が残っています');
+  const shown = new Set(visibleQuestions({ mainBreakerForm: 'pole-top' }, {}).map((q) => q.id));
+  const receiving = [...shown].filter((id) => QUESTIONS.find((q) => q.id === id)?.group === 'receiving');
+  if (shown.has('isHighRiseApartment')) fail('電柱上構成を選んだのに、追加の質問が出ています');
+  else console.log(`  電柱上構成を選んだとき、「電柱上に構成されていますか？」とは聞かない（そのまま電柱上として扱う）。出る質問：${receiving.join('・')}`);
+  const opts = (id: string) => QUESTIONS.find((q) => q.id === id)?.options?.map((o) => o.value) ?? [];
+  const same = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
+  const pcFuse = ['5A', '7.5A', '10A', '15A', '20A', '25A', '30A', '50A', '75A', '100A'];
+  const pf = ['5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A'];
+  for (const prefix of ['tr', 'cap']) {
+    if (!same(opts(`${prefix}PcFuse`), pcFuse)) fail(`${prefix}：PCのヒューズの選択肢が違います（${opts(`${prefix}PcFuse`).join('・')}）`);
+    if (!same(opts(`${prefix}PfG`), pf)) fail(`${prefix}：LBSのパワーヒューズの選択肢が違います（${opts(`${prefix}PfG`).join('・')}）`);
+    if (opts(`${prefix}PfG`).includes('150A')) fail(`${prefix}：パワーヒューズに150Aが残っています`);
+  }
+  console.log(`  PCのヒューズ：${pcFuse.join(' / ')}`);
+  console.log(`  LBSのパワーヒューズ：${pf.join(' / ')}（150Aは無し）`);
+}
+
 console.log('\n■ 受電設備エリア：高圧マンション（電柱上構成）');
 {
   const form = QUESTIONS.find((q) => q.id === 'areaForm');
