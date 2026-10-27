@@ -74,7 +74,10 @@ const pasDef = (
     shapes: [
       vline(x, 0, frameTop),
       rect(6, frameTop, 74 + l + r, frameBottom - frameTop),
-      ...loadContact(x, 62, 8),
+      // 枠の上端から開閉部の横バーまで、縦線を途切れさせずに引く。
+      // 内蔵のZCTも同じ位置に縦線を持つが、ZCTが無い構成（制御なし）や、
+      // ZCTの端と枠・バーのあいだに隙間ができる構成でも、線がつながるようにここで引いておく
+      ...loadContact(x, 62, 8, frameTop),
       line(x, 84, 16 + l, 66),
       vline(x, 84, h),
     ],

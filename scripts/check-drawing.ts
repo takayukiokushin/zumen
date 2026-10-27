@@ -1030,5 +1030,52 @@ console.log('\n■ 図面の文字（記号の横の文字）が、線・記号�
   else console.log(`  いちばん込み入った構成をA4縦に印刷：倍率 ${sc.toFixed(3)} → 文字 ${eff.toFixed(2)}mm`);
 }
 
+/* ---------- 22. PASの内部の縦線に、欠け（隙間）が無い ---------- */
+console.log('\n■ PASの内部の縦線（枠の上端から開閉部まで・刃の下から出口まで）が途切れていない');
+{
+  let n = 0;
+  for (const pasControl of ['none', 'gr', 'dgr']) {
+    for (const pasBuiltinVt of ['yes', 'no']) {
+      for (const pasBuiltinLa of ['yes', 'no']) {
+        const a: Answers = { ...answers, hasPas: 'yes', pasControl, pasBuiltinVt, pasBuiltinLa };
+        const d = layout(buildComposition(a), a);
+        const pas = d.symbols.find((s) => s.symbolId.startsWith('pas'));
+        if (!pas) { fail(`PASが図面に出ていません（制御${pasControl}・VT${pasBuiltinVt}・LA${pasBuiltinLa}）`); continue; }
+        const pdef = getSymbolDef(pas.symbolId);
+        const axis = pas.x + (pdef.ports[0]?.x ?? 0);
+        // 主回路の位置にある縦線（記号の絵と、結線）を集める
+        const segs: [number, number][] = [];
+        for (const s of d.symbols) {
+          for (const sh of getSymbolDef(s.symbolId).shapes) {
+            if (sh.k === 'line' && Math.abs(sh.x1 - sh.x2) < 0.01 && Math.abs(s.x + sh.x1 - axis) < 0.6) {
+              segs.push([s.y + Math.min(sh.y1, sh.y2), s.y + Math.max(sh.y1, sh.y2)]);
+            }
+          }
+        }
+        for (const w of d.wires) if (Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.x1 - axis) < 0.6) segs.push([Math.min(w.y1, w.y2), Math.max(w.y1, w.y2)]);
+        segs.sort((p, q) => p[0] - q[0]);
+        const frame = pdef.shapes.find((sh) => sh.k === 'rect');
+        if (!frame || frame.k !== 'rect') { fail('PASの枠が見つかりません'); continue; }
+        const top = pas.y + frame.y;
+        const bottom = pas.y + frame.y + frame.h;
+        // 枠の上端から下端までの隙間を数える。刃が開いている所（横バーの下〜刃の支点）だけは本来の形
+        const gaps: [number, number][] = [];
+        let cur = -Infinity;
+        for (const [a0, a1] of segs) {
+          if (a0 > cur + 0.01 && cur >= top - 0.01 && a0 <= bottom + 0.01) gaps.push([cur - pas.y, a0 - pas.y]);
+          cur = Math.max(cur, a1);
+        }
+        const bladeOpen = gaps.filter(([g0, g1]) => g0 >= 57.5 && g1 <= 84.5);
+        const others = gaps.filter((g) => !bladeOpen.includes(g));
+        const label = `制御${pasControl}・VT${pasBuiltinVt}・LA${pasBuiltinLa}`;
+        if (others.length > 0) fail(`${label}：PASの縦線に欠けがあります（${others.map(([g0, g1]) => `y=${g0.toFixed(1)}〜${g1.toFixed(1)}`).join('、')}）`);
+        if (bladeOpen.length !== 1) fail(`${label}：開閉部の隙間が ${bladeOpen.length}か所です（刃が開いている1か所のはず）`);
+        n++;
+      }
+    }
+  }
+  console.log(`  ${n}通り（制御3種 × VT × LA）で、枠の上端から横バーまで・刃の下から出口まで、縦線がつながっている`);
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
