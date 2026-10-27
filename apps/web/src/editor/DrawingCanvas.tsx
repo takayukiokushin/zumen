@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
+import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
 import type { Doc, DocItem } from './doc.ts';
 import { assistMove, assistWireEnd, docBounds, groupOf, groupRootOf, itemBounds, moveItem, moveWireEnd } from './doc.ts';
 import type { Issue } from './inspect.ts';
@@ -159,7 +160,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
                   strokeWidth={1}
                 />
                 {it.label && (
-                  <text x={it.x} y={it.y - 6} fontSize={8} fontFamily={FONT_FAMILY} fill="currentColor" stroke="none">
+                  <text x={it.x} y={it.y - 6} fontSize={LABEL_FONT} fontFamily={FONT_FAMILY} fill="currentColor" stroke="none">
                     {it.label}
                   </text>
                 )}
@@ -170,9 +171,9 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
           if (it.kind === 'text') {
             return (
               <g {...common}>
-                <text x={it.x} y={it.y} fontSize={8} textAnchor={it.anchor} fontFamily={FONT_FAMILY} fill="currentColor" stroke="none">
+                <text x={it.x} y={it.y} fontSize={LABEL_FONT} textAnchor={it.anchor} fontFamily={FONT_FAMILY} fill="currentColor" stroke="none">
                   {it.lines.map((l, i) => (
-                    <tspan key={i} x={it.x} dy={i === 0 ? 0 : 10}>
+                    <tspan key={i} x={it.x} dy={i === 0 ? 0 : LABEL_LINE}>
                       {l}
                     </tspan>
                   ))}
@@ -194,14 +195,14 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
                 <text
                   x={it.x + it.labelDx}
                   y={it.y + it.labelDy}
-                  fontSize={8}
+                  fontSize={LABEL_FONT}
                   textAnchor={it.labelAnchor}
                   fontFamily={FONT_FAMILY}
                   fill="currentColor"
                   stroke="none"
                 >
                   {it.label.map((l, i) => (
-                    <tspan key={i} x={it.x + it.labelDx} dy={i === 0 ? 0 : 10}>
+                    <tspan key={i} x={it.x + it.labelDx} dy={i === 0 ? 0 : LABEL_LINE}>
                       {l}
                     </tspan>
                   ))}

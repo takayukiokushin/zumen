@@ -1,5 +1,5 @@
 import { getSymbol } from '@zumen/symbols';
-import { renderSvg } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, renderSvg } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
 
@@ -51,9 +51,8 @@ export function buildSheetSvg(
     const def = getSymbol(s.symbolId);
     ext(s.x, s.y, s.x + def.box.w, s.y + def.box.h);
     if (s.label.length) {
-      const w = Math.max(...s.label.map((l) => l.length)) * 6;
-      const lx = s.labelAt.anchor === 'start' ? s.labelAt.x : s.labelAt.anchor === 'end' ? s.labelAt.x - w : s.labelAt.x - w / 2;
-      ext(lx, s.labelAt.y - 8, lx + w, s.labelAt.y + s.label.length * 10);
+      const r = labelRect(s.labelAt, s.label);
+      ext(r.x0, r.y0, r.x1, r.y1);
     }
   }
   for (const w of drawing.wires) {
@@ -61,8 +60,8 @@ export function buildSheetSvg(
   }
   for (const f of drawing.frames) ext(f.x, f.y - 14, f.x + f.w, f.y + 26);
   for (const t of drawing.texts!) {
-    const w = Math.max(...t.lines.map((l) => l.length)) * 6;
-    ext(t.x, t.y - 9, t.x + w, t.y + t.lines.length * 10);
+    const w = labelWidth(t.lines);
+    ext(t.x, t.y - LABEL_FONT, t.x + w, t.y + t.lines.length * LABEL_LINE);
   }
   if (!Number.isFinite(b.x0)) Object.assign(b, { x0: 0, y0: 0, x1: 100, y1: 100 });
 

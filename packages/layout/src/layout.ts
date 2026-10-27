@@ -2,6 +2,7 @@ import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol } from '@zumen/symbols';
 import type { Port, SymbolDef } from '@zumen/symbols';
 import { ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
+import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
 
 /**
  * 構成データ（上流→下流に並んだ機器）を、図面上の座標に落とす。
@@ -60,7 +61,7 @@ export interface DrawingLayout {
 }
 
 /** 主回路どうしの標準の間隔 */
-const GAP = 22;
+const GAP = 16;
 /** 分岐が主回路から出る位置の間隔 */
 const BRANCH_GAP = 26;
 /** 分岐の記号を主回路から離す距離 */
@@ -395,7 +396,7 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       sym.labelAt = { x: sym.x + rb.dx, y: sym.y + rb.dy + rb.h + 12, anchor: 'start' };
     }
     // 分岐の記号の下端まで主回路を空けて、次の機器と重ならないようにする
-    const bottom = sym.y + rb.dy + rb.h + (sym.label.length ? sym.label.length * 10 + 12 : 0);
+    const bottom = sym.y + rb.dy + rb.h + (sym.label.length ? sym.label.length * LABEL_LINE + 12 : 0);
     branchBottom = Math.max(branchBottom, bottom);
     pendingGap = Math.max(GAP, bottom - spineY + 10);
     lastBranch = { role: item.role, dir, sym, def, unit: item.unit };
@@ -461,7 +462,7 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     for (const w of wires) fy = Math.max(fy, w.y1, w.y2);
     for (const sym of symbols) {
       const def = getSymbol(sym.symbolId);
-      fy = Math.max(fy, sym.y + def.box.h + (sym.label.length ? sym.label.length * 10 : 0));
+      fy = Math.max(fy, sym.y + def.box.h + (sym.label.length ? sym.label.length * LABEL_LINE : 0));
     }
     fy += FREE_GAP;
 
@@ -473,6 +474,9 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       fx += FREE_SPACING;
     }
   }
+
+  // 文字が、線・記号・ほかの文字に重なったり近づいたりしていたら、空いているところへずらす
+  avoidLabelCollisions(symbols, wires, frames);
 
   // 外形を求める
   let x0 = Infinity;
@@ -490,13 +494,8 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     const rb = rotatedBox(def.box, s.rotate);
     ext(s.x + rb.dx, s.y + rb.dy, s.x + rb.dx + rb.w, s.y + rb.dy + rb.h);
     if (s.label.length) {
-      const w = Math.max(...s.label.map((l) => l.length)) * 6;
-      ext(
-        s.labelAt.anchor === 'start' ? s.labelAt.x : s.labelAt.x - w,
-        s.labelAt.y - 8,
-        s.labelAt.anchor === 'start' ? s.labelAt.x + w : s.labelAt.x,
-        s.labelAt.y + s.label.length * 10,
-      );
+      const r = labelRect(s.labelAt, s.label);
+      ext(r.x0, r.y0, r.x1, r.y1);
     }
   }
   for (const w of wires) ext(Math.min(w.x1, w.x2), Math.min(w.y1, w.y2), Math.max(w.x1, w.x2), Math.max(w.y1, w.y2));
@@ -511,9 +510,9 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     fx0 = Math.min(fx0, sy.x);
     fx1 = Math.max(fx1, sy.x + def.box.w);
     if (sy.label.length) {
-      const w = Math.max(...sy.label.map((l) => l.length)) * 6;
-      fx0 = Math.min(fx0, sy.labelAt.anchor === 'start' ? sy.labelAt.x : sy.labelAt.x - w);
-      fx1 = Math.max(fx1, sy.labelAt.anchor === 'start' ? sy.labelAt.x + w : sy.labelAt.x);
+      const r = labelRect(sy.labelAt, sy.label);
+      fx0 = Math.min(fx0, r.x0);
+      fx1 = Math.max(fx1, r.x1);
     }
   }
   for (const w of wires) {
@@ -529,6 +528,171 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
   }
 
   return { symbols, wires, frames, bounds: { x0, y0, x1, y1 } };
+}
+
+/* ------------------------------------------------------------------ */
+/* 文字の置き場所を、線・記号・ほかの文字から離す                          */
+/* ------------------------------------------------------------------ */
+
+interface Rect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** 文字の周りに空けておく余白（線・記号・ほかの文字に、これ以上は近づけない） */
+export const LABEL_CLEAR = 3;
+/** 文字を動かして探す間隔と、動かしてよい上限 */
+const NUDGE_STEP = 4;
+const NUDGE_MAX = 96;
+
+/** 文字の並びが占める範囲。y は1行目のベースライン */
+export function labelRect(at: { x: number; y: number; anchor: 'start' | 'middle' | 'end' }, lines: string[]): Rect {
+  const w = labelWidth(lines);
+  const x0 = at.anchor === 'start' ? at.x : at.anchor === 'end' ? at.x - w : at.x - w / 2;
+  return {
+    x0,
+    y0: at.y - LABEL_FONT * 0.85,
+    x1: x0 + w,
+    y1: at.y + (lines.length - 1) * LABEL_LINE + LABEL_FONT * 0.25,
+  };
+}
+
+const grow = (r: Rect, m: number): Rect => ({ x0: r.x0 - m, y0: r.y0 - m, x1: r.x1 + m, y1: r.y1 + m });
+const rectsOverlap = (a: Rect, b: Rect): boolean => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+/** 線分が長方形に入り込むか（端が中にある、または辺と交わる） */
+function segmentHitsRect(w: Wire, r: Rect): boolean {
+  const inside = (x: number, y: number) => x > r.x0 && x < r.x1 && y > r.y0 && y < r.y1;
+  if (inside(w.x1, w.y1) || inside(w.x2, w.y2)) return true;
+  // 縦・横の線（ほとんどすべて）は、範囲の重なりだけで足りる
+  if (w.x1 === w.x2) return w.x1 > r.x0 && w.x1 < r.x1 && Math.max(w.y1, w.y2) > r.y0 && Math.min(w.y1, w.y2) < r.y1;
+  if (w.y1 === w.y2) return w.y1 > r.y0 && w.y1 < r.y1 && Math.max(w.x1, w.x2) > r.x0 && Math.min(w.x1, w.x2) < r.x1;
+  // 斜めの線は、長方形の4辺との交差を調べる
+  const cross = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number) => {
+    const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    const d2 = (bx - ax) * (dy - ay) - (by - ay) * (dx - ax);
+    const d3 = (dx - cx) * (ay - cy) - (dy - cy) * (ax - cx);
+    const d4 = (dx - cx) * (by - cy) - (dy - cy) * (bx - cx);
+    return d1 * d2 < 0 && d3 * d4 < 0;
+  };
+  const edges: [number, number, number, number][] = [
+    [r.x0, r.y0, r.x1, r.y0],
+    [r.x1, r.y0, r.x1, r.y1],
+    [r.x1, r.y1, r.x0, r.y1],
+    [r.x0, r.y1, r.x0, r.y0],
+  ];
+  return edges.some(([a, b, c, d]) => cross(w.x1, w.y1, w.x2, w.y2, a, b, c, d));
+}
+
+interface LabelPlacement {
+  at: { x: number; y: number; anchor: 'start' | 'middle' | 'end' };
+  rect: Rect;
+}
+
+/**
+ * 文字（記号の横の文字）のぶつかりを調べる。
+ * 文字の周りに margin だけ余白を取り、そこに線・ほかの記号・ほかの文字が入ったら「ぶつかり」とする。
+ * 返り値は、ぶつかっているものの説明。何も無ければ空。
+ */
+export function findLabelCollisions(
+  d: Pick<DrawingLayout, 'symbols' | 'wires' | 'frames'>,
+  margin = LABEL_CLEAR,
+): string[] {
+  const out: string[] = [];
+  const boxes = d.symbols.map((s) => {
+    const rb = rotatedBox(getSymbol(s.symbolId).box, s.rotate);
+    return { id: s.id, abbr: getSymbol(s.symbolId).abbr, rect: { x0: s.x + rb.dx, y0: s.y + rb.dy, x1: s.x + rb.dx + rb.w, y1: s.y + rb.dy + rb.h } };
+  });
+  const labeled = d.symbols.filter((s) => s.label.length > 0);
+  labeled.forEach((s, i) => {
+    const r = grow(labelRect(s.labelAt, s.label), margin);
+    const name = `「${s.label[0]}」`;
+    for (const w of d.wires) if (segmentHitsRect(w, r)) out.push(`${name} が線に近すぎます`);
+    for (const b of boxes) if (b.id !== s.id && rectsOverlap(r, b.rect)) out.push(`${name} が記号（${b.abbr}）に近すぎます`);
+    for (const f of d.frames) {
+      if (segmentHitsRect({ x1: -1e5, y1: f.y, x2: 1e5, y2: f.y }, r)) out.push(`${name} が枠の線に近すぎます`);
+    }
+    for (const o of labeled.slice(i + 1)) {
+      if (rectsOverlap(r, grow(labelRect(o.labelAt, o.label), 0))) out.push(`${name} が文字「${o.label[0]}」に近すぎます`);
+    }
+  });
+  return out;
+}
+
+/**
+ * 文字の置き場所を決め直す。
+ *
+ * 上にある記号から順に、いまの場所が線・記号・ほかの文字にぶつからないか調べ、
+ * ぶつかるなら、近い順に「少し上下にずらす」「反対側（左右）へ移す」を試して、
+ * 最初に空いたところへ置く。どこも空かないときは、ぶつかりがいちばん少ない場所に置く。
+ * 記号から離れすぎないよう、動かすのは記号の上下の範囲＋少しまで。
+ */
+function avoidLabelCollisions(symbols: PlacedSymbol[], wires: Wire[], frames: FrameMark[]): void {
+  const boxes = symbols.map((s) => {
+    const rb = rotatedBox(getSymbol(s.symbolId).box, s.rotate);
+    return { id: s.id, rect: { x0: s.x + rb.dx, y0: s.y + rb.dy, x1: s.x + rb.dx + rb.w, y1: s.y + rb.dy + rb.h } };
+  });
+  const frameLines: Wire[] = frames.map((f) => ({ x1: -1e5, y1: f.y, x2: 1e5, y2: f.y }));
+  const placed: Rect[] = [];
+
+  const order = symbols.filter((s) => s.label.length > 0).sort((a, b) => a.y - b.y);
+  for (const s of order) {
+    const def = getSymbol(s.symbolId);
+    const rb = rotatedBox(def.box, s.rotate);
+    const symTop = s.y + rb.dy;
+    const symBottom = symTop + rb.h;
+    const lines = s.label;
+    const originalAt = s.labelAt;
+
+    const collisions = (at: LabelPlacement['at']): number => {
+      const r = grow(labelRect(at, lines), LABEL_CLEAR);
+      let n = 0;
+      for (const w of wires) if (segmentHitsRect(w, r)) n++;
+      for (const w of frameLines) if (segmentHitsRect(w, r)) n++;
+      for (const b of boxes) if (b.id !== s.id && rectsOverlap(r, b.rect)) n++;
+      if (rectsOverlap(r, boxes.find((b) => b.id === s.id)!.rect)) n++;
+      for (const p of placed) if (rectsOverlap(r, grow(p, 1))) n++;
+      return n;
+    };
+    // 記号から離れすぎない範囲か（文字の中心が、記号の上下の範囲＋30以内）
+    const near = (at: LabelPlacement['at']): boolean => {
+      const r = labelRect(at, lines);
+      const cy = (r.y0 + r.y1) / 2;
+      return cy >= symTop - 30 && cy <= symBottom + 30;
+    };
+
+    // 候補：いまの場所 → 上下に少しずつずらす → 反対側 → 反対側で上下にずらす
+    const candidates: { at: LabelPlacement['at']; cost: number }[] = [{ at: originalAt, cost: 0 }];
+    const shifts: number[] = [];
+    for (let k = 1; k * NUDGE_STEP <= NUDGE_MAX; k++) shifts.push(k * NUDGE_STEP, -k * NUDGE_STEP);
+    for (const dy of shifts) candidates.push({ at: { ...originalAt, y: originalAt.y + dy }, cost: Math.abs(dy) });
+    if (originalAt.anchor !== 'middle') {
+      const flipped =
+        originalAt.anchor === 'start'
+          ? { x: s.x + rb.dx - 10, anchor: 'end' as const }
+          : { x: s.x + rb.dx + rb.w + 10, anchor: 'start' as const };
+      candidates.push({ at: { ...originalAt, ...flipped }, cost: 40 });
+      for (const dy of shifts) {
+        candidates.push({ at: { ...originalAt, ...flipped, y: originalAt.y + dy }, cost: 40 + Math.abs(dy) });
+      }
+    }
+
+    let best = { at: originalAt, bad: collisions(originalAt), cost: 0 };
+    if (best.bad > 0) {
+      for (const c of candidates.slice(1)) {
+        if (!near(c.at)) continue;
+        const bad = collisions(c.at);
+        if (bad < best.bad || (bad === best.bad && c.cost < best.cost && bad === 0)) {
+          best = { at: c.at, bad, cost: c.cost };
+        }
+        if (bad === 0) break;
+      }
+    }
+    s.labelAt = best.at;
+    placed.push(labelRect(best.at, lines));
+  }
 }
 
 /** 図面の格子の刻み。移動・伸縮はこの単位に吸着させる */

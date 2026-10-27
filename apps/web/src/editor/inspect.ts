@@ -1,5 +1,5 @@
 import { getSymbol } from '@zumen/symbols';
-import { sheetSize } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
 import { applyAnchors, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, moveItem, nearestPort, portsOf } from './doc.ts';
@@ -79,7 +79,7 @@ const emptyCount = (): Record<IssueKind, number> => ({
 /* ------------------------------------------------------------------ */
 
 /** 図面の文字の横幅。全角は1文字ぶん、半角は約半分で数える */
-export function textWidth(line: string, size = 8): number {
+export function textWidth(line: string, size = LABEL_FONT): number {
   let n = 0;
   for (const ch of line) n += /[\x20-\x7E｡-ﾟ]/.test(ch) ? 0.54 : 1;
   return n * size;
@@ -100,7 +100,7 @@ function textBox(x: number, y: number, lines: string[], anchor: 'start' | 'middl
   const w = Math.max(0, ...lines.map((l) => textWidth(l)));
   const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
   // yは1行目のベースライン。上に文字の高さぶん、下に行数ぶん
-  return { x0, y0: y - 8, x1: x0 + w, y1: y + (lines.length - 1) * 10 + 3 };
+  return { x0, y0: y - LABEL_FONT, x1: x0 + w, y1: y + (lines.length - 1) * LABEL_LINE + 3 };
 }
 
 /** 記号が占める範囲（絵のぶんだけ。文字は別に数える） */
@@ -532,8 +532,8 @@ const DEFAULT_TITLE_H = 44;
 function fitScale(doc: Doc, paper: PaperSize, orientation: Orientation, titleH = DEFAULT_TITLE_H): number {
   const b = docBounds(doc);
   const s = sheetSize(paper, orientation);
-  const areaW = s.w - 24 * 2 - 12 * 2;
-  const areaH = s.h - 24 * 2 - titleH - 12 * 2 - 18;
+  const areaW = s.w - SHEET_MARGIN * 2 - SHEET_PAD * 2;
+  const areaH = s.h - SHEET_MARGIN * 2 - titleH - SHEET_PAD * 2 - 18;
   return Math.min(areaW / Math.max(b.x1 - b.x0, 1), areaH / Math.max(b.y1 - b.y0, 1), 1);
 }
 

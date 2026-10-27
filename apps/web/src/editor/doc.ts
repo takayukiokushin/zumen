@@ -1,5 +1,5 @@
 import { getSymbol } from '@zumen/symbols';
-import { rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
 
 /**
@@ -692,8 +692,8 @@ export function itemBounds(it: DocItem): { x0: number; y0: number; x1: number; y
   }
   if (it.kind === 'frame') return { x0: it.x, y0: it.y - 14, x1: it.x + it.w, y1: it.y + 26 };
   if (it.kind === 'text') {
-    const w = Math.max(...it.lines.map((l) => l.length)) * 6;
-    return { x0: it.x, y0: it.y - 9, x1: it.x + w, y1: it.y + it.lines.length * 10 };
+    const w = labelWidth(it.lines);
+    return { x0: it.x, y0: it.y - LABEL_FONT, x1: it.x + w, y1: it.y + it.lines.length * LABEL_LINE };
   }
   const def = getSymbol(it.symbolId);
   const rb = rotatedBox(def.box, it.rotate);

@@ -1,5 +1,6 @@
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import type { DrawingLayout } from './layout.ts';
+import { LABEL_FONT, LABEL_LINE, textWidth } from './text.ts';
 
 /** 表題欄の内容 */
 /** 図面の右下に入れる社名。全図面で共通 */
@@ -16,7 +17,9 @@ export interface TitleBlock {
 /* ---------------- 表題の枠（幅の自動調整と2行化） ---------------- */
 
 /** 図枠の余白（用紙の端から図枠まで）。renderSvg の既定値 */
-export const SHEET_MARGIN = 24;
+export const SHEET_MARGIN = 18;
+/** 図枠と作図内容の間の余白。renderSvg の既定値 */
+export const SHEET_PAD = 8;
 
 /** 表題の文字の大きさ（作図単位） */
 const TITLE_FONT = 14;
@@ -29,23 +32,6 @@ const TITLE_BOX_H1 = 32;
 const TITLE_BOX_H2 = 52;
 /** 図枠の端から表題の枠までの、最低限の空き（左右） */
 const TITLE_SIDE = 60;
-
-/**
- * 文字列の幅の見積もり（作図単位）。
- * 全角の文字は1文字ぶん、半角の英数字は0.5〜0.7文字ぶん。実際のフォントで測った値より
- * わずかに大きめに見積もる（枠からはみ出さないように）。
- */
-export function textWidth(s: string, size: number): number {
-  let w = 0;
-  for (const ch of s) {
-    const c = ch.codePointAt(0)!;
-    if (c === 0x20) w += 0.35;
-    else if (c < 0x80) w += /[A-Z0-9]/.test(ch) ? 0.68 : /[.,:;!|'`()]/.test(ch) ? 0.4 : 0.58;
-    else if (c >= 0xff61 && c <= 0xff9f) w += 0.55; // 半角カナ
-    else w += 1;
-  }
-  return w * size;
-}
 
 export interface TitleLayout {
   /** 書く行（上から順）。size はその行の文字の大きさ */
@@ -145,7 +131,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   const M = opts.margin ?? SHEET_MARGIN;
   const tl = layoutTitle(title, W, M);
   const TITLE_H = opts.titleHeight ?? tl.titleH;
-  const PAD = opts.pad ?? 12;
+  const PAD = opts.pad ?? SHEET_PAD;
 
   const areaX = M + PAD;
   const areaY = M + TITLE_H + PAD;
@@ -167,7 +153,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
     );
     if (f.label) {
       body.push(
-        `    <text x="${f.x}" y="${f.y - 6}" font-size="8" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${esc(f.label)}</text>`,
+        `    <text x="${f.x}" y="${f.y - 6}" font-size="${LABEL_FONT}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${esc(f.label)}</text>`,
       );
     }
   }
@@ -182,10 +168,10 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
 
   for (const t2 of drawing.texts ?? []) {
     const tspans = t2.lines
-      .map((l, i) => `<tspan x="${round(t2.x)}" dy="${i === 0 ? 0 : 10}">${esc(l)}</tspan>`)
+      .map((l, i) => `<tspan x="${round(t2.x)}" dy="${i === 0 ? 0 : LABEL_LINE}">${esc(l)}</tspan>`)
       .join('');
     body.push(
-      `    <text x="${round(t2.x)}" y="${round(t2.y)}" font-size="8" text-anchor="${t2.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
+      `    <text x="${round(t2.x)}" y="${round(t2.y)}" font-size="${LABEL_FONT}" text-anchor="${t2.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
     );
   }
 
@@ -200,10 +186,10 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
     );
     if (s.label.length) {
       const tspans = s.label
-        .map((l, i) => `<tspan x="${round(s.labelAt.x)}" dy="${i === 0 ? 0 : 10}">${esc(l)}</tspan>`)
+        .map((l, i) => `<tspan x="${round(s.labelAt.x)}" dy="${i === 0 ? 0 : LABEL_LINE}">${esc(l)}</tspan>`)
         .join('');
       body.push(
-        `    <text x="${round(s.labelAt.x)}" y="${round(s.labelAt.y)}" font-size="8" text-anchor="${s.labelAt.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
+        `    <text x="${round(s.labelAt.x)}" y="${round(s.labelAt.y)}" font-size="${LABEL_FONT}" text-anchor="${s.labelAt.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
       );
     }
   }

@@ -22,7 +22,7 @@ import {
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
-import { layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
+import { LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
 import { inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
@@ -969,8 +969,8 @@ console.log('\n■ タイトルが2行のときの縮小（印刷・書き出し
     const t = parse(two);
     const sh = sheetSize(paper, orient);
     // 1行のときは従来どおり（表題まわりの高さ44で計算した倍率と同じ）
-    const areaW = sh.w - 24 * 2 - 12 * 2;
-    const areaH44 = sh.h - 24 * 2 - 44 - 12 * 2 - 18;
+    const areaW = sh.w - SHEET_MARGIN * 2 - SHEET_PAD * 2;
+    const areaH44 = sh.h - SHEET_MARGIN * 2 - 44 - SHEET_PAD * 2 - 18;
     const old = Math.min(areaW / Math.max(b.x1 - b.x0, 1), areaH44 / Math.max(b.y1 - b.y0, 1), 1);
     if (Math.abs(o.scale - old) > 0.0006) fail(`${paper}${orient}：1行のときの倍率が従来と違います（${o.scale} ／ 従来 ${old.toFixed(4)}）`);
     // 2行のときは、同じか少しだけ小さい（大きくはならない）
@@ -981,11 +981,53 @@ console.log('\n■ タイトルが2行のときの縮小（印刷・書き出し
     const bottom = t.ty + b.y1 * t.scale;
     const tl2 = layoutTitle({ site: LONG, name: NAME }, sh.w, 24);
     if (!tl2.twoLines) fail(`${paper}${orient}：長い名前なのに2行になっていません`);
-    const titleBottom = 24 + 6 + tl2.boxH;
-    if (top < titleBottom + 8) fail(`${paper}${orient}：2行のとき、図面が表題の枠に近すぎます（上端 ${top.toFixed(0)}、表題の下端 ${titleBottom}）`);
-    if (bottom > sh.h - 24 - 12) fail(`${paper}${orient}：2行のとき、図面が図枠の下にはみ出しています（${bottom.toFixed(0)}）`);
+    const titleBottom = SHEET_MARGIN + 6 + tl2.boxH;
+    const titleBottomAbs = SHEET_MARGIN + 6 + tl2.boxH;
+    if (top < titleBottomAbs + 8) fail(`${paper}${orient}：2行のとき、図面が表題の枠に近すぎます（上端 ${top.toFixed(0)}、表題の下端 ${titleBottom}）`);
+    if (bottom > sh.h - SHEET_MARGIN - SHEET_PAD) fail(`${paper}${orient}：2行のとき、図面が図枠の下にはみ出しています（${bottom.toFixed(0)}）`);
     console.log(`  ${paper}${orient === 'portrait' ? '縦' : '横'}：1行 ${o.scale.toFixed(3)} → 2行 ${t.scale.toFixed(3)}${o.scale - t.scale < 0.0006 ? '（余裕があるので縮まない）' : `（${((1 - t.scale / o.scale) * 100).toFixed(1)}%縮む）`}`);
   }
+}
+
+/* ---------- 21. 文字が、線・記号・ほかの文字に重ならない・近づかない ---------- */
+console.log('\n■ 図面の文字（記号の横の文字）が、線・記号・ほかの文字から離れている');
+{
+  const configs: [string, Answers][] = [];
+  for (const mainBreakerForm of ['cb', 'pfs', 'pole-top']) {
+    for (const boundaryPattern of ['coincident', 'split']) {
+      for (const hasPas of ['yes', 'no']) {
+        for (const transformerCount of [1, 2, 3]) {
+          configs.push([
+            `${mainBreakerForm}・${boundaryPattern}・PAS${hasPas}・変圧器${transformerCount}台`,
+            { ...answers, mainBreakerForm, boundaryPattern, boundarySafetyDevice: 'vcb', hasPas, transformerCount },
+          ]);
+        }
+      }
+    }
+  }
+  configs.push(['いちばん込み入った構成', answers]);
+  configs.push(['オープンフレーム式', { ...answers, areaForm: 'room-open' }]);
+  let bad = 0;
+  for (const [name, a] of configs) {
+    const found = findLabelCollisions(layout(buildComposition(a), a));
+    if (found.length > 0) {
+      bad++;
+      fail(`${name}：${[...new Set(found)].slice(0, 3).join(' / ')}`);
+    }
+  }
+  if (bad === 0) console.log(`  ${configs.length}通りの構成すべてで、文字が線・記号・ほかの文字に近づいていない（余白3以上）`);
+
+  // 文字の大きさ：標準の大きさ（縮めない）で、紙の上で 2.5mm 以上であること
+  const mm = LABEL_FONT * (210 / 760);
+  if (mm < 2.5) fail(`文字が小さすぎます（縮めない場合で ${mm.toFixed(2)}mm）`);
+  else console.log(`  文字の大きさ：縮めずに印刷して ${mm.toFixed(2)}mm（約${(mm / 0.3528).toFixed(1)}pt）`);
+  // A4縦に実案件の構成を印刷したときも、2.3mm 以上であること
+  const real = layout(buildComposition(answers), answers);
+  const svg = renderSvg(real, { site: '山田工場', name: 'キュービクル式高圧受電設備単線結線図' }, { paper: 'A4', orientation: 'portrait' });
+  const sc = Number(/scale\(([\d.]+)\)/.exec(svg)?.[1]);
+  const eff = mm * sc;
+  if (eff < 2.2) fail(`いちばん込み入った構成をA4縦に印刷すると、文字が ${eff.toFixed(2)}mm と小さすぎます`);
+  else console.log(`  いちばん込み入った構成をA4縦に印刷：倍率 ${sc.toFixed(3)} → 文字 ${eff.toFixed(2)}mm`);
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
