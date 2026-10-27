@@ -210,7 +210,17 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     required: true,
   },
-  { id: 'receivingVoltage', group: 'customer', label: '受電電圧', type: 'number', unit: 'V', defaultValue: 6600, ask: 'always' },
+  {
+    id: 'receivingVoltage',
+    group: 'customer',
+    label: '受電電圧',
+    type: 'select',
+    dropdown: true,
+    unit: 'V',
+    options: [3300, 6600, 22000].map((v) => ({ value: String(v), label: `${v}V` })),
+    defaultValue: '6600',
+    ask: 'always',
+  },
 
   /* ---------------- 引込元 ---------------- */
   {

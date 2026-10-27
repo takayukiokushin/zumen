@@ -412,6 +412,11 @@ console.log('\n■ 引込ケーブル（埋設・架空・なし）と定格電�
   if (volt?.type !== 'select' || !volt.dropdown || JSON.stringify(vOpts) !== JSON.stringify(['3300', '6600', '22000'])) {
     fail(`定格電圧が、3300・6600・22000のドロップダウンになっていません（${volt?.type}／${vOpts.join('・')}）`);
   } else console.log('  定格電圧：ドロップダウン（3300V／6600V／22000V）。初期値は6600V');
+  const rv = QUESTIONS.find((q) => q.id === 'receivingVoltage');
+  const rvOpts = rv?.options?.map((o) => o.value) ?? [];
+  if (rv?.type !== 'select' || !rv.dropdown || JSON.stringify(rvOpts) !== JSON.stringify(['3300', '6600', '22000']) || rv.defaultValue !== '6600') {
+    fail(`受電電圧が、3300・6600・22000のドロップダウン（初期値6600）になっていません（${rv?.type}／${rvOpts.join('・')}／${String(rv?.defaultValue)}）`);
+  } else console.log('  受電電圧：ドロップダウン（3300V／6600V／22000V）。初期値は6600V');
   // 古い案件の数値（6600）も、ケーブルの注記にそのまま出る
   const spec = String(withDerived({ cableVoltage: 6600, cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
   const spec2 = String(withDerived({ cableVoltage: '22000', cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
