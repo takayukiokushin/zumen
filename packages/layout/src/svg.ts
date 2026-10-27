@@ -15,6 +15,9 @@ export interface TitleBlock {
 
 /* ---------------- 表題の枠（幅の自動調整と2行化） ---------------- */
 
+/** 図枠の余白（用紙の端から図枠まで）。renderSvg の既定値 */
+export const SHEET_MARGIN = 24;
+
 /** 表題の文字の大きさ（作図単位） */
 const TITLE_FONT = 14;
 /** 枠の内側の左右の余白 */
@@ -139,7 +142,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   const size = sheetSize(opts.paper ?? 'A4', opts.orientation ?? 'portrait');
   const W = opts.width ?? size.w;
   const H = opts.height ?? size.h;
-  const M = opts.margin ?? 24;
+  const M = opts.margin ?? SHEET_MARGIN;
   const tl = layoutTitle(title, W, M);
   const TITLE_H = opts.titleHeight ?? tl.titleH;
   const PAD = opts.pad ?? 12;

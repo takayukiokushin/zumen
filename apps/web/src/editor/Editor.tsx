@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CATEGORY_LABEL, SYMBOLS, getSymbol, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
-import { COMPANY_NAME, layout, sheetSize } from '@zumen/layout';
+import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
 import { buildComposition, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
@@ -87,6 +87,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   );
   /** 印刷のときの用紙の実寸。@page と図面の大きさを合わせるのに使う */
   const sheetMm = sheetSize(paper, orientation);
+  /** 表題まわりの高さ。事業場名称が長くて2行になると高くなり、そのぶん図面を少し縮めて収める */
+  const titleH = layoutTitle(sheetTitle, sheetMm.w, SHEET_MARGIN).titleH;
 
   const selectedSymbol = selected?.kind === 'symbol' ? (selected as DocSymbol) : null;
 
@@ -233,7 +235,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             className="btn"
             title={t('editor.tidy.help')}
             onClick={() => {
-              const r = tidyDrawing(doc, paper, orientation);
+              const r = tidyDrawing(doc, paper, orientation, titleH);
               applyAuto(r.doc);
               const done = Object.entries(r.fixed)
                 .filter(([, n]) => n > 0)

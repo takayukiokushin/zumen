@@ -22,7 +22,7 @@ import {
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
-import { layout, layoutTitle, sheetSize, textWidth } from '../packages/layout/src/index.ts';
+import { layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
 import { inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
@@ -948,6 +948,44 @@ console.log('\n■ 表題の枠（文字量に合わせた幅・長いときだ�
   const none = layoutTitle({ site: '', name: NAME }, sheetSize('A4', 'portrait').w, 24);
   if (none.lines.length !== 1 || none.lines[0]?.text !== NAME) fail('事業場名称が空のとき、図面名称だけの1行になっていません');
   else console.log('  事業場名称が空のときは、図面名称だけを1行で書く');
+}
+
+/* ---------- 20. タイトルが2行のとき、図面を少し縮めて用紙に収める ---------- */
+console.log('\n■ タイトルが2行のときの縮小（印刷・書き出し）');
+{
+  const NAME = 'キュービクル式高圧受電設備単線結線図';
+  // どの用紙でも2行になるよう、とても長い事業場名称を使う（用紙が広いと、ふつうの長さは1行に収まるため）
+  const LONG = '一二三四五六七八九十'.repeat(12);
+  const d = layout(buildComposition(answers), answers); // いちばん込み入った構成
+  const parse = (svg: string) => {
+    const m = /translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)/.exec(svg);
+    return { ty: Number(m?.[2]), scale: Number(m?.[3]) };
+  };
+  const b = d.bounds;
+  for (const [paper, orient] of [['A4', 'portrait'], ['A4', 'landscape'], ['A3', 'portrait'], ['A3', 'landscape']] as const) {
+    const one = renderSvg(d, { site: '山田工場', name: NAME }, { paper, orientation: orient });
+    const two = renderSvg(d, { site: LONG, name: NAME }, { paper, orientation: orient });
+    const o = parse(one);
+    const t = parse(two);
+    const sh = sheetSize(paper, orient);
+    // 1行のときは従来どおり（表題まわりの高さ44で計算した倍率と同じ）
+    const areaW = sh.w - 24 * 2 - 12 * 2;
+    const areaH44 = sh.h - 24 * 2 - 44 - 12 * 2 - 18;
+    const old = Math.min(areaW / Math.max(b.x1 - b.x0, 1), areaH44 / Math.max(b.y1 - b.y0, 1), 1);
+    if (Math.abs(o.scale - old) > 0.0006) fail(`${paper}${orient}：1行のときの倍率が従来と違います（${o.scale} ／ 従来 ${old.toFixed(4)}）`);
+    // 2行のときは、同じか少しだけ小さい（大きくはならない）
+    if (t.scale > o.scale + 0.0006) fail(`${paper}${orient}：2行のほうが図面が大きくなっています`);
+    if (o.scale - t.scale > 0.05) fail(`${paper}${orient}：2行のとき縮みすぎです（${o.scale} → ${t.scale}）`);
+    // 図面が表題の枠の下・図枠の内側に収まっている
+    const top = t.ty + b.y0 * t.scale;
+    const bottom = t.ty + b.y1 * t.scale;
+    const tl2 = layoutTitle({ site: LONG, name: NAME }, sh.w, 24);
+    if (!tl2.twoLines) fail(`${paper}${orient}：長い名前なのに2行になっていません`);
+    const titleBottom = 24 + 6 + tl2.boxH;
+    if (top < titleBottom + 8) fail(`${paper}${orient}：2行のとき、図面が表題の枠に近すぎます（上端 ${top.toFixed(0)}、表題の下端 ${titleBottom}）`);
+    if (bottom > sh.h - 24 - 12) fail(`${paper}${orient}：2行のとき、図面が図枠の下にはみ出しています（${bottom.toFixed(0)}）`);
+    console.log(`  ${paper}${orient === 'portrait' ? '縦' : '横'}：1行 ${o.scale.toFixed(3)} → 2行 ${t.scale.toFixed(3)}${o.scale - t.scale < 0.0006 ? '（余裕があるので縮まない）' : `（${((1 - t.scale / o.scale) * 100).toFixed(1)}%縮む）`}`);
+  }
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

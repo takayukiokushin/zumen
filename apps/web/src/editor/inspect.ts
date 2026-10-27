@@ -525,27 +525,30 @@ function straightenWires(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] }
   return { doc: next, fixed, issues: left };
 }
 
+/** 表題まわりの高さの既定値（1行のとき）。2行のときは呼ぶ側が渡す（layoutTitle の titleH） */
+const DEFAULT_TITLE_H = 44;
+
 /** 用紙に収めるときの倍率（renderSvg と同じ計算） */
-function fitScale(doc: Doc, paper: PaperSize, orientation: Orientation): number {
+function fitScale(doc: Doc, paper: PaperSize, orientation: Orientation, titleH = DEFAULT_TITLE_H): number {
   const b = docBounds(doc);
   const s = sheetSize(paper, orientation);
   const areaW = s.w - 24 * 2 - 12 * 2;
-  const areaH = s.h - 24 * 2 - 44 - 12 * 2 - 18;
+  const areaH = s.h - 24 * 2 - titleH - 12 * 2 - 18;
   return Math.min(areaW / Math.max(b.x1 - b.x0, 1), areaH / Math.max(b.y1 - b.y0, 1), 1);
 }
 
 const PAPER_LABEL = (p: PaperSize, o: Orientation) => `${p}の${o === 'portrait' ? '縦' : '横'}`;
 
 /** 5 用紙に対して図面が大きすぎないか。もっと合う用紙があれば勧める */
-function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation): Issue[] {
-  const now = fitScale(doc, paper, orientation);
+function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation, titleH?: number): Issue[] {
+  const now = fitScale(doc, paper, orientation, titleH);
   if (now >= 0.6) return [];
 
   // 4通りのうち、いちばん大きく出せるものを探す
   let best = { paper, orientation, scale: now };
   for (const p2 of ['A4', 'A3'] as PaperSize[]) {
     for (const o2 of ['portrait', 'landscape'] as Orientation[]) {
-      const sc = fitScale(doc, p2, o2);
+      const sc = fitScale(doc, p2, o2, titleH);
       if (sc > best.scale + 0.02) best = { paper: p2, orientation: o2, scale: sc };
     }
   }
@@ -574,7 +577,7 @@ function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation): Issue
 }
 
 /** 直さずに調べるだけ（直したあとの確かめにも使う） */
-export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientation): Issue[] {
+export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientation, titleH?: number): Issue[] {
   const issues: Issue[] = [];
   const symbols = symbolsOf(doc);
   const wires = wiresOf(doc);
@@ -647,7 +650,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
     }
   }
 
-  issues.push(...checkPaper(doc, paper, orientation));
+  issues.push(...checkPaper(doc, paper, orientation, titleH));
   return issues;
 }
 
@@ -655,7 +658,12 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
  * 図面を整える。直したうえで、残った問題を返す。
  * 元に戻せるよう、呼ぶ側で履歴に積むこと。
  */
-export function tidyDrawing(doc: Doc, paper: PaperSize = 'A4', orientation: Orientation = 'portrait'): TidyResult {
+export function tidyDrawing(
+  doc: Doc,
+  paper: PaperSize = 'A4',
+  orientation: Orientation = 'portrait',
+  titleH?: number,
+): TidyResult {
   const fixed = emptyCount();
 
   // 線の端を接続点に結び直す（これまでの「整える」と同じ）
@@ -693,7 +701,7 @@ export function tidyDrawing(doc: Doc, paper: PaperSize = 'A4', orientation: Orie
   fixed.overlap += d.fixed;
 
   // 直したあと、もう一度調べ直す
-  const issues = inspectDrawing(next, paper, orientation);
+  const issues = inspectDrawing(next, paper, orientation, titleH);
   return { doc: next, fixed, issues };
 }
 
