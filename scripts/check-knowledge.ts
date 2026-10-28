@@ -417,6 +417,14 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
     if (first?.label.join('') !== 'キャビネット番号：地下佐東西11号') fail(`キャビネットの脇の文字が違います（${first?.label.join('')}）`);
     const cabDef = findSymbol('cabinet');
     if (!cabDef || cabDef.ports.length !== 1 || cabDef.ports[0]?.id !== 'out') fail('キャビネットの記号の接続点が、下の1つだけになっていません');
+    // 縦線が、枠の上端から上へ少し突き出ている
+    const frame = cabDef?.shapes.find((x) => x.k === 'rect') as { y: number } | undefined;
+    const topLine = cabDef?.shapes.find((x) => x.k === 'line' && x.x1 === x.x2 && Math.min(x.y1, x.y2) < (frame?.y ?? 0));
+    if (!frame || !topLine) fail('キャビネットの記号の縦線が、枠の上端から突き出ていません');
+    else {
+      const out = frame.y - Math.min((topLine as { y1: number; y2: number }).y1, (topLine as { y1: number; y2: number }).y2);
+      if (out < 3 || out > 10) fail(`キャビネットの縦線の突き出しが ${out} です（3〜10の「少し」のはず）`);
+    }
     const poleComp = buildComposition({ ...answers, sourceType: 'pole' });
     if (poleComp.find((i) => i.kind === 'series')?.symbolId !== 'pole-utility') fail('引込元が電柱のとき、一番上が電柱の記号ではありません');
     console.log('  引込元がキャビネット：一番上は「DS＋外枠」の記号、脇に「キャビネット番号：地下佐東西11号」');
