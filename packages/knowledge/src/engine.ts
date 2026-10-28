@@ -52,8 +52,15 @@ export function dropHiddenChoices(answers: Answers): Answers {
  * （no→なし、それ以外→PAS）。区分開閉器の回答があれば、そちらを使う。
  */
 export function normalizeAnswers(answers: Answers): Answers {
-  if (answers.sectionalizer !== undefined || answers.hasPas === undefined) return answers;
-  return { ...answers, sectionalizer: answers.hasPas === 'no' ? 'none' : 'pas' };
+  let out = answers;
+  if (out.sectionalizer === undefined && out.hasPas !== undefined) {
+    out = { ...out, sectionalizer: out.hasPas === 'no' ? 'none' : 'pas' };
+  }
+  // PASは電柱上、UGSは地上キャビネット用。引込元に合わない（または未回答の）ときは、引込元に合うほうにする
+  const cabinet = out.sourceType === 'cabinet';
+  if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas')) out = { ...out, sectionalizer: 'ugs' };
+  else if (!cabinet && out.sectionalizer === 'ugs') out = { ...out, sectionalizer: 'pas' };
+  return out;
 }
 
 export function visibleQuestions(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
@@ -133,12 +140,12 @@ export function withDerived(rawAnswers: Answers): Answers {
   const answers = normalizeAnswers(rawAnswers);
   const d: Answers = { ...answers };
 
-  // 区分開閉器（PAS／PGS／なし）。まだ答えていないときは、これまでどおりPAS
+  // 区分開閉器（PAS／UGS／PGS／なし）。まだ答えていないときは、これまでどおりPAS（引込元がキャビネットならUGS）
   const sectionalizer = String(answers.sectionalizer ?? 'pas');
   // 内部の条件式は、これまでの「PASがあるか」の形（hasPas）のまま使えるようにしておく
   d.hasPas = sectionalizer === 'none' ? 'no' : 'yes';
   // 図面に書く名前。PGSはキャビネット内の区分開閉器で、PASとは書かない
-  d.sectionalizerName = sectionalizer === 'pgs' ? 'PGS' : 'PAS';
+  d.sectionalizerName = sectionalizer === 'pgs' ? 'PGS' : sectionalizer === 'ugs' ? 'UGS' : 'PAS';
   // 区分開閉器が無いとき、地上キャビネットの種類の名前（図面に書く）
   d.groundCabinetTypeName =
     ({ 'mold-discon': 'モールドディスコン', 't-shelter': 'T型シェルター', 'three-pole': '三極連動' } as Record<string, string>)[

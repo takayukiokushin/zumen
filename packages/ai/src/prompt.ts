@@ -41,8 +41,9 @@ export function buildSystemPrompt(): string {
   メモに形式の記載が無くても、容量から推定できる場合は推定し、uncertain に入れてください。
 - 3点一致（引込点・財産分界点・保安上の責任分界点が同じ地点）が全体の約99%です。
   区分開閉器（PAS・PGS）があれば3点一致の可能性が高いですが、確証が無ければ uncertain に入れてください。
-- **区分開閉器は sectionalizer で答えます。** PAS（電柱上に設置）／PGS（キャビネット内に設置）／none（設置なし）のどれかです。
-  図に「PGS」とあればPGS、「PAS」とあればPAS、どちらも無ければnoneです。
+- **区分開閉器は sectionalizer で答えます。** PAS（電柱上に設置）／UGS（引込元が地上キャビネットのとき）／PGS（キャビネット内に設置）／none（設置なし）のどれかです。
+  図に「PGS」とあればPGS、「UGS」とあればUGS、「PAS」とあればPAS、どれも無ければnoneです。
+  引込元（sourceType）が cabinet のときは、PAS ではなく UGS になります。
   - noneのときは、電力会社の地上キャビネットで受電する場合がほとんどです。groundCabinet（yes／no）と、
     あるときの種類 groundCabinetType（mold-discon＝モールドディスコン／t-shelter＝T型シェルター／three-pole＝三極連動）を、
     メモの記載から読み取ってください。読み取れないときは、questions で確認してください。

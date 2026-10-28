@@ -358,7 +358,9 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     options: [
-      { value: 'pas', label: 'PAS（電柱上）' },
+      // 引込元が地上キャビネットのときは PAS ではなく UGS（図記号も構造も同じで、名前だけ違う）
+      { value: 'pas', label: 'PAS（電柱上）', showIf: { key: 'sourceType', ne: 'cabinet' } },
+      { value: 'ugs', label: 'UGS（地上キャビネット）', showIf: { key: 'sourceType', eq: 'cabinet' } },
       { value: 'pgs', label: 'PGS（キャビネット内）' },
       { value: 'none', label: 'なし' },
     ],
@@ -366,7 +368,7 @@ export const QUESTIONS: Question[] = [
     ask: 'ai-uncertain',
     required: true,
     help:
-      'PAS＝電柱上の区分開閉器（高圧気中開閉器）。PGS＝キャビネット内に設置される区分開閉器で、図面には「PGS」と書く。' +
+      'PAS＝電柱上の区分開閉器（高圧気中開閉器）。UGS＝引込元が地上キャビネットのときの区分開閉器で、図面には「UGS」と書く（図記号・定格・SOGなどの質問はPASと同じ）。PGS＝キャビネット内に設置される区分開閉器で、図面には「PGS」と書く。' +
       'どちらも、SOG（制御装置）などの質問は同じ。なしのときは、地上キャビネット（電力会社のキャビネットで受電）の有無を聞く',
   },
   {
@@ -410,7 +412,7 @@ export const QUESTIONS: Question[] = [
       { value: 'dgr', label: 'DGR（方向性）' },
     ],
     defaultValue: 'dgr',
-    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
+    showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
     help:
       'SOGがあればZCTが内蔵される（GRはZCTのみ、DGRはZCTに加えて零相電圧＝内蔵VTかZPDが必要）。' +
@@ -424,7 +426,7 @@ export const QUESTIONS: Question[] = [
     options: YES_NO,
     defaultValue: 'yes',
     // SOGが無ければVTは入らないので、聞く必要そのものが無い
-    showIf: { all: [{ key: 'sectionalizer', in: ['pas', 'pgs'] }, { key: 'pasControl', in: ['gr', 'dgr'] }] },
+    showIf: { all: [{ key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] }, { key: 'pasControl', in: ['gr', 'dgr'] }] },
     ask: 'ai-uncertain',
   },
   {
@@ -434,7 +436,7 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     options: YES_NO,
     defaultValue: 'yes',
-    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
+    showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
     help: 'SOGが無いPASでも内蔵されていることがある',
   },
@@ -445,7 +447,7 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     options: [3300, 6600, 7200, 22000].map((v) => ({ value: String(v), label: `${v}V` })),
-    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
+    showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
     help: '3300V・6600V・7200V・22000Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
   },
@@ -460,7 +462,7 @@ export const QUESTIONS: Question[] = [
       { value: '300', label: '300A' },
       { value: '400', label: '400A' },
     ],
-    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
+    showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'always',
   },
 

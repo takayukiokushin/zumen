@@ -61,6 +61,12 @@ const pasDef = (
   id: string,
   pad: { l: number; r: number; t: number; b: number },
   altOf?: string,
+  /** 同じ図記号で名前だけ違うもの（UGS）用 */
+  name: { abbr: string; nameJa: string; tags: string[] } = {
+    abbr: 'PAS',
+    nameJa: '区分開閉器（高圧気中開閉器）',
+    tags: ['区分開閉器', '電柱上', 'GR', 'DGR'],
+  },
 ): SymbolDef => {
   const { l, r, t, b } = pad;
   /** 主回路（縦に走る線）の位置 */
@@ -78,11 +84,11 @@ const pasDef = (
   const h = altOf ? laY + 48 + 8 : 148 + b;
   return {
     id,
-    abbr: 'PAS',
-    labelLines: ['PAS', '{ratedVoltage}V', '{ratedCurrent}A'],
-    nameJa: '区分開閉器（高圧気中開閉器）',
+    abbr: name.abbr,
+    labelLines: [name.abbr, '{ratedVoltage}V', '{ratedCurrent}A'],
+    nameJa: name.nameJa,
     category: 'switchgear',
-    tags: ['区分開閉器', '電柱上', 'GR', 'DGR'],
+    tags: name.tags,
     ...(altOf ? { altOf, optional: true } : {}),
     // 内蔵するZCT・VT・LAが収まる最小限の大きさにしてある。
     // 以前は余白が多く、他の記号に比べて大きすぎた。
@@ -352,6 +358,12 @@ export const switchgearSymbols: SymbolDef[] = [
     note: '進相コンデンサの開閉用。LBSと組み合わせて使う現場がある。',
   },
   pasDef('pas', { l: 0, r: 0, t: 0, b: 0 }),
+  // 地上キャビネットが引込元のときの区分開閉器。図記号・構造・定格はPASと同じで、名前だけUGS
+  pasDef('ugs', { l: 0, r: 0, t: 0, b: 0 }, undefined, {
+    abbr: 'UGS',
+    nameJa: '区分開閉器（地上キャビネット用）',
+    tags: ['区分開閉器', '地上', 'キャビネット', 'GR', 'DGR'],
+  }),
   // 内蔵機器（LA・VT）を入れるとき用。枠を少しだけ広げてある（とくに左）
   pasDef('pas-builtin', { l: 8, r: 2, t: 4, b: 12 }, 'pas'),
 ];

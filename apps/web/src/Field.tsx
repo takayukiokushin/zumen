@@ -27,7 +27,8 @@ export function Field({ question: question, fieldKey, value, onChange, context }
     : question;
   const [pickedOther, setPickedOther] = useState(false);
   const set = (v: Value) => onChange(fieldKey, v);
-  const current = value ?? q.defaultValue ?? '';
+  // まだ答えていないときは、いま効いている値を見せる（例：引込元がキャビネットなら、区分開閉器は既定でUGS）
+  const current = value ?? context?.[question.id] ?? q.defaultValue ?? '';
   // 一覧に無い値がすでに入っているか、利用者が「その他」を選んだときだけ手入力欄を出す
   const free =
     q.allowFreeInput === true &&
