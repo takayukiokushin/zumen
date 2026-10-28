@@ -394,6 +394,14 @@ export const AREA_CHAIN: Placement[] = [
     when: { not: { key: 'areaForm', eq: 'apartment-pole' } },
     labelTemplate: ['{areaLabel}'],
   },
+  {
+    // ケーブルを受ける側の端末（1か所目の「受電側の端末」と同じ。180°回して使う）
+    role: 'cable-head-site',
+    symbolId: 'cable-head',
+    kind: 'series',
+    when: { all: [{ key: 'linkCable', ne: 'no' }, { not: { key: 'areaForm', eq: 'apartment-pole' } }] },
+    note: 'エリアの枠の中の、ケーブルを受ける端末',
+  },
   { role: 'ds', symbolId: 'ds', kind: 'series', when: { key: 'intakeDs', eq: 'yes' }, labelTemplate: ['DS', '{dsRating}'] },
   {
     role: 'ds-vt-pf',

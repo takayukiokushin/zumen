@@ -422,6 +422,78 @@ console.log('\n■ 縦方向のバランス（母線と手前の機器の間隔�
   }
 }
 
+/* 受電設備エリアが2か所以上：左から右へ並べ、枠の上端をそろえ、ケーブルでつなぐ */
+console.log('\n■ 受電設備エリアが2か所以上のときの配置');
+{
+  const base: Answers = {
+    ...answers, areaCount: 2, areaForm: 'cubicle', areaPlacement: 'outdoor', areaForm__2: 'room-open', areaPlacement__2: 'indoor',
+    transformerCount: 2, trCapacity: 100, feederCount: 0, hasCapacitor: 'no', hasPv: 'no',
+    'a2:areaIntake': 'lbs-pf', 'a2:lbsRatedVoltage': '7200', 'a2:lbsRatedCurrent': 200, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried',
+    'a2:linkCableStructure': 'CVT', 'a2:linkCableCrossSection': '38', 'a2:linkCableLength': 20,
+    'a2:transformerCount': 2, 'a2:trConnection': 'tr-3p-dy', 'a2:trCapacity': 100, 'a2:trCapacity__2': 50, 'a2:trConnection__2': 'tr-3p-dy',
+  };
+  const one = layout(buildComposition({ ...base, areaCount: 1 }), { ...base, areaCount: 1 });
+  const two = layout(buildComposition(base), base);
+  const first = two.symbols.filter((s) => !s.role.startsWith('a2:'));
+  const second = two.symbols.filter((s) => s.role.startsWith('a2:'));
+  if (first.length !== one.symbols.length) fail(`1か所目の記号の数が、1か所だけのときと違います（${first.length} / ${one.symbols.length}）`);
+  const same = first.every((s, i) => s.symbolId === one.symbols[i]!.symbolId && s.x === one.symbols[i]!.x && s.y === one.symbols[i]!.y);
+  if (!same) fail('1か所目の記号の位置が、1か所だけのときと変わっています');
+  else console.log(`  1か所目（記号 ${first.length}個）は、1か所だけのときと、同じ位置`);
+  if (second.length === 0) fail('2か所目の記号が描かれていません');
+  const right1 = Math.max(...first.map((s) => s.x + getSymbolDef(s.symbolId).box.w));
+  const left2 = Math.min(...second.map((s) => s.x));
+  if (!(left2 > right1)) fail(`2か所目が、1か所目の右に離れて並んでいません（1か所目の右端 ${Math.round(right1)} / 2か所目の左端 ${Math.round(left2)}）`);
+  else console.log(`  2か所目は、1か所目の右（${Math.round(left2 - right1)}離れて）`);
+  if (two.frames.length !== 2) fail(`エリアの枠が ${two.frames.length}つです（2つのはず）`);
+  else if (two.frames[0]!.y !== two.frames[1]!.y) fail(`2つの枠の上端がそろっていません（${two.frames[0]!.y} / ${two.frames[1]!.y}）`);
+  else console.log(`  2つの枠の上端が、y=${two.frames[0]!.y} でそろっている。枠の文字：${two.frames.map((f) => f.label).join(' ／ ')}`);
+  // 枠どうしが重ならない
+  const [fa, fb] = [...two.frames].sort((p, q) => p.x - q.x);
+  if (fa && fb && !(fa.x + fa.w < fb.x)) fail('2つの枠が重なっています');
+  // ケーブルの線：点線（埋設）で、2か所目の枠の上端（主回路の真上）まで来ている
+  const entryX = second.find((s) => s.role === 'a2:cable-head-site');
+  const dashed = two.wires.filter((w) => w.dashed && (w.x1 > right1 - 1 || w.x2 > right1 - 1));
+  if (dashed.length < 3) fail(`エリア間の点線のケーブルが描かれていません（${dashed.length}本）`);
+  const frameTop = two.frames[1]!.y;
+  const reaches = dashed.some((w) => (w.y1 === frameTop || w.y2 === frameTop) && w.x1 === w.x2);
+  if (!reaches) fail('ケーブルの線が、2か所目の枠の上端まで来ていません');
+  const hasText = (two.texts ?? []).some((t) => t.lines.join('|') === '埋ケ|CVT|38mm2 20m');
+  if (!hasText) fail(`ケーブルの文字が描かれていません（${(two.texts ?? []).map((t) => t.lines.join('|')).join(' ／ ')}）`);
+  if (entryX && !(Math.abs(entryX.x + getSymbolDef('cable-head').box.w / 2 - second[0]!.x) >= 0)) fail('受け側の端末の位置が不正です');
+  const cols = findLabelCollisions(two);
+  if (cols.length) fail(`2か所のとき、文字が重なっています：${[...new Set(cols)].slice(0, 3).join(' / ')}`);
+  else console.log(`  エリア間のケーブル：点線 ${dashed.length}本、文字「埋ケ / CVT / 38mm2 20m」。文字の重なりなし`);
+  // 編集できる図面に取り込んでも、問題が出ない
+  const doc = fromLayout(two);
+  const issues = inspectDrawing(doc, 'A3', 'landscape');
+  if (issues.length) fail(`2か所の図面を取り込むと、問題が ${issues.length}件 出ます（${issues.slice(0, 2).map((i) => i.message).join(' / ')}）`);
+  else console.log('  編集用に取り込んでも、結線・重なりの問題なし');
+  if (!doc.items.some((i) => i.kind === 'text')) fail('ケーブルの文字が、編集用の図面に入っていません');
+  // 分岐の位置ごとに、つなぐ高さが変わる（DSの電源側 → DSとVCBの間 → VCBの負荷側 → 高圧母線）
+  const tapY = (tap: string) => {
+    const a: Answers = { ...base, 'a2:linkTap': tap };
+    const d = layout(buildComposition(a), a);
+    const w = d.wires.find((x) => x.dashed && x.y1 === x.y2 && x.x1 < right1 + 1);
+    return w?.y1;
+  };
+  const ys = ['ds-source', 'ds-vcb', 'vcb-load', 'bus'].map(tapY);
+  if (ys.some((y) => y === undefined) || !(ys[0]! < ys[1]! && ys[1]! < ys[2]! && ys[2]! < ys[3]!)) fail(`分岐の位置の高さが、上から順になっていません（${ys.join(' / ')}）`);
+  else console.log(`  分岐の高さ（上から）：DSの電源側 ${Math.round(ys[0]!)} → DSとVCBの間 ${Math.round(ys[1]!)} → VCBの負荷側 ${Math.round(ys[2]!)} → 高圧母線 ${Math.round(ys[3]!)}`);
+  // 3か所：3か所目は、2か所目の右。分岐元は2か所目
+  const three: Answers = { ...base, areaCount: 3, areaForm__3: 'cubicle', areaPlacement__3: 'outdoor', 'a3:areaIntake': 'none', 'a3:linkFrom': '2', 'a3:linkTap': 'bus', 'a3:trCapacity': 50, 'a3:trConnection': 'tr-3p-dy' };
+  const d3 = layout(buildComposition(three), three);
+  const x2 = Math.max(...d3.symbols.filter((s) => s.role.startsWith('a2:')).map((s) => s.x));
+  const x3 = Math.min(...d3.symbols.filter((s) => s.role.startsWith('a3:')).map((s) => s.x));
+  if (d3.frames.length !== 3 || !(x3 > x2)) fail(`3か所並べたとき、3か所目が2か所目の右にありません（枠 ${d3.frames.length}つ）`);
+  else console.log('  3か所：左から1・2・3か所目の順に並ぶ（3か所目は、2か所目から分岐）');
+  // 「つながない」ときは、ケーブルを描かず、エリアだけ並べる
+  const alone: Answers = { ...base, 'a2:linkCable': 'no' };
+  const dAlone = layout(buildComposition(alone), alone);
+  if (dAlone.wires.some((w) => w.dashed && w.x1 > right1)) fail('「つながない」なのに、ケーブルが描かれています');
+  else console.log('  「つながない」とき：ケーブルは描かず、エリアだけ並べる');
+}
+
 /* ---------- 9. 主回路の記号の大きさ ---------- */
 console.log('\n■ 記号の大きさ');
 {

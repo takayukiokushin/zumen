@@ -139,6 +139,10 @@ export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
       labelAnchor: s.labelAt.anchor,
     });
   }
+  // 受電設備エリアをつなぐケーブルの文字など
+  for (const t of drawing.texts ?? []) {
+    items.push({ kind: 'text', id: nextId('text'), x: t.x, y: t.y, lines: t.lines, anchor: t.anchor });
+  }
   // 作りたてなので edited は false。回答が変われば作り直してよい印
   return tidyDoc({ items, basis, edited: false });
 }

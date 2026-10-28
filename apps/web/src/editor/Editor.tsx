@@ -42,7 +42,12 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     () => digest(JSON.stringify(composition.map((i) => [i.role, i.symbolId, i.label, i.unit ?? 0]))),
     [composition],
   );
-  const generated = useMemo(() => fromLayout(layout(composition, answers), basis), [composition, answers, basis]);
+  const generated = useMemo(() => {
+    const doc = fromLayout(layout(composition, answers), basis);
+    // 受電設備エリアが2か所以上のときは、横に並ぶので、用紙は横向きにする（3か所以上は、A3）
+    const areas = Math.max(...composition.map((i) => (i.area ?? 0) + 1));
+    return areas >= 2 ? { ...doc, orientation: 'landscape' as const, ...(areas >= 3 ? { paper: 'A3' as const } : {}) } : doc;
+  }, [composition, answers, basis]);
 
   /** 作り直しても、用紙の大きさと向きだけは選んだままにする */
   const keepPaper = (fresh: Doc, from: Doc | null | undefined): Doc =>
