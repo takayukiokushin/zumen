@@ -29,6 +29,15 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
     void reload();
   }, []);
 
+  // Esc キーで閉じる（日本語の変換中の Esc は、変換の取り消しなので閉じない）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.isComposing) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   /** 画面の操作をまとめて行う。成功したら一覧を読み直す */
   const run = async (work: () => Promise<unknown>, message: string) => {
     setError(null);
