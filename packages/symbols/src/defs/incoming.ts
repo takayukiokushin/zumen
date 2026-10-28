@@ -50,40 +50,36 @@ export const incomingSymbols: SymbolDef[] = [
   pole('pole-utility', '電柱', '電柱（電力会社所有）', '引込元パターンA。名称は「中電柱：猪子山（分）81」の形式。「中電柱：」は共通で、それ以降が現場ごとに異なる。'),
   pole('pole-customer', '客柱', 'お客様電柱', 'PASは電柱上に設置するため、図面上「お客様電柱」として描かれる場合がある。'),
   {
+    /*
+     * 引込元が地上キャビネットのときの記号（電柱の代わり）。
+     * 断路器（DS）の図記号に、ASやPASと同じ実線の長方形の外枠をかぶせた形。
+     * 引込元なので、上からつなぐ線は無い（接続点は下の1つだけ）。
+     * 開閉部の寸法はDS（固定接点の横バー・右上がりの可動刃）と同じで、左へ 4、下へ 2 ずらしてある。
+     */
     id: 'cabinet',
     abbr: 'CAB',
-    nameJa: '高圧キャビネット',
+    nameJa: '地上キャビネット（引込元）',
     nameFormal: '地上設置金属製ボックス',
     category: 'incoming',
-    tags: ['引込元', 'パターンB', '地上'],
-    box: { w: 48, h: 60 },
+    tags: ['引込元', '地上', 'キャビネット'],
+    box: { w: 56, h: 88 },
     shapes: [
-      vline(24, 0, 10),
-      rect(8, 10, 32, 40),
-      vline(24, 10, 22),
-      line(24, 38, 12, 24),
-      vline(24, 38, 60),
+      rect(4, 2, 48, 76),
+      // 中身：DSと同じ開閉部
+      vline(28, 2, 17),
+      hline(17, 17, 39),
+      line(28, 55, 48, 22),
+      vline(28, 55, 88),
     ],
-    ports: [
-      { id: 'in', x: 24, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 24, y: 60, dir: 'down', role: 'line' },
-    ],
+    ports: [{ id: 'out', x: 28, y: 88, dir: 'down', role: 'line' }],
     fields: [
-      { key: 'cabinetName', label: 'キャビネット名称', type: 'text', help: '図面の記載例: 高圧キャビネット（地下佐東西11号）' },
-      {
-        key: 'content',
-        label: '中身',
-        type: 'select',
-        options: [
-          { value: 'mold-discon', label: 'モールドディスコン' },
-          { value: 'tee-shelter', label: '三極連動ティー型シェルター' },
-        ],
-        help: 'どちらも図記号は同じ。図面上の区別はしない',
-      },
+      { key: 'cabinetPrefix', label: 'キャビネット番号の区分', type: 'text', defaultValue: 'キャビネット番号：' },
+      { key: 'cabinetName', label: 'キャビネット名称', type: 'text', help: '「キャビネット番号：」に続く部分' },
     ],
+    labelLines: ['{cabinetPrefix}{cabinetName}'],
     status: 'confirmed',
-    statusNote: '見本図面のとおり、実線の四角の中に開閉器を描く形にしました。',
-    note: '引込元パターンB。中身のモールドディスコン／三極連動ティー型シェルターは、どちらも同じこの記号で描く。記載例「高圧キャビネット（地下佐東西11号）」。',
+    statusNote: '断路器（DS）の図記号に、AS・PASと同じ実線の外枠をかぶせる形にしました。',
+    note: '引込元が地上キャビネットのとき、電柱の代わりに一番上に描く。記号の脇に「キャビネット番号：」＋名称を書く。電柱も AS も無い。',
   },
   {
     id: 'incoming-point',

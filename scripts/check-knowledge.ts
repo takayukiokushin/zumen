@@ -405,6 +405,19 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   const hasAsRole = (a: Answers) => buildComposition({ ...answers, ...a }).some((i) => i.role === 'as');
   if (!hasAsRole({ sourceType: 'pole', hasAs: 'yes' })) fail('電柱でASありのとき、ASが描かれていません');
   if (hasAsRole({ sourceType: 'cabinet', hasAs: 'yes' })) fail('キャビネットなのにASが描かれています');
+  // 地上キャビネットのときは、電柱の代わりに「DS＋外枠」の記号を一番上に描き、脇に「キャビネット番号：名称」を書く
+  {
+    const comp = buildComposition({ ...answers, sourceType: 'cabinet', cabinetPrefix: 'キャビネット番号：', cabinetName: '地下佐東西11号' });
+    const first = comp.find((i) => i.kind === 'series');
+    if (first?.symbolId !== 'cabinet') fail(`引込元がキャビネットのとき、一番上が「${first?.symbolId}」です（cabinet のはず）`);
+    if (comp.some((i) => i.symbolId === 'pole-utility')) fail('引込元がキャビネットなのに、電柱の記号が描かれています');
+    if (first?.label.join('') !== 'キャビネット番号：地下佐東西11号') fail(`キャビネットの脇の文字が違います（${first?.label.join('')}）`);
+    const cabDef = findSymbol('cabinet');
+    if (!cabDef || cabDef.ports.length !== 1 || cabDef.ports[0]?.id !== 'out') fail('キャビネットの記号の接続点が、下の1つだけになっていません');
+    const poleComp = buildComposition({ ...answers, sourceType: 'pole' });
+    if (poleComp.find((i) => i.kind === 'series')?.symbolId !== 'pole-utility') fail('引込元が電柱のとき、一番上が電柱の記号ではありません');
+    console.log('  引込元がキャビネット：一番上は「DS＋外枠」の記号、脇に「キャビネット番号：地下佐東西11号」');
+  }
   console.log('  引込元：電柱 → 電柱番号の区分・電柱名称・ASの有無／地上キャビネット → キャビネット番号の区分・キャビネット名称（ASは無し）');
   // 古い回答（hasPas だけ入っている）を読み替える
   const legacyNo = normalizeAnswers({ hasPas: 'no' });
