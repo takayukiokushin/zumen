@@ -795,6 +795,23 @@ console.log('\n■ 編集画面で記号を足したときの文字（定格電�
   console.log(`  雛形のある記号：${withLines.length}種類`);
 }
 
+console.log('\n■ 引込点のジグザグ記号の大きさ（以前：横40×縦32 → 横1.5倍・縦0.8倍）');
+{
+  const d = findSymbol('incoming-point');
+  const lines = (d?.shapes ?? []).filter((x) => x.k === 'line') as { x1: number; y1: number; x2: number; y2: number }[];
+  const zig = lines.filter((l) => l.x1 !== l.x2);
+  const xs = zig.flatMap((l) => [l.x1, l.x2]);
+  const ys = zig.flatMap((l) => [l.y1, l.y2]);
+  const w = Math.max(...xs) - Math.min(...xs);
+  const h = Math.max(...ys) - Math.min(...ys);
+  const close = (a: number, b: number) => Math.abs(a - b) < 0.05;
+  if (!close(w, 60)) fail(`ジグザグの横幅が ${w} です（以前の40の1.5倍＝60のはず）`);
+  if (!close(h, 25.6)) fail(`ジグザグの縦の長さが ${h} です（以前の32の0.8倍＝25.6のはず）`);
+  const center = (Math.max(...xs) + Math.min(...xs)) / 2;
+  if (!d || d.ports.some((p) => p.x !== center)) fail('ジグザグの中心と、接続点の位置が合っていません');
+  if (close(w, 60) && close(h, 25.6)) console.log(`  横${w}（左右に${w / 2}ずつ）× 縦${h}`);
+}
+
 console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式→電圧、受電電圧との連動）');
 {
   const auto = (a: Answers) => withAutoValues({ receivingVoltage: '6600', ...a });
