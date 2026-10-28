@@ -182,7 +182,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                   <td className="row-actions">
                     <button
                       type="button"
-                      className="btn primary"
+                      className="btn primary job-open"
                       onClick={() => {
                         // 開いている案件に戻るだけなら、何も失わないので確認しない
                         if (p.id !== currentId && !canLeave()) return;
@@ -193,7 +193,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     </button>
                     <button
                       type="button"
-                      className="btn danger"
+                      className="btn danger job-delete"
                       disabled={p.lock !== null && p.lock.userId !== meId}
                       onClick={() => void remove(p)}
                       aria-label={`${p.name}を削除`}

@@ -575,3 +575,20 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .ratings .rating > span:first-child { grid-column: 1 / -1; }
 .ratings .rating input { width: 100%; padding: 6px 9px; border: 1px solid var(--control-border); border-radius: 2px; background: var(--field); }
 .ratings .rating .unit { color: var(--muted, inherit); font-size: 0.92em; }
+
+/* 図面一覧の「開く」「消す」：押し間違いを防ぐため、間隔を広げ、「開く」は2倍・「消す」は半分の幅にする（標準の幅は84） */
+.joblist .jobs td.row-actions { gap: calc(40px * var(--text-scale)); flex-wrap: nowrap; }
+.joblist .jobs .row-actions .job-open { width: calc(168px * var(--text-scale)); min-width: calc(168px * var(--text-scale)); }
+.joblist .jobs .row-actions .job-delete {
+  /* 半分の幅。ほかの言語で文字が長いときだけ、文字が収まる幅まで広げる */
+  width: calc(42px * var(--text-scale));
+  min-width: min-content;
+  padding-left: 4px;
+  padding-right: 4px;
+  white-space: nowrap;
+}
+/* 狭い画面（スマートフォン）では、横にはみ出さないよう、ボタンを縦に並べる（幅の比は同じ） */
+@media (max-width: 640px) {
+  .joblist .jobs td.row-actions { flex-wrap: wrap; justify-content: flex-end; gap: calc(14px * var(--text-scale)); }
+  .joblist .jobs .row-actions .job-open { width: calc(168px * var(--text-scale)); max-width: 100%; }
+}
