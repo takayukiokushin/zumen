@@ -201,6 +201,18 @@ export function App() {
     }
   };
 
+  // 一覧を開いているときに Esc キーを押すと、一覧を閉じて、開く前の画面に戻る
+  // （設定・使い方・利用者の管理の窓が開いているときは、そちらを邪魔しない）
+  const canCloseListWithEsc = showList && projectId !== null && !settingsOpen && !helpOpen && !usersOpen;
+  useEffect(() => {
+    if (!canCloseListWithEsc) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.isComposing) setShowList(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canCloseListWithEsc]);
+
   if (user === undefined) return <p className="booting">…</p>;
   if (user === null) return <Login onDone={setUser} />;
 
@@ -215,7 +227,8 @@ export function App() {
           setTab(id);
           setShowList(false);
         }}
-        enabled={projectId !== null && !listing}
+        // 一覧を開いているときも、タブは押せる（押すと一覧を閉じて、そのタブの画面に戻る）
+        enabled={projectId !== null}
         dirty={dirty}
         onSettings={() => setSettingsOpen(true)}
         onHelp={() => {
@@ -237,7 +250,9 @@ export function App() {
         dirty={dirty}
         saving={saving}
         savedAt={savedAt}
-        onList={() => setShowList(true)}
+        listing={listing}
+        // 一覧を開いているときに、もう一度押すと閉じる（開いている案件が無いときは、戻る先が無いので開いたまま）
+        onList={() => setShowList((open) => (projectId ? !open : true))}
         onRename={(name) => {
           setProjectName(name);
           setDirty(true);

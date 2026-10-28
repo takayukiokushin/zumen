@@ -9,7 +9,9 @@ interface Props {
   savedAt: string | null;
   /** 他の人が編集中で、閲覧のみになっているか */
   readOnly: boolean;
-  /** 案件の一覧へ戻る */
+  /** 一覧を開いているか（押すと、開閉が切り替わる） */
+  listing: boolean;
+  /** 案件の一覧を開く・閉じる */
   onList: () => void;
   onRename: (name: string) => void;
   onSave: () => void;
@@ -23,6 +25,7 @@ export function ProjectBar({
   saving,
   savedAt,
   readOnly,
+  listing,
   onList,
   onRename,
   onSave,
@@ -31,7 +34,7 @@ export function ProjectBar({
   const lang = useLang();
   return (
     <div className="projectbar">
-      <button type="button" className="picker" onClick={onList}>
+      <button type="button" className="picker" aria-pressed={listing} onClick={onList}>
         ☰ {t('project.list')}
       </button>
 
