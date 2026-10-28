@@ -18,7 +18,7 @@ import { helpSeen, markHelpSeen } from './help/seen.ts';
 import { useLang, useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
-import { QUESTIONS, normalizeAnswers } from '@zumen/knowledge';
+import { QUESTIONS, normalizeAnswers, withAutoValues } from '@zumen/knowledge';
 
 /** 質問定義の既定値。回答そのものとは分けて持ち、「まだ触っていない」が分かるようにする */
 export const DEFAULTS: Answers = Object.fromEntries(
@@ -101,7 +101,7 @@ export function App() {
 
   // 古い回答（PASの設置：hasPas）が残っている案件は、区分開閉器の回答に読み替えてから、既定値を足す
   // （先に既定値を足すと、「PASなし」だった案件がPASありになってしまう）
-  const effective = useMemo<Answers>(() => ({ ...DEFAULTS, ...normalizeAnswers(answers) }), [answers]);
+  const effective = useMemo<Answers>(() => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(answers) }), [answers]);
 
   const updateAnswers = useCallback((next: Answers | ((prev: Answers) => Answers)) => {
     setAnswers((prev) => (typeof next === 'function' ? next(prev) : next));

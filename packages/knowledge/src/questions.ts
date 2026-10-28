@@ -56,6 +56,17 @@ export interface Question {
    * 同じ名前の質問が続くと、1つの区切りにまとまる（画面では、区切りごとに行を分けて見出しを付ける）。
    */
   section?: string;
+  /**
+   * まだ答えていないときの、状況に応じた初期値（上から見て、最初に条件を満たしたものを使う）。
+   * 例：用途を選ぶと結線方式が決まる。利用者が自分で入れた（選んだ）値は、いつもそちらが優先される。
+   * 繰り返しグループでは、その件の答えで見る。
+   */
+  autoValue?: { when?: Condition; value: string }[];
+  /**
+   * 文字を入れる欄を空にしたとき、「答えていない」ではなく「空にした」と覚える。
+   * autoValue のある欄で、自動で入った文字を消せるようにするため
+   */
+  keepEmpty?: boolean;
   /** この条件を満たすときだけ表示する */
   showIf?: Condition;
   ask: AskWhen;
@@ -88,6 +99,8 @@ const COUNT_OPTIONS: Choice[] = Array.from({ length: 50 }, (_, i) => ({
 const NOT_POWER_ONLY: Condition = { not: { key: 'trUsage', eq: '動力' } };
 const NOT_LIGHT_ONLY: Condition = { not: { key: 'trUsage', eq: '電灯' } };
 /** 用途が「電灯および動力」で、結線方式がV結線のとき（容量を電灯・動力に分けて聞く） */
+/** 受電電圧が6600V（一覧から選ぶと文字、サンプルでは数で入っている） */
+const RECEIVING_6600: Condition = { key: 'receivingVoltage', in: ['6600', 6600] };
 const MIXED_V: Condition = {
   all: [{ key: 'trUsage', eq: '電灯・動力' }, { key: 'trConnection', eq: 'tr-vv' }],
 };
@@ -176,7 +189,8 @@ function breakerRatings(
       help: 'ふつうは200A。図面には「200A」のように、記号なしで書く',
     },
     {
-      id: P('PfG'), group, label: 'パワーヒューズ（PF）の定格電流', type: 'select',
+      // 変圧器の手前のときだけ、項目名を変えている（コンデンサの手前は、これまでどおり）
+      id: P('PfG'), group, label: prefix === 'tr' ? 'パワーヒューズ（PF）の定格電流（G）' : 'パワーヒューズ（PF）の定格電流', type: 'select',
       options: PF_RATINGS, allowFreeInput: true, showIf: hasLbs, ask: 'always',
       help: '図面には「G50A」のように、先頭にGを付けて書く',
     },
@@ -187,7 +201,7 @@ function breakerRatings(
       help: `${cap}につなぐので、ふつうは「${defaultLoad}」`,
     },
     {
-      id: P('PfLoadAmp'), group, label: 'PFの負荷側の電流', type: 'select',
+      id: P('PfLoadAmp'), group, label: prefix === 'tr' ? 'パワーヒューズの用途ごとの定格電流' : 'PFの負荷側の電流', type: 'select',
       options: LOAD_AMPS, allowFreeInput: true, showIf: hasLbs, ask: 'always',
       help: '図面には「T30A」のように、上で選んだ記号に続けて書く',
     },
@@ -766,6 +780,12 @@ export const QUESTIONS: Question[] = [
       { value: 'tr-vv', label: 'V結線（単相変圧器2台）' },
       { value: 'tr-1p-parallel', label: '単相変圧器 並行運転（倍容量）', showIf: NOT_POWER_ONLY },
     ],
+    // 用途を選ぶと、結線方式の初期値が決まる（あとから自由に変えられる）
+    autoValue: [
+      { when: { key: 'trUsage', eq: '電灯' }, value: 'tr-1p' },
+      { when: { key: 'trUsage', eq: '動力' }, value: 'tr-3p-yd' },
+      { when: { key: 'trUsage', eq: '電灯・動力' }, value: 'tr-vv' },
+    ],
     ask: 'ai-uncertain',
     required: true,
   },
@@ -774,7 +794,23 @@ export const QUESTIONS: Question[] = [
   // 電灯および動力のV結線だけは、変圧器ごとではなく、全体の容量を電灯・動力に分けて聞く
   { id: 'trCapacityLight', group: 'transformer', label: '電灯の容量', type: 'number', unit: 'kVA', showIf: MIXED_V, ask: 'always', required: true, help: 'V結線（単相変圧器2台）全体のうち、電灯の分の容量' },
   { id: 'trCapacityPower', group: 'transformer', label: '動力の容量', type: 'number', unit: 'kVA', showIf: MIXED_V, ask: 'always', required: true, help: 'V結線（単相変圧器2台）全体のうち、動力の分の容量' },
-  { id: 'trVoltage', group: 'transformer', label: '電圧', type: 'text', placeholder: '6600V/210-105V', ask: 'ai-uncertain' },
+  {
+    id: 'trVoltage',
+    group: 'transformer',
+    label: '電圧',
+    type: 'text',
+    placeholder: '6600V/210-105V',
+    // 受電電圧が6600Vのとき、結線方式に合わせた電圧が最初から入る（単相三線式・V結線＝6600/210-105V、Y-Δ＝6600/210V、
+    // ほかの結線方式は「6600/」だけ）。消しても書き換えてもよい
+    autoValue: [
+      { when: { all: [RECEIVING_6600, { key: 'trConnection', in: ['tr-1p', 'tr-vv'] }] }, value: '6600/210-105V' },
+      { when: { all: [RECEIVING_6600, { key: 'trConnection', eq: 'tr-3p-yd' }] }, value: '6600/210V' },
+      { when: RECEIVING_6600, value: '6600/' },
+    ],
+    keepEmpty: true,
+    help: '受電電圧が6600Vのとき、結線方式に合わせて最初から入る。違うときは、消すか書き換える',
+    ask: 'ai-uncertain',
+  },
   { id: 'trComposition', group: 'transformer', label: '構成', type: 'text', placeholder: '単相変圧器×3', showIf: { key: 'trConnection', in: ['tr-3p-dd', 'tr-vv'] }, ask: 'always' },
   { id: 'trHasPc', group: 'transformer', label: '変圧器の手前にPC（高圧カットアウト）が入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'trHasLbs', group: 'transformer', label: '変圧器の手前にLBSが入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },

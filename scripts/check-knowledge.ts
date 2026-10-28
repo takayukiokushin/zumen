@@ -22,6 +22,7 @@ import {
   resolveDrawingName,
   suggestMainBreakerForm,
   visibleQuestions,
+  withAutoValues,
   withDerived,
 } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
@@ -770,6 +771,52 @@ console.log('\n■ 編集画面で記号を足したときの文字（定格電�
     else console.log(`  ${name}：${got.join(' / ')}`);
   }
   console.log(`  雛形のある記号：${withLines.length}種類`);
+}
+
+console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式→電圧、受電電圧との連動）');
+{
+  const auto = (a: Answers) => withAutoValues({ receivingVoltage: '6600', ...a });
+  const rows: [string, Answers, Record<string, unknown>][] = [
+    ['電灯 → 単相三線式・6600/210-105V', { trUsage: '電灯' }, { trConnection: 'tr-1p', trVoltage: '6600/210-105V' }],
+    ['動力 → Y-Δ結線・6600/210V', { trUsage: '動力' }, { trConnection: 'tr-3p-yd', trVoltage: '6600/210V' }],
+    ['電灯および動力 → V結線・6600/210-105V', { trUsage: '電灯・動力' }, { trConnection: 'tr-vv', trVoltage: '6600/210-105V' }],
+    ['結線方式を自分で選んだら、それを優先（電圧は6600/だけ）', { trUsage: '動力', trConnection: 'tr-3p-dy' }, { trConnection: 'tr-3p-dy', trVoltage: '6600/' }],
+    ['結線方式を単相に変えると、電圧も変わる', { trUsage: '動力', trConnection: 'tr-1p' }, { trVoltage: '6600/210-105V' }],
+    ['用途が未入力でも、電圧は「6600/」が入る', {}, { trVoltage: '6600/' }],
+    ['自分で書いた電圧は、そのまま', { trUsage: '電灯', trVoltage: '6600V/210-105V' }, { trVoltage: '6600V/210-105V' }],
+    ['電圧を空にしたら、空のまま（また自動で入らない）', { trUsage: '電灯', trVoltage: '' }, { trVoltage: '' }],
+    ['受電電圧が6600V以外のときは、電圧を自動で入れない', { receivingVoltage: '22000', trUsage: '電灯' }, { trVoltage: undefined, trConnection: 'tr-1p' }],
+    ['受電電圧が数（6600）で入っていても同じ', { receivingVoltage: 6600, trUsage: '動力' }, { trVoltage: '6600/210V' }],
+    [
+      '2台目以降は、その台の用途で決まる',
+      { transformerCount: 2, trUsage: '電灯', trUsage__2: '動力' },
+      { trConnection: 'tr-1p', trVoltage: '6600/210-105V', trConnection__2: 'tr-3p-yd', trVoltage__2: '6600/210V' },
+    ],
+    ['2台目の用途が未入力でも、電圧は「6600/」が入る', { transformerCount: 2, trUsage: '電灯' }, { trVoltage__2: '6600/' }],
+  ];
+  for (const [name, input, want] of rows) {
+    const got = auto(input);
+    const bad = Object.entries(want).filter(([k, v]) => got[k] !== v);
+    if (bad.length > 0) fail(`${name}：${bad.map(([k, v]) => `${k}=${JSON.stringify(got[k])}（期待：${JSON.stringify(v)}）`).join('、')}`);
+    else console.log(`  ${name}`);
+  }
+  // 電圧が「6600/」だけ（後ろが未入力）のときは、図面に書かない。書き終えたものは書く
+  {
+    const trLabel = (v: string) => buildComposition({ ...answers, trVoltage: v, transformerCount: 1 }).find((i) => i.role === 'transformer')?.label.join('|') ?? '';
+    if (trLabel('6600/').includes('6600')) fail('電圧が「6600/」だけなのに、図面に書かれています');
+    if (!trLabel('6600/210V').includes('6600/210V')) fail('入力し終えた電圧が、図面に書かれていません');
+    console.log('  電圧が「6600/」だけのときは、図面に書かない');
+  }
+  // 自動で入れた値は、元の回答には書き込まない
+  const raw: Answers = { trUsage: '電灯', receivingVoltage: '6600' };
+  withAutoValues(raw);
+  if (raw.trConnection !== undefined || raw.trVoltage !== undefined) fail('自動で入れた値が、元の回答に書き込まれています');
+  // 項目名：変圧器の上位がLBSのときだけ変える（コンデンサの上位は、これまでどおり）
+  const lab = (id: string) => QUESTIONS.find((q) => q.id === id)?.label;
+  if (lab('trPfG') !== 'パワーヒューズ（PF）の定格電流（G）') fail(`変圧器のPFの項目名が違います（${lab('trPfG')}）`);
+  if (lab('trPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流') fail(`変圧器のPFの用途ごとの項目名が違います（${lab('trPfLoadAmp')}）`);
+  if (lab('capPfG') !== 'パワーヒューズ（PF）の定格電流') fail('コンデンサ側の項目名が変わってしまっています');
+  console.log('  項目名：パワーヒューズ（PF）の定格電流（G）／パワーヒューズの用途ごとの定格電流');
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

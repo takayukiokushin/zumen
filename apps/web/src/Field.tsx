@@ -121,7 +121,8 @@ export function Field({ question: question, fieldKey, value, onChange, context }
           type="text"
           value={String(current)}
           placeholder={q.placeholder}
-          onChange={(e) => set(e.target.value || undefined)}
+          // 自動で入る欄（autoValue）は、空にしたことを覚える（空に戻すと、また自動で入ってしまうため）
+          onChange={(e) => set(e.target.value === '' && q.keepEmpty ? '' : e.target.value || undefined)}
           onBlur={(e) => {
             // 数字だけが入っていたら、決まった後ろの文字を足す（CTの「100」→「100/5A」）
             const v = e.target.value.trim();

@@ -70,6 +70,31 @@ export function normalizeAnswers(answers: Answers): Answers {
   return out;
 }
 
+/**
+ * まだ答えていない質問に、状況に応じた初期値（Question.autoValue）を足す。
+ * 既定値を足したあとの回答に対して使う。足した値は、画面に見せたり図面を作ったりするためのもので、
+ * 回答として保存はしない（利用者が自分で入れた値が、いつも優先される）。
+ */
+export function withAutoValues(answers: Answers): Answers {
+  let out = answers;
+  for (const q of QUESTIONS) {
+    if (!q.autoValue) continue;
+    const group = QUESTION_GROUPS.find((g) => g.id === q.group);
+    const units = group?.repeatCountKey && !q.shared ? Math.max(1, Math.floor(Number(answers[group.repeatCountKey] ?? 1)) || 1) : 1;
+    for (let i = 0; i < units; i++) {
+      const key = indexedKey(q.id, i);
+      if (out[key] !== undefined) continue;
+      const view = viewAt(out, i);
+      const rule = q.autoValue.find((r) => evaluate(r.when, view));
+      if (rule) {
+        if (out === answers) out = { ...answers };
+        out[key] = rule.value;
+      }
+    }
+  }
+  return out;
+}
+
 export function visibleQuestions(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
   const answers = normalizeAnswers(rawAnswers);
   const resolved = opts.resolvedByAi ?? new Set<string>();
@@ -146,6 +171,10 @@ const GENERATOR_FUEL_LABEL: Record<string, string> = {
 export function withDerived(rawAnswers: Answers): Answers {
   const answers = normalizeAnswers(rawAnswers);
   const d: Answers = { ...answers };
+
+  // 変圧器の電圧。「6600/」のように、自動で入った前半だけで、後ろがまだ入力されていないときは、図面に書かない
+  const trVoltage = String(answers.trVoltage ?? '').trim();
+  d.trVoltageText = /^\d+\s*V?\s*\/$/.test(trVoltage) ? '' : trVoltage;
 
   // 引込元の文字。「中電柱：」「キャビネット番号：」だけで名称がまだ無いときは、書かない
   const sourceText = String(answers.sourceType === 'cabinet' ? (answers.cabinetName ?? '') : (answers.poleName ?? '')).trim();
