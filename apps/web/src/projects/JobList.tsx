@@ -15,7 +15,8 @@ interface Props {
   role: Role;
   currentId: string | null;
   onOpen: (id: string) => void;
-  onNew: (name: string) => void;
+  /** useAsSite：名前を決めて作ったか（標準の名前のままなら false）。事業場名称の初期値にするかの判断に使う */
+  onNew: (name: string, useAsSite: boolean) => void;
   /**
    * 開いている案件に、保存していない変更があるときの確認。
    * 別の案件を開く・新しく作る前に呼ぶ。false なら取りやめる。
@@ -75,7 +76,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     // 名前を聞く前に確かめる（入力した名前が無駄にならないように）
     if (!canLeave()) return;
     const name = window.prompt(t('project.newName'), q.trim() || t('project.newDefault'));
-    if (name !== null) onNew(name);
+    if (name !== null) onNew(name, name.trim() !== '' && name.trim() !== t('project.newDefault'));
   };
 
   const remove = async (p: ProjectSummary) => {

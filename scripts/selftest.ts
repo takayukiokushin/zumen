@@ -296,6 +296,21 @@ try {
     await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '診断用の案件' }) })
   ).json()) as { id: string };
   check('案件を作れる', Boolean(created.id));
+  // 最初から入れておく回答（図面の名称を、事業場名称の初期値にする）
+  {
+    const seeded = (await (
+      await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '初期値の案件', answers: { siteName: '初期値の案件' } }) })
+    ).json()) as { id: string };
+    const got = (await (await call(a, `/api/projects/${seeded.id}`)).json()) as { answers: Record<string, unknown> };
+    check('作ったときに、事業場名称の初期値を入れられる', got.answers.siteName === '初期値の案件', JSON.stringify(got.answers));
+    const bad = (await (
+      await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '不正な初期値', answers: 'これは回答ではない' }) })
+    ).json()) as { id: string };
+    const gotBad = (await (await call(a, `/api/projects/${bad.id}`)).json()) as { answers: unknown };
+    check('回答の形でない初期値は無視する', JSON.stringify(gotBad.answers) === '{}', JSON.stringify(gotBad.answers));
+    await call(a, `/api/projects/${seeded.id}`, { method: 'DELETE' });
+    await call(a, `/api/projects/${bad.id}`, { method: 'DELETE' });
+  }
 
   const answers = {
     siteName: '試験事業場',

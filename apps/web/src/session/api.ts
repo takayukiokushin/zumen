@@ -162,8 +162,9 @@ export const api = {
   logout: () => call<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
 
   listProjects: () => call<{ projects: ProjectSummary[] }>('/api/projects'),
-  createProject: (name: string) =>
-    call<{ id: string; updatedAt: string }>('/api/projects', { method: 'POST', body: JSON.stringify({ name }) }),
+  /** answers：最初から入れておく回答（例：図面の名称を、事業場名称の初期値にする） */
+  createProject: (name: string, answers?: Answers) =>
+    call<{ id: string; updatedAt: string }>('/api/projects', { method: 'POST', body: JSON.stringify({ name, ...(answers ? { answers } : {}) }) }),
   getProject: (id: string) => call<ProjectDetail>(`/api/projects/${id}`),
   /**
    * baseUpdatedAt：この画面が読み込んだ（最後に保存した）時点の更新時刻。

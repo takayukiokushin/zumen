@@ -237,12 +237,14 @@ projects.post('/:id/restore', (c) => {
 });
 
 projects.post('/', async (c) => {
-  const { name } = (await c.req.json().catch(() => ({}))) as { name?: string };
+  const { name, answers } = (await c.req.json().catch(() => ({}))) as { name?: string; answers?: unknown };
   const id = newId();
   const t = now();
+  // 最初から入れておく回答（図面の名称を事業場名称の初期値にするなど）。オブジェクト以外は無視する
+  const initial = answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
   db.prepare(
     'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, owner) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, (name ?? '').trim() || '無題の案件', t, t, c.get('user').id, '{}', c.get('user').id);
+  ).run(id, (name ?? '').trim() || '無題の案件', t, t, c.get('user').id, JSON.stringify(initial), c.get('user').id);
   takeLock(id, c.get('user').id);
   return c.json({ id, updatedAt: t }, 201);
 });

@@ -146,13 +146,18 @@ export function App() {
     }
   };
 
-  const newProject = async (name: string) => {
+  /**
+   * useAsSite：図面の名称を、ヒアリングの「事業場名称」の初期値にする（あとから自由に変えられる）。
+   * 名前を決めていないとき（標準の名前のまま）は、空のままにする
+   */
+  const newProject = async (name: string, useAsSite = false) => {
     try {
       await leaveCurrent();
-      const { id, updatedAt } = await api.createProject(name);
+      const initial: Answers = useAsSite && name.trim() ? { siteName: name.trim() } : {};
+      const { id, updatedAt } = await api.createProject(name, initial);
       setProjectId(id);
       setProjectName(name || '無題の案件');
-      setAnswers({});
+      setAnswers(initial);
       setDrawing(null);
       setDirty(false);
       setError(null);
@@ -341,7 +346,7 @@ export function App() {
                 }
                 void openProject(id);
               }}
-              onNew={(name) => void newProject(name)}
+              onNew={(name, useAsSite) => void newProject(name, useAsSite)}
               canLeave={confirmLeave}
             />
           ) : tab === 'drawing' ? (
