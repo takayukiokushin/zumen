@@ -59,13 +59,14 @@ function currentLock(projectId: string): Lock | null {
 /**
  * その人がこの案件を扱えるか。
  * 練習用のアカウントは、自分が作ったものだけを扱う（他の人の案件は見えない）。
+ * 逆に、練習用のアカウントが作った案件は、練習用の本人以外（管理用も含む）は、IDを直接指定しても扱えない。
  */
 function canTouch(user: User, projectId: string): boolean {
-  if (user.role !== 'sandbox') return true;
-  const row = db.prepare('SELECT owner FROM projects WHERE id = ?').get(projectId) as
-    | { owner: string | null }
-    | undefined;
-  return row?.owner === user.id;
+  const row = db
+    .prepare('SELECT p.owner, (SELECT role FROM users WHERE id = p.owner) AS owner_role FROM projects p WHERE p.id = ?')
+    .get(projectId) as { owner: string | null; owner_role: string | null } | undefined;
+  if (user.role === 'sandbox') return row?.owner === user.id;
+  return row?.owner_role !== 'sandbox';
 }
 
 /** 編集中の印を自分のものにする（すでに自分のものなら時刻だけ更新する） */
@@ -143,6 +144,82 @@ projects.get('/trash', (c) => {
       fileCount: r.file_count,
     })),
   });
+});
+
+/* ---------------- 練習環境（本番の案件をコピーして練習する） ---------------- */
+
+/** 練習用のアカウントだけが使える。それ以外は、使えないことを伝える */
+const PRACTICE_ONLY = '本番の案件をコピーして練習できるのは、練習用のアカウントだけです。';
+
+/** 練習用ではない人が作った、消されていない案件（コピー元にできるもの） */
+const PRODUCTION_WHERE =
+  "p.deleted_at IS NULL AND (p.owner IS NULL OR p.owner NOT IN (SELECT id FROM users WHERE role = 'sandbox'))";
+
+/** コピー元にできる本番の案件の一覧（練習用のアカウントだけ） */
+projects.get('/practice/sources', (c) => {
+  if (c.get('user').role !== 'sandbox') return c.json({ error: PRACTICE_ONLY }, 403);
+  const rows = db
+    .prepare(
+      `SELECT p.id, p.name, p.updated_at, u.name AS updated_by_name, p.updated_by,
+              (SELECT COUNT(*) FROM project_files f WHERE f.project_id = p.id) AS file_count
+       FROM projects p LEFT JOIN users u ON u.id = p.updated_by
+       WHERE ${PRODUCTION_WHERE} ORDER BY p.updated_at DESC`,
+    )
+    .all() as { id: string; name: string; updated_at: string; updated_by_name: string | null; updated_by: string | null; file_count: number }[];
+  return c.json({
+    projects: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      updatedAt: r.updated_at,
+      updatedBy: r.updated_by_name ?? r.updated_by,
+      fileCount: r.file_count,
+    })),
+  });
+});
+
+/**
+ * 本番の案件を、練習用のアカウントの案件としてコピーする。
+ * コピーなので、もとの案件（回答・図面・写真）は何も変わらない。
+ * コピーしたあとの編集は、コピーにだけ反映される（練習用のアカウントにしか見えない）。
+ */
+projects.post('/practice/copy', async (c) => {
+  const user = c.get('user');
+  if (user.role !== 'sandbox') return c.json({ error: PRACTICE_ONLY }, 403);
+  const { sourceId } = (await c.req.json().catch(() => ({}))) as { sourceId?: string };
+  const src = sourceId
+    ? (db.prepare(`SELECT p.* FROM projects p WHERE p.id = ? AND ${PRODUCTION_WHERE}`).get(sourceId) as
+        | (ProjectRow & { answers: string; drawing: string | null })
+        | undefined)
+    : undefined;
+  if (!src) {
+    return c.json({ error: 'コピーする案件が見つかりません。すでに消されたか、練習用の案件です。一覧を開き直して、選び直してください。' }, 404);
+  }
+
+  const id = newId();
+  const t = now();
+  const name = `（練習）${src.name}`;
+  db.prepare(
+    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, t, t, user.id, src.answers, src.drawing, user.id);
+
+  // 写真も別のファイルとしてコピーする（コピー側を消しても、もとの写真は残る）
+  const files = db
+    .prepare('SELECT id, file_name, media_type, size FROM project_files WHERE project_id = ? ORDER BY created_at')
+    .all(src.id) as { id: string; file_name: string; media_type: string; size: number }[];
+  for (const f of files) {
+    try {
+      const buf = readFileSync(resolve(FILES_DIR, f.id));
+      const fid = newId();
+      writeFileSync(resolve(FILES_DIR, fid), buf);
+      db.prepare(
+        'INSERT INTO project_files (id, project_id, file_name, media_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(fid, id, f.file_name, f.media_type, buf.byteLength, t);
+    } catch {
+      // もとの写真のデータが無いものは、コピーしない
+    }
+  }
+  takeLock(id, user.id);
+  return c.json({ id, name, updatedAt: t }, 201);
 });
 
 /** ごみ箱から戻す */
@@ -331,6 +408,7 @@ projects.post('/:id/files', async (c) => {
 });
 
 projects.get('/:id/files/:fileId', (c) => {
+  if (!canTouch(c.get('user'), c.req.param('id'))) return c.json({ error: '画像が見つかりません。すでに消されたようです。案件の画面を見直してください。' }, 404);
   const row = db
     .prepare(
       `SELECT f.id, f.media_type FROM project_files f JOIN projects p ON p.id = f.project_id
@@ -350,6 +428,7 @@ projects.get('/:id/files/:fileId', (c) => {
 });
 
 projects.delete('/:id/files/:fileId', (c) => {
+  if (!canTouch(c.get('user'), c.req.param('id'))) return c.json({ error: '画像が見つかりません。すでに消されたようです。案件の画面を見直してください。' }, 404);
   const fileId = c.req.param('fileId');
   const r = db.prepare('DELETE FROM project_files WHERE id = ? AND project_id = ?').run(fileId, c.req.param('id'));
   if (Number(r.changes) === 0) return c.json({ error: '画像が見つかりません。すでに消されたようです。案件の画面を見直してください。' }, 404);

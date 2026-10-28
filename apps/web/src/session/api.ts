@@ -85,6 +85,15 @@ export interface ProjectSummary {
   lock: Lock | null;
 }
 
+/** 練習用のアカウントがコピーできる、本番の案件 */
+export interface PracticeSource {
+  id: string;
+  name: string;
+  updatedAt: string;
+  updatedBy: string | null;
+  fileCount: number;
+}
+
 /** ごみ箱に入っている案件 */
 export interface TrashItem {
   id: string;
@@ -167,6 +176,14 @@ export const api = {
     call<{ ok: true; updatedAt: string }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
   /** 消す。本当には消えず、ごみ箱へ入る（30日間は戻せる） */
   deleteProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}`, { method: 'DELETE' }),
+  /** 練習用のアカウントだけ：コピーできる本番の案件の一覧 */
+  listPracticeSources: () => call<{ projects: PracticeSource[] }>('/api/projects/practice/sources'),
+  /** 練習用のアカウントだけ：本番の案件を、練習用の案件としてコピーする（もとは変わらない） */
+  copyToPractice: (sourceId: string) =>
+    call<{ id: string; name: string; updatedAt: string }>('/api/projects/practice/copy', {
+      method: 'POST',
+      body: JSON.stringify({ sourceId }),
+    }),
   listTrash: () => call<{ retainDays: number; projects: TrashItem[] }>('/api/projects/trash'),
   restoreProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}/restore`, { method: 'POST' }),
 

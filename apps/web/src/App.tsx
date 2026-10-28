@@ -330,6 +330,7 @@ export function App() {
           {listing ? (
             <JobList
               meId={user.id}
+              role={user.role}
               currentId={projectId}
               onOpen={(id) => {
                 // 開いている案件に戻るだけなら、読み直さずにそのまま見せる。

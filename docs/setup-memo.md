@@ -13,7 +13,7 @@
 | `zumen_kanri` | 管理者（hoan・jimu の上位） | `admin` | すべての案件＋画面から利用者の管理 |
 | `zumen_hoan` | 保安 | `member` | 案件をみんなで共有する |
 | `zumen_jimu` | 事務 | `member` | 案件をみんなで共有する（hoan と同じ権限） |
-| （未定） | 練習環境 | `sandbox` | 自分が作ったものだけ。他の3つとはデータを共有しない |
+| `zumen_rensyu` | 練習環境 | `sandbox` | 自分が作ったものだけ。他の3つとはデータを共有しない |
 
 - `zumen_hoan` と `zumen_jimu` は横並び（同じ権限）。その上に `zumen_kanri` が来る。
 - 練習環境は、他の3つとは別のアカウント。**練習環境で作った案件は、練習環境の中でしか見えない**
@@ -27,15 +27,21 @@
 pnpm --filter @zumen/server user:add zumen_kanri 管理者 ここにパスワード admin
 pnpm --filter @zumen/server user:add zumen_hoan 保安 ここにパスワード member
 pnpm --filter @zumen/server user:add zumen_jimu 事務 ここにパスワード member
-pnpm --filter @zumen/server user:add （練習のID） 練習用 ここにパスワード sandbox
+pnpm --filter @zumen/server user:add zumen_rensyu 練習用 ここにパスワード sandbox
 ```
 
 - 名前（「管理者」「保安」「事務」など）は画面に出る表示名。変えたければ、設置の日に決める。
 - 登録したら `pnpm --filter @zumen/server user:list` で4つ並んでいるか確かめる。
 
+## 練習環境で本番の案件を使いたいとき
+
+`zumen_rensyu` でログインして「図面一覧」を開くと、**「本番の案件をコピーして練習する」**の欄がある。
+
+- 欄を開き、案件の横の「コピーして練習する」を押すと、**コピー**が作られてそのまま開く（名前に「（練習）」が付く）。
+- もとの本番の案件（回答・図面・写真）は、**何も変わらない**。コピーの編集は、コピーにだけ反映される。
+- コピーした案件は、`zumen_rensyu` にしか見えない（kanri・hoan・jimu には見えない）。
+- コピーした時点の内容なので、あとで本番の案件が更新されても、コピーには反映されない。もう一度コピーする。
+
 ## まだ決まっていないこと
 
-1. 練習環境の ID（例：`zumen_renshu`）
-2. 練習環境で、本番の案件（hoan・jimu・kanri が作ったもの）を**見て、コピーして練習したい**か。
-   いまの仕組みでは、練習用のアカウントには本番の案件が見えない。
-   必要なら、「本番の案件を練習環境にコピーする」機能を別に作る（コピーなので、本番側は変わらない）。
+（いまのところ無し。名前（表示名）は、設置の日に変えたければ変える）

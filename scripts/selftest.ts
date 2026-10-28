@@ -470,6 +470,56 @@ try {
   check('他の人は、練習用の消した案件を戻せない', (await call(a, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).status === 404);
   check('練習用は、自分の消した案件を戻せる', (await call(renshu, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).ok);
 
+  // 練習環境：本番の案件をコピーして練習する（もとの案件は変わらない）
+  {
+    const J = (r: Response) => r.json() as Promise<any>;
+    const srcSave = await call(a, `/api/projects/${created.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ answers: { siteName: '本番の現場', trCapacity: 100 }, drawing: { items: [{ kind: 'text', id: 't1' }] } }),
+    });
+    check('（練習のコピー元）本番の案件に回答と図面を入れられる', srcSave.ok, `${srcSave.status}`);
+    const up = await call(a, `/api/projects/${created.id}/files`, {
+      method: 'POST',
+      body: JSON.stringify({ fileName: '現地.png', mediaType: 'image/png', data: Buffer.from('dummy-image').toString('base64') }),
+    });
+    check('（練習のコピー元）本番の案件に写真を入れられる', up.status === 201, `${up.status}`);
+    const before = await J(await call(a, `/api/projects/${created.id}`));
+
+    check('標準は、練習用のコピー元の一覧を使えない', (await call(a, '/api/projects/practice/sources')).status === 403);
+    check('管理用も、練習用のコピーは使えない', (await call(kanri, '/api/projects/practice/copy', { method: 'POST', body: JSON.stringify({ sourceId: created.id }) })).status === 403);
+    const sources = await J(await call(renshu, '/api/projects/practice/sources'));
+    check('練習用には、本番の案件がコピー元として並ぶ', sources.projects.some((x: { id: string }) => x.id === created.id), `${sources.projects.length}件`);
+    check('練習用の案件は、コピー元に並ばない', !sources.projects.some((x: { id: string }) => x.id === renshuMade.id));
+
+    const copied = await call(renshu, '/api/projects/practice/copy', { method: 'POST', body: JSON.stringify({ sourceId: created.id }) });
+    check('練習用は、本番の案件をコピーできる', copied.status === 201, `${copied.status}`);
+    const copy = await J(copied);
+    const copyDetail = await J(await call(renshu, `/api/projects/${copy.id}`));
+    check('コピーに、回答と図面がそのまま入っている', JSON.stringify(copyDetail.answers) === JSON.stringify(before.answers) && JSON.stringify(copyDetail.drawing) === JSON.stringify(before.drawing));
+    check('コピーの名前に「（練習）」が付く', String(copyDetail.name).startsWith('（練習）'), String(copyDetail.name));
+    check('コピーに写真も入っている（別のファイルとして）', copyDetail.files.length === 1 && copyDetail.files[0].id !== before.files[0].id, `${copyDetail.files.length}枚`);
+    const copyPhoto = await call(renshu, `/api/projects/${copy.id}/files/${copyDetail.files[0].id}`);
+    check('コピーの写真が開ける', copyPhoto.ok && Buffer.from(await copyPhoto.arrayBuffer()).toString() === 'dummy-image');
+    check('コピーは、練習用にだけ見える（標準の一覧に出ない）', !((await J(await call(a, '/api/projects'))).projects as { id: string }[]).some((x) => x.id === copy.id));
+    check('コピーは、標準が直接開こうとしても開けない', (await call(a, `/api/projects/${copy.id}`)).status === 404);
+
+    // コピーを編集しても、もとの案件は変わらない
+    const edit = await call(renshu, `/api/projects/${copy.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ answers: { siteName: '練習で変えた' }, drawing: null }),
+    });
+    check('練習用は、コピーを編集できる', edit.ok, `${edit.status}`);
+    const after = await J(await call(a, `/api/projects/${created.id}`));
+    check('コピーを編集しても、本番の案件は変わらない', JSON.stringify(after.answers) === JSON.stringify(before.answers) && JSON.stringify(after.drawing) === JSON.stringify(before.drawing) && after.updatedAt === before.updatedAt);
+    // コピーを消しても、もとの写真は残る
+    await call(renshu, `/api/projects/${copy.id}`, { method: 'DELETE' });
+    check('コピーを消しても、本番の案件の写真は残る', (await call(a, `/api/projects/${created.id}/files/${before.files[0].id}`)).ok);
+    check('存在しないコピー元は断る', (await call(renshu, '/api/projects/practice/copy', { method: 'POST', body: JSON.stringify({ sourceId: 'nai' }) })).status === 404);
+    // 続きの検査に影響しないよう、入れたものを戻す
+    await call(a, `/api/projects/${created.id}/files/${before.files[0].id}`, { method: 'DELETE' });
+    await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ answers: before.answers, drawing: before.drawing }) });
+  }
+
   // 利用者の管理は管理用だけ
   const memberAdmin = await call(a, '/api/admin/users');
   check('標準は利用者の管理を使えない', memberAdmin.status === 403, `${memberAdmin.status}`);

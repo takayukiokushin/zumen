@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../session/api.ts';
-import type { ProjectSummary, TrashItem } from '../session/api.ts';
+import type { PracticeSource, ProjectSummary, Role, TrashItem } from '../session/api.ts';
 import { useLang, useT } from '../i18n/useT.ts';
 
 /**
@@ -11,6 +11,8 @@ import { useLang, useT } from '../i18n/useT.ts';
 interface Props {
   /** いまログインしている人。自分が編集中のときは印を出さない */
   meId: string;
+  /** ログインしている人の種類。練習用のときだけ、本番の案件をコピーする欄を出す */
+  role: Role;
   currentId: string | null;
   onOpen: (id: string) => void;
   onNew: (name: string) => void;
@@ -35,7 +37,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
   );
 }
 
-export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
+export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Props) {
   const t = useT();
   const lang = useLang();
   const [list, setList] = useState<ProjectSummary[] | null>(null);
@@ -46,11 +48,15 @@ export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
   /** 消した・戻した直後の知らせ。消した直後は「元に戻す」を添える */
   const [notice, setNotice] = useState<{ id: string; name: string; text: string; undo: boolean } | null>(null);
 
+  /** 練習用のアカウントがコピーできる、本番の案件 */
+  const [sources, setSources] = useState<PracticeSource[]>([]);
+
   const reload = () =>
-    Promise.all([api.listProjects(), api.listTrash()])
-      .then(([l, tr]) => {
+    Promise.all([api.listProjects(), api.listTrash(), role === 'sandbox' ? api.listPracticeSources() : Promise.resolve({ projects: [] })])
+      .then(([l, tr, src]) => {
         setList(l.projects);
         setTrash(tr.projects);
+        setSources(src.projects);
       })
       .catch((e) => setError(e instanceof Error ? e.message : '案件を読み込めませんでした。'));
 
@@ -81,6 +87,19 @@ export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
       await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : '削除できませんでした。');
+    }
+  };
+
+  /** 本番の案件を練習用にコピーして、そのまま開く。本番の案件は変わらない */
+  const copyToPractice = async (src: PracticeSource) => {
+    if (!window.confirm(`「${src.name}」${t('project.practice.confirm')}`)) return;
+    if (!canLeave()) return;
+    try {
+      setError(null);
+      const r = await api.copyToPractice(src.id);
+      onOpen(r.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'コピーできませんでした。');
     }
   };
 
@@ -185,6 +204,47 @@ export function JobList({ meId, currentId, onOpen, onNew, canLeave }: Props) {
               ))}
             </tbody>
           </table>
+        )}
+
+        {role === 'sandbox' && (
+          <details className="trash practice">
+            <summary>
+              {t('project.practice')}（{sources.length}{t('project.count')}）
+            </summary>
+            <p className="hint">{t('project.practice.hint')}</p>
+            {sources.length === 0 ? (
+              <p className="hint">{t('project.practice.none')}</p>
+            ) : (
+              <table className="jobs">
+                <thead>
+                  <tr>
+                    <th>{t('project.name')}</th>
+                    <th>{t('project.updated')}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sources.map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        <span className="name">{p.name}</span>
+                        {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
+                      </td>
+                      <td className="when">
+                        {new Date(p.updatedAt).toLocaleString(lang)}
+                        {p.updatedBy ? `（${p.updatedBy}）` : ''}
+                      </td>
+                      <td className="row-actions">
+                        <button type="button" className="btn primary" onClick={() => void copyToPractice(p)}>
+                          {t('project.practice.copy')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </details>
         )}
 
         {trash.length > 0 && (
