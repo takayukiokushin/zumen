@@ -144,8 +144,8 @@ const YES_NO_Q: Choice[] = [
 
 /* 開閉器とヒューズの定格電流。一覧から選べて、手入力もできる */
 const amps = (...vals: string[]): Choice[] => vals.map((v) => ({ value: v, label: v }));
-const PC_RATINGS = amps('30A', '50A', '75A', '100A');
-const PC_FUSES = amps('5A', '7.5A', '10A', '15A', '20A', '25A', '30A', '50A', '75A', '100A');
+const PC_RATINGS = amps('30A', '50A', '100A');
+const PC_FUSES = amps('5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A');
 const LBS_RATINGS = amps('100A', '200A', '300A', '400A');
 const PF_RATINGS = amps('5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A');
 const LOAD_AMPS = amps('5A', '10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A');

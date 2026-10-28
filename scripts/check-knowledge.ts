@@ -652,15 +652,28 @@ console.log('\n■ 主遮断装置「それ以外（高圧マンション・電�
   else console.log(`  電柱上構成を選んだとき、「電柱上に構成されていますか？」とは聞かない（そのまま電柱上として扱う）。出る質問：${receiving.join('・')}`);
   const opts = (id: string) => QUESTIONS.find((q) => q.id === id)?.options?.map((o) => o.value) ?? [];
   const same = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
-  const pcFuse = ['5A', '7.5A', '10A', '15A', '20A', '25A', '30A', '50A', '75A', '100A'];
+  const pcFuse = ['5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A'];
+  const pcBody = ['30A', '50A', '100A'];
   const pf = ['5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A'];
   for (const prefix of ['tr', 'cap']) {
+    if (!same(opts(`${prefix}PcRating`), pcBody)) fail(`${prefix}：PC本体の定格電流の選択肢が違います（${opts(`${prefix}PcRating`).join('・')}）`);
+    for (const id of [`${prefix}PcRating`, `${prefix}PcFuse`]) {
+      const q = QUESTIONS.find((x) => x.id === id);
+      if (q?.type !== 'select' || !q.allowFreeInput) fail(`${id}：一覧から選べて、手入力もできる形ではありません`);
+    }
+    // PCに使うのは「パワーヒューズ」ではなく「ヒューズ」
+    if (/パワーヒューズ/.test(QUESTIONS.find((x) => x.id === `${prefix}PcFuse`)?.label ?? '')) fail(`${prefix}：PCの項目名に「パワーヒューズ」が使われています`);
     if (!same(opts(`${prefix}PcFuse`), pcFuse)) fail(`${prefix}：PCのヒューズの選択肢が違います（${opts(`${prefix}PcFuse`).join('・')}）`);
     if (!same(opts(`${prefix}PfG`), pf)) fail(`${prefix}：LBSのパワーヒューズの選択肢が違います（${opts(`${prefix}PfG`).join('・')}）`);
     if (opts(`${prefix}PfG`).includes('150A')) fail(`${prefix}：パワーヒューズに150Aが残っています`);
   }
-  console.log(`  PCのヒューズ：${pcFuse.join(' / ')}`);
+  console.log(`  PC本体：${pcBody.join(' / ')}（手入力もできる）`);
+  console.log(`  PCのヒューズ：${pcFuse.join(' / ')}（手入力もできる）`);
   console.log(`  LBSのパワーヒューズ：${pf.join(' / ')}（150Aは無し）`);
+  // 図面には、PC本体は「50A」、ヒューズは「F:」から始めて書く
+  const pcLabel = buildComposition({ ...answers, transformerCount: 1, trHasPc: 'yes', trPcRating: '50A', trPcFuse: '12.5A' }).find((i) => i.role === 'tr-pc')?.label.join('|');
+  if (pcLabel !== '50A|F:12.5A') fail(`PCの図面の文字が違います（${pcLabel}）`);
+  else console.log(`  図面の文字：${pcLabel}`);
 }
 
 console.log('\n■ 受電設備エリア：高圧マンション（電柱上構成）');
