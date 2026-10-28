@@ -46,7 +46,9 @@ export function buildSystemPrompt(): string {
   - noneのときは、電力会社の地上キャビネットで受電する場合がほとんどです。groundCabinet（yes／no）と、
     あるときの種類 groundCabinetType（mold-discon＝モールドディスコン／t-shelter＝T型シェルター／three-pole＝三極連動）を、
     メモの記載から読み取ってください。読み取れないときは、questions で確認してください。
-  - 引込元は、すべて電力会社所有の電柱です（キャビネットから引き込む図ではありません）。
+  - 引込元（sourceType）は、pole（電力会社の電柱）か cabinet（地上の電力会社キャビネット）のどちらかです。
+    図の一番上が円の左半分を塗った記号なら pole、枠付きの断路器の記号なら cabinet です。
+    pole のときは電柱名称（poleName）とASの有無（hasAs）、cabinet のときはキャビネット名称（cabinetName）を読み取ります（cabinet に AS はありません）。
   - PASとPGSは、SOG・内蔵機器などの質問がまったく同じです。
 - **PASの内蔵機器はSOGの有無で決まります。**
   - SOG（GRまたはDGR）がある → ZCTが必ず内蔵されます。VTは入る場合と入らない場合があります。

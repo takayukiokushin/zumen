@@ -374,14 +374,38 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
     else if (extra.length) fail(`${name}：出ないはずの質問が出ています（${extra.join('・')}）`);
     else console.log(`  ${name}：質問の出方が正しい`);
   }
-  // 引込元は電柱だけ。電柱かキャビネットかの質問・キャビネットの名称や中身の質問は無い
+  // 引込元は電柱か地上キャビネット。選んだほうの質問だけが出る
   const ids = new Set(QUESTIONS.map((q) => q.id));
-  for (const gone of ['sourceType', 'cabinetName', 'cabinetContent', 'hasPas']) {
+  for (const gone of ['cabinetContent', 'hasPas']) {
     if (ids.has(gone)) fail(`なくしたはずの質問 ${gone} が残っています`);
   }
   const labels = (id: string) => QUESTIONS.find((q) => q.id === id)?.label;
   if (labels('polePrefix') !== '電柱番号の区分') fail(`「電柱番号の区分」の名前が違います（${labels('polePrefix')}）`);
-  else console.log('  引込元：電柱番号の区分 → 電柱の名称 → ASの有無（電柱かキャビネットかの質問は無い）');
+  if (labels('cabinetPrefix') !== 'キャビネット番号の区分') fail(`「キャビネット番号の区分」の名前が違います（${labels('cabinetPrefix')}）`);
+  if (labels('cabinetName') !== 'キャビネット名称') fail(`「キャビネット名称」の名前が違います（${labels('cabinetName')}）`);
+  const cabPrefix = QUESTIONS.find((q) => q.id === 'cabinetPrefix');
+  if (cabPrefix?.defaultValue !== 'キャビネット番号：') fail('キャビネット番号の区分の標準が「キャビネット番号：」ではありません');
+  const poleName = QUESTIONS.find((q) => q.id === 'poleName');
+  if (/（分）|（幹）/.test(QUESTIONS.find((q) => q.id === 'cabinetName')?.help ?? '')) fail('キャビネット名称に、電柱の（分）（幹）の注意書きが残っています');
+  if (!poleName) fail('電柱名称の質問がありません');
+  const visibleIds = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const pole = visibleIds({ sourceType: 'pole' });
+  const cab = visibleIds({ sourceType: 'cabinet' });
+  for (const id of ['polePrefix', 'poleName', 'hasAs']) {
+    if (!pole.has(id)) fail(`引込元が電柱のとき、${id} が出ていません`);
+    if (cab.has(id)) fail(`引込元がキャビネットのとき、${id} が出ています`);
+  }
+  for (const id of ['cabinetPrefix', 'cabinetName']) {
+    if (pole.has(id)) fail(`引込元が電柱のとき、${id} が出ています`);
+    if (!cab.has(id)) fail(`引込元がキャビネットのとき、${id} が出ていません`);
+  }
+  // 古い案件（引込元の種類が未入力）は電柱として扱う
+  if (!visibleIds({}).has('poleName')) fail('引込元の種類が未入力のとき、電柱として扱っていません');
+  // キャビネットを選んだら、前に「AS あり」と答えていても AS は描かない
+  const hasAsRole = (a: Answers) => buildComposition({ ...answers, ...a }).some((i) => i.role === 'as');
+  if (!hasAsRole({ sourceType: 'pole', hasAs: 'yes' })) fail('電柱でASありのとき、ASが描かれていません');
+  if (hasAsRole({ sourceType: 'cabinet', hasAs: 'yes' })) fail('キャビネットなのにASが描かれています');
+  console.log('  引込元：電柱 → 電柱番号の区分・電柱名称・ASの有無／地上キャビネット → キャビネット番号の区分・キャビネット名称（ASは無し）');
   // 古い回答（hasPas だけ入っている）を読み替える
   const legacyNo = normalizeAnswers({ hasPas: 'no' });
   const legacyYes = normalizeAnswers({ hasPas: 'yes' });

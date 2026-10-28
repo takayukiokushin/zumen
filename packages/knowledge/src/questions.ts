@@ -248,11 +248,27 @@ export const QUESTIONS: Question[] = [
 
   /* ---------------- 引込元 ---------------- */
   {
+    id: 'sourceType',
+    group: 'source',
+    label: '引込元は何ですか？',
+    type: 'select',
+    options: [
+      { value: 'pole', label: '電柱' },
+      { value: 'cabinet', label: '地上キャビネット' },
+    ],
+    defaultValue: 'pole',
+    ask: 'ai-uncertain',
+    required: true,
+    help: '図面の一番上に描く、電力会社側の引込元。電柱か、地上の電力会社キャビネットのどちらか',
+  },
+  // ---- 電柱のとき ----
+  {
     id: 'polePrefix',
     group: 'source',
     label: '電柱番号の区分',
     type: 'text',
     defaultValue: '中電柱：',
+    showIf: { key: 'sourceType', ne: 'cabinet' },
     ask: 'always',
     help: '引込元は、すべて電力会社所有の電柱。中電柱＝中国電力の電柱。この部分は全現場で共通',
   },
@@ -262,6 +278,7 @@ export const QUESTIONS: Question[] = [
     label: '電柱名称',
     type: 'text',
     placeholder: '猪子山（分）81',
+    showIf: { key: 'sourceType', ne: 'cabinet' },
     ask: 'always',
     help: '「中電柱：」に続く部分。（分）（幹）（支）（連絡）などの区分は電柱の記載をそのまま反映する',
   },
@@ -275,8 +292,29 @@ export const QUESTIONS: Question[] = [
       { value: 'no', label: 'なし' },
     ],
     defaultValue: 'no',
+    showIf: { key: 'sourceType', ne: 'cabinet' },
     ask: 'ai-uncertain',
     help: '電力会社側の開閉器。引込元〜責任分界点の間に入る場合がある',
+  },
+  // ---- 地上キャビネットのとき（電柱も AS も無い） ----
+  {
+    id: 'cabinetPrefix',
+    group: 'source',
+    label: 'キャビネット番号の区分',
+    type: 'text',
+    defaultValue: 'キャビネット番号：',
+    showIf: { key: 'sourceType', eq: 'cabinet' },
+    ask: 'always',
+    help: '図面に書く、キャビネット名称の前の文字。ふつうは「キャビネット番号：」のままでよい',
+  },
+  {
+    id: 'cabinetName',
+    group: 'source',
+    label: 'キャビネット名称',
+    type: 'text',
+    showIf: { key: 'sourceType', eq: 'cabinet' },
+    ask: 'always',
+    help: '「キャビネット番号：」に続く部分',
   },
 
   /* ---------------- 責任分界点 ---------------- */

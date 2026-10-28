@@ -98,7 +98,8 @@ export const UPSTREAM: Placement[] = [
     role: 'as',
     symbolId: 'as',
     kind: 'series',
-    when: { key: 'hasAs', eq: 'yes' },
+    // 引込元が地上キャビネットのときは、電柱が無いので AS も無い（前に「あり」と答えていても描かない）
+    when: { all: [{ key: 'hasAs', eq: 'yes' }, { key: 'sourceType', ne: 'cabinet' }] },
     labelTemplate: ['AS'],
   },
   { role: 'incoming-point', symbolId: 'incoming-point', kind: 'series' },
