@@ -1,4 +1,5 @@
 import type { Condition, Value } from './condition.ts';
+import { CT_AT_VALUES, CT_SHOWN, VT_AT_VALUES, VT_SHOWN } from './composition.ts';
 
 /**
  * ヒアリングの質問定義。
@@ -124,6 +125,33 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   // ここから下の perArea のグループは、エリアが2か所以上のとき、エリアごとに入力する
   { id: 'link', label: 'エリア間の接続', description: '前のエリアから、ケーブルでつなぐ', perArea: true },
   { id: 'receiving', label: '受電設備の構成', perArea: true },
+  {
+    id: 'vtset',
+    label: 'VT（計器用変圧器）',
+    description: 'VTは「組」で数える。位置が違うVTがあるときは、組を増やす',
+    repeatCountKey: 'vtSetCount',
+    repeatUnit: '組',
+    perArea: true,
+    showIf: VT_SHOWN,
+  },
+  {
+    id: 'ctset',
+    label: 'CT（変流器）',
+    description: 'CTも「組」で数える。位置が違うCTがあるときは、組を増やす',
+    repeatCountKey: 'ctSetCount',
+    repeatUnit: '組',
+    perArea: true,
+    showIf: CT_SHOWN,
+  },
+  {
+    id: 'relay',
+    label: '保護継電器（OCR・UVR・OVRなど）',
+    description: '設置されている継電器を、1個ずつ答える。どこについているか・試験端子の有無も、ここで決める',
+    repeatCountKey: 'relayCount',
+    repeatUnit: '個',
+    perArea: true,
+    showIf: { any: [VT_SHOWN, CT_SHOWN] },
+  },
   { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台', perArea: true },
   {
     id: 'compensation',
@@ -134,6 +162,15 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     perArea: true,
   },
   { id: 'special', label: '特殊設備', perArea: true },
+  {
+    id: 'auxtr',
+    label: '補助変圧器',
+    description: '系統用蓄電所のとき、補助変圧器盤（MCCB→補助変圧器）を、低圧側に描く',
+    repeatCountKey: 'auxTrCount',
+    repeatUnit: '台',
+    showIf: { key: 'hasBattery', eq: 'yes' },
+    perArea: true,
+  },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
   { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
   { id: 'title', label: '表題欄' },
@@ -230,6 +267,25 @@ const TRANSFORMER_CHOICES = [
   { value: 'none', label: 'つながない（単独で置く）' },
   ...Array.from({ length: 8 }, (_, i) => ({ value: String(i + 1), label: `${i + 1}台目` })),
 ];
+
+/** 継電器の個数（0個もありうる） */
+const RELAY_COUNT_OPTIONS: Choice[] = Array.from({ length: 9 }, (_, i) => ({ value: String(i), label: String(i) }));
+
+/** VCBの継電器として選べる種類（GR・DGRはPAS、OVGRはZPDの隣に入るので、ここには入れない） */
+const RELAY_CHOICES: Choice[] = [
+  ['OCR', '過電流継電器'],
+  ['UVR', '不足電圧継電器'],
+  ['OVR', '過電圧継電器'],
+  ['OCGR', '地絡過電流継電器'],
+  ['OVGR', '地絡過電圧継電器'],
+  ['UFR', '不足周波数継電器'],
+  ['OFR', '過周波数継電器'],
+  ['RPR', '逆電力継電器'],
+  ['UPR', '不足電力継電器'],
+  ['DSR', '短絡方向継電器'],
+  ['2E', '電動機保護継電器（2要素）'],
+  ['3E', '電動機保護継電器（3要素）'],
+].map(([value, name]) => ({ value: value!, label: `${value}（${name}）` }));
 
 export const QUESTIONS: Question[] = [
   /* ---------------- お客様・現場 ---------------- */
@@ -750,31 +806,6 @@ export const QUESTIONS: Question[] = [
     help: 'PFS形はVTが入る現場と入らない現場がある。CB形はDSの次に必ず入る',
   },
   {
-    id: 'vtCount',
-    group: 'receiving', section: 'VT（計器用変圧器）',
-    label: 'VTの台数',
-    type: 'select',
-    options: COUNT_OPTIONS.slice(0, 6),
-    allowFreeInput: true,
-    unit: '台',
-    defaultValue: '2',
-    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
-    ask: 'ai-uncertain',
-    help: '2台以上のときは、図面に「VT＋PF×2」のように書く',
-  },
-  {
-    id: 'vtRatio',
-    group: 'receiving', section: 'VT（計器用変圧器）',
-    label: 'VTの変圧比',
-    type: 'text',
-    placeholder: '6600/110V',
-    // VTの変圧比は 6600/110V のほかには無い。最初から入れておき、違うときだけ手で直す
-    defaultValue: '6600/110V',
-    help: '6600/110V に決まっているので、最初から入っている。違うときだけ手で直す',
-    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
-    ask: 'ai-uncertain',
-  },
-  {
     id: 'hasSiteCt',
     group: 'receiving', section: 'CT（変流器）',
     label: '受電設備内にCTはありますか？',
@@ -784,29 +815,195 @@ export const QUESTIONS: Question[] = [
     ask: 'ai-uncertain',
     help: 'PFS形はCTが入る現場と入らない現場がある。CB形はVCBのすぐ下に必ず入る',
   },
+  // ---- VT（組ごと）。1組目は、これまでの答え（vtCount・vtRatio）をそのまま使う ----
+  {
+    id: 'vtSetCount',
+    group: 'vtset',
+    label: 'VTの組数',
+    type: 'select',
+    options: COUNT_OPTIONS.slice(0, 6),
+    allowFreeInput: true,
+    unit: '組',
+    defaultValue: '1',
+    ask: 'ai-uncertain',
+    help: '1組＝「VT＋PF」のひとまとまり。位置が違うVTがあるときは、組を増やす',
+  },
+  {
+    id: 'vtPosition',
+    group: 'vtset',
+    label: 'VTの位置',
+    type: 'select',
+    options: [
+      { value: 'primary', label: '主遮断装置（VCB・LBS）の一次側（DSの次）' },
+      { value: 'secondary', label: '主遮断装置の二次側' },
+    ],
+    // DS＋VCBの標準構成の1組目は、DSの次に並列接続する。それ以外（2組目以降・標準でない構成）は、主遮断装置の二次側
+    autoValue: [
+      { when: { all: [{ key: 'unitNo', eq: 1 }, { key: 'intakeStandard', eq: 'yes' }] }, value: 'primary' },
+      { value: 'secondary' },
+    ],
+    ask: 'always',
+  },
+  {
+    id: 'vtCount',
+    group: 'vtset',
+    label: 'VTの台数',
+    type: 'select',
+    options: COUNT_OPTIONS.slice(0, 6),
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '2',
+    autoValue: [{ value: '2' }],
+    ask: 'ai-uncertain',
+    help: '2台以上のときは、図面に「VT＋PF×2」のように書く',
+  },
+  {
+    id: 'vtConnection',
+    group: 'vtset',
+    label: 'VTの接続',
+    type: 'select',
+    options: [
+      { value: 'independent', label: '独立（それぞれ別に接続）' },
+      { value: 'v', label: 'V結線' },
+    ],
+    autoValue: [{ value: 'independent' }],
+    showIf: { key: 'vtCount', gt: 1 },
+    ask: 'always',
+    help: 'V結線のときは、図面に「V結線」と書く',
+  },
+  {
+    id: 'vtRatio',
+    group: 'vtset',
+    label: 'VTの変圧比',
+    type: 'text',
+    placeholder: '6600/110V',
+    // VTの変圧比は 6600/110V のほかには無い。最初から入れておき、違うときだけ手で直す
+    defaultValue: '6600/110V',
+    autoValue: [{ value: '6600/110V' }],
+    help: '6600/110V に決まっているので、最初から入っている。違うときだけ手で直す',
+    ask: 'ai-uncertain',
+  },
+  // ---- CT（組ごと）。1組目は、これまでの答え（ctCount・ctRatio）をそのまま使う ----
+  {
+    id: 'ctSetCount',
+    group: 'ctset',
+    label: 'CTの組数',
+    type: 'select',
+    options: COUNT_OPTIONS.slice(0, 6),
+    allowFreeInput: true,
+    unit: '組',
+    defaultValue: '1',
+    ask: 'ai-uncertain',
+    help: '位置が違うCTがあるときは、組を増やす',
+  },
+  {
+    id: 'ctPosition',
+    group: 'ctset',
+    label: 'CTの位置',
+    type: 'select',
+    options: [
+      { value: 'secondary', label: '主遮断装置（VCB・LBS）の二次側（すぐ下）' },
+      { value: 'primary', label: '主遮断装置の一次側（手前）' },
+      { value: 'after-vt', label: 'VTのあと（VTより下）' },
+    ],
+    autoValue: [{ value: 'secondary' }],
+    ask: 'always',
+  },
   {
     id: 'ctCount',
-    group: 'receiving', section: 'CT（変流器）',
+    group: 'ctset',
     label: 'CTの台数',
     type: 'select',
     options: COUNT_OPTIONS.slice(0, 6),
     allowFreeInput: true,
     unit: '台',
     defaultValue: '2',
-    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] },
+    autoValue: [{ value: '2' }],
     ask: 'ai-uncertain',
     help: '2台以上のときは、図面に「CT×2」のように書く',
   },
   {
     id: 'ctRatio',
-    group: 'receiving', section: 'CT（変流器）',
+    group: 'ctset',
     label: 'CTの変流比',
     type: 'text',
     placeholder: '100',
     appendOnBlur: '/5A',
     help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、必ず5A',
-    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] },
     ask: 'ai-uncertain',
+  },
+  // ---- 保護継電器（1個ずつ） ----
+  {
+    id: 'relayCount',
+    group: 'relay',
+    label: '継電器の個数',
+    type: 'select',
+    options: RELAY_COUNT_OPTIONS,
+    allowFreeInput: true,
+    unit: '個',
+    // VCBとCTがあるときは、OCRが1個入る。それ以外は0個から
+    autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN] }, value: '1' }, { value: '0' }],
+    ask: 'ai-uncertain',
+    help: 'OCR・UVR・OVRなど、VCBを動かす継電器の個数。OVGR（ZPDの隣）とGR・DGR（PAS）は、ここには入れない',
+  },
+  {
+    id: 'relayType',
+    group: 'relay',
+    label: '継電器の種類',
+    type: 'select',
+    options: RELAY_CHOICES,
+    allowFreeInput: true,
+    dropdown: true,
+    // 1個目はOCR、2個目はUVR、3個目以降はOVR
+    autoValue: [
+      { when: { key: 'unitNo', eq: 1 }, value: 'OCR' },
+      { when: { key: 'unitNo', eq: 2 }, value: 'UVR' },
+      { value: 'OVR' },
+    ],
+    ask: 'always',
+    help: '手書き図面にある記号を選ぶ。一覧にない記号は、先に確認してから追加する',
+  },
+  {
+    id: 'relayAt',
+    group: 'relay',
+    label: 'この継電器は、どこについていますか？',
+    type: 'select',
+    dropdown: true,
+    options: [
+      ...[1, 2, 3, 4, 5, 6].map((n) => ({
+        value: `ct-${n}`,
+        label: `CT ${n}組目（OCRなど）`,
+        showIf: n === 1 ? CT_SHOWN : ({ all: [CT_SHOWN, { key: 'ctSetCount', gt: n - 1 }] } as Condition),
+      })),
+      ...[1, 2, 3, 4, 5, 6].map((n) => ({
+        value: `vt-${n}`,
+        label: `VT ${n}組目（UVR・OVRなど）`,
+        showIf: n === 1 ? VT_SHOWN : ({ all: [VT_SHOWN, { key: 'vtSetCount', gt: n - 1 }] } as Condition),
+      })),
+      { value: 'none', label: '置き場所は決まっていない（名前だけ書く）' },
+    ],
+    // 1個目はCT、2個目はVT。どちらも無ければ「置き場所は決まっていない」
+    autoValue: [
+      { when: { all: [{ key: 'unitNo', eq: 1 }, CT_SHOWN] }, value: 'ct-1' },
+      { when: { all: [{ key: 'unitNo', eq: 2 }, VT_SHOWN] }, value: 'vt-1' },
+      { value: 'none' },
+    ],
+    ask: 'always',
+    help: 'CTにつく継電器は、CTの二次側（試験端子の先）に置く。VTにつく継電器は、VTの右の端につなぐ。決まっていないときは、OCRの上に名前だけ書く',
+  },
+  {
+    id: 'relayTest',
+    group: 'relay',
+    label: '継電器の手前に、試験端子（テストターミナル）はありますか？',
+    type: 'select',
+    options: [
+      { value: 'yes', label: 'あり' },
+      { value: 'no', label: 'なし' },
+    ],
+    autoValue: [{ value: 'yes' }],
+    showIf: { key: 'relayAt', in: [...CT_AT_VALUES, ...VT_AT_VALUES] },
+    ask: 'always',
+    help: 'あり・なしの両方がある。最初は「あり」',
   },
   {
     id: 'hasZpd',
@@ -1046,6 +1243,65 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     help: 'つなぎ先が決まっていなければ「つながない」のままでよい',
   },
+
+  /* ---------------- 補助変圧器（系統用蓄電所のとき。台ごと） ---------------- */
+  {
+    id: 'auxTrCount',
+    group: 'auxtr',
+    label: '補助変圧器の台数',
+    type: 'select',
+    options: RELAY_COUNT_OPTIONS.slice(0, 5),
+    allowFreeInput: true,
+    unit: '台',
+    autoValue: [{ value: '1' }],
+    ask: 'always',
+    help: '蓄電所の補助電源（照明・空調・制御）に使う変圧器。0台にすると描かない',
+  },
+  {
+    id: 'auxTrFrom',
+    group: 'auxtr',
+    label: 'どの変圧器の低圧側につなぎますか？',
+    type: 'select',
+    options: TRANSFORMER_CHOICES.slice(1),
+    autoValue: [{ value: '1' }],
+    ask: 'always',
+    help: '補助変圧器盤のMCCBを通して、その変圧器の低圧側からつなぐ',
+  },
+  {
+    id: 'auxTrUsage',
+    group: 'auxtr',
+    label: '用途',
+    type: 'select',
+    options: [
+      { value: '動力', label: '動力' },
+      { value: '電灯', label: '電灯' },
+      { value: '電灯・動力', label: '電灯および動力' },
+    ],
+    autoValue: [{ value: '動力' }],
+    allowFreeInput: true,
+    ask: 'always',
+    help: '図面には「動力用 Tr」のように書く',
+  },
+  {
+    id: 'auxTrConnection',
+    group: 'auxtr',
+    label: '結線方式',
+    type: 'select',
+    options: [
+      { value: 'tr-1p', label: '単相（単相三線式）', showIf: { not: { key: 'auxTrUsage', eq: '動力' } } },
+      { value: 'tr-1p-2w', label: '単相（単相2線式）', showIf: { not: { key: 'auxTrUsage', eq: '動力' } } },
+      { value: 'tr-3p-dy', label: '三相 Δ-Y結線', showIf: { not: { key: 'auxTrUsage', eq: '電灯' } } },
+      { value: 'tr-3p-yd', label: '三相 Y-Δ結線', showIf: { not: { key: 'auxTrUsage', eq: '電灯' } } },
+      { value: 'tr-3p-dd', label: '三相 Δ-Δ結線', showIf: { not: { key: 'auxTrUsage', eq: '電灯' } } },
+      { value: 'tr-3p-yy', label: '三相 Y-Y結線', showIf: { not: { key: 'auxTrUsage', eq: '電灯' } } },
+      { value: 'tr-vv', label: 'V結線（単相変圧器2台）' },
+    ],
+    ask: 'always',
+    help: '決まっていなければ空のままでよい（円の中が空の記号で描く。勝手にΔやYは描かない）',
+  },
+  { id: 'auxTrCapacity', group: 'auxtr', label: '容量', type: 'number', unit: 'kVA', ask: 'always', placeholder: '150' },
+  { id: 'auxTrVoltage', group: 'auxtr', label: '定格電圧（一次/二次）', type: 'text', placeholder: '550V/220V', ask: 'always', help: '図面の記載例：550V/220V' },
+  { id: 'auxTrMccb', group: 'auxtr', label: '補助変圧器盤のMCCBの定格', type: 'text', unit: 'A', placeholder: '400', ask: 'always', help: '数字だけでよい。図面には「MCCB400A」のように書く' },
 
   /* ---------------- 発電機（台ごと） ---------------- */
   {

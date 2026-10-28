@@ -20,6 +20,10 @@ export type PlacementKind =
   | 'frame'
   /** ほかの機器（VCB）の横に、並列に入る（励磁突入電流抑制開閉器）。上と下を、主回路につなぐ */
   | 'bypass'
+  /** 別の機器の真上に、隙間を空けて、名前だけ書く（置き場所が決まっていない継電器） */
+  | 'note-above'
+  /** ほかの機器（VCB）の横に置き、別の機器（OCR）と線でつなぐ（トリップコイル） */
+  | 'coil'
   /** 2か所目以降のエリアを、前のエリアにつなぐケーブル（記号ではなく、つなぎ方を表す） */
   | 'link'
   /**
@@ -69,6 +73,14 @@ export interface Placement {
   tapFrom?: string;
   /** 分岐するとき、横に回さず、縦のまま置く（LA：真横に出た線が、真下に折れて、記号が縦に並ぶ） */
   upright?: boolean;
+  /** 直前の同じ向きの分岐と、横につなげず、別の分岐として出す */
+  separate?: boolean;
+  /** 件数が0のときは、1件も出さない（継電器：0個もありうる）。ふつうは、最低1件出す */
+  zeroOk?: boolean;
+  /** 位置を答える質問のID（CT：主遮断装置の一次側・二次側など）。答えを PlacedItem.pos に入れ、並びに使う */
+  posFrom?: string;
+  /** つながる先を答える質問のID（継電器：ct-1・vt-2・none）。答えを PlacedItem.ref に入れ、並びとつなぎ方に使う */
+  refFrom?: string;
   /**
    * kind==='feeder' のときの列番号の始まり。
    * 低圧の回線と、あとから結線する発電機などが同じ列に重ならないよう、
@@ -273,14 +285,6 @@ export const PFS_CHAIN: Placement[] = [
 export const CB_CHAIN: Placement[] = [
   { role: 'ds', symbolId: 'ds', kind: 'series', labelTemplate: ['DS', '{dsRating}'] },
   {
-    role: 'ds-vt-pf',
-    symbolId: 'pf',
-    kind: 'branch-right',
-    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
-    note: 'DSの次にVTを並列接続する（直列ではない）。VTの手前にPFが入る',
-  },
-  { role: 'ds-vt', symbolId: 'vt', kind: 'branch-right', props: { ratio: 'vtRatio' } },
-  {
     role: 'main-breaker',
     symbolId: 'vcb',
     kind: 'series',
@@ -297,6 +301,117 @@ export const CB_CHAIN: Placement[] = [
     labelTemplate: ['励突抑制開閉器', 'LBS', '{inrushRatedVoltage}V', '{inrushRatedCurrent}A', 'PF×{inrushFuseCount}', '{inrushFuseSpec}'],
     props: { ratedVoltage: 'inrushRatedVoltage', ratedCurrent: 'inrushRatedCurrent', fuseCount: 'inrushFuseCount', fuseSpec: 'inrushFuseSpec' },
     note: 'VCBと並列。系統用蓄電所などで、励磁突入電流を抑えるために入る',
+  },
+];
+
+/** VT・CTの組の番号（1〜6組目）。継電器の「どこについているか」の値（ct-1・vt-1 など）に使う */
+const SET_NOS = [1, 2, 3, 4, 5, 6];
+export const CT_AT_VALUES = SET_NOS.map((n) => `ct-${n}`);
+export const VT_AT_VALUES = SET_NOS.map((n) => `vt-${n}`);
+/** VT・CTが入る構成か（DS＋VCBの標準構成は必ず入る。それ以外は「ありますか？」の答え） */
+export const VT_SHOWN: Condition = {
+  any: [{ key: 'intakeStandard', eq: 'yes' }, { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] }],
+};
+export const CT_SHOWN: Condition = { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] };
+const RELAY_ON_SET: Condition = { key: 'relayAt', in: [...CT_AT_VALUES, ...VT_AT_VALUES] };
+
+/**
+ * VT・CT（組ごと）と、保護継電器（1個ずつ）。1か所目も、2か所目以降のエリアも、同じものを使う。
+ *
+ * - VT・CTは「組」で数える。組ごとに、台数・変成比・位置（主遮断装置の一次側／二次側など）を答える。
+ *   1組目は、これまでの答え（vtCount・ctCount など）をそのまま使う。
+ * - 継電器は、1個ずつ「種類」「どこについているか」「試験端子の有無」を答える（relayAt／relayTest）。
+ *   どこについているかが決まっていないものは、OCR（なければOVGR）の真上に、名前だけを書く。
+ * - 並びは、並べたあとに、engine の arrangeInstruments が、主回路の上から順に整える。
+ *   継電器は、つながる先（CT・VT）のすぐあとに続く。
+ */
+export const INSTRUMENTS: Placement[] = [
+  // ---- VT（組ごと）。位置は、主遮断装置の一次側（DSの次）か二次側 ----
+  {
+    role: 'ds-vt-pf',
+    symbolId: 'pf',
+    kind: 'branch-right',
+    repeatCountKey: 'vtSetCount',
+    when: { all: [VT_SHOWN, { key: 'vtPosition', eq: 'primary' }] },
+    labelTemplate: ['{vtPfHead}', '{vtConnectionText}', '{vtRatio}'],
+    note: '主遮断装置の手前（DSの次）にVTを並列接続する（直列ではない）。VTの手前にPFが入る',
+  },
+  {
+    role: 'ds-vt',
+    symbolId: 'vt',
+    kind: 'branch-right',
+    repeatCountKey: 'vtSetCount',
+    when: { all: [VT_SHOWN, { key: 'vtPosition', eq: 'primary' }] },
+    props: { ratio: 'vtRatio' },
+  },
+  {
+    role: 'site-vt-pf',
+    symbolId: 'pf',
+    kind: 'branch-right',
+    repeatCountKey: 'vtSetCount',
+    when: { all: [VT_SHOWN, { key: 'vtPosition', ne: 'primary' }] },
+    labelTemplate: ['{vtPfHead}', '{vtConnectionText}', '{vtRatio}'],
+  },
+  {
+    role: 'site-vt',
+    symbolId: 'vt',
+    kind: 'branch-right',
+    repeatCountKey: 'vtSetCount',
+    when: { all: [VT_SHOWN, { key: 'vtPosition', ne: 'primary' }] },
+    props: { ratio: 'vtRatio' },
+  },
+  // ---- CT（組ごと）。位置は、主遮断装置の一次側・二次側・VTのあと ----
+  {
+    role: 'ct',
+    symbolId: 'ct',
+    kind: 'series',
+    repeatCountKey: 'ctSetCount',
+    when: CT_SHOWN,
+    posFrom: 'ctPosition',
+    labelTemplate: ['{ctHead}', '{ctRatioText}'],
+    props: { ratio: 'ctRatioText' },
+  },
+  // ---- 保護継電器（OCR・UVR・OVRなど。1個ずつ） ----
+  // 試験端子（あり）。CTにつくものは、主回路から右へ。VTにつくものは、VTの右の端からつなぐ（engine が決める）
+  {
+    role: 'relay-tt',
+    symbolId: 'test-terminal',
+    kind: 'branch-right',
+    repeatCountKey: 'relayCount',
+    zeroOk: true,
+    refFrom: 'relayAt',
+    when: { all: [RELAY_ON_SET, { key: 'relayTest', ne: 'no' }] },
+    note: '継電器の手前の試験端子。「なし」にすると、継電器だけを置く',
+  },
+  {
+    role: 'relay',
+    symbolId: '{relaySymbol}',
+    kind: 'branch-right',
+    repeatCountKey: 'relayCount',
+    zeroOk: true,
+    refFrom: 'relayAt',
+    when: { all: [RELAY_ON_SET, { key: 'relayType', answered: true }] },
+  },
+  // 置き場所が決まっていない継電器：OCR（なければOVGR）のすぐ上に、線をつながず、隙間を空けて、名前だけ書く
+  {
+    role: 'relay-note',
+    symbolId: '{relaySymbol}',
+    kind: 'note-above',
+    repeatCountKey: 'relayCount',
+    zeroOk: true,
+    refFrom: 'relayAt',
+    when: { all: [{ not: RELAY_ON_SET }, { key: 'relayType', answered: true }] },
+    note: '置き場所が決まっていない継電器。OCRの真上に、隙間を空けて、名前だけ書く',
+  },
+  // トリップコイル：VCBの横に置き、OCRとつなぐ（どのOCRがどのVCBに対応しているかを、はっきりさせる）。
+  // VCBとOCRの両方があるときだけ、engine が残す
+  {
+    role: 'trip-coil',
+    symbolId: 'trip-coil',
+    kind: 'coil',
+    attachTo: 'main-breaker',
+    labelTemplate: ['トリップコイル'],
+    note: 'VCBのトリップコイル。OCRの出力とつなぐ',
   },
 ];
 
@@ -332,42 +447,7 @@ export const DOWNSTREAM: Placement[] = [
     labelTemplate: ['保安上の責任分界点'],
     note: '3点不一致（約1%）。主遮断装置の図記号の中央に横線を引き、「保安上の責任分界点」と記載する',
   },
-  {
-    role: 'ct',
-    symbolId: 'ct',
-    kind: 'series',
-    when: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
-    labelTemplate: ['{ctHead}', '{ctRatioText}'],
-    props: { ratio: 'ctRatioText' },
-  },
-  {
-    role: 'ct-test-terminal',
-    symbolId: 'test-terminal',
-    kind: 'branch-right',
-    when: { key: 'mainBreakerForm', eq: 'cb' },
-  },
-  {
-    role: 'ocr',
-    symbolId: 'relay-ocr',
-    kind: 'branch-right',
-    when: { key: 'mainBreakerForm', eq: 'cb' },
-    connectFrom: ['ct-test-terminal'],
-    note: 'CB形では CT の次に OCR が入る',
-  },
-  {
-    role: 'site-vt-pf',
-    symbolId: 'pf',
-    kind: 'branch-right',
-    when: { all: [{ key: 'mainBreakerForm', eq: 'pfs' }, { key: 'hasSiteVt', eq: 'yes' }] },
-    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
-  },
-  {
-    role: 'site-vt',
-    symbolId: 'vt',
-    kind: 'branch-right',
-    when: { all: [{ key: 'mainBreakerForm', eq: 'pfs' }, { key: 'hasSiteVt', eq: 'yes' }] },
-    props: { ratio: 'vtRatio' },
-  },
+  ...INSTRUMENTS,
   {
     role: 'zpd',
     symbolId: 'zpd',
@@ -426,15 +506,6 @@ export const AREA_CHAIN: Placement[] = [
   },
   { role: 'ds', symbolId: 'ds', kind: 'series', when: { key: 'intakeDs', eq: 'yes' }, labelTemplate: ['DS', '{dsRating}'] },
   {
-    role: 'ds-vt-pf',
-    symbolId: 'pf',
-    kind: 'branch-right',
-    when: { key: 'intakeStandard', eq: 'yes' },
-    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
-    note: 'DS＋VCBの標準構成のときは、DSの次にVTを並列接続する',
-  },
-  { role: 'ds-vt', symbolId: 'vt', kind: 'branch-right', when: { key: 'intakeStandard', eq: 'yes' }, props: { ratio: 'vtRatio' } },
-  {
     role: 'main-breaker',
     symbolId: 'vcb',
     kind: 'series',
@@ -470,42 +541,7 @@ export const AREA_CHAIN: Placement[] = [
     labelTemplate: ['LBS', '{lbsRatedVoltage}V', '{lbsRatedCurrent}A'],
     props: { ratedVoltage: 'lbsRatedVoltage', ratedCurrent: 'lbsRatedCurrent' },
   },
-  {
-    role: 'ct',
-    symbolId: 'ct',
-    kind: 'series',
-    when: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] },
-    labelTemplate: ['{ctHead}', '{ctRatioText}'],
-    props: { ratio: 'ctRatioText' },
-  },
-  {
-    // VCBがあって、CTもあるとき、試験端子とOCRを付ける（1か所目のCB形と同じ）
-    role: 'ct-test-terminal',
-    symbolId: 'test-terminal',
-    kind: 'branch-right',
-    when: { all: [{ key: 'intakeVcb', eq: 'yes' }, { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] }] },
-  },
-  {
-    role: 'ocr',
-    symbolId: 'relay-ocr',
-    kind: 'branch-right',
-    when: { all: [{ key: 'intakeVcb', eq: 'yes' }, { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] }] },
-    connectFrom: ['ct-test-terminal'],
-  },
-  {
-    role: 'site-vt-pf',
-    symbolId: 'pf',
-    kind: 'branch-right',
-    when: { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
-    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
-  },
-  {
-    role: 'site-vt',
-    symbolId: 'vt',
-    kind: 'branch-right',
-    when: { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
-    props: { ratio: 'vtRatio' },
-  },
+  ...INSTRUMENTS,
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
   { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, connectFrom: ['zpd'] },
   { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', upright: true, when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
@@ -662,6 +698,32 @@ export const EXTRAS: Placement[] = [
     kind: 'free',
     when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', eq: 'none' }] },
     labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
+  },
+  /*
+   * 補助変圧器（系統用蓄電所だけ）。選んだ変圧器の低圧側から、補助変圧器盤のMCCB → 補助変圧器の順にぶら下げる。
+   * 台数ごとに1本の列になる。
+   */
+  {
+    role: 'aux-mccb',
+    symbolId: 'mccb',
+    kind: 'feeder',
+    when: { key: 'hasBattery', eq: 'yes' },
+    labelTemplate: ['補助変圧器盤', 'MCCB{auxTrMccb}A'],
+    props: { transformer: 'auxTrFrom' },
+    repeatCountKey: 'auxTrCount',
+    zeroOk: true,
+    laneBase: 400,
+  },
+  {
+    role: 'aux-tr',
+    symbolId: '{auxTrSymbol}',
+    kind: 'feeder',
+    when: { key: 'hasBattery', eq: 'yes' },
+    labelTemplate: ['{auxTrUsageLine}', '{auxTrCapacityLine}', '{auxTrVoltage}'],
+    props: { transformer: 'auxTrFrom' },
+    repeatCountKey: 'auxTrCount',
+    zeroOk: true,
+    laneBase: 400,
   },
 ];
 

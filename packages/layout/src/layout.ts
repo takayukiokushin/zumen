@@ -83,6 +83,13 @@ const PARALLEL_GAP = 160;
 const FREE_GAP = 56;
 /** 並列に入る機器（励磁突入電流抑制開閉器）を、主回路の縦線から左へ離す距離（記号の中心まで） */
 const BYPASS_OFFSET = 96;
+/** 置き場所が決まっていない継電器の名前を、置き先の記号の上に書くときの隙間と、重ねるときの間隔 */
+const NOTE_GAP = 16;
+const NOTE_STEP = 8;
+/** 名前だけの継電器を、OCRの上の線から右へ離す距離 */
+const NOTE_SIDE = 10;
+/** トリップコイルを置く、主回路の縦線からの最小の距離（VCBの文字と重ならないため） */
+const COIL_MIN_X = 170;
 /** 結線せずに置くものどうしの間隔 */
 const FREE_SPACING = 170;
 
@@ -127,6 +134,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   let lastBranch: { role: string; dir: number; sym: PlacedSymbol; def: SymbolDef; unit?: number } | null = null;
   /** 直前までの分岐が占めている下端（文字を含む）。次の分岐をここより下に出す */
   let branchBottom = -Infinity;
+  /** 名前だけの継電器を、置き先ごとに何個重ねたか */
+  const noteCount = new Map<string, number>();
 
   /** 回したあとの接続点の座標（記号の左上からの相対） */
   const flip = (def: SymbolDef, x: number, yy: number, rotate: number): [number, number] =>
@@ -160,6 +169,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     };
     symbols.push(sym);
     placed.set(item.role, { sym, def });
+    // 同じ役割の機器が複数あるもの（継電器など）は、IDでも引けるようにする
+    if (item.id !== item.role) placed.set(item.id, { sym, def });
     return sym;
   };
 
@@ -189,8 +200,32 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     const before = started ? pendingGap : GAP;
     const busY = spineY + (lanes.length > 1 ? Math.max(before + 8, BUS_CLEAR) : before);
     // 1列しかないときは母線を描かず、主回路をそのまま下ろす（1台だけの図面を変えないため）
-    const laneX = (lane: number) =>
-      lanes.length <= 1 ? SPINE : SPINE + (lanes.indexOf(lane) - (lanes.length - 1) / 2) * PARALLEL_GAP;
+    /*
+     * 変圧器の列と列の間隔。ふつうは PARALLEL_GAP。
+     * 変圧器の下に低圧の回線が2本以上ぶら下がる（蓄電池と補助変圧器など）ときは、隣の変圧器の下の回線と
+     * 文字が重ならないよう、そのぶん間隔を広げる。回線が少なければ、これまでどおり
+     */
+    const trCount = parallels.filter((p) => p.role === 'transformer').length;
+    const feederLanes = new Map<number, Set<number>>();
+    for (const f of items) {
+      if (f.kind !== 'feeder' || !findSymbol(f.symbolId)) continue;
+      const n = Number(f.props?.transformer ?? 1);
+      const t = Math.min(Math.max(1, Number.isFinite(n) ? n : 1), Math.max(1, trCount)) - 1;
+      const set = feederLanes.get(t) ?? new Set<number>();
+      set.add(f.lane ?? 0);
+      feederLanes.set(t, set);
+    }
+    const lanesUnder = (lane: number): number => {
+      const tr = parallels.find((p) => p.lane === lane && p.role === 'transformer');
+      return tr ? (feederLanes.get(tr.unit ?? 0)?.size ?? 0) : 0;
+    };
+    const colX: number[] = [0];
+    for (let j = 1; j < lanes.length; j++) {
+      const widen = LANE_GAP + (Math.max(1, lanesUnder(lanes[j - 1]!)) - 1) * (LANE_GAP / 2) + (Math.max(1, lanesUnder(lanes[j]!)) - 1) * (LANE_GAP / 2);
+      colX.push(colX[j - 1]! + Math.max(PARALLEL_GAP, widen));
+    }
+    const colCenter = ((colX[0] ?? 0) + (colX.at(-1) ?? 0)) / 2;
+    const laneX = (lane: number) => (lanes.length <= 1 ? SPINE : SPINE + (colX[lanes.indexOf(lane)] ?? 0) - colCenter);
 
     busInfo = { x: lanes.length > 1 ? laneX(lanes.at(-1)!) : SPINE, y: busY };
     wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: busY, dashed: pendingDashed });
@@ -312,6 +347,51 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       continue;
     }
 
+    /* ---- 置き場所が決まっていない継電器：置き先（OCRなど）の真上に、隙間を空けて、名前だけ ---- */
+    if (item.kind === 'note-above') {
+      const target = item.attachTo ? placed.get(item.attachTo) : undefined;
+      if (!target) continue;
+      const k = noteCount.get(item.attachTo!) ?? 0;
+      noteCount.set(item.attachTo!, k + 1);
+      // トリップコイルからOCRの上へ降りてくる線と重ならないよう、その線の右に寄せて置く
+      const topPort = portOf(target.def, 'top');
+      const nx = topPort ? target.sym.x + topPort.x + NOTE_SIDE : target.sym.x;
+      add(item, def, nx, target.sym.y - NOTE_GAP - (k + 1) * def.box.h - k * NOTE_STEP, 0, 'right');
+      continue;
+    }
+
+    /* ---- トリップコイル：VCBの横に置き、OCRとつなぐ ---- */
+    if (item.kind === 'coil') {
+      const breaker = item.attachTo ? placed.get(item.attachTo) : undefined;
+      const ocr = item.connectFrom?.[0] ? placed.get(item.connectFrom[0]) : undefined;
+      const top = ocr ? portOf(ocr.def, 'top') : undefined;
+      const cl = portOf(def, 'l');
+      const cb = portOf(def, 'b');
+      if (!breaker || !ocr || !top || !cl || !cb) continue;
+      const ocrX = ocr.sym.x + top.x;
+      const ocrY = ocr.sym.y + top.y;
+      // コイルの中心は、OCRの真上の線に合わせる。VCBの文字と重ならないよう、主回路から離す
+      const cx = Math.max(ocrX, SPINE + COIL_MIN_X);
+      // VCBの下の端子（VCBの文字より下）から、右へ点線で連動を引く
+      const bOut = portOf(breaker.def, 'out', 'sec');
+      const linkY = breaker.sym.y + (bOut ? bOut.y : breaker.def.box.h);
+      const linkX = breaker.sym.x + (bOut ? bOut.x : breaker.def.box.w / 2);
+      const sym = add(item, def, cx - cb.x, linkY - cl.y, 0, 'right');
+      // VCBとコイルの連動（点線）
+      wires.push({ x1: linkX, y1: linkY, x2: sym.x + cl.x, y2: linkY, dashed: true });
+      // コイルの下から、OCRの上へ
+      const downY = sym.y + cb.y;
+      if (Math.abs(cx - ocrX) < 0.5) {
+        wires.push({ x1: cx, y1: downY, x2: ocrX, y2: ocrY });
+      } else {
+        const midY = Math.max(downY + 8, ocrY - 10);
+        wires.push({ x1: cx, y1: downY, x2: cx, y2: midY });
+        wires.push({ x1: cx, y1: midY, x2: ocrX, y2: midY });
+        wires.push({ x1: ocrX, y1: midY, x2: ocrX, y2: ocrY });
+      }
+      continue;
+    }
+
     /* ---- 別の記号に重ねる横線（3点不一致の責任分界点） ---- */
     if (item.kind === 'overlay') {
       const target = item.attachTo ? placed.get(item.attachTo) : undefined;
@@ -393,7 +473,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       .filter((v): v is { sym: PlacedSymbol; def: SymbolDef } => v !== undefined)
       .map((f) => {
         const q = portOf(f.def, 'sec', 'out', 'r') ?? f.def.ports[f.def.ports.length - 1]!;
-        return { x: f.sym.x + q.x, y: f.sym.y + q.y };
+        return { x: f.sym.x + q.x, y: f.sym.y + q.y, from: f };
       });
 
     // 二次側から結線してくる機器（継電器など）
@@ -404,6 +484,17 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const x = dir > 0 ? railX + BRANCH_OFFSET : railX - BRANCH_OFFSET - def.box.w;
       const sym = add(item, def, x, midY - entry.y, 0, dir > 0 ? 'right' : 'left');
       const target = sym.x + entry.x;
+      if (item.sourceLabel === 'below') {
+        // つなぎ元（VT）の文字は、右へ続く線と重ならないよう、記号の下へ動かす。下端が増えるぶん、次の機器を下げる
+        for (const v of sources) {
+          if (v.from.sym.label.length === 0) continue;
+          v.from.sym.labelAt = { x: v.from.sym.x, y: v.from.sym.y + v.from.def.box.h + 12, anchor: 'start' };
+          const lines = v.from.sym.label.length;
+          branchBottom = Math.max(branchBottom, v.from.sym.labelAt.y + (lines - 1) * LABEL_LINE + 4);
+        }
+        branchBottom = Math.max(branchBottom, sym.y + def.box.h);
+        pendingGap = Math.max(pendingGap, branchBottom - spineY + 10);
+      }
       if (sources.length === 1) {
         // つなぎ元が1つなら、曲げずに1本でまっすぐ引く。
         // 分けて引くと、途中が「記号を突き抜けている線」と見なされて切られ、
@@ -857,10 +948,16 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const mine = allItems.filter((i) => (i.area ?? 0) === n);
     const items = mine
       .filter((i) => i.kind !== 'link')
-      .map((i) => (n === 0 ? i : { ...i, role: strip(i.role), parent: i.parent ? strip(i.parent) : undefined, attachTo: i.attachTo ? strip(i.attachTo) : undefined, connectFrom: i.connectFrom?.map(strip) }));
+      .map((i) => (n === 0 ? i : { ...i, id: strip(i.id), role: strip(i.role), parent: i.parent ? strip(i.parent) : undefined, attachTo: i.attachTo ? strip(i.attachTo) : undefined, connectFrom: i.connectFrom?.map(strip) }));
     const result = layoutArea(items, answers);
-    // 役割の名前は、エリアの番号つきに戻す
-    if (n > 0) for (const sym of result.symbols) sym.role = `${prefix}${sym.role}`;
+    // 役割の名前・IDは、エリアの番号つきに戻す
+    if (n > 0) {
+      for (const sym of result.symbols) {
+        sym.role = `${prefix}${sym.role}`;
+        sym.id = `${prefix}${sym.id}`;
+        if (sym.parent) sym.parent = `${prefix}${sym.parent}`;
+      }
+    }
     return { n, prefix, result, link: mine.find((i) => i.kind === 'link') };
   });
 

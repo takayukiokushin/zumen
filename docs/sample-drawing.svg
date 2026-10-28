@@ -145,7 +145,7 @@
       <path d="M 16 14 A 4 4 0 0 0 16 22" fill="none" stroke-width="1" />
       <path d="M 16 22 A 4 4 0 0 0 16 30" fill="none" stroke-width="1" />
     </g>
-    <text x="42" y="762" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="42" dy="0">CT</tspan><tspan x="42" dy="12.5">40A/5A</tspan></text>
+    <text x="42" y="762" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="42" dy="0">CT×2</tspan><tspan x="42" dy="12.5">40A/5A</tspan></text>
     <g transform="translate(36 800) rotate(-90 20 22)">
       <line x1="20" y1="0" x2="20" y2="44" stroke-width="1" />
       <rect x="15" y="11" width="10" height="22" fill="none" stroke-width="1" />
@@ -156,7 +156,7 @@
       <circle cx="35" cy="15" r="11" fill="none" stroke-width="1" />
       <line x1="46" y1="15" x2="60" y2="15" stroke-width="1" />
     </g>
-    <text x="162" y="817" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="162" dy="0">VT＋PF</tspan><tspan x="162" dy="12.5">6600/110V</tspan></text>
+    <text x="162" y="817" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="162" dy="0">VT＋PF×2</tspan><tspan x="162" dy="12.5">6600/110V</tspan></text>
     <g transform="translate(-134 868)">
       <line x1="30" y1="0" x2="30" y2="22" stroke-width="1" />
       <rect x="14" y="12" width="76" height="32" fill="none" stroke-width="1" />

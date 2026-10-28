@@ -401,7 +401,7 @@ console.log('\n■ 縦方向のバランス（母線と手前の機器の間隔�
       fail(`${name}：高圧母線が見つかりません`);
       continue;
     }
-    const above = d.symbols.filter((s) => ['zpd', 'ovgr', 'ocr', 'ct-test-terminal', 'site-la', 'ct', 'ds-vt-pf', 'ds-vt'].includes(s.role));
+    const above = d.symbols.filter((s) => ['zpd', 'ovgr', 'relay', 'relay-tt', 'trip-coil', 'site-la', 'ct', 'ds-vt-pf', 'ds-vt'].includes(s.role));
     const tight = above.filter((s) => bottomOf(s) > bus.y1 - 12);
     if (tight.length) fail(`${name}：母線(y=${Math.round(bus.y1)})に近すぎる記号があります（${tight.map((s) => `${s.role} 下端${Math.round(bottomOf(s))}`).join('、')}）`);
     else console.log(`  ${name}：母線と、その手前の機器（ZPD・OCR・試験端子・LA）の下端が、12以上離れている`);
@@ -605,7 +605,7 @@ console.log('\n■ 受電設備エリアが2か所以上のときの配置');
   if (!doc.items.some((i) => i.kind === 'text')) fail('ケーブルの文字が、編集用の図面に入っていません');
   // 分岐の位置ごとに、つなぐ高さが変わる（DSの電源側 → DSとVCBの間 → VCBの負荷側 → 高圧母線）
   const tapY = (tap: string) => {
-    const a: Answers = { ...base, 'a2:linkTap': tap };
+    const a: Answers = { ...base, relayCount: '0', 'a2:linkTap': tap };
     const d = layout(buildComposition(a), a);
     const w = d.wires.find((x) => x.dashed && x.y1 === x.y2 && x.x1 < right1 + 1);
     return w?.y1;
@@ -1435,7 +1435,8 @@ console.log('\n■ 区分開閉器の場所に描くもの（PAS・PGS・地上�
 /* ---------- 24. 引込ケーブルが「なし」のとき ---------- */
 console.log('\n■ 引込ケーブル：埋設（点線）・架空（実線）・なし（ケーブル端末を描かない）');
 {
-  const base: Answers = { ...answers, hasPas: 'yes' };
+  // 継電器（トリップコイルの点線）は、ケーブルの点線の数とは関係ないので、入れない
+  const base: Answers = { ...answers, hasPas: 'yes', relayCount: '0' };
   const run = (cableInstallation: string) => {
     const a: Answers = { ...base, cableInstallation };
     const d = layout(buildComposition(a), a);
@@ -1533,6 +1534,110 @@ console.log('\n■ 受電設備の枠は高圧マンション（電柱上構成�
     else console.log(`  ${name}：図記号 ${want}個、すべての右横に「VCT」`);
     const cols = findLabelCollisions(d);
     if (cols.length) fail(`${name}：${[...new Set(cols)].slice(0, 2).join(' / ')}`);
+  }
+}
+
+/* ---------- 26. 継電器・トリップコイル・補助変圧器 ---------- */
+console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補助変圧器');
+{
+  const base: Answers = {
+    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A', ctRatio: '300', transformerCount: 1,
+    feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no',
+  };
+  const multi: Answers = {
+    ...base, vtSetCount: '2', vtPosition__2: 'secondary', vtCount__2: '2', vtConnection__2: 'v',
+    relayCount: '4', relayType__2: 'UVR', relayAt__2: 'vt-2', relayType__3: 'OVR', relayAt__3: 'vt-2', relayTest__3: 'no', relayType__4: 'UFR', relayAt__4: 'none',
+    hasInrush: 'yes', inrushRatedVoltage: '7200', inrushRatedCurrent: 200, inrushFuseCount: 3,
+  };
+  const battery: Answers = {
+    ...base, hasBattery: 'yes', batteryCapacity: '2,000kW', batteryTransformer: '1', transformerCount: 2, trConnection__2: 'tr-3p-dy', trCapacity__2: 300,
+    auxTrCount: '2', auxTrFrom: '1', auxTrCapacity: 150, auxTrVoltage: '550V/220V', auxTrMccb: '400', auxTrFrom__2: '2', auxTrCapacity__2: 50, auxTrMccb__2: '100',
+  };
+  const twoAreas: Answers = {
+    ...base, areaCount: 2, areaForm__2: 'room-open', areaPlacement__2: 'indoor',
+    'a2:areaIntake': 'ds-vcb', 'a2:dsRating': '7200V 200A', 'a2:vcbRating': '7200V 200A', 'a2:ctRatio': '100', 'a2:linkTap': 'bus',
+    'a2:linkCableInstallation': 'buried', 'a2:transformerCount': 1, 'a2:trConnection': 'tr-3p-dy', 'a2:trCapacity': 100, 'a2:trUsage': '動力', 'a2:relayTest': 'no',
+  };
+  const cases: [string, Answers][] = [
+    ['標準のCB形（OCR＋試験端子＋トリップコイル）', base],
+    ['試験端子なし', { ...base, relayTest: 'no' }],
+    ['VT2組・UVR・OVR・名前だけの継電器・励突抑制開閉器', multi],
+    ['蓄電所（補助変圧器2台）', battery],
+    ['2か所（2か所目にもOCRとトリップコイル）', twoAreas],
+    ['PFS形（継電器なし）', { ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no' }],
+  ];
+  for (const [name, a] of cases) {
+    const d = layout(buildComposition(a), a);
+    const issues = inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => i.kind === 'floating');
+    const cols = findLabelCollisions(d);
+    if (issues.length || cols.length) {
+      fail(`${name}：${[issues.length ? `つながっていない線の端 ${issues.length}件` : '', cols.length ? `文字の重なり ${[...new Set(cols)].slice(0, 2).join(' / ')}` : ''].filter(Boolean).join('／')}`);
+    } else console.log(`  ${name}：線の端・文字の重なりなし`);
+  }
+
+  // トリップコイル：VCBの横にあり、点線でVCBと連動し、OCRの上の端子へ線がつながる
+  {
+    const d = layout(buildComposition(base), base);
+    const sym = (role: string) => d.symbols.find((s) => s.role === role);
+    const coil = sym('trip-coil');
+    const ocr = sym('relay');
+    const vcb = sym('main-breaker');
+    if (!coil || !ocr || !vcb) fail('トリップコイル・OCR・VCBが描かれていません');
+    else {
+      const top = getSymbolDef('relay-ocr').ports.find((p) => p.id === 'top')!;
+      const reaches = d.wires.some((w) => Math.abs(w.x2 - (ocr.x + top.x)) < 0.6 && Math.abs(w.y2 - (ocr.y + top.y)) < 0.6 && w.x1 === w.x2);
+      const dashed = d.wires.some((w) => w.dashed && Math.abs(w.y1 - w.y2) < 0.1 && w.x2 <= coil.x + 0.6 && w.x1 >= vcb.x - 1);
+      if (!reaches) fail('トリップコイルから、OCRの上の端子への線がありません');
+      else if (!dashed) fail('VCBとトリップコイルの連動の点線がありません');
+      else if (coil.y > ocr.y) fail('トリップコイルが、OCRより下にあります');
+      else console.log('  トリップコイル：VCBと点線で連動し、OCRの上の端子へ線がつながる');
+    }
+  }
+
+  // 名前だけの継電器：OCRの真上に、隙間を空けて置く。線はつながない
+  {
+    const d = layout(buildComposition(multi), multi);
+    const note = d.symbols.find((s) => s.role === 'relay-note');
+    const ocr = d.symbols.find((s) => s.id === 'relay-1');
+    if (!note || !ocr) fail('名前だけの継電器・OCRが描かれていません');
+    else {
+      const h = getSymbolDef(note.symbolId).box.h;
+      const gap = ocr.y - (note.y + h);
+      const touched = d.wires.filter((w) => [[w.x1, w.y1], [w.x2, w.y2]].some(([x, y]) => x! >= note.x - 1 && x! <= note.x + getSymbolDef(note.symbolId).box.w + 1 && y! >= note.y - 1 && y! <= note.y + h + 1));
+      if (gap < 10) fail(`名前だけの継電器が、OCRに近すぎます（隙間 ${Math.round(gap)}）`);
+      else if (touched.length) fail('名前だけの継電器に、線がつながっています');
+      else console.log(`  名前だけの継電器：OCRの上、隙間 ${Math.round(gap)}、線はつながない`);
+    }
+  }
+
+  // VTにつく継電器：VTの右の端から、試験端子→継電器の順に右へ。VTの文字は、線の下へ動く
+  {
+    const d = layout(buildComposition(multi), multi);
+    const sym = (id: string) => d.symbols.find((s) => s.id === id);
+    const vt = sym('site-vt-2');
+    const tt = sym('relay-tt-2');
+    const uvr = sym('relay-2');
+    const ovr = sym('relay-3');
+    if (!vt || !tt || !uvr || !ovr) fail('VTにつく継電器が描かれていません');
+    else {
+      const sameRow = [tt, uvr, ovr].every((s) => Math.abs(s.y + getSymbolDef(s.symbolId).box.h / 2 - (vt.y + getSymbolDef('vt').box.h / 2)) < 1);
+      const rightward = vt.x < tt.x && tt.x < uvr.x && uvr.x < ovr.x;
+      const labelBelow = vt.labelAt.y > vt.y + getSymbolDef('vt').box.h;
+      if (!sameRow || !rightward) fail('VTにつく継電器が、VTの右へ、1列に並んでいません');
+      else if (!labelBelow) fail('VTの文字が、継電器につなぐ線の下に動いていません');
+      else console.log('  VTにつく継電器：VTの右へ、試験端子→UVR→OVR。VTの文字は線の下');
+    }
+  }
+
+  // 補助変圧器：変圧器の低圧側から、MCCB → 補助変圧器。2本の列が、それぞれの変圧器の下にある
+  {
+    const d = layout(buildComposition(battery), battery);
+    const mc = d.symbols.filter((s) => s.role === 'aux-mccb');
+    const tr = d.symbols.filter((s) => s.role === 'aux-tr');
+    const main = d.symbols.filter((s) => s.role === 'transformer');
+    if (mc.length !== 2 || tr.length !== 2) fail(`補助変圧器盤のMCCB・補助変圧器が 2台ずつではありません（${mc.length}・${tr.length}）`);
+    else if (!(mc.every((m, i) => tr[i] && m.y < tr[i]!.y) && mc.every((m) => main.every((t) => m.y > t.y)))) fail('補助変圧器が、MCCBの下、変圧器の下に並んでいません');
+    else console.log('  補助変圧器：変圧器の低圧側から、MCCB → 補助変圧器の順に下へ');
   }
 }
 

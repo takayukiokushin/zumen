@@ -16,6 +16,7 @@ import {
   missingRequired,
   questionsByGroup,
   QUESTIONS,
+  QUESTION_GROUPS,
   areaView,
   areaKey,
   referencedKeys,
@@ -31,6 +32,7 @@ import {
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from '../packages/knowledge/src/composition.ts';
 import { layout } from '../packages/layout/src/index.ts';
+import { findSymbol as getSymbolForCheck } from '../packages/symbols/src/index.ts';
 import { buildAnalysisSchema, buildReview, buildSystemPrompt } from '../packages/ai/src/index.ts';
 import { checkConsistency } from '../packages/ai/src/review.ts';
 
@@ -518,7 +520,7 @@ console.log('\n■ VTの変圧比（6600/110V固定の初期値）とCTの変流
     if (text(input) !== want) fail(`CT ${name}：「${text(input)}」になっています（期待：「${want}」）`);
   }
   console.log('  CTの変流比：100 → 100/5A（数でも文字でも）。すでに /5A まで書いてあるもの・古い案件の書き方は、そのまま。空は空');
-  const ctLabel = buildComposition({ ...answers, mainBreakerForm: 'cb', ctRatio: '100' }).find((i) => i.role === 'ct')?.label ?? [];
+  const ctLabel = buildComposition({ ...answers, mainBreakerForm: 'cb', ctCount: '1', ctRatio: '100' }).find((i) => i.role === 'ct')?.label ?? [];
   const vtLabel = buildComposition({ ...answers, mainBreakerForm: 'cb', vtRatio: '6600/110V' }).find((i) => i.role === 'ds-vt-pf')?.label ?? [];
   if (JSON.stringify(ctLabel) !== JSON.stringify(['CT', '100/5A'])) fail(`CTの図面の文字が違います（${ctLabel.join(' / ')}）`);
   else console.log(`  図面の文字：CT → ${ctLabel.join(' / ')}、VT → ${vtLabel.join(' / ')}`);
@@ -529,7 +531,7 @@ console.log('\n■ CT・VTの台数（「CT×2」「VT＋PF×2」）と、受電
   const lab = (a: Answers, role: string) => buildComposition({ ...answers, mainBreakerForm: 'cb', ...a }).find((i) => i.role === role)?.label ?? [];
   const rows: [string, string[], string[]][] = [
     ['CT 1台', lab({ ctCount: '1', ctRatio: '100' }, 'ct'), ['CT', '100/5A']],
-    ['CT 台数が未入力', lab({ ctCount: undefined, ctRatio: '100' }, 'ct'), ['CT', '100/5A']],
+    ['CT 台数が未入力（初期値の2台）', lab({ ctCount: undefined, ctRatio: '100' }, 'ct'), ['CT×2', '100/5A']],
     ['CT 2台', lab({ ctCount: '2', ctRatio: '100' }, 'ct'), ['CT×2', '100/5A']],
     ['CT 3台（数）', lab({ ctCount: 3, ctRatio: '100' }, 'ct'), ['CT×3', '100/5A']],
     ['VT＋PF 1台', lab({ vtCount: '1' }, 'ds-vt-pf'), ['VT＋PF', '6600/110V']],
@@ -544,7 +546,8 @@ console.log('\n■ CT・VTの台数（「CT×2」「VT＋PF×2」）と、受電
   if (pfs[0] !== 'VT＋PF×2') fail(`PFS形のVT：「${pfs[0]}」です（「VT＋PF×2」のはず）`);
   for (const id of ['vtCount', 'ctCount']) {
     const q = QUESTIONS.find((x) => x.id === id);
-    if (!q || q.type !== 'select' || q.defaultValue !== '2' || !q.showIf) fail(`${id} の質問が、台数を選ぶ形（初期値2・条件つき）になっていません`);
+    const group = QUESTION_GROUPS.find((g) => g.id === q?.group);
+    if (!q || q.type !== 'select' || q.defaultValue !== '2' || !(q.showIf || group?.showIf)) fail(`${id} の質問が、台数を選ぶ形（初期値2・条件つき）になっていません`);
   }
   // 受電設備の構成が、見出しつきの行に分かれ、同じ見出しの質問が続けて並んでいる
   const recv = QUESTIONS.filter((q) => q.group === 'receiving');
@@ -917,7 +920,7 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   // 2か所目：LBS（PF付）
   ok(role(a2, 'a2:main-breaker')?.symbolId === 'lbs-pf', '2か所目の受電側がLBS（PF付）になっていません');
   ok(role(a2, 'a2:main-breaker')?.label.join('|') === 'LBS|7200V|200A|PF×3', `2か所目のLBSの文字：${role(a2, 'a2:main-breaker')?.label.join('|')}`);
-  ok(!role(a2, 'a2:ds') && !role(a2, 'a2:ct-test-terminal'), '2か所目（LBS）に、DS・試験端子が入っています');
+  ok(!role(a2, 'a2:ds') && !role(a2, 'a2:relay-tt'), '2か所目（LBS）に、DS・試験端子が入っています');
   ok(role(a2, 'a2:site-vt')?.kind === 'branch-right' && Boolean(role(a2, 'a2:zpd')) && Boolean(role(a2, 'a2:ovgr')), '2か所目のVT・ZPD・OVGRが入っていません');
   ok(role(a2, 'a2:area-frame')?.label[0]?.startsWith('オープンフレーム式'), `2か所目の枠の文字：${role(a2, 'a2:area-frame')?.label[0]}`);
   const link2 = role(a2, 'a2:link');
@@ -935,11 +938,11 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   const intake = (kind: string, extra: Answers = {}) =>
     buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': kind, ...extra }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', ''));
   const std = intake('ds-vcb');
-  ok(['ds', 'ds-vt-pf', 'ds-vt', 'main-breaker', 'ct', 'ct-test-terminal', 'ocr'].every((r) => std.includes(r)), `DS＋VCBの標準構成が揃っていません（${std.join(',')}）`);
+  ok(['ds', 'ds-vt-pf', 'ds-vt', 'main-breaker', 'ct', 'relay-tt', 'relay', 'trip-coil'].every((r) => std.includes(r)), `DS＋VCBの標準構成が揃っていません（${std.join(',')}）`);
   const vcbOnly = intake('vcb');
-  ok(vcbOnly.includes('main-breaker') && !vcbOnly.includes('ds') && !vcbOnly.includes('ct') && !vcbOnly.includes('ocr'), `VCBのみ（CTなし）：${vcbOnly.join(',')}`);
+  ok(vcbOnly.includes('main-breaker') && !vcbOnly.includes('ds') && !vcbOnly.includes('ct') && !vcbOnly.includes('relay') && !vcbOnly.includes('trip-coil'), `VCBのみ（CTなし）：${vcbOnly.join(',')}`);
   const vcbCt = intake('vcb', { 'a2:hasSiteCt': 'yes' });
-  ok(vcbCt.includes('ct') && vcbCt.includes('ocr') && vcbCt.includes('ct-test-terminal'), `VCBのみ（CTあり）：${vcbCt.join(',')}`);
+  ok(vcbCt.includes('ct') && vcbCt.includes('relay') && vcbCt.includes('relay-tt') && vcbCt.includes('trip-coil'), `VCBのみ（CTあり）：${vcbCt.join(',')}`);
   const lbsPlain = buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'lbs' }).find((i) => i.role === 'a2:main-breaker');
   ok(lbsPlain?.symbolId === 'lbs', 'LBS（PFなし）が、PFなしのLBSの記号になっていません');
   const none = intake('none');
@@ -1019,11 +1022,11 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   const order = (a: Answers) =>
     buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', ...a })
       .map((i) => i.role)
-      .filter((r) => ['ds', 'main-breaker', 'ct', 'ocr', 'zpd', 'ovgr', 'site-la'].includes(r))
+      .filter((r) => ['ds', 'main-breaker', 'ct', 'relay', 'zpd', 'ovgr', 'site-la'].includes(r))
       .join('>');
-  ok(order({}) === 'ds>main-breaker>ct>ocr>zpd>ovgr>site-la', `位置を答えていないときは、これまでどおり、変圧器の手前のはずです（${order({})}）`);
-  ok(order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' }) === 'ds>zpd>ovgr>main-breaker>site-la>ct>ocr', `ZPDをDSとVCBの間、LAをVCBとCTの間にしたときの並び：${order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' })}`);
-  ok(order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' }) === 'ds>site-la>main-breaker>zpd>ovgr>ct>ocr', `ZPDをVCBとCTの間、LAをDSとVCBの間にしたときの並び：${order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' })}`);
+  ok(order({}) === 'ds>main-breaker>ct>relay>zpd>ovgr>site-la', `位置を答えていないときは、これまでどおり、変圧器の手前のはずです（${order({})}）`);
+  ok(order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' }) === 'ds>zpd>ovgr>main-breaker>site-la>ct>relay', `ZPDをDSとVCBの間、LAをVCBとCTの間にしたときの並び：${order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' })}`);
+  ok(order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' }) === 'ds>site-la>main-breaker>zpd>ovgr>ct>relay', `ZPDをVCBとCTの間、LAをDSとVCBの間にしたときの並び：${order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' })}`);
   const items = buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes' });
   ok(items.filter((i) => ['zpd', 'site-la'].includes(i.role)).every((i) => i.separate === true), 'ZPDとLAが、別の記号として扱われていません');
   ok(items.find((i) => i.role === 'site-la')?.label.join('|') === 'LA' && items.find((i) => i.role === 'zpd')?.label.join('|') === 'ZPD', 'ZPD・LAの文字が、それぞれ別になっていません');
@@ -1082,6 +1085,99 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
   if (lab('capPfG') !== 'パワーヒューズ（PF）の定格電流（G）') fail(`コンデンサのPFの項目名が違います（${lab('capPfG')}）`);
   if (lab('capPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流') fail(`コンデンサのPFの用途ごとの項目名が違います（${lab('capPfLoadAmp')}）`);
   console.log('  項目名：パワーヒューズ（PF）の定格電流（G）／パワーヒューズの用途ごとの定格電流');
+}
+
+console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補助変圧器／分界点の文言');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', ctRatio: '300', transformerCount: 1, hasBattery: 'no' };
+  const ids = (a: Answers) => buildComposition(a).map((i) => i.id);
+  const find = (a: Answers, id: string) => buildComposition(a).find((i) => i.id === id);
+
+  // 標準（CB形）：OCRが1個、試験端子つき。トリップコイルがOCRとつながる
+  const std = buildComposition(base);
+  const ocr = std.find((i) => i.role === 'relay');
+  ok(ocr?.symbolId === 'relay-ocr' && ocr.ref === 'ct-1', `標準のCB形に、CT1組目につくOCRが入っていません（${ocr?.symbolId}／${ocr?.ref}）`);
+  ok(std.some((i) => i.role === 'relay-tt'), '標準のCB形で、試験端子が「あり」の初期値になっていません');
+  const coil = std.find((i) => i.role === 'trip-coil');
+  ok(coil?.attachTo === 'main-breaker' && coil.connectFrom?.[0] === ocr?.id, 'トリップコイルが、VCBとOCRにつながっていません');
+  // 並び：DS → VT → VCB → CT → 試験端子 → OCR → トリップコイル
+  const order = std.map((i) => i.role).filter((r) => ['ds', 'ds-vt', 'main-breaker', 'ct', 'relay-tt', 'relay', 'trip-coil'].includes(r)).join('>');
+  ok(order === 'ds>ds-vt>main-breaker>ct>relay-tt>relay>trip-coil', `標準の並びが違います（${order}）`);
+  // 試験端子「なし」：試験端子が消え、OCRは残る
+  const noTt = buildComposition({ ...base, relayTest: 'no' });
+  ok(!noTt.some((i) => i.role === 'relay-tt') && noTt.some((i) => i.role === 'relay'), '試験端子を「なし」にしたときの構成が違います');
+  // 継電器0個：OCRもトリップコイルも入らない
+  const zero = ids({ ...base, relayCount: '0' });
+  ok(!zero.includes('relay') && !zero.includes('trip-coil'), '継電器0個なのに、OCRまたはトリップコイルが入っています');
+  // PFS形（CTもVTも無し）：継電器は入らない（これまでと同じ）
+  const pfs = buildComposition({ ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no' }).map((i) => i.role);
+  ok(!pfs.includes('relay') && !pfs.includes('trip-coil') && !pfs.includes('ct'), 'PFS形（VT・CTなし）に、継電器やCTが入っています');
+  // 継電器の個数・種類・どこについているか
+  const multi: Answers = {
+    ...base, vtSetCount: '2', vtPosition__2: 'secondary', vtCount__2: '2', vtConnection__2: 'v',
+    relayCount: '4', relayType__2: 'UVR', relayAt__2: 'vt-2', relayType__3: 'OVR', relayAt__3: 'vt-2', relayTest__3: 'no', relayType__4: 'UFR', relayAt__4: 'none',
+  };
+  const m = buildComposition(multi);
+  const rel = (id: string) => m.find((i) => i.id === id);
+  ok(rel('relay-2')?.symbolId === 'relay-uvr' && rel('relay-2')?.connectFrom?.[0] === 'relay-tt-2', 'UVRが、VTの試験端子の先につながっていません');
+  ok(rel('relay-tt-2')?.connectFrom?.[0] === 'site-vt-2', 'VTにつく試験端子が、VT2組目の右の端につながっていません');
+  ok(rel('relay-3')?.connectFrom?.[0] === 'relay-2' && !m.some((i) => i.id === 'relay-tt-3'), 'OVR（試験端子なし）が、UVRの右につながっていません');
+  ok(rel('relay-note-4')?.kind === 'note-above' && rel('relay-note-4')?.attachTo === 'relay-1', '置き場所が決まっていない継電器が、OCRの真上の名前だけになっていません');
+  ok(rel('site-vt-pf-2')?.label.join('|') === 'VT＋PF×2|V結線|6600/110V', `V結線のVTの文字が違います（${rel('site-vt-pf-2')?.label.join('|')}）`);
+  // VTの2組目（二次側）は、CTのあと。継電器は、つながる先のすぐあと
+  const seq = m.map((i) => i.id).filter((i) => ['main-breaker', 'ct', 'relay-tt-1', 'relay-1', 'site-vt-2', 'relay-tt-2', 'relay-2', 'relay-3'].includes(i)).join('>');
+  ok(seq === 'main-breaker>ct>relay-tt-1>relay-1>site-vt-2>relay-tt-2>relay-2>relay-3', `VT・CT・継電器の並びが違います（${seq}）`);
+  // CTの組：位置を選べる（VCBの一次側／二次側／VTのあと）
+  const ctSets = buildComposition({ ...base, ctSetCount: '3', ctPosition: 'primary', ctPosition__2: 'secondary', ctPosition__3: 'after-vt', vtPosition: 'secondary' });
+  const ctSeq = ctSets.map((i) => i.id).filter((i) => ['ds', 'main-breaker', 'ct-1', 'ct-2', 'site-vt', 'ct-3'].includes(i) || i.startsWith('site-vt')).join('>');
+  ok(ctSeq.startsWith('ds>ct-1>main-breaker>ct-2>') && ctSeq.endsWith('>ct-3'), `CTの組の位置が違います（${ctSeq}）`);
+  // VTがCTのあと（二次側）につく継電器の元になるCT・VTが無いときは、名前だけの継電器になる
+  const lost = buildComposition({ ...base, relayCount: '2', relayAt__2: 'vt-5' });
+  ok(lost.some((i) => i.role === 'relay-note'), 'つながる先のVTが無い継電器が、名前だけの継電器になっていません');
+  // 質問：継電器の「どこについているか」の選択肢は、CT・VTの組の数に合わせて出る
+  const optsAt = (a: Answers) => (QUESTIONS.find((q) => q.id === 'relayAt')?.options ?? []).filter((o) => evaluate(o.showIf, normalizeAnswers(a))).map((o) => o.value).join(',');
+  ok(optsAt(base) === 'ct-1,vt-1,none', `既定の「どこについているか」の選択肢が違います（${optsAt(base)}）`);
+  ok(optsAt({ ...base, ctSetCount: '2', vtSetCount: '3' }) === 'ct-1,ct-2,vt-1,vt-2,vt-3,none', `組を増やしたときの選択肢が違います（${optsAt({ ...base, ctSetCount: '2', vtSetCount: '3' })}）`);
+  // 初期値：1個目はOCR（CT）、2個目はUVR（VT）。試験端子は、いつも「あり」から
+  const auto = withAutoValues(normalizeAnswers({ ...base, relayCount: '3' }));
+  ok(auto.relayType === 'OCR' && auto.relayType__2 === 'UVR' && auto.relayType__3 === 'OVR', '継電器の種類の初期値（OCR・UVR・OVR）が違います');
+  ok(auto.relayAt === 'ct-1' && auto.relayAt__2 === 'vt-1' && auto.relayAt__3 === 'none' && auto.relayTest === 'yes' && auto.relayTest__2 === 'yes', '継電器の置き場所・試験端子の初期値が違います');
+  // 継電器の記号が、すべての種類にある
+  for (const c of ['OCR', 'UVR', 'OVR', 'OCGR', 'OVGR', 'UFR', 'OFR', 'RPR', 'UPR', 'DSR', '2E', '3E']) {
+    ok(Boolean(getSymbolForCheck(`relay-${c.toLowerCase()}`)), `継電器 ${c} の記号がありません`);
+  }
+  ok(Boolean(getSymbolForCheck('trip-coil')), 'トリップコイルの記号がありません');
+
+  // 補助変圧器：蓄電所のときだけ。選んだ変圧器の低圧側から、MCCB → 補助変圧器
+  const shownAux = (a: Answers) => visibleQuestions(a).some((q) => q.id === 'auxTrCapacity');
+  ok(!shownAux(base) && shownAux({ ...base, hasBattery: 'yes' }), '補助変圧器の項目が、蓄電所のときだけ出るはずです');
+  const aux: Answers = {
+    ...base, hasBattery: 'yes', transformerCount: 2, trConnection: 'tr-3p-dy', trConnection__2: 'tr-3p-dy', auxTrCount: '2',
+    auxTrFrom: '1', auxTrUsage: '動力', auxTrConnection: 'tr-3p-dy', auxTrCapacity: 150, auxTrVoltage: '550V/220V', auxTrMccb: '400',
+    auxTrFrom__2: '2', auxTrUsage__2: '電灯', auxTrConnection__2: 'tr-1p', auxTrCapacity__2: 50, auxTrVoltage__2: '210V/105V', auxTrMccb__2: '100',
+  };
+  const ax = buildComposition(aux);
+  const mc1 = ax.find((i) => i.id === 'aux-mccb-1');
+  const tr1 = ax.find((i) => i.id === 'aux-tr-1');
+  const tr2 = ax.find((i) => i.id === 'aux-tr-2');
+  ok(mc1?.label.join('|') === '補助変圧器盤|MCCB400A', `補助変圧器盤のMCCBの文字が違います（${mc1?.label.join('|')}）`);
+  ok(tr1?.label.join('|') === '動力用 Tr|3φ150kVA|550V/220V' && tr1.symbolId === 'tr-3p-dy', `補助変圧器の文字・記号が違います（${tr1?.label.join('|')}／${tr1?.symbolId}）`);
+  ok(tr2?.label.join('|') === '電灯用 Tr|1φ50kVA|210V/105V' && tr2.symbolId === 'tr-1p', `2台目の補助変圧器が、その台の答えになっていません（${tr2?.label.join('|')}）`);
+  ok(mc1?.props.transformer === '1' && ax.find((i) => i.id === 'aux-mccb-2')?.props.transformer === '2', '補助変圧器のつなぎ先（どの変圧器か）が違います');
+  ok(mc1?.lane === 400 && tr1?.lane === 400 && tr2?.lane === 401, '補助変圧器の列（MCCBと補助変圧器が同じ列）が違います');
+  ok(!buildComposition({ ...aux, auxTrCount: '0' }).some((i) => i.role.startsWith('aux-')), '補助変圧器0台なのに、描かれています');
+  ok(!buildComposition({ ...aux, hasBattery: 'no' }).some((i) => i.role.startsWith('aux-')), '蓄電所でないのに、補助変圧器が描かれています');
+  const blank = buildComposition({ ...aux, auxTrConnection: undefined }).find((i) => i.id === 'aux-tr-1');
+  ok(blank?.symbolId === 'tr-blank', '結線方式が未入力のとき、円の中が空の変圧器の記号になっていません');
+
+  // 分界点の文言：「財産・責任分界点」で統一する（今後の案件もすべて）。「財産保安責任分界点」は使わない
+  const boundary = buildComposition({ ...base, boundaryPattern: 'coincident' }).find((i) => i.role === 'boundary');
+  ok(boundary?.label.join('') === '財産・責任分界点', `3点一致の分界点の文言が違います（${boundary?.label.join('')}）`);
+  const everyLabel = [...UPSTREAM, ...DOWNSTREAM, ...EXTRAS].flatMap((p) => p.labelTemplate ?? []).concat(QUESTIONS.flatMap((q) => [q.label, q.help ?? '']));
+  ok(!everyLabel.some((t) => /財産保安責任分界点|財産責任分界点|財産及び責任分界点/.test(t)), '分界点の文言に、「財産・責任分界点」以外の書き方が残っています');
+  console.log('  VT・CTは組で数え、継電器は1個ずつ「種類・どこについているか・試験端子」を選ぶ。VCBとOCRがあればトリップコイルが入る');
+  console.log('  補助変圧器は蓄電所のときだけ。分界点の文言は「財産・責任分界点」');
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

@@ -43,6 +43,15 @@ export function buildSystemPrompt(): string {
   メモに形式の記載が無くても、容量から推定できる場合は推定し、uncertain に入れてください。
 - 図に「励突抑制開閉器」（VCBと並列に入る、ヒューズ付のLBS）があれば、hasInrush を yes にし、その定格（inrushRatedVoltage・inrushRatedCurrent・
   inrushFuseCount・inrushFuseSpec）も読み取ってください。系統用蓄電所の図面でよく見られます。
+- **VT・CT・保護継電器は、「組」「個」で数えます。** VTは位置（主遮断装置の一次側＝DSの次／二次側）ごと、CTは位置（主遮断装置の一次側／二次側／VTのあと）ごとに「1組」とし、
+  組数は vtSetCount・ctSetCount、2組目以降は vtCount__2 のように「__2」を付けて答えます。V結線のVTは、vtConnection を v にします。
+  OCR・UVR・OVRなどの継電器は、relayCount（個数）と、1個ずつ relayType（種類）・relayAt（どこについているか：ct-1＝CT1組目、vt-1＝VT1組目、none＝置き場所が決まっていない）・
+  relayTest（手前の試験端子：yes／no）で答えます。**試験端子は、最初は「あり」です。** 図に無いと分かるときだけ no にしてください。
+  OCRがあるVCBには、トリップコイル（OCRの出力で動く）が付きます。これは答えなくても自動で描かれます。
+- **補助変圧器（MCCB→補助変圧器）は系統用蓄電所（hasBattery が yes）だけ**です。auxTrCount（台数）・auxTrUsage（用途）・auxTrConnection・auxTrCapacity・
+  auxTrVoltage（例：550V/220V）・auxTrMccb（MCCBの定格。数字だけ）・auxTrFrom（どの変圧器の低圧側か）を読み取ってください。
+- **分界点の文言は「財産・責任分界点」に統一します。** 手書きの図に「財産保安責任分界点」「責任分界点」「財産分界点」などの書き方があっても、
+  3点一致のときの横線の文言は「財産・責任分界点」です（3点不一致のときだけ、「財産分界点」と「保安上の責任分界点」を別々の線で書きます）。
 - 3点一致（引込点・財産分界点・保安上の責任分界点が同じ地点）が全体の約99%です。
   区分開閉器（PAS・PGS）があれば3点一致の可能性が高いですが、確証が無ければ uncertain に入れてください。
 - **区分開閉器は sectionalizer で答えます。** PAS（電柱上に設置）／PGS（電柱上に設置）／UGS（キャビネット内に設置）／none（設置なし）のどれかです。

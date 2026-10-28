@@ -97,7 +97,9 @@ export function normalizeAnswers(answers: Answers): Answers {
  * 既定値を足したあとの回答に対して使う。足した値は、画面に見せたり図面を作ったりするためのもので、
  * 回答として保存はしない（利用者が自分で入れた値が、いつも優先される）。
  */
-export function withAutoValues(answers: Answers): Answers {
+export function withAutoValues(given: Answers): Answers {
+  // 受電側の開閉器から決まる目印（intake〜）を使う初期値があるので、先に古い回答を読み替えて目印を足す
+  const answers = normalizeAnswers(given);
   let out = autoFillView(answers);
   // 2か所目以降のエリアも、そのエリアの答えで初期値を決める
   for (let n = 1; n < areaCountOf(out); n++) {
@@ -346,6 +348,17 @@ export function withDerived(rawAnswers: Answers): Answers {
   };
   d.ctHead = `CT${times(answers.ctCount)}`;
   d.vtPfHead = `VT＋PF${times(answers.vtCount)}`;
+  // V結線は、VTが2台以上あるときだけ書く
+  d.vtConnectionText = answers.vtConnection === 'v' && Math.floor(Number(answers.vtCount)) >= 2 ? 'V結線' : '';
+
+  // 継電器の記号（OCR→relay-ocr）。種類がまだ無いときは、記号を決めない
+  d.relaySymbol = answers.relayType ? `relay-${String(answers.relayType).toLowerCase()}` : '';
+
+  // 補助変圧器（系統用蓄電所）。結線方式がまだ無いときは、円の中が空の記号を使う
+  d.auxTrSymbol = answers.auxTrConnection ? String(answers.auxTrConnection) : 'tr-blank';
+  d.auxTrUsageLine = answers.auxTrUsage ? `${answers.auxTrUsage}用 Tr` : '補助変圧器';
+  const auxPhase = String(answers.auxTrConnection ?? '').startsWith('tr-1p') || answers.auxTrConnection === 'tr-vv' ? '1φ' : '3φ';
+  d.auxTrCapacityLine = answers.auxTrCapacity ? `${auxPhase}${answers.auxTrCapacity}kVA` : '';
 
   // CTの変流比。数字（100）だけなら、2次側の「/5A」を足して「100/5A」にする。
   // 2次側は必ず5Aなので、「100/5A」「40A/5A」のように、すでに書いてあるものは、そのまま使う
@@ -529,6 +542,12 @@ export interface PlacedItem {
   tap?: string;
   /** 直前の同じ向きの分岐と、横につなげずに、別の分岐として出す（ZPDとLAを別の記号にするため） */
   separate?: boolean;
+  /** 位置の答え（CT：primary／secondary／after-vt）。並びに使う */
+  pos?: string;
+  /** つながる先の答え（継電器：ct-1・vt-2・none）。並びとつなぎ方に使う */
+  ref?: string;
+  /** つなぎ元の記号の文字を、つなぐ線の下へ動かす（VTの右の端に、継電器をつなぐとき） */
+  sourceLabel?: 'below';
   /** 分岐するとき、横に回さず、縦のまま置く（LA） */
   upright?: boolean;
   /** kind==='link' のとき、前のエリアからのつなぎ方 */
@@ -575,8 +594,9 @@ export const PER_UNIT_QUESTION_IDS: ReadonlySet<string> = (() => {
  * 空欄のままなら、その質問は未回答として扱う（必須なら画面に「未入力あり」が出る）。
  */
 export function viewAt(answers: Answers, index: number): Answers {
-  if (index === 0) return answers;
-  const out: Answers = { ...answers };
+  // 何件目か（1始まり）は unitNo に入れる（1個目はOCR、2個目はUVR、のように、件ごとの初期値の条件に使う）
+  if (index === 0) return { ...answers, unitNo: 1 };
+  const out: Answers = { ...answers, unitNo: index + 1 };
   for (const id of PER_UNIT_QUESTION_IDS) {
     const v = answers[indexedKey(id, index)];
     if (v === undefined) delete out[id];
@@ -644,6 +664,7 @@ export function areaView(answers: Answers, area: number): Answers {
 /** 質問ではないが、表示条件から参照してよい値（エリアの番号と、受電側の開閉器から決まる目印） */
 export const VIEW_KEYS: ReadonlySet<string> = new Set([
   'areaNo',
+  'unitNo',
   'intakeDs',
   'intakeVcb',
   'intakeLbs',
@@ -691,7 +712,9 @@ function intakeFlags(answers: Answers): Record<string, string> {
  * 受電設備エリアが2か所以上のときは、1か所目の機器のあとに、2か所目以降の機器が続く
  * （2か所目以降は、役割に「a2:」などが付き、area に何か所目かが入る）。
  */
-export function buildComposition(rawAnswers: Answers): PlacedItem[] {
+export function buildComposition(givenAnswers: Answers): PlacedItem[] {
+  // 状況に応じた初期値（継電器の個数など）を、画面と同じように足してから組み立てる。答えた値はそのまま優先される
+  const rawAnswers = withAutoValues(normalizeAnswers(givenAnswers));
   const form = String(withDerived(rawAnswers).mainBreakerForm ?? 'pfs');
   const first = composeChain(rawAnswers, [
     ...UPSTREAM,
@@ -751,7 +774,8 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
 
   for (const run of runs) {
     const countKey = run[0]!.repeatCountKey;
-    const count = countKey ? Math.max(1, Number(answers[countKey] ?? 1)) : 1;
+    const asked = countKey ? Math.floor(Number(answers[countKey] ?? 1)) : 1;
+    const count = countKey ? Math.max(run.some((p) => p.zeroOk) ? 0 : 1, Number.isFinite(asked) ? asked : 1) : 1;
     const isParallel = run.some((p) => p.kind === 'parallel');
     const laneBase = parallelLane;
     if (isParallel) parallelLane += count;
@@ -784,12 +808,153 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           unit: countKey ? i : undefined,
           ...(p.tapFrom ? { tap: String(a[p.tapFrom] ?? 'ct-bus'), separate: true } : {}),
           ...(p.upright ? { upright: true } : {}),
+          ...(p.posFrom ? { pos: String(a[p.posFrom] ?? '') } : {}),
+          ...(p.refFrom ? { ref: String(a[p.refFrom] ?? '') } : {}),
           note: p.note,
         });
       }
     }
   }
-  return placeByTap(out);
+  return placeByTap(arrangeInstruments(out));
+}
+
+
+/* ------------------------------------------------------------------ */
+/* VT・CT・継電器の並べ方                                                */
+/* ------------------------------------------------------------------ */
+
+const VT_ROLES: readonly string[] = ['ds-vt-pf', 'ds-vt', 'site-vt-pf', 'site-vt'];
+const INSTRUMENT_ROLES: ReadonlySet<string> = new Set([...VT_ROLES, 'ct', 'relay-tt', 'relay', 'relay-note', 'trip-coil']);
+
+/**
+ * VT・CT・継電器を、主回路の上から順に並べ直し、つなぎ方を決める。
+ *
+ * 並び順（上から）：
+ *   1 VT（主遮断装置の一次側）→ 2 CT（一次側）→ [主遮断装置] → 4 CT（二次側）→ 5 VT（二次側）→ 6 CT（VTのあと）
+ *   継電器は、つながる先のCT・VTのすぐあと。置き場所が決まっていない継電器は、最後に置く。
+ * つなぎ方：
+ *   - CTにつく継電器：主回路から右へ。試験端子があれば、試験端子→継電器の順に線でつなぐ
+ *   - VTにつく継電器：VTの右の端から、試験端子→継電器の順に、横へ続ける
+ *   - つながる先（CT・VT）が無い継電器と、置き場所が決まっていない継電器は、OCR（なければOVGR）の真上に名前だけ書く
+ *   - トリップコイルは、VCBとOCRの両方があるときだけ入れ、OCRとつなぐ
+ */
+function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
+  const blockAt = items.findIndex((i) => INSTRUMENT_ROLES.has(i.role));
+  if (blockAt < 0) return items;
+  const rest = items.filter((i) => !INSTRUMENT_ROLES.has(i.role));
+  const inst = items.filter((i) => INSTRUMENT_ROLES.has(i.role));
+
+  const unitOf = (i: PlacedItem) => i.unit ?? 0;
+  const ctOf = new Map<number, PlacedItem>();
+  const vtOf = new Map<number, PlacedItem>();
+  for (const i of inst) {
+    if (i.role === 'ct') ctOf.set(unitOf(i), i);
+    else if (i.role === 'ds-vt' || i.role === 'site-vt') vtOf.set(unitOf(i), i);
+  }
+  const ctStage = (c: PlacedItem) => (c.pos === 'primary' ? 2 : c.pos === 'after-vt' ? 6 : 4);
+  const vtStage = (v: PlacedItem) => (v.role === 'ds-vt' ? 1 : 5);
+
+  /** 並べ替えの鍵：[段, 組, 組の中の順, 元の順] */
+  const keyOf = new Map<PlacedItem, number[]>();
+  const out: PlacedItem[] = [];
+  const seq = new Map(inst.map((i, n) => [i, n]));
+  const put = (i: PlacedItem, stage: number, set: number, sub: number) => {
+    keyOf.set(i, [stage, set, sub, seq.get(i) ?? 0]);
+    out.push(i);
+  };
+
+  for (const i of inst) {
+    if (i.role === 'ct') put(i, ctStage(i), unitOf(i), 0);
+    else if (i.role === 'ds-vt-pf' || i.role === 'ds-vt' || i.role === 'site-vt-pf' || i.role === 'site-vt') {
+      put(i, i.role.startsWith('ds') ? 1 : 5, unitOf(i), i.role.endsWith('-pf') ? 0 : 1);
+    }
+  }
+
+  // 継電器（個ごとに、試験端子・本体・名前だけ、のどれがあるかを集める）
+  const relays = new Map<number, { tt?: PlacedItem; relay?: PlacedItem; note?: PlacedItem }>();
+  for (const i of inst) {
+    if (i.role !== 'relay-tt' && i.role !== 'relay' && i.role !== 'relay-note') continue;
+    const r = relays.get(unitOf(i)) ?? {};
+    if (i.role === 'relay-tt') r.tt = i;
+    else if (i.role === 'relay') r.relay = i;
+    else r.note = i;
+    relays.set(unitOf(i), r);
+  }
+  /** VTにつなぐ継電器の、つなぎ先（最後につないだもの） */
+  const tail = new Map<number, string>();
+  const noted: PlacedItem[] = [];
+  for (const [u, r] of [...relays.entries()].sort((a, b) => a[0] - b[0])) {
+    const head = r.relay ?? r.note;
+    if (!head) continue;
+    const m = /^(ct|vt)-(\d+)$/.exec(head.ref ?? '');
+    const ownerUnit = m ? Number(m[2]) - 1 : -1;
+    const owner = m ? (m[1] === 'ct' ? ctOf.get(ownerUnit) : vtOf.get(ownerUnit)) : undefined;
+    if (!m || !owner || !r.relay) {
+      // 置き場所が決まっていない（または、つながる先のCT・VTが無い）継電器は、名前だけを書く
+      const note = r.note ?? (r.relay ? { ...r.relay, role: 'relay-note', id: r.relay.id.replace(/^relay/, 'relay-note'), kind: 'note-above' as const, connectFrom: undefined, separate: undefined } : undefined);
+      if (note) {
+        noted.push(note);
+        keyOf.set(note, [8, u, 0, seq.get(head) ?? 0]);
+      }
+      continue;
+    }
+    const stage = m[1] === 'ct' ? ctStage(owner) : vtStage(owner);
+    if (m[1] === 'ct') {
+      // CTにつく継電器：主回路から右へ。試験端子があれば、試験端子→継電器
+      if (r.tt) {
+        r.tt.separate = true;
+        r.relay.connectFrom = [r.tt.id];
+        r.relay.separate = false;
+        put(r.tt, stage, ownerUnit, 2 + u * 2);
+      } else {
+        r.relay.separate = true;
+      }
+      put(r.relay, stage, ownerUnit, 3 + u * 2);
+    } else {
+      // VTにつく継電器：VTの右の端から、横へ続ける（複数あるときは、前の継電器の右へ）
+      let last = tail.get(ownerUnit) ?? owner.id;
+      for (const [part, sub] of [[r.tt, 2 + u * 2], [r.relay, 3 + u * 2]] as const) {
+        if (!part) continue;
+        part.connectFrom = [last];
+        part.sourceLabel = 'below';
+        part.separate = false;
+        last = part.id;
+        put(part, stage, ownerUnit, sub);
+      }
+      tail.set(ownerUnit, last);
+    }
+  }
+
+  // 名前だけの継電器を書く先：OCR（なければOVGR）。どちらも無ければ、図面の下に置く
+  const ocr = out.find((i) => i.role === 'relay' && i.symbolId === 'relay-ocr');
+  const target = ocr ?? rest.find((i) => i.role === 'ovgr');
+  for (const n of noted) {
+    out.push(target ? { ...n, attachTo: target.id } : { ...n, kind: 'free', attachTo: undefined });
+  }
+
+  // トリップコイル：VCBとOCRの両方があるときだけ
+  const coil = inst.find((i) => i.role === 'trip-coil');
+  if (coil && ocr && rest.some((i) => i.role === 'main-breaker' && i.symbolId === 'vcb')) {
+    keyOf.set(coil, [9, 0, 0, 0]);
+    out.push({ ...coil, connectFrom: [ocr.id] });
+  }
+
+  const cmp = (a: PlacedItem, b: PlacedItem) => {
+    const ka = keyOf.get(a) ?? [9, 0, 0, 0];
+    const kb = keyOf.get(b) ?? [9, 0, 0, 0];
+    for (let n = 0; n < 4; n++) if (ka[n] !== kb[n]) return ka[n]! - kb[n]!;
+    return 0;
+  };
+  // 名前だけの継電器を作り直したときの鍵（上の out.push は鍵を引き継ぐ）
+  for (const o of out) if (!keyOf.has(o)) keyOf.set(o, keyOf.get(noted.find((n) => n.id === o.id)!) ?? [8, 0, 0, 0]);
+  const sorted = out.sort(cmp);
+  const primary = sorted.filter((i) => (keyOf.get(i)?.[0] ?? 9) <= 3);
+  const after = sorted.filter((i) => (keyOf.get(i)?.[0] ?? 9) > 3);
+
+  // 一次側のものは、主遮断装置の手前。主遮断装置が無いときは、そのままの位置に置く
+  const main = rest.findIndex((i) => i.role === 'main-breaker');
+  if (main < 0 || main >= blockAt) return [...rest.slice(0, blockAt), ...primary, ...after, ...rest.slice(blockAt)];
+  return [...rest.slice(0, main), ...primary, ...rest.slice(main, blockAt), ...after, ...rest.slice(blockAt)];
 }
 
 /**
