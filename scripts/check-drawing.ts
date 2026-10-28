@@ -22,7 +22,7 @@ import {
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
-import { LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
+import { rotatedBox, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
 import { inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
@@ -372,6 +372,54 @@ console.log('\n■ 変圧器の手前の開閉器（PC・LBS）の高さ');
   // 手前に何も無い図は、変圧器が上に来る（1段ぶん縦に短くなる）
   const none = pos({ ...base, transformerCount: 2 });
   if (!(onlyLbs.tr[0]! >= none.tr[0]!)) fail('開閉器のある図の変圧器が、無い図より上にあります');
+}
+
+/* 縦のバランス：母線は手前の分岐から離れ、DS・VT・VCBの間は間延びしない */
+console.log('\n■ 縦方向のバランス（母線と手前の機器の間隔、DS・VT・VCBの間隔）');
+{
+  const base: Answers = {
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A',
+    hasSiteCt: 'yes', ctRatio: '100/5A', hasZpd: 'yes', hasLa: 'yes',
+    trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
+  };
+  const bottomOf = (s: { symbolId: string; y: number; rotate: number }) => {
+    const rb = rotatedBox(getSymbolDef(s.symbolId).box, s.rotate);
+    return s.y + rb.dy + rb.h;
+  };
+  for (const [name, a] of [
+    ['変圧器2台（母線あり）', { ...base, transformerCount: 2 }],
+    ['変圧器3台・PCあり', { ...base, transformerCount: 3, trHasPc: 'yes' }],
+  ] as [string, Answers][]) {
+    const d = layout(buildComposition(a), a);
+    // 高圧母線＝いちばん長い横線（変圧器の列をつなぐ線）
+    const bus = d.wires.filter((w) => w.y1 === w.y2).sort((p, q) => Math.abs(q.x2 - q.x1) - Math.abs(p.x2 - p.x1))[0];
+    if (!bus) {
+      fail(`${name}：高圧母線が見つかりません`);
+      continue;
+    }
+    const above = d.symbols.filter((s) => ['zpd', 'ovgr', 'ocr', 'ct-test-terminal', 'site-la', 'ct', 'ds-vt-pf', 'ds-vt'].includes(s.role));
+    const tight = above.filter((s) => bottomOf(s) > bus.y1 - 12);
+    if (tight.length) fail(`${name}：母線(y=${Math.round(bus.y1)})に近すぎる記号があります（${tight.map((s) => `${s.role} 下端${Math.round(bottomOf(s))}`).join('、')}）`);
+    else console.log(`  ${name}：母線と、その手前の機器（ZPD・OCR・試験端子・LA）の下端が、12以上離れている`);
+  }
+  // DS → VT → VCB は、VTの文字が横に書かれるので、間延びしない
+  {
+    const a: Answers = { ...base, transformerCount: 1 };
+    const d = layout(buildComposition(a), a);
+    const ds = d.symbols.find((s) => s.role === 'ds');
+    const vcb = d.symbols.find((s) => s.role === 'main-breaker');
+    const vt = d.symbols.find((s) => s.role === 'ds-vt');
+    if (!ds || !vcb || !vt) fail('DS・VT・VCBが見つかりません');
+    else {
+      const gap = vcb.y - (ds.y + getSymbolDef('ds').box.h);
+      if (gap > 64) fail(`DSの出口からVCBまでが ${Math.round(gap)} あります（64以下のはず）`);
+      else console.log(`  DSの出口からVCBの入口まで ${Math.round(gap)}（VTの分岐を含む）`);
+      if (vt.labelAt.anchor !== 'start' || vt.labelAt.x < vt.x + getSymbolDef(vt.symbolId).box.w) fail('VT＋PFの文字が、VTの右横にありません');
+    }
+  }
 }
 
 /* ---------- 9. 主回路の記号の大きさ ---------- */

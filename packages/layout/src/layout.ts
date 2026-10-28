@@ -62,6 +62,11 @@ export interface DrawingLayout {
 
 /** 主回路どうしの標準の間隔 */
 const GAP = 16;
+/**
+ * 高圧母線（変圧器などを並べる横線）を、その手前の機器から離す最小の距離。
+ * 母線を描くとき（列が2つ以上のとき）だけ使う。OCR・試験端子・ZPDなどの分岐が手前にあっても、窮屈に見えないように
+ */
+const BUS_CLEAR = 36;
 /** 分岐が主回路から出る位置の間隔 */
 const BRANCH_GAP = 26;
 /** 分岐の記号を主回路から離す距離 */
@@ -160,7 +165,9 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
     if (parallels.length === 0) return;
 
     const lanes = [...new Set(parallels.map((p) => p.lane ?? 0))].sort((a, b) => a - b);
-    const busY = spineY + GAP;
+    // 直前の分岐（試験端子・OCR・ZPDなど）の下端より下に引く。母線を描くときは、さらに余裕を持たせる
+    const before = started ? pendingGap : GAP;
+    const busY = spineY + (lanes.length > 1 ? Math.max(before + 8, BUS_CLEAR) : before);
     // 1列しかないときは母線を描かず、主回路をそのまま下ろす（1台だけの図面を変えないため）
     const laneX = (lane: number) =>
       lanes.length <= 1 ? SPINE : SPINE + (lanes.indexOf(lane) - (lanes.length - 1) / 2) * PARALLEL_GAP;
@@ -405,12 +412,19 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
       const merged = [...chain.sym.label, ...sym.label];
       chain.sym.label = [];
       sym.label = merged;
-      sym.labelAt = { x: sym.x + rb.dx, y: sym.y + rb.dy + rb.h + 12, anchor: 'start' };
+      // 横に並べた記号の文字は、いちばん端の記号の横に書く（下に書くと、そのぶん主回路が間延びするため）
+      sym.labelAt =
+        dir > 0
+          ? { x: sym.x + rb.dx + rb.w + LABEL_GAP, y: sym.y + rb.dy + 10, anchor: 'start' }
+          : { x: sym.x + rb.dx - LABEL_GAP, y: sym.y + rb.dy + 10, anchor: 'end' };
     }
-    // 分岐の記号の下端まで主回路を空けて、次の機器と重ならないようにする
-    const bottom = sym.y + rb.dy + rb.h + (sym.label.length ? sym.label.length * LABEL_LINE + 12 : 0);
+    // 分岐の記号（と、その文字）の下端まで主回路を空けて、次の機器と重ならないようにする
+    const symBottom = sym.y + rb.dy + rb.h;
+    const labelBottom = sym.label.length ? sym.labelAt.y + (sym.label.length - 1) * LABEL_LINE + 4 : -Infinity;
+    const bottom = Math.max(symBottom, labelBottom);
     branchBottom = Math.max(branchBottom, bottom);
-    pendingGap = Math.max(GAP, bottom - spineY + 10);
+    // 直前までの分岐のうち、いちばん下のものに合わせる（先に出した背の高い分岐の下に、次の機器が入り込まないように）
+    pendingGap = Math.max(GAP, branchBottom - spineY + 10);
     lastBranch = { role: item.role, dir, sym, def, unit: item.unit };
   }
 
