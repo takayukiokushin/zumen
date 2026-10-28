@@ -1,6 +1,6 @@
 import type { Answers, Value } from './condition.ts';
 import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
-import { QUESTIONS, QUESTION_GROUPS } from './questions.ts';
+import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
 import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
@@ -23,7 +23,7 @@ export interface AskOptions {
  * 例：結線方式に「三相 Δ-Y結線」を選んであるのに、用途を「電灯」に変えた → 結線方式を空に戻す。
  * 繰り返しの2件目以降の答え（trConnection__2 など）も、その件の答えで見る。
  */
-export function dropHiddenChoices(answers: Answers): Answers {
+function dropHiddenChoicesBase(answers: Answers): Answers {
   let out = answers;
   for (const q of QUESTIONS) {
     if (!q.options?.some((o) => o.showIf)) continue;
@@ -38,6 +38,24 @@ export function dropHiddenChoices(answers: Answers): Answers {
       if (opt?.showIf && !evaluate(opt.showIf, viewAt(answers, index))) {
         if (out === answers) out = { ...answers };
         delete out[key];
+      }
+    }
+  }
+  return out;
+}
+
+/** 一覧に出なくなった選択肢を外す（1か所目と、2か所目以降のエリアの答えの両方） */
+export function dropHiddenChoices(answers: Answers): Answers {
+  let out = dropHiddenChoicesBase(answers);
+  for (let n = 1; n < areaCountOf(out); n++) {
+    const view = areaView(out, n);
+    const cleaned = dropHiddenChoicesBase(view);
+    for (const key of Object.keys(view)) {
+      if (key in cleaned) continue;
+      const stored = areaKey(key, n);
+      if (stored in out) {
+        if (out === answers) out = { ...out };
+        delete out[stored];
       }
     }
   }
@@ -63,6 +81,9 @@ export function normalizeAnswers(answers: Answers): Answers {
     const name = String(rest[nameKey] ?? '');
     out = { ...rest, [nameKey]: name.startsWith(String(prefix ?? '')) ? name : `${prefix ?? ''}${name}` };
   }
+  // 受電側の開閉器から決まる目印（質問の出し分けに使う）。
+  // 1か所目は「主遮断装置の形式」、2か所目以降は「このエリアの受電側の開閉器」で決まる
+  out = { ...out, ...intakeFlags(out) };
   const cabinet = out.sourceType === 'cabinet';
   // 引込元が地上キャビネットのときは、PAS・PGS（電柱上）は無い。未回答（または古い回答）のときはUGSにする
   if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas' || out.sectionalizer === 'pgs')) {
@@ -77,6 +98,21 @@ export function normalizeAnswers(answers: Answers): Answers {
  * 回答として保存はしない（利用者が自分で入れた値が、いつも優先される）。
  */
 export function withAutoValues(answers: Answers): Answers {
+  let out = autoFillView(answers);
+  // 2か所目以降のエリアも、そのエリアの答えで初期値を決める
+  for (let n = 1; n < areaCountOf(out); n++) {
+    const view = areaView(out, n);
+    const filled = autoFillView(view);
+    for (const [key, value] of Object.entries(filled)) {
+      if (view[key] !== undefined) continue;
+      if (out === answers) out = { ...out };
+      out[areaKey(key, n)] = value;
+    }
+  }
+  return out;
+}
+
+function autoFillView(answers: Answers): Answers {
   let out = answers;
   for (const q of QUESTIONS) {
     if (!q.autoValue) continue;
@@ -505,6 +541,107 @@ export function viewAt(answers: Answers, index: number): Answers {
     else out[id] = v;
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* 受電設備エリアごとの答え                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * エリアが2か所以上のとき、「受電設備の構成」以降（perArea のグループ）は、エリアごとに答える。
+ * 1か所目は今までのキー（trCapacity など）、2か所目以降は前に「a2:」「a3:」を付けたキー（a2:trCapacity）で持つ。
+ * こうしておくと、1か所だけの案件（以前の案件を含む）は、保存の形が変わらない。
+ */
+export const areaKey = (key: string, area: number): string => (area === 0 ? key : `a${area + 1}:${key}`);
+
+const AREA_KEY = /^a\d+:/;
+
+/** エリアの数（1以上） */
+export function areaCountOf(answers: Answers): number {
+  return Math.max(1, Math.floor(Number(answers.areaCount ?? 1)) || 1);
+}
+
+/** エリアごとに答える質問のID（繰り返しの件数の質問も含む） */
+export const PER_AREA_QUESTION_IDS: ReadonlySet<string> = new Set(
+  QUESTIONS.filter((q) => QUESTION_GROUPS.find((g) => g.id === q.group)?.perArea).map((q) => q.id),
+);
+
+/** エリアの形態・設置場所など（「か所目」ごとに答える、エリアそのものの質問） */
+const AREA_GROUP_IDS: readonly string[] = QUESTIONS.filter((q) => q.group === 'area' && q.id !== 'areaCount').map((q) => q.id);
+
+/**
+ * n番目（0始まり）のエリアの答えだけを取り出す。
+ * 1か所目はそのまま。2か所目以降は、そのエリアの答え（a2:〜）を、ふつうのキーに直す。
+ * 別のエリアの答えは入らず、まだ答えていない質問は、既定値になる。
+ * エリアの番号は areaNo（1始まり）に入る（2か所目以降だけの質問の表示条件に使う）。
+ */
+export function areaView(answers: Answers, area: number): Answers {
+  if (area === 0) return answers;
+  const out: Answers = {};
+  for (const [key, value] of Object.entries(answers)) {
+    if (AREA_KEY.test(key)) continue;
+    if (PER_AREA_QUESTION_IDS.has(key.split('__')[0]!)) continue;
+    out[key] = value;
+  }
+  for (const id of PER_AREA_QUESTION_IDS) {
+    if (QUESTION_DEFAULTS[id] !== undefined) out[id] = QUESTION_DEFAULTS[id]!;
+  }
+  for (const id of AREA_GROUP_IDS) {
+    const v = answers[indexedKey(id, area)];
+    if (v === undefined) delete out[id];
+    else out[id] = v;
+  }
+  const prefix = `a${area + 1}:`;
+  for (const [key, value] of Object.entries(answers)) {
+    if (key.startsWith(prefix)) out[key.slice(prefix.length)] = value;
+  }
+  out.areaNo = area + 1;
+  return out;
+}
+
+/** 質問ではないが、表示条件から参照してよい値（エリアの番号と、受電側の開閉器から決まる目印） */
+export const VIEW_KEYS: ReadonlySet<string> = new Set([
+  'areaNo',
+  'intakeDs',
+  'intakeVcb',
+  'intakeLbs',
+  'intakeLbsPf',
+  'intakeStandard',
+  'intakeOptional',
+]);
+
+/**
+ * 受電側の開閉器から決まる目印（'yes'／'no'）。
+ * - intakeDs・intakeVcb・intakeLbs：DS・VCB・LBSがあるか
+ * - intakeLbsPf：LBSがヒューズ付（PF付）か
+ * - intakeStandard：DS＋VCBの標準構成か（VT・CTが必ず入る）
+ * - intakeOptional：VT・CTがあるかどうかを、答えてもらう構成か
+ */
+function intakeFlags(answers: Answers): Record<string, string> {
+  const yn = (v: boolean) => (v ? 'yes' : 'no');
+  if (Number(answers.areaNo) > 1) {
+    const kind = String(answers.areaIntake ?? 'ds-vcb');
+    const ds = kind === 'ds-vcb' || kind === 'ds';
+    const vcb = kind === 'ds-vcb' || kind === 'vcb';
+    const lbs = kind === 'lbs' || kind === 'lbs-pf';
+    return {
+      intakeDs: yn(ds),
+      intakeVcb: yn(vcb),
+      intakeLbs: yn(lbs),
+      intakeLbsPf: yn(kind === 'lbs-pf'),
+      intakeStandard: yn(kind === 'ds-vcb'),
+      intakeOptional: yn(kind !== 'ds-vcb'),
+    };
+  }
+  const form = answers.mainBreakerForm;
+  return {
+    intakeDs: yn(form === 'cb'),
+    intakeVcb: yn(form === 'cb'),
+    intakeLbs: yn(form === 'pfs'),
+    intakeLbsPf: yn(form === 'pfs'),
+    intakeStandard: yn(form === 'cb'),
+    intakeOptional: yn(form === 'pfs'),
+  };
 }
 
 /** 回答から、上流→下流の順に並んだ機器の一覧を作る */

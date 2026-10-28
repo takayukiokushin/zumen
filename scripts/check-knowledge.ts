@@ -16,12 +16,15 @@ import {
   missingRequired,
   questionsByGroup,
   QUESTIONS,
+  areaView,
+  areaKey,
   referencedKeys,
   normalizeAnswers,
   dropHiddenChoices,
   resolveDrawingName,
   suggestMainBreakerForm,
   visibleQuestions,
+  VIEW_KEYS,
   withAutoValues,
   withDerived,
 } from '../packages/knowledge/src/index.ts';
@@ -46,7 +49,7 @@ const known = (key: string) => questionIds.has(key) || derivedKeys.has(key);
 
 for (const q of QUESTIONS) {
   for (const key of referencedKeys(q.showIf)) {
-    if (!questionIds.has(key)) fail(`質問 ${q.id} の表示条件が未定義の質問 ${key} を参照しています`);
+    if (!questionIds.has(key) && !VIEW_KEYS.has(key)) fail(`質問 ${q.id} の表示条件が未定義の質問 ${key} を参照しています`);
   }
   if (q.type === 'select' && !q.options?.length) fail(`質問 ${q.id} は選択式なのに選択肢がありません`);
 }
@@ -823,6 +826,62 @@ console.log('\n■ 引込点のジグザグ記号の大きさ（以前：横40×
   const center = (Math.max(...xs) + Math.min(...xs)) / 2;
   if (!d || d.ports.some((p) => p.x !== center)) fail('ジグザグの中心と、接続点の位置が合っていません');
   if (close(w, 60) && close(h, 25.6)) console.log(`  横${w}（左右に${w / 2}ずつ）× 縦${h}`);
+}
+
+console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき）');
+{
+  const ids = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const two: Answers = {
+    areaCount: 2, mainBreakerForm: 'cb', trUsage: '動力', trConnection: 'tr-3p-yd', trCapacity: 300,
+    'a2:areaIntake': 'lbs-pf', 'a2:trUsage': '電灯', 'a2:trCapacity': 50, 'a2:hasCapacitor': 'yes',
+  };
+  const v1 = areaView(two, 0);
+  const v2 = areaView(two, 1);
+  const ok = (cond: boolean, msg: string) => (cond ? undefined : fail(msg));
+  ok(v1 === two, '1か所目の答えが、そのまま使われていません');
+  ok(v2.trUsage === '電灯' && v2.trCapacity === 50, '2か所目の答えが、ふつうのキーに直っていません');
+  ok(v2.mainBreakerForm === undefined && v2.trConnection === undefined, '1か所目の答えが、2か所目に入り込んでいます');
+  ok(v2.areaNo === 2 && v2.areaIntake === 'lbs-pf', '2か所目の番号・受電側の開閉器が入っていません');
+  ok(Number(v2.transformerCount) === 1 && v2.trHasPc === 'no', '2か所目の、まだ答えていない質問が、既定値になっていません');
+  ok(areaKey('trCapacity', 0) === 'trCapacity' && areaKey('trCapacity__2', 2) === 'a3:trCapacity__2', 'エリアのキーの付け方が違います');
+  const a1 = ids(v1);
+  const a2 = ids(v2);
+  ok(a1.has('mainBreakerForm') && !a1.has('areaIntake') && !a1.has('linkTap'), '1か所目に、主遮断装置の形式だけが出ていません');
+  ok(!a2.has('mainBreakerForm') && a2.has('areaIntake') && a2.has('linkCable') && a2.has('linkTap'), '2か所目に、受電側の開閉器とエリア間の接続が出ていません');
+  // 受電側の開閉器で、聞くことが変わる
+  const intakeQs = (kind: string) => ids(areaView({ areaCount: 2, 'a2:areaIntake': kind }, 1));
+  ok(intakeQs('lbs-pf').has('lbsRatedCurrent') && intakeQs('lbs-pf').has('lbsFuseCount') && !intakeQs('lbs-pf').has('dsRating'), 'LBS（PF付）のとき、LBSの定格だけを聞いていません');
+  ok(intakeQs('lbs').has('lbsRatedCurrent') && !intakeQs('lbs').has('lbsFuseCount'), 'LBS（PFなし）のとき、ヒューズの質問が出ています');
+  ok(intakeQs('vcb').has('vcbRating') && !intakeQs('vcb').has('dsRating') && intakeQs('vcb').has('hasSiteVt'), 'VCBのみのとき、VCBの定格だけを聞いて、VTの有無を聞いていません');
+  ok(intakeQs('ds-vcb').has('dsRating') && intakeQs('ds-vcb').has('vcbRating') && intakeQs('ds-vcb').has('vtRatio') && !intakeQs('ds-vcb').has('hasSiteVt'), 'DS＋VCBのとき、標準構成の質問になっていません');
+  ok(intakeQs('none').has('hasSiteVt') && !intakeQs('none').has('dsRating') && !intakeQs('none').has('lbsRatedCurrent'), '開閉器なしのとき、開閉器の質問が出ています');
+  // 2か所目以降は、分岐元のエリアを選べる（3か所目から）。分岐の位置も、選ぶ
+  const link2 = ids(areaView({ areaCount: 3 }, 1));
+  const link3 = ids(areaView({ areaCount: 3 }, 2));
+  ok(!link2.has('linkFrom') && link3.has('linkFrom'), '分岐元のエリアは、3か所目から選べるはずです');
+  const from = QUESTIONS.find((q) => q.id === 'linkFrom');
+  const fromOpts = (n: number) => (from?.options ?? []).filter((o) => evaluate(o.showIf, { areaNo: n })).map((o) => o.value).join(',');
+  ok(fromOpts(3) === '1,2' && fromOpts(2) === '1', `分岐元の選択肢が違います（3か所目：${fromOpts(3)}）`);
+  const tap = QUESTIONS.find((q) => q.id === 'linkTap')?.options?.map((o) => o.value).join(',');
+  ok(tap === 'ds-source,ds-vcb,vcb-load,bus', `分岐の位置の選択肢が違います（${tap}）`);
+  ok(!ids(areaView({ areaCount: 2, 'a2:linkCable': 'no' }, 1)).has('linkTap'), '「つながない」なのに、分岐の位置を聞いています');
+  // 自動入力・選択肢の整理は、エリアごと
+  const auto = withAutoValues({ receivingVoltage: '6600', ...two });
+  ok(auto['a2:trConnection'] === 'tr-1p' && auto['a2:trVoltage'] === '6600/210-105V', '2か所目の変圧器の初期値が、2か所目の用途で決まっていません');
+  ok(auto.trConnection === 'tr-3p-yd', '1か所目の結線方式が、2か所目の用途に引きずられています');
+  const dropped = dropHiddenChoices({ areaCount: 2, 'a2:trUsage': '電灯', 'a2:trConnection': 'tr-3p-dy', trUsage: '動力', trConnection: 'tr-3p-dy' });
+  ok(dropped['a2:trConnection'] === undefined && dropped.trConnection === 'tr-3p-dy', '2か所目の、選べなくなった結線方式だけが外れるはずです');
+  // 1か所だけの案件は、これまでどおり（キーも付けない）
+  const one = withAutoValues({ receivingVoltage: '6600', trUsage: '動力' });
+  ok(one.trConnection === 'tr-3p-yd' && !Object.keys(one).some((k) => /^a\d+:/.test(k)), '1か所の案件の初期値が、変わっています');
+  // 以前の案件（1か所）の、主遮断装置のあとの質問は、これまでと同じ
+  const pfs = ids({ mainBreakerForm: 'pfs' });
+  const cbq = ids({ mainBreakerForm: 'cb' });
+  ok(pfs.has('lbsRatedCurrent') && pfs.has('lbsFuseCount') && pfs.has('hasSiteVt') && !pfs.has('dsRating') && !pfs.has('vtRatio'), 'PFS形（1か所）の質問が、これまでと違います');
+  ok(cbq.has('dsRating') && cbq.has('vcbRating') && cbq.has('vtRatio') && cbq.has('ctRatio') && !cbq.has('hasSiteVt') && !cbq.has('lbsRatedCurrent'), 'CB形（1か所）の質問が、これまでと違います');
+  console.log('  2か所目の答えは「a2:〜」で別に持ち、1か所目・以前の案件とは混ざらない');
+  console.log('  受電側の開閉器（DS＋VCB／VCBのみ／LBS（PF付）／LBS／DSのみ／なし）で、聞く質問が変わる');
+  console.log('  エリア間の接続：ケーブルの有無・分岐元（3か所目から）・分岐の位置・ケーブルの記載');
 }
 
 console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式→電圧、受電電圧との連動）');

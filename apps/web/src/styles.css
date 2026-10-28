@@ -592,3 +592,11 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
   .joblist .jobs td.row-actions { flex-wrap: wrap; justify-content: flex-end; gap: calc(14px * var(--text-scale)); }
   .joblist .jobs .row-actions .job-open { width: calc(168px * var(--text-scale)); max-width: 100%; }
 }
+
+/* 受電設備エリアが2か所以上のとき：エリアごとの大きなまとまり */
+.area-block { border: 2px solid var(--accent); border-radius: 4px; padding: 0 calc(14px * var(--text-scale)) calc(14px * var(--text-scale)); margin: calc(18px * var(--text-scale)) 0; background: var(--field); }
+.area-block .area-head { display: flex; align-items: center; justify-content: space-between; margin: 0 calc(-14px * var(--text-scale)) calc(10px * var(--text-scale)); padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale)); background: var(--accent-soft); border-bottom: 1px solid var(--accent); }
+.area-block .area-head h3 { margin: 0; }
+.area-block .group.inner { margin-top: calc(12px * var(--text-scale)); }
+.area-block .grouphead { margin: 0; font-size: calc(14px * var(--text-scale)); }
+.nav a.sub-link { padding-left: calc(22px * var(--text-scale)); font-size: 0.95em; }

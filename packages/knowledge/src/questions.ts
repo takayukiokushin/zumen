@@ -86,6 +86,11 @@ export interface QuestionGroup {
   repeatCountKey?: string;
   /** 繰り返しの数え方（「1台目」「1回線目」のように見出しに使う） */
   repeatUnit?: string;
+  /**
+   * 受電設備エリアごとに入力するグループ（受電設備の構成・変圧器など）。
+   * エリアが2か所以上のとき、1か所目は今までのキー、2か所目以降は「a2:」「a3:」を前に付けたキーで答えを持つ。
+   */
+  perArea?: boolean;
   showIf?: Condition;
 }
 
@@ -116,18 +121,21 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'vct', label: 'VCT（計器用変成器）' },
   { id: 'cable', label: '引込ケーブル' },
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
-  { id: 'receiving', label: '受電設備の構成' },
-  { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台' },
+  // ここから下の perArea のグループは、エリアが2か所以上のとき、エリアごとに入力する
+  { id: 'link', label: 'エリア間の接続', description: '前のエリアから、ケーブルでつなぐ', perArea: true },
+  { id: 'receiving', label: '受電設備の構成', perArea: true },
+  { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台', perArea: true },
   {
     id: 'compensation',
     label: '高圧進相設備',
     description: '高圧側に入るコンデンサとリアクトルだけを入力する。低圧側だけにある場合は入力しない',
     repeatCountKey: 'capacitorCount',
     repeatUnit: '台',
+    perArea: true,
   },
-  { id: 'special', label: '特殊設備' },
-  { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' } },
-  { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' } },
+  { id: 'special', label: '特殊設備', perArea: true },
+  { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
+  { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
   { id: 'title', label: '表題欄' },
 ];
 
@@ -626,6 +634,8 @@ export const QUESTIONS: Question[] = [
   {
     id: 'mainBreakerForm',
     group: 'receiving', section: '主遮断装置の形式',
+    // 受電（主遮断装置の形式）は1回だけ。2か所目以降のエリアは、下の「受電側の開閉器」を、エリアごとに選ぶ
+    showIf: { not: { key: 'areaNo', gt: 1 } },
     label: '主遮断装置の形式は？',
     type: 'select',
     options: [
@@ -640,6 +650,26 @@ export const QUESTIONS: Question[] = [
       '「それ以外（高圧マンション・電柱上構成）」を選んだ場合は、電柱上に受電設備が構成されているものとして扱う（追加の質問は無い）',
   },
   {
+    // 2か所目以降のエリアだけ。受電側の開閉器は、標準構成（DS＋VCB）でなくてよく、エリアごとに自由に選ぶ
+    id: 'areaIntake',
+    group: 'receiving', section: '受電側の開閉器（このエリア）',
+    label: 'このエリアの受電側の開閉器は？',
+    type: 'select',
+    options: [
+      { value: 'ds-vcb', label: 'DS＋VCB（CB形の標準）' },
+      { value: 'vcb', label: 'VCBのみ（DSなし）' },
+      { value: 'lbs-pf', label: 'LBS（PF付）' },
+      { value: 'lbs', label: 'LBS（PFなし）' },
+      { value: 'ds', label: 'DSのみ' },
+      { value: 'none', label: 'なし（ケーブルが母線に直接つながる）' },
+    ],
+    defaultValue: 'ds-vcb',
+    showIf: { key: 'areaNo', gt: 1 },
+    ask: 'always',
+    required: true,
+    help: '2か所目以降は、標準構成（DS・VT・CTなど）でなくてもよい。このエリアの入口にある開閉器を選ぶ。VT・CT・ZPD・LAなどは、下で、あるかないかを答える',
+  },
+  {
     id: 'lbsRatedVoltage',
     group: 'receiving', section: 'LBS（PFS形）',
     label: 'LBSの定格電圧',
@@ -648,22 +678,22 @@ export const QUESTIONS: Question[] = [
       { value: '7200', label: '7200V' },
       { value: '6600', label: '6600V' },
     ],
-    showIf: { key: 'mainBreakerForm', eq: 'pfs' },
+    showIf: { key: 'intakeLbs', eq: 'yes' },
     ask: 'ai-uncertain',
     help: '7200Vと6600Vは機器によって使い分ける。手書きメモの記載を優先し、記載が無いときだけ確認する',
   },
-  { id: 'lbsRatedCurrent', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
-  { id: 'lbsFuseCount', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
-  { id: 'lbsFuseSpec', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ定格', type: 'text', placeholder: '7200V G50A T40A', showIf: { key: 'mainBreakerForm', eq: 'pfs' }, ask: 'always' },
-  { id: 'dsRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'DSの定格', type: 'text', placeholder: '7200V 400A', showIf: { key: 'mainBreakerForm', eq: 'cb' }, ask: 'always' },
-  { id: 'vcbRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'VCBの定格', type: 'text', placeholder: '7200V 600A 12.5kA', showIf: { key: 'mainBreakerForm', eq: 'cb' }, ask: 'always' },
+  { id: 'lbsRatedCurrent', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'intakeLbs', eq: 'yes' }, ask: 'always' },
+  { id: 'lbsFuseCount', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
+  { id: 'lbsFuseSpec', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ定格', type: 'text', placeholder: '7200V G50A T40A', showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
+  { id: 'dsRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'DSの定格', type: 'text', placeholder: '7200V 400A', showIf: { key: 'intakeDs', eq: 'yes' }, ask: 'always' },
+  { id: 'vcbRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'VCBの定格', type: 'text', placeholder: '7200V 600A 12.5kA', showIf: { key: 'intakeVcb', eq: 'yes' }, ask: 'always' },
   {
     id: 'hasSiteVt',
     group: 'receiving', section: 'VT（計器用変圧器）',
     label: '受電設備内にVTはありますか？',
     type: 'select',
     options: YES_NO,
-    showIf: { key: 'mainBreakerForm', eq: 'pfs' },
+    showIf: { key: 'intakeOptional', eq: 'yes' },
     ask: 'ai-uncertain',
     help: 'PFS形はVTが入る現場と入らない現場がある。CB形はDSの次に必ず入る',
   },
@@ -676,7 +706,7 @@ export const QUESTIONS: Question[] = [
     allowFreeInput: true,
     unit: '台',
     defaultValue: '2',
-    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteVt', eq: 'yes' }] },
+    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
     ask: 'ai-uncertain',
     help: '2台以上のときは、図面に「VT＋PF×2」のように書く',
   },
@@ -689,7 +719,7 @@ export const QUESTIONS: Question[] = [
     // VTの変圧比は 6600/110V のほかには無い。最初から入れておき、違うときだけ手で直す
     defaultValue: '6600/110V',
     help: '6600/110V に決まっているので、最初から入っている。違うときだけ手で直す',
-    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteVt', eq: 'yes' }] },
+    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
     ask: 'ai-uncertain',
   },
   {
@@ -698,7 +728,7 @@ export const QUESTIONS: Question[] = [
     label: '受電設備内にCTはありますか？',
     type: 'select',
     options: YES_NO,
-    showIf: { key: 'mainBreakerForm', eq: 'pfs' },
+    showIf: { key: 'intakeOptional', eq: 'yes' },
     ask: 'ai-uncertain',
     help: 'PFS形はCTが入る現場と入らない現場がある。CB形はVCBのすぐ下に必ず入る',
   },
@@ -711,7 +741,7 @@ export const QUESTIONS: Question[] = [
     allowFreeInput: true,
     unit: '台',
     defaultValue: '2',
-    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
+    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] },
     ask: 'ai-uncertain',
     help: '2台以上のときは、図面に「CT×2」のように書く',
   },
@@ -723,7 +753,7 @@ export const QUESTIONS: Question[] = [
     placeholder: '100',
     appendOnBlur: '/5A',
     help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、必ず5A',
-    showIf: { any: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasSiteCt', eq: 'yes' }] },
+    showIf: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] },
     ask: 'ai-uncertain',
   },
   {
@@ -1055,7 +1085,104 @@ export const QUESTIONS: Question[] = [
     help: '空欄のときは、受電設備の形態から自動で決まります（例：キュービクル式高圧受電設備単線結線図）。書いた場合は、それを優先します',
   },
 
+
+  /* ---------------- エリア間の接続（2か所目以降のエリア） ---------------- */
+  {
+    id: 'linkCable',
+    group: 'link',
+    label: 'このエリアは、前のエリアからケーブルでつなぎますか？',
+    type: 'select',
+    options: YES_NO_Q,
+    defaultValue: 'yes',
+    showIf: { key: 'areaNo', gt: 1 },
+    ask: 'always',
+    help: 'エリアの間をつなぐケーブルがあるかどうか。「いいえ」のときは、このエリアは、どこにもつながない（単独で描く）',
+  },
+  {
+    id: 'linkFrom',
+    group: 'link',
+    label: 'どのエリアから分岐しますか？',
+    type: 'select',
+    // このエリアより前のエリアだけ選べる
+    options: Array.from({ length: 9 }, (_, i) => ({ value: String(i + 1), label: `${i + 1}か所目`, showIf: { key: 'areaNo', gt: i + 1 } as Condition })),
+    defaultValue: '1',
+    showIf: { all: [{ key: 'areaNo', gt: 2 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+    help: '3か所目以降は、1か所目からも、2か所目からも分岐できる',
+  },
+  {
+    id: 'linkTap',
+    group: 'link',
+    label: '分岐する位置は？',
+    type: 'select',
+    dropdown: true,
+    options: [
+      { value: 'ds-source', label: 'DSの電源側（DSの手前）' },
+      { value: 'ds-vcb', label: 'DSとVCBの間' },
+      { value: 'vcb-load', label: 'VCBの負荷側（CTの下）' },
+      { value: 'bus', label: '高圧母線（変圧器の手前）' },
+    ],
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+    required: true,
+    help: '前のエリアの、どこからケーブルを出すか。変圧器の手前は、高圧母線として扱う',
+  },
+  {
+    id: 'linkCableInstallation',
+    group: 'link',
+    label: 'ケーブルは？',
+    type: 'select',
+    options: [
+      { value: 'buried', label: '埋設（埋ケ）' },
+      { value: 'overhead', label: '架空（架ケ）' },
+      { value: 'none', label: '種類を書かない' },
+    ],
+    defaultValue: 'none',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+  },
+  {
+    id: 'linkCableStructure',
+    group: 'link',
+    label: 'ケーブルの構造は？',
+    type: 'select',
+    options: [
+      { value: 'CVT', label: 'CVT' },
+      { value: 'CV', label: 'CV' },
+    ],
+    defaultValue: 'CVT',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+  },
+  {
+    id: 'linkCableCrossSection',
+    group: 'link',
+    label: '断面積は？',
+    type: 'select',
+    unit: 'mm2',
+    options: [14, 22, 38, 60, 100, 150].map((v) => ({ value: String(v), label: `${v} mm2` })),
+    allowFreeInput: true,
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+    help: '一覧にない値は手入力できる',
+  },
+  {
+    id: 'linkCableLength',
+    group: 'link',
+    label: '長さは？',
+    type: 'number',
+    unit: 'm',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+    help: '不明な場合は空欄にする',
+  },
+
   // PC・LBSの定格電流とヒューズ（変圧器の手前／コンデンサの手前）
   ...breakerRatings('tr', 'transformer', { key: 'transformerCount', gt: 0 }, 'T'),
   ...breakerRatings('cap', 'compensation', { key: 'hasCapacitor', eq: 'yes' }, 'C'),
 ];
+
+/** 質問定義の既定値（エリアごとの入力でも、まだ触っていない質問に使う） */
+export const QUESTION_DEFAULTS: Record<string, Value> = Object.fromEntries(
+  QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]),
+);
