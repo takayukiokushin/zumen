@@ -811,11 +811,13 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
   const raw: Answers = { trUsage: '電灯', receivingVoltage: '6600' };
   withAutoValues(raw);
   if (raw.trConnection !== undefined || raw.trVoltage !== undefined) fail('自動で入れた値が、元の回答に書き込まれています');
-  // 項目名：変圧器の上位がLBSのときだけ変える（コンデンサの上位は、これまでどおり）
+  // 項目名：LBSの手前・後ろのパワーヒューズの項目
   const lab = (id: string) => QUESTIONS.find((q) => q.id === id)?.label;
   if (lab('trPfG') !== 'パワーヒューズ（PF）の定格電流（G）') fail(`変圧器のPFの項目名が違います（${lab('trPfG')}）`);
   if (lab('trPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流') fail(`変圧器のPFの用途ごとの項目名が違います（${lab('trPfLoadAmp')}）`);
-  if (lab('capPfG') !== 'パワーヒューズ（PF）の定格電流') fail('コンデンサ側の項目名が変わってしまっています');
+  // 変圧器の手前も、コンデンサの手前も、すべてのLBSで同じ項目名
+  if (lab('capPfG') !== 'パワーヒューズ（PF）の定格電流（G）') fail(`コンデンサのPFの項目名が違います（${lab('capPfG')}）`);
+  if (lab('capPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流') fail(`コンデンサのPFの用途ごとの項目名が違います（${lab('capPfLoadAmp')}）`);
   console.log('  項目名：パワーヒューズ（PF）の定格電流（G）／パワーヒューズの用途ごとの定格電流');
 }
 

@@ -189,8 +189,7 @@ function breakerRatings(
       help: 'ふつうは200A。図面には「200A」のように、記号なしで書く',
     },
     {
-      // 変圧器の手前のときだけ、項目名を変えている（コンデンサの手前は、これまでどおり）
-      id: P('PfG'), group, label: prefix === 'tr' ? 'パワーヒューズ（PF）の定格電流（G）' : 'パワーヒューズ（PF）の定格電流', type: 'select',
+      id: P('PfG'), group, label: 'パワーヒューズ（PF）の定格電流（G）', type: 'select',
       options: PF_RATINGS, allowFreeInput: true, showIf: hasLbs, ask: 'always',
       help: '図面には「G50A」のように、先頭にGを付けて書く',
     },
@@ -201,7 +200,7 @@ function breakerRatings(
       help: `${cap}につなぐので、ふつうは「${defaultLoad}」`,
     },
     {
-      id: P('PfLoadAmp'), group, label: prefix === 'tr' ? 'パワーヒューズの用途ごとの定格電流' : 'PFの負荷側の電流', type: 'select',
+      id: P('PfLoadAmp'), group, label: 'パワーヒューズの用途ごとの定格電流', type: 'select',
       options: LOAD_AMPS, allowFreeInput: true, showIf: hasLbs, ask: 'always',
       help: '図面には「T30A」のように、上で選んだ記号に続けて書く',
     },
