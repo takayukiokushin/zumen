@@ -529,6 +529,8 @@ export interface PlacedItem {
   tap?: string;
   /** 直前の同じ向きの分岐と、横につなげずに、別の分岐として出す（ZPDとLAを別の記号にするため） */
   separate?: boolean;
+  /** 分岐するとき、横に回さず、縦のまま置く（LA） */
+  upright?: boolean;
   /** kind==='link' のとき、前のエリアからのつなぎ方 */
   link?: {
     /** どのエリアから分岐するか（0始まり） */
@@ -781,6 +783,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           row: p.row,
           unit: countKey ? i : undefined,
           ...(p.tapFrom ? { tap: String(a[p.tapFrom] ?? 'ct-bus'), separate: true } : {}),
+          ...(p.upright ? { upright: true } : {}),
           note: p.note,
         });
       }

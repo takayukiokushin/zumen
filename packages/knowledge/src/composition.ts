@@ -65,6 +65,8 @@ export interface Placement {
   attachTo?: string;
   /** つなぐ位置を答える質問のID（ZPD・LA）。答えに応じて、並びの位置を動かす */
   tapFrom?: string;
+  /** 分岐するとき、横に回さず、縦のまま置く（LA：真横に出た線が、真下に折れて、記号が縦に並ぶ） */
+  upright?: boolean;
   /**
    * kind==='feeder' のときの列番号の始まり。
    * 低圧の回線と、あとから結線する発電機などが同じ列に重ならないよう、
@@ -373,6 +375,7 @@ export const DOWNSTREAM: Placement[] = [
     symbolId: 'la',
     kind: 'branch-left',
     tapFrom: 'laTap',
+    upright: true,
     when: { key: 'hasLa', eq: 'yes' },
     labelTemplate: ['LA'],
   },
@@ -478,7 +481,7 @@ export const AREA_CHAIN: Placement[] = [
   },
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
   { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, connectFrom: ['zpd'] },
-  { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
+  { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', upright: true, when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
 ];
 
 /** 変圧器（台数分くり返す） */

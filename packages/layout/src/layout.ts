@@ -396,10 +396,11 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     }
 
     const entry = portOf(def, 'in', dir > 0 ? 'l' : 'r') ?? def.ports[0]!;
-    // 縦向きの記号（PFなど）は90°回して横に出す
-    // 右へ分岐するときは上を左（主回路側）へ、左へ分岐するときは上を右（主回路側）へ回す。
-    // こうすると、LAのように下にアースが付く記号は、アースが主回路の外側に向く
-    const rotate = entry.dir === 'up' && def.box.h > def.box.w ? (dir > 0 ? -90 : 90) : 0;
+    // 縦長の記号（PFなど）は、横に出す分岐では、上を主回路の側へ向けて横に回す
+    // （右へ分岐するときは上を左へ、左へ分岐するときは上を右へ）。
+    // ただし、縦のまま置くと指定された記号（LA）は、回さない。
+    // 主回路から真横に線が出て、真下に折れてから、記号（四角の矢印・アース）が縦に並ぶ
+    const rotate = !item.upright && entry.dir === 'up' && def.box.h > def.box.w ? (dir > 0 ? -90 : 90) : 0;
     const rb = rotatedBox(def.box, rotate);
     const [erx, ery] = rotatedPort(def.box, entry.x, entry.y, rotate);
 

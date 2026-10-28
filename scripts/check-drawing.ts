@@ -441,7 +441,7 @@ console.log('\n■ ZPD・LAの位置（別々の記号・母線に重ならな�
   const labels = (d: ReturnType<typeof layout>) => ['zpd', 'site-la'].map((r) => d.symbols.find((s) => s.role === r)?.label.join('|'));
   if (labels(dflt.d).join() !== 'ZPD,LA') fail(`ZPDとLAの文字が、別々になっていません（${labels(dflt.d).join(' / ')}）`);
   if (dflt.zpd === dflt.la) fail('ZPDとLAが、同じ高さに重なっています');
-  // LAの向き：主回路（x=0）からつなぎ、アース（記号の下端）が、主回路の外側（左）に来る。矢印はアースへ向く
+  // LAの形：主回路（x=0）から真横に線が出て、真下に折れる。記号（四角の矢印・アース）は、回さず縦のまま、アースが一番下
   for (const [name, d] of [['既定', dflt.d], ['DSとVCBの間', layout(buildComposition({ ...base, laTap: 'ds-vcb' }), { ...base, laTap: 'ds-vcb' })]] as const) {
     const la = d.symbols.find((s) => s.role === 'site-la');
     if (!la) {
@@ -450,14 +450,15 @@ console.log('\n■ ZPD・LAの位置（別々の記号・母線に重ならな�
     }
     const def = getSymbolDef('la');
     const entry = def.ports.find((p) => p.id === 'in')!;
-    const [px, py] = rotatedPort(def.box, entry.x, entry.y, la.rotate);
-    const [ex, ey] = rotatedPort(def.box, entry.x, def.box.h, la.rotate);
-    const inX = la.x + px;
-    const earthX = la.x + ex;
-    if (la.rotate !== 90) fail(`LA（${name}）の向きが違います（回転 ${la.rotate}°。左へ分岐するときは90°のはず）`);
-    else if (!(earthX < inX - 20 && Math.abs(la.y + py - (la.y + ey)) < 1)) fail(`LA（${name}）のアースが、主回路の外側（左）に来ていません（接続 x=${Math.round(inX)} / アース x=${Math.round(earthX)}）`);
-    else if (!(inX < 0)) fail(`LA（${name}）の接続点が、主回路の左にありません（x=${Math.round(inX)}）`);
-    else console.log(`  LA（${name}）：接続点 x=${Math.round(inX)}（主回路のすぐ左）、アース x=${Math.round(earthX)}（さらに外側）`);
+    const inX = la.x + entry.x;
+    const inY = la.y + entry.y;
+    const earthY = la.y + def.box.h;
+    const lead = d.wires.find((w) => w.y1 === w.y2 && Math.abs(w.y1 - inY) < 0.5 && Math.min(w.x1, w.x2) <= inX + 0.5 && Math.max(w.x1, w.x2) >= -0.5);
+    if (la.rotate !== 0) fail(`LA（${name}）が回っています（${la.rotate}°。縦のままのはず）`);
+    else if (!(inX < -20)) fail(`LA（${name}）が、主回路の左に離れて置かれていません（x=${Math.round(inX)}）`);
+    else if (!lead) fail(`LA（${name}）に、主回路から真横に出る線がありません`);
+    else if (!(earthY > inY + 20)) fail(`LA（${name}）のアースが、接続点の真下に来ていません`);
+    else console.log(`  LA（${name}）：主回路から左へ真横に ${Math.round(-inX)}、そこから真下へ。記号は縦のまま、アースが一番下（y=${Math.round(earthY)}）`);
   }
   // 位置：DSとVCBの間 → VCBとCTの間 → 変圧器の手前（既定）
   if (!(moved.zpd! > moved.ds! && moved.zpd! < moved.vcb!)) fail(`ZPDが、DSとVCBの間にありません（DS ${moved.ds} / ZPD ${moved.zpd} / VCB ${moved.vcb}）`);
