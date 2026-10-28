@@ -671,7 +671,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     id: 'lbsRatedVoltage',
-    group: 'receiving', section: 'LBS（PFS形）',
+    group: 'receiving', section: 'LBS',
     label: 'LBSの定格電圧',
     type: 'select',
     options: [
@@ -682,11 +682,11 @@ export const QUESTIONS: Question[] = [
     ask: 'ai-uncertain',
     help: '7200Vと6600Vは機器によって使い分ける。手書きメモの記載を優先し、記載が無いときだけ確認する',
   },
-  { id: 'lbsRatedCurrent', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'intakeLbs', eq: 'yes' }, ask: 'always' },
-  { id: 'lbsFuseCount', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
-  { id: 'lbsFuseSpec', group: 'receiving', section: 'LBS（PFS形）', label: 'LBSのヒューズ定格', type: 'text', placeholder: '7200V G50A T40A', showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
-  { id: 'dsRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'DSの定格', type: 'text', placeholder: '7200V 400A', showIf: { key: 'intakeDs', eq: 'yes' }, ask: 'always' },
-  { id: 'vcbRating', group: 'receiving', section: 'DS・VCB（CB形）', label: 'VCBの定格', type: 'text', placeholder: '7200V 600A 12.5kA', showIf: { key: 'intakeVcb', eq: 'yes' }, ask: 'always' },
+  { id: 'lbsRatedCurrent', group: 'receiving', section: 'LBS', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'intakeLbs', eq: 'yes' }, ask: 'always' },
+  { id: 'lbsFuseCount', group: 'receiving', section: 'LBS', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
+  { id: 'lbsFuseSpec', group: 'receiving', section: 'LBS', label: 'LBSのヒューズ定格', type: 'text', placeholder: '7200V G50A T40A', showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
+  { id: 'dsRating', group: 'receiving', section: 'DS・VCB', label: 'DSの定格', type: 'text', placeholder: '7200V 400A', showIf: { key: 'intakeDs', eq: 'yes' }, ask: 'always' },
+  { id: 'vcbRating', group: 'receiving', section: 'DS・VCB', label: 'VCBの定格', type: 'text', placeholder: '7200V 600A 12.5kA', showIf: { key: 'intakeVcb', eq: 'yes' }, ask: 'always' },
   {
     id: 'hasSiteVt',
     group: 'receiving', section: 'VT（計器用変圧器）',
