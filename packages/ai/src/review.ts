@@ -1,4 +1,4 @@
-import { QUESTIONS, missingRequired, normalizeAnswers } from '@zumen/knowledge';
+import { QUESTIONS, areaCountOf, areaView, missingRequired, normalizeAnswers } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import type { AnalysisResult } from './schema.ts';
 
@@ -91,9 +91,17 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
 
   // 設備容量と主遮断装置の形式
   // 電灯および動力のV結線は、電灯の容量と動力の容量の合計（ふつうは、1台目の容量）
-  const mixedV = a.trConnection === 'tr-vv' && a.trUsage === '電灯・動力';
-  const unitCapacity = mixedV ? num(a.trCapacityLight) + num(a.trCapacityPower) : num(a.trCapacity);
-  const total = unitCapacity * Math.max(1, num(a.transformerCount) || 1);
+  // 受電設備エリアが2か所以上のときは、すべてのエリアの変圧器の合計で見る
+  const areaKva = (v: Record<string, unknown>) => {
+    const mixed = v.trConnection === 'tr-vv' && v.trUsage === '電灯・動力';
+    const unit = mixed ? num(v.trCapacityLight) + num(v.trCapacityPower) : num(v.trCapacity);
+    return unit * Math.max(1, num(v.transformerCount) || 1);
+  };
+  const parts = [areaKva(a)];
+  for (let n = 1; n < areaCountOf(a); n++) parts.push(areaKva(normalizeAnswers(areaView(a, n))));
+  // 2か所目以降で、容量がまだ入っていないものは、0として数える（合計は「少なくともこれだけ」になる）
+  const allKnown = parts.every((p) => Number.isFinite(p));
+  const total = parts.reduce((sum, p, i) => sum + (Number.isFinite(p) ? p : i === 0 ? NaN : 0), 0);
 
   // 用途と結線方式の組み合わせ（電灯は単相系とV結線、動力は三相とV結線）
   const conn = String(a.trConnection ?? '');
@@ -125,7 +133,7 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
         message: `高圧変圧器の合計容量が${total}kVA（301kVA以上）なので、CB形でなければなりません。`,
       });
     }
-    if (total <= 300 && a.mainBreakerForm === 'cb') {
+    if (allKnown && total <= 300 && a.mainBreakerForm === 'cb') {
       items.push({
         level: 'confirm',
         questionId: 'mainBreakerForm',

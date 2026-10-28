@@ -485,6 +485,15 @@ try {
   check('他の人は、練習用の消した案件を戻せない', (await call(a, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).status === 404);
   check('練習用は、自分の消した案件を戻せる', (await call(renshu, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).ok);
 
+  // 受電設備エリアが2か所以上：2か所目の答え（a2:〜）も、そのまま保存して読み出せる
+  {
+    const multi = { areaCount: 2, siteName: '2か所の案件', 'a2:areaIntake': 'lbs-pf', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', areaForm__2: 'room-open' };
+    const made = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '2か所の案件', answers: multi }) })).json()) as { id: string };
+    const got = (await (await call(a, `/api/projects/${made.id}`)).json()) as { answers: Record<string, unknown> };
+    check('2か所目以降の答え（a2:〜）が、そのまま保存・読み出しできる', JSON.stringify(got.answers) === JSON.stringify(multi), JSON.stringify(got.answers));
+    await call(a, `/api/projects/${made.id}`, { method: 'DELETE' });
+  }
+
   // 練習環境：本番の案件をコピーして練習する（もとの案件は変わらない）
   {
     const J = (r: Response) => r.json() as Promise<any>;

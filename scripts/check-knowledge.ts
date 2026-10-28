@@ -32,6 +32,7 @@ import type { Answers } from '../packages/knowledge/src/index.ts';
 import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from '../packages/knowledge/src/composition.ts';
 import { layout } from '../packages/layout/src/index.ts';
 import { buildAnalysisSchema, buildReview, buildSystemPrompt } from '../packages/ai/src/index.ts';
+import { checkConsistency } from '../packages/ai/src/review.ts';
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -954,6 +955,23 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   console.log(`  1か所目は、1か所だけのときと同じ。2か所目 ${a2.length}件・3か所目 ${a3.length}件が、「a2:」「a3:」の役割で続く`);
   console.log('  2か所目：LBS（PF付）・VT・ZPD・変圧器2台、1か所目の母線から埋設ケーブル。3か所目：DSのみ、2か所目のDSとVCBの間から');
   console.log('  受電側の開閉器ごとの機器：DS＋VCB（標準）／VCBのみ／LBS／DSのみ／なし');
+}
+
+console.log('\n■ 設備容量と主遮断装置の形式（エリアが複数あるときは、すべてのエリアの合計）');
+{
+  const msgs = (a: Answers) => checkConsistency(a).filter((i) => i.questionId === 'mainBreakerForm').map((i) => `${i.level}:${i.value}`);
+  const one = { mainBreakerForm: 'pfs', trCapacity: 280, transformerCount: 1 };
+  const okOne = msgs(one).length === 0;
+  const bad2 = msgs({ ...one, areaCount: 2, 'a2:trCapacity': 100, 'a2:transformerCount': 1 });
+  const cb2 = msgs({ mainBreakerForm: 'cb', trCapacity: 100, transformerCount: 1, areaCount: 2, 'a2:trCapacity': 100 });
+  const cbUnknown = msgs({ mainBreakerForm: 'cb', trCapacity: 100, transformerCount: 1, areaCount: 2 });
+  const cbOne = msgs({ mainBreakerForm: 'cb', trCapacity: 100, transformerCount: 1 });
+  if (!okOne) fail('1か所で280kVA・PFS形に、指摘が出ています');
+  if (!bad2.includes('error:PFS形')) fail(`1か所目280＋2か所目100＝380kVAなのに、PFS形が誤りと指摘されていません（${bad2.join(',')}）`);
+  if (!cb2.includes('confirm:CB形')) fail(`合計200kVAなのに、CB形の確認が出ていません（${cb2.join(',')}）`);
+  if (cbUnknown.length > 0) fail(`2か所目の容量が未入力のときは、「PFS形も選べます」とは言えません（${cbUnknown.join(',')}）`);
+  if (!cbOne.includes('confirm:CB形')) fail('1か所で100kVA・CB形の確認が、これまでどおり出ていません');
+  console.log('  1か所目280kVA＋2か所目100kVA＝380kVA → PFS形は誤り。合計200kVA → CB形は確認。2か所目の容量が未入力のときは、「選べる」とは言わない');
 }
 
 console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式→電圧、受電電圧との連動）');

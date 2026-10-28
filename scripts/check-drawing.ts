@@ -9,6 +9,7 @@
 import {
   applyAnchors,
   descendantsOf,
+  digest,
   groupRootOf,
   removeItem,
   assistMove,
@@ -487,6 +488,18 @@ console.log('\n■ 受電設備エリアが2か所以上のときの配置');
   const x3 = Math.min(...d3.symbols.filter((s) => s.role.startsWith('a3:')).map((s) => s.x));
   if (d3.frames.length !== 3 || !(x3 > x2)) fail(`3か所並べたとき、3か所目が2か所目の右にありません（枠 ${d3.frames.length}つ）`);
   else console.log('  3か所：左から1・2・3か所目の順に並ぶ（3か所目は、2か所目から分岐）');
+  // 回答の印：2か所目の答えを変えると変わる（手で直した図面に「回答が変わりました」と知らせるため）。1か所の案件は、2か所目のキーが無いので変わらない
+  {
+    const basisOf = (a: Answers) => digest(JSON.stringify(buildComposition(a).map((i) => [i.role, i.symbolId, i.label, i.unit ?? 0])));
+    const b0 = basisOf(base);
+    const b1 = basisOf({ ...base, 'a2:trCapacity': 150 });
+    const b2 = basisOf({ ...base, 'a2:areaIntake': 'vcb' });
+    if (b0 === b1 || b0 === b2) fail('2か所目の答えを変えても、回答の印が変わりません');
+    else console.log('  2か所目の答え（容量・受電側の開閉器）を変えると、回答の印が変わる');
+    const old1 = basisOf({ ...base, areaCount: 1 });
+    const old1b = basisOf({ ...base, areaCount: 1, 'a2:trCapacity': 150, 'a2:areaIntake': 'vcb' });
+    if (old1 !== old1b) fail('1か所の案件に、2か所目の答えが残っていても、回答の印が変わってしまいます');
+  }
   // 「つながない」ときは、ケーブルを描かず、エリアだけ並べる
   const alone: Answers = { ...base, 'a2:linkCable': 'no' };
   const dAlone = layout(buildComposition(alone), alone);

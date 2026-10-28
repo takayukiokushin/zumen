@@ -20,7 +20,7 @@ scripts/        検証（check-knowledge / check-drawing / selftest）
 ```sh
 pnpm typecheck   # 型を見る
 pnpm check       # ナレッジベースと作図の検証
-pnpm selftest    # サーバーまで通した自己診断（112件）
+pnpm selftest    # サーバーまで通した自己診断（113件）
 pnpm build       # 画面を組み立てる
 pnpm start       # 組み立ててサーバーを起動
 ```
