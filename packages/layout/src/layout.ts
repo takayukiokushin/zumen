@@ -397,7 +397,9 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
 
     const entry = portOf(def, 'in', dir > 0 ? 'l' : 'r') ?? def.ports[0]!;
     // 縦向きの記号（PFなど）は90°回して横に出す
-    const rotate = entry.dir === 'up' && def.box.h > def.box.w ? -90 : 0;
+    // 右へ分岐するときは上を左（主回路側）へ、左へ分岐するときは上を右（主回路側）へ回す。
+    // こうすると、LAのように下にアースが付く記号は、アースが主回路の外側に向く
+    const rotate = entry.dir === 'up' && def.box.h > def.box.w ? (dir > 0 ? -90 : 90) : 0;
     const rb = rotatedBox(def.box, rotate);
     const [erx, ery] = rotatedPort(def.box, entry.x, entry.y, rotate);
 

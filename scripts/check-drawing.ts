@@ -23,7 +23,7 @@ import {
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
-import { rotatedBox, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
+import { rotatedBox, rotatedPort, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
 import { inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
@@ -441,6 +441,24 @@ console.log('\n■ ZPD・LAの位置（別々の記号・母線に重ならな�
   const labels = (d: ReturnType<typeof layout>) => ['zpd', 'site-la'].map((r) => d.symbols.find((s) => s.role === r)?.label.join('|'));
   if (labels(dflt.d).join() !== 'ZPD,LA') fail(`ZPDとLAの文字が、別々になっていません（${labels(dflt.d).join(' / ')}）`);
   if (dflt.zpd === dflt.la) fail('ZPDとLAが、同じ高さに重なっています');
+  // LAの向き：主回路（x=0）からつなぎ、アース（記号の下端）が、主回路の外側（左）に来る。矢印はアースへ向く
+  for (const [name, d] of [['既定', dflt.d], ['DSとVCBの間', layout(buildComposition({ ...base, laTap: 'ds-vcb' }), { ...base, laTap: 'ds-vcb' })]] as const) {
+    const la = d.symbols.find((s) => s.role === 'site-la');
+    if (!la) {
+      fail(`LA（${name}）が描かれていません`);
+      continue;
+    }
+    const def = getSymbolDef('la');
+    const entry = def.ports.find((p) => p.id === 'in')!;
+    const [px, py] = rotatedPort(def.box, entry.x, entry.y, la.rotate);
+    const [ex, ey] = rotatedPort(def.box, entry.x, def.box.h, la.rotate);
+    const inX = la.x + px;
+    const earthX = la.x + ex;
+    if (la.rotate !== 90) fail(`LA（${name}）の向きが違います（回転 ${la.rotate}°。左へ分岐するときは90°のはず）`);
+    else if (!(earthX < inX - 20 && Math.abs(la.y + py - (la.y + ey)) < 1)) fail(`LA（${name}）のアースが、主回路の外側（左）に来ていません（接続 x=${Math.round(inX)} / アース x=${Math.round(earthX)}）`);
+    else if (!(inX < 0)) fail(`LA（${name}）の接続点が、主回路の左にありません（x=${Math.round(inX)}）`);
+    else console.log(`  LA（${name}）：接続点 x=${Math.round(inX)}（主回路のすぐ左）、アース x=${Math.round(earthX)}（さらに外側）`);
+  }
   // 位置：DSとVCBの間 → VCBとCTの間 → 変圧器の手前（既定）
   if (!(moved.zpd! > moved.ds! && moved.zpd! < moved.vcb!)) fail(`ZPDが、DSとVCBの間にありません（DS ${moved.ds} / ZPD ${moved.zpd} / VCB ${moved.vcb}）`);
   else console.log(`  ZPDを「DSとVCBの間」に：DS y=${Math.round(moved.ds!)} → ZPD y=${Math.round(moved.zpd!)} → VCB y=${Math.round(moved.vcb!)}`);
