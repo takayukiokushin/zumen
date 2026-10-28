@@ -57,6 +57,13 @@ export function normalizeAnswers(answers: Answers): Answers {
     out = { ...out, sectionalizer: out.hasPas === 'no' ? 'none' : 'pas' };
   }
   // PASは電柱上、UGSは地上キャビネット用。引込元に合わない（または未回答の）ときは、引込元に合うほうにする
+  // 以前は「区分」と「名称」の2つの欄だった（polePrefix＋poleName、cabinetPrefix＋cabinetName）。いまは1つの欄なので、つなげて読み替える
+  for (const [prefixKey, nameKey] of [['polePrefix', 'poleName'], ['cabinetPrefix', 'cabinetName']] as const) {
+    if (out[prefixKey] === undefined) continue;
+    const { [prefixKey]: prefix, ...rest } = out;
+    const name = String(rest[nameKey] ?? '');
+    out = { ...rest, [nameKey]: name.startsWith(String(prefix ?? '')) ? name : `${prefix ?? ''}${name}` };
+  }
   const cabinet = out.sourceType === 'cabinet';
   if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas')) out = { ...out, sectionalizer: 'ugs' };
   else if (!cabinet && out.sectionalizer === 'ugs') out = { ...out, sectionalizer: 'pas' };
@@ -139,6 +146,10 @@ const GENERATOR_FUEL_LABEL: Record<string, string> = {
 export function withDerived(rawAnswers: Answers): Answers {
   const answers = normalizeAnswers(rawAnswers);
   const d: Answers = { ...answers };
+
+  // 引込元の文字。「中電柱：」「キャビネット番号：」だけで名称がまだ無いときは、書かない
+  const sourceText = String(answers.sourceType === 'cabinet' ? (answers.cabinetName ?? '') : (answers.poleName ?? '')).trim();
+  d.sourceLabel = /^(中電柱|キャビネット番号)\s*[：:]?$/.test(sourceText) ? '' : sourceText;
 
   // 区分開閉器（PAS／UGS／PGS／なし）。まだ答えていないときは、これまでどおりPAS（引込元がキャビネットならUGS）
   const sectionalizer = String(answers.sectionalizer ?? 'pas');

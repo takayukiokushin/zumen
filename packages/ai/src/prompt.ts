@@ -50,6 +50,7 @@ export function buildSystemPrompt(): string {
   - 引込元（sourceType）は、pole（電力会社の電柱）か cabinet（地上の電力会社キャビネット）のどちらかです。
     図の一番上が円の左半分を塗った記号なら pole、枠付きの断路器の記号なら cabinet です。
     pole のときは電柱名称（poleName）とASの有無（hasAs）、cabinet のときはキャビネット名称（cabinetName）を読み取ります（cabinet に AS はありません）。
+    poleName・cabinetName は、先頭の「中電柱：」「キャビネット番号：」も含めた文字そのままで答えます（例：「中電柱：猪子山（分）81」）。
   - PASとPGSは、SOG・内蔵機器などの質問がまったく同じです。
 - **PASの内蔵機器はSOGの有無で決まります。**
   - SOG（GRまたはDGR）がある → ZCTが必ず内蔵されます。VTは入る場合と入らない場合があります。

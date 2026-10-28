@@ -20,8 +20,7 @@ export const SAMPLE_ANSWERS: Answers = {
   receivingVoltage: 6600,
 
   sourceType: 'pole',
-  polePrefix: '中電柱:',
-  poleName: '大井(分)7T1H1',
+  poleName: '中電柱:大井(分)7T1H1',
   hasAs: 'no',
 
   boundaryPattern: 'coincident',

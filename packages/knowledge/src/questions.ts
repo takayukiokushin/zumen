@@ -263,24 +263,17 @@ export const QUESTIONS: Question[] = [
   },
   // ---- 電柱のとき ----
   {
-    id: 'polePrefix',
-    group: 'source',
-    label: '電柱番号の区分',
-    type: 'text',
-    defaultValue: '中電柱：',
-    showIf: { key: 'sourceType', ne: 'cabinet' },
-    ask: 'always',
-    help: '引込元は、すべて電力会社所有の電柱。中電柱＝中国電力の電柱。この部分は全現場で共通',
-  },
-  {
     id: 'poleName',
     group: 'source',
     label: '電柱名称',
     type: 'text',
-    placeholder: '猪子山（分）81',
+    // 「中電柱：」を最初から入れておき、その後ろに電柱の名称を入力する
+    defaultValue: '中電柱：',
     showIf: { key: 'sourceType', ne: 'cabinet' },
     ask: 'always',
-    help: '「中電柱：」に続く部分。（分）（幹）（支）（連絡）などの区分は電柱の記載をそのまま反映する',
+    help:
+      '「中電柱：」が最初から入っている（中電柱＝中国電力の電柱。全現場で共通）。その後ろに、電柱の名称を入力する（例：猪子山（分）81）。' +
+      '（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する',
   },
   {
     id: 'hasAs',
@@ -298,23 +291,15 @@ export const QUESTIONS: Question[] = [
   },
   // ---- 地上キャビネットのとき（電柱も AS も無い） ----
   {
-    id: 'cabinetPrefix',
-    group: 'source',
-    label: 'キャビネット番号の区分',
-    type: 'text',
-    defaultValue: 'キャビネット番号：',
-    showIf: { key: 'sourceType', eq: 'cabinet' },
-    ask: 'always',
-    help: '図面に書く、キャビネット名称の前の文字。ふつうは「キャビネット番号：」のままでよい',
-  },
-  {
     id: 'cabinetName',
     group: 'source',
     label: 'キャビネット名称',
     type: 'text',
+    // 「キャビネット番号：」を最初から入れておき、その後ろにキャビネットの名称を入力する
+    defaultValue: 'キャビネット番号：',
     showIf: { key: 'sourceType', eq: 'cabinet' },
     ask: 'always',
-    help: '「キャビネット番号：」に続く部分',
+    help: '「キャビネット番号：」が最初から入っている。その後ろに、キャビネットの名称を入力する',
   },
 
   /* ---------------- 責任分界点 ---------------- */

@@ -28,17 +28,11 @@ const pole = (id: string, abbr: string, nameJa: string, note: string): SymbolDef
   ports: [{ id: 'out', x: 16, y: 48, dir: 'down', role: 'line' }],
   fields: [
     {
-      key: 'polePrefix',
-      label: '電力会社の区分',
-      type: 'text',
-      defaultValue: '中電柱：',
-      help: '中電柱＝中国電力の電柱。この部分は全現場で共通',
-    },
-    {
       key: 'poleName',
       label: '電柱名称',
       type: 'text',
-      help: '「中電柱：」に続く部分（例: 猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱に記載されている内容をそのまま反映する',
+      defaultValue: '中電柱：',
+      help: '「中電柱：」が最初から入っている（中国電力の電柱）。その後ろに電柱の名称を入力する（例: 猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱に記載されている内容をそのまま反映する',
     },
   ],
   status: 'confirmed',
@@ -73,10 +67,9 @@ export const incomingSymbols: SymbolDef[] = [
     ],
     ports: [{ id: 'out', x: 28, y: 88, dir: 'down', role: 'line' }],
     fields: [
-      { key: 'cabinetPrefix', label: 'キャビネット番号の区分', type: 'text', defaultValue: 'キャビネット番号：' },
-      { key: 'cabinetName', label: 'キャビネット名称', type: 'text', help: '「キャビネット番号：」に続く部分' },
+      { key: 'cabinetName', label: 'キャビネット名称', type: 'text', defaultValue: 'キャビネット番号：', help: '「キャビネット番号：」が最初から入っている。その後ろに名称を入力する' },
     ],
-    labelLines: ['{cabinetPrefix}{cabinetName}'],
+    labelLines: ['{cabinetName}'],
     status: 'confirmed',
     statusNote: '断路器（DS）の図記号に、AS・PASと同じ実線の外枠をかぶせる形にしました。',
     note: '引込元が地上キャビネットのとき、電柱の代わりに一番上に描く。記号の脇に「キャビネット番号：」＋名称を書く。電柱も AS も無い。',

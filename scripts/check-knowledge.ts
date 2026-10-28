@@ -90,8 +90,7 @@ const answers: Answers = {
   receivingVoltage: 6600,
 
   sourceType: 'pole',
-  polePrefix: '中電柱:',
-  poleName: '大井(分)7T1H1',
+  poleName: '中電柱:大井(分)7T1H1',
   hasAs: 'no',
 
   boundaryPattern: 'coincident',
@@ -380,22 +379,25 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
     if (ids.has(gone)) fail(`なくしたはずの質問 ${gone} が残っています`);
   }
   const labels = (id: string) => QUESTIONS.find((q) => q.id === id)?.label;
-  if (labels('polePrefix') !== '電柱番号の区分') fail(`「電柱番号の区分」の名前が違います（${labels('polePrefix')}）`);
-  if (labels('cabinetPrefix') !== 'キャビネット番号の区分') fail(`「キャビネット番号の区分」の名前が違います（${labels('cabinetPrefix')}）`);
+  // 「区分」と「名称」は1つの欄にまとめた（最初から「中電柱：」「キャビネット番号：」が入っている）
+  for (const gone of ['polePrefix', 'cabinetPrefix']) {
+    if (ids.has(gone)) fail(`1つにまとめたはずの質問 ${gone} が残っています`);
+  }
+  if (labels('poleName') !== '電柱名称') fail(`「電柱名称」の名前が違います（${labels('poleName')}）`);
   if (labels('cabinetName') !== 'キャビネット名称') fail(`「キャビネット名称」の名前が違います（${labels('cabinetName')}）`);
-  const cabPrefix = QUESTIONS.find((q) => q.id === 'cabinetPrefix');
-  if (cabPrefix?.defaultValue !== 'キャビネット番号：') fail('キャビネット番号の区分の標準が「キャビネット番号：」ではありません');
   const poleName = QUESTIONS.find((q) => q.id === 'poleName');
-  if (/（分）|（幹）/.test(QUESTIONS.find((q) => q.id === 'cabinetName')?.help ?? '')) fail('キャビネット名称に、電柱の（分）（幹）の注意書きが残っています');
-  if (!poleName) fail('電柱名称の質問がありません');
+  const cabName = QUESTIONS.find((q) => q.id === 'cabinetName');
+  if (poleName?.defaultValue !== '中電柱：') fail(`電柱名称の最初の文字が「中電柱：」ではありません（${poleName?.defaultValue}）`);
+  if (cabName?.defaultValue !== 'キャビネット番号：') fail(`キャビネット名称の最初の文字が「キャビネット番号：」ではありません（${cabName?.defaultValue}）`);
+  if (/（分）|（幹）/.test(cabName?.help ?? '')) fail('キャビネット名称に、電柱の（分）（幹）の注意書きが残っています');
   const visibleIds = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
   const pole = visibleIds({ sourceType: 'pole' });
   const cab = visibleIds({ sourceType: 'cabinet' });
-  for (const id of ['polePrefix', 'poleName', 'hasAs']) {
+  for (const id of ['poleName', 'hasAs']) {
     if (!pole.has(id)) fail(`引込元が電柱のとき、${id} が出ていません`);
     if (cab.has(id)) fail(`引込元がキャビネットのとき、${id} が出ています`);
   }
-  for (const id of ['cabinetPrefix', 'cabinetName']) {
+  for (const id of ['cabinetName']) {
     if (pole.has(id)) fail(`引込元が電柱のとき、${id} が出ています`);
     if (!cab.has(id)) fail(`引込元がキャビネットのとき、${id} が出ていません`);
   }
@@ -407,7 +409,7 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   if (hasAsRole({ sourceType: 'cabinet', hasAs: 'yes' })) fail('キャビネットなのにASが描かれています');
   // 地上キャビネットのときは、電柱の代わりに「DS＋外枠」の記号を一番上に描き、脇に「キャビネット番号：名称」を書く
   {
-    const comp = buildComposition({ ...answers, sourceType: 'cabinet', cabinetPrefix: 'キャビネット番号：', cabinetName: '地下佐東西11号' });
+    const comp = buildComposition({ ...answers, sourceType: 'cabinet', cabinetName: 'キャビネット番号：地下佐東西11号' });
     const first = comp.find((i) => i.kind === 'series');
     if (first?.symbolId !== 'cabinet') fail(`引込元がキャビネットのとき、一番上が「${first?.symbolId}」です（cabinet のはず）`);
     if (comp.some((i) => i.symbolId === 'pole-utility')) fail('引込元がキャビネットなのに、電柱の記号が描かれています');
@@ -442,7 +444,24 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
     if (!findSymbol('ugs') || findSymbol('ugs')?.abbr !== 'UGS') fail('編集画面に出す UGS の記号がありません');
     console.log('  引込元がキャビネット：区分開閉器の文字は UGS（選択肢 UGS／PGS／なし）。電柱：PAS（PAS／PGS／なし）');
   }
-  console.log('  引込元：電柱 → 電柱番号の区分・電柱名称・ASの有無／地上キャビネット → キャビネット番号の区分・キャビネット名称（ASは無し）');
+  // 文字の組み立て：入力した文字をそのまま書く。「中電柱：」だけで名称が無いときは書かない
+  {
+    const src = (a: Answers) => buildComposition({ ...answers, ...a }).find((i) => i.kind === 'series')?.label.join('|');
+    const rows: [string, string | undefined, string][] = [
+      ['電柱：名称あり', src({ sourceType: 'pole', poleName: '中電柱：猪子山（分）81' }), '中電柱：猪子山（分）81'],
+      ['電柱：「中電柱：」だけ（名称が無い）', src({ sourceType: 'pole', poleName: '中電柱：' }), ''],
+      ['電柱：書き換えてもそのまま書く', src({ sourceType: 'pole', poleName: '関電柱：大井1' }), '関電柱：大井1'],
+      ['キャビネット：名称あり', src({ sourceType: 'cabinet', cabinetName: 'キャビネット番号：地下佐東西11号' }), 'キャビネット番号：地下佐東西11号'],
+      ['キャビネット：「キャビネット番号：」だけ', src({ sourceType: 'cabinet', cabinetName: 'キャビネット番号：' }), ''],
+      ['古い案件（区分と名称が別々）→つなげて読む', src({ sourceType: 'pole', polePrefix: '中電柱：', poleName: '大井1' } as Answers), '中電柱：大井1'],
+      ['古い案件（キャビネットの区分と名称）', src({ sourceType: 'cabinet', cabinetPrefix: 'キャビネット番号：', cabinetName: '地下1号' } as Answers), 'キャビネット番号：地下1号'],
+    ];
+    for (const [name, got, want] of rows) {
+      if ((got ?? '') !== want) fail(`${name}：「${got}」になっています（期待：「${want}」）`);
+      else console.log(`  ${name}：${want || '（書かない）'}`);
+    }
+  }
+  console.log('  引込元：電柱 → 電柱名称（「中電柱：」入り）・ASの有無／地上キャビネット → キャビネット名称（「キャビネット番号：」入り）（ASは無し）');
   // 古い回答（hasPas だけ入っている）を読み替える
   const legacyNo = normalizeAnswers({ hasPas: 'no' });
   const legacyYes = normalizeAnswers({ hasPas: 'yes' });

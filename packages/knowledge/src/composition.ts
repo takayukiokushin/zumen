@@ -93,7 +93,7 @@ export const UPSTREAM: Placement[] = [
     kind: 'series',
     when: { key: 'sourceType', ne: 'cabinet' },
     // 引込元が電柱のとき：電力会社所有の電柱
-    labelTemplate: ['{polePrefix}{poleName}'],
+    labelTemplate: ['{sourceLabel}'],
   },
   {
     // 引込元が地上キャビネットのとき：電柱の代わりに、DSの図記号に外枠をかぶせた記号
@@ -101,7 +101,7 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'cabinet',
     kind: 'series',
     when: { key: 'sourceType', eq: 'cabinet' },
-    labelTemplate: ['{cabinetPrefix}{cabinetName}'],
+    labelTemplate: ['{sourceLabel}'],
   },
   {
     role: 'as',
