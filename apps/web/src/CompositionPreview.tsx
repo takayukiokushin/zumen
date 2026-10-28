@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { buildComposition, missingRequired } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { findSymbol } from '@zumen/symbols';
@@ -10,6 +11,7 @@ const KIND_LABEL: Record<string, string> = {
   frame: '枠',
   feeder: '回線',
   overlay: '横線',
+  link: 'ケーブル',
 };
 
 /**
@@ -25,10 +27,14 @@ export function CompositionPreview({ answers }: { answers: Answers }) {
       <h3>いまの構成</h3>
       <p className="sub">回答から自動で組み立てた機器の並びです（上流→下流）。</p>
       <ul className="chain">
-        {items.map((item) => {
+        {items.map((item, i) => {
           const def = findSymbol(item.symbolId);
+          // 2か所目以降のエリアに入るところで、見出しを入れる
+          const heading = item.area !== undefined && items[i - 1]?.area !== item.area;
           return (
-            <li key={item.id} className={item.kind}>
+            <Fragment key={item.id}>
+              {heading && <li className="area-head">{item.area! + 1}か所目のエリア</li>}
+            <li className={item.kind}>
               <span className="kind">{KIND_LABEL[item.kind]}</span>
               <span>
                 <span className="name">{def?.abbr ?? item.symbolId}</span>
@@ -36,6 +42,7 @@ export function CompositionPreview({ answers }: { answers: Answers }) {
                 {item.label.length > 0 && <span className="lbl">{item.label.join(' / ')}</span>}
               </span>
             </li>
+            </Fragment>
           );
         })}
       </ul>

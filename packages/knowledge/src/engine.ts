@@ -2,7 +2,7 @@ import type { Answers, Value } from './condition.ts';
 import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
-import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from './composition.ts';
+import { AREA_CHAIN, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
 
 /* ------------------------------------------------------------------ */
@@ -160,10 +160,18 @@ export function questionsByGroup(answers: Answers, opts: AskOptions = {}): {
 
 /** 未回答の必須項目 */
 export function missingRequired(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
+  const empty = (v: unknown) => v === undefined || v === null || v === '';
   const answers = normalizeAnswers(rawAnswers);
-  return visibleQuestions(answers, opts).filter(
-    (q) => q.required && (answers[q.id] === undefined || answers[q.id] === null || answers[q.id] === ''),
-  );
+  const out = visibleQuestions(answers, opts).filter((q) => q.required && empty(answers[q.id]));
+  // 2か所目以降のエリアは、そのエリアの答えで見る（エリアごとの質問と、エリア自体の質問だけ）
+  for (let n = 1; n < areaCountOf(rawAnswers); n++) {
+    const view = normalizeAnswers(areaView(rawAnswers, n));
+    for (const q of visibleQuestions(view, opts)) {
+      const scoped = q.group === 'area' ? q.id !== 'areaCount' : PER_AREA_QUESTION_IDS.has(q.id);
+      if (scoped && q.required && empty(view[q.id])) out.push({ ...q, label: `${n + 1}か所目：${q.label}` });
+    }
+  }
+  return out;
 }
 
 /**
@@ -319,6 +327,17 @@ export function withDerived(rawAnswers: Answers): Answers {
       : `${answers.cableLengthApprox === 'yes' ? '約' : ''}${answers.cableLength}m`,
   ].filter(Boolean);
   d.cableSpecLine = third.join(' ');
+
+  // 2か所目以降のエリアの、前のエリアからのケーブルの注記（種類・構造・断面積・長さ）
+  d.linkCableInstallationLabel = CABLE_INSTALLATION_LABEL[String(answers.linkCableInstallation)] ?? '';
+  d.linkCableSpecLine = [
+    answers.linkCableCrossSection ? `${answers.linkCableCrossSection}mm2` : '',
+    answers.linkCableLength === undefined || answers.linkCableLength === null || answers.linkCableLength === ''
+      ? ''
+      : `${answers.linkCableLength}m`,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   // CT・VTの台数。2台以上のときだけ「CT×2」「VT＋PF×2」のように書く
   const times = (v: unknown) => {
@@ -498,6 +517,20 @@ export interface PlacedItem {
    * コンデンサ1台目のリアクトルとコンデンサ、のように「同じ1台ぶん」をまとめるのに使う。
    */
   unit?: number;
+  /**
+   * 2か所目以降のエリアの機器のとき、何か所目か（1が2か所目。0始まり）。1か所目の機器には付かない。
+   * 役割（role）には、「a2:」のように、エリアの番号が前に付く。
+   */
+  area?: number;
+  /** kind==='link' のとき、前のエリアからのつなぎ方 */
+  link?: {
+    /** どのエリアから分岐するか（0始まり） */
+    from: number;
+    /** 分岐の位置：ds-source（DSの電源側）／ds-vcb（DSとVCBの間）／vcb-load（VCBの負荷側）／bus（高圧母線） */
+    tap: string;
+    /** ケーブルの線を点線（埋設）で描くか */
+    dashed: boolean;
+  };
   note?: string;
 }
 
@@ -644,19 +677,54 @@ function intakeFlags(answers: Answers): Record<string, string> {
   };
 }
 
-/** 回答から、上流→下流の順に並んだ機器の一覧を作る */
+/**
+ * 回答から、上流→下流の順に並んだ機器の一覧を作る。
+ * 受電設備エリアが2か所以上のときは、1か所目の機器のあとに、2か所目以降の機器が続く
+ * （2か所目以降は、役割に「a2:」などが付き、area に何か所目かが入る）。
+ */
 export function buildComposition(rawAnswers: Answers): PlacedItem[] {
-  const answers = withDerived(rawAnswers);
-  const form = String(answers.mainBreakerForm ?? 'pfs');
-  const chain: Placement[] = [
+  const form = String(withDerived(rawAnswers).mainBreakerForm ?? 'pfs');
+  const first = composeChain(rawAnswers, [
     ...UPSTREAM,
     ...(CHAIN_BY_FORM[form] ?? []),
     ...DOWNSTREAM,
     ...TRANSFORMER,
     ...EXTRAS,
     ...FEEDERS,
-  ];
+  ]);
+  const out = [...first];
+  for (let n = 1; n < areaCountOf(rawAnswers); n++) {
+    const view = areaView(rawAnswers, n);
+    const prefix = `a${n + 1}:`;
+    const items = composeChain(view, [...AREA_CHAIN, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
+    const asPlaced = (r: string) => `${prefix}${r}`;
+    for (const item of items) {
+      out.push({
+        ...item,
+        id: asPlaced(item.id),
+        role: asPlaced(item.role),
+        parent: item.parent ? asPlaced(item.parent) : undefined,
+        attachTo: item.attachTo ? asPlaced(item.attachTo) : undefined,
+        connectFrom: item.connectFrom?.map(asPlaced),
+        area: n,
+        ...(item.kind === 'link'
+          ? {
+              link: {
+                from: Math.max(0, Math.min(n - 1, (Number(view.linkFrom ?? 1) || 1) - 1)),
+                tap: String(view.linkTap ?? 'bus'),
+                dashed: view.linkCableInstallation === 'buried',
+              },
+            }
+          : {}),
+      });
+    }
+  }
+  return out;
+}
 
+/** 機器の並びの定義（chain）から、回答に合う機器の一覧を作る */
+function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
+  const answers = withDerived(rawAnswers);
   const out: PlacedItem[] = [];
 
   // 同じ件数で繰り返す機器が隣り合っているときは、件ごとにまとめて出す。

@@ -600,3 +600,5 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .area-block .group.inner { margin-top: calc(12px * var(--text-scale)); }
 .area-block .grouphead { margin: 0; font-size: calc(14px * var(--text-scale)); }
 .nav a.sub-link { padding-left: calc(22px * var(--text-scale)); font-size: 0.95em; }
+
+.preview .chain li.area-head { font-weight: var(--weight-strong); background: var(--accent-soft); border-top: 2px solid var(--accent); margin-top: calc(10px * var(--text-scale)); }

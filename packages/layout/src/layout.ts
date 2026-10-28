@@ -92,8 +92,11 @@ const portOf = (def: SymbolDef, ...ids: string[]): Port | undefined => {
   return undefined;
 };
 
-export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
+export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout {
   void answers;
+  // 2か所目以降のエリアの機器（area が付いているもの）は、まだ図面に描かない（配置は、次の対応で作る）。
+  // 1か所目だけを、これまでどおり描く
+  const items = allItems.filter((i) => i.area === undefined);
   const symbols: PlacedSymbol[] = [];
   const wires: Wire[] = [];
   const frames: FrameMark[] = [];

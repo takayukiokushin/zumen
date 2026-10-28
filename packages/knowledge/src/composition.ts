@@ -18,6 +18,8 @@ export type PlacementKind =
   | 'inside'
   /** 主回路を囲む枠（キュービクルの範囲など） */
   | 'frame'
+  /** 2か所目以降のエリアを、前のエリアにつなぐケーブル（記号ではなく、つなぎ方を表す） */
+  | 'link'
   /**
    * 高圧母線から下へ並列にぶら下がる（変圧器・高圧進相設備など）。
    * 1台だけのときは母線を描かず、主回路にそのまま直列で入る。
@@ -369,6 +371,101 @@ export const DOWNSTREAM: Placement[] = [
     when: { key: 'hasLa', eq: 'yes' },
     labelTemplate: ['LA'],
   },
+];
+
+/**
+ * 受電設備エリアが2か所以上のとき、2か所目以降のエリアの、受電側の機器の並び。
+ * 1か所目と違い、主遮断装置の形式（CB形・PFS形）ではなく、「このエリアの受電側の開閉器」（areaIntake）で決まる。
+ * 条件には、engine の intakeFlags（intakeDs・intakeVcb・intakeLbs・intakeLbsPf・intakeStandard・intakeOptional）を使う。
+ */
+export const AREA_CHAIN: Placement[] = [
+  {
+    role: 'link',
+    symbolId: 'cable-head',
+    kind: 'link',
+    when: { key: 'linkCable', ne: 'no' },
+    labelTemplate: ['{linkCableInstallationLabel}', '{linkCableStructure}', '{linkCableSpecLine}'],
+    note: '前のエリアから分岐してくるケーブル。つなぎ方（どこから・どこへ）は、図面の配置で使う',
+  },
+  {
+    role: 'area-frame',
+    symbolId: 'enclosure-cubicle',
+    kind: 'frame',
+    when: { not: { key: 'areaForm', eq: 'apartment-pole' } },
+    labelTemplate: ['{areaLabel}'],
+  },
+  { role: 'ds', symbolId: 'ds', kind: 'series', when: { key: 'intakeDs', eq: 'yes' }, labelTemplate: ['DS', '{dsRating}'] },
+  {
+    role: 'ds-vt-pf',
+    symbolId: 'pf',
+    kind: 'branch-right',
+    when: { key: 'intakeStandard', eq: 'yes' },
+    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
+    note: 'DS＋VCBの標準構成のときは、DSの次にVTを並列接続する',
+  },
+  { role: 'ds-vt', symbolId: 'vt', kind: 'branch-right', when: { key: 'intakeStandard', eq: 'yes' }, props: { ratio: 'vtRatio' } },
+  {
+    role: 'main-breaker',
+    symbolId: 'vcb',
+    kind: 'series',
+    when: { key: 'intakeVcb', eq: 'yes' },
+    labelTemplate: ['VCB', '{vcbRating}'],
+  },
+  {
+    role: 'main-breaker',
+    symbolId: 'lbs-pf',
+    kind: 'series',
+    when: { key: 'intakeLbsPf', eq: 'yes' },
+    labelTemplate: ['LBS', '{lbsRatedVoltage}V', '{lbsRatedCurrent}A', 'PF×{lbsFuseCount}', '{lbsFuseSpec}'],
+    props: { ratedVoltage: 'lbsRatedVoltage', ratedCurrent: 'lbsRatedCurrent', fuseCount: 'lbsFuseCount', fuseSpec: 'lbsFuseSpec' },
+  },
+  {
+    role: 'main-breaker',
+    symbolId: 'lbs',
+    kind: 'series',
+    when: { all: [{ key: 'intakeLbs', eq: 'yes' }, { key: 'intakeLbsPf', ne: 'yes' }] },
+    labelTemplate: ['LBS', '{lbsRatedVoltage}V', '{lbsRatedCurrent}A'],
+    props: { ratedVoltage: 'lbsRatedVoltage', ratedCurrent: 'lbsRatedCurrent' },
+  },
+  {
+    role: 'ct',
+    symbolId: 'ct',
+    kind: 'series',
+    when: { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] },
+    labelTemplate: ['{ctHead}', '{ctRatioText}'],
+    props: { ratio: 'ctRatioText' },
+  },
+  {
+    // VCBがあって、CTもあるとき、試験端子とOCRを付ける（1か所目のCB形と同じ）
+    role: 'ct-test-terminal',
+    symbolId: 'test-terminal',
+    kind: 'branch-right',
+    when: { all: [{ key: 'intakeVcb', eq: 'yes' }, { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] }] },
+  },
+  {
+    role: 'ocr',
+    symbolId: 'relay-ocr',
+    kind: 'branch-right',
+    when: { all: [{ key: 'intakeVcb', eq: 'yes' }, { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] }] },
+    connectFrom: ['ct-test-terminal'],
+  },
+  {
+    role: 'site-vt-pf',
+    symbolId: 'pf',
+    kind: 'branch-right',
+    when: { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
+    labelTemplate: ['{vtPfHead}', '{vtRatio}'],
+  },
+  {
+    role: 'site-vt',
+    symbolId: 'vt',
+    kind: 'branch-right',
+    when: { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
+    props: { ratio: 'vtRatio' },
+  },
+  { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
+  { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', when: { key: 'hasZpd', eq: 'yes' }, connectFrom: ['zpd'] },
+  { role: 'site-la', symbolId: 'la', kind: 'branch-left', when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
 ];
 
 /** 変圧器（台数分くり返す） */

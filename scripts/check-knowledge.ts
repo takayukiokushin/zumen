@@ -150,8 +150,8 @@ const composition = buildComposition(answers);
 console.log(`\n  組み立てた構成（${composition.length}件）:`);
 for (const item of composition) {
   const kind =
-    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線', free: '独立', overlay: '重ね' }[
-      item.kind
+    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線', free: '独立', overlay: '重ね', link: 'つなぎ' }[
+      item.kind as string
     ] ?? item.kind;
   const label = item.label.length ? `  「${item.label.join(' / ')}」` : '';
   const parent = item.parent ? ` → ${item.parent}.${item.slot}` : '';
@@ -882,6 +882,78 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   console.log('  2か所目の答えは「a2:〜」で別に持ち、1か所目・以前の案件とは混ざらない');
   console.log('  受電側の開閉器（DS＋VCB／VCBのみ／LBS（PF付）／LBS／DSのみ／なし）で、聞く質問が変わる');
   console.log('  エリア間の接続：ケーブルの有無・分岐元（3か所目から）・分岐の位置・ケーブルの記載');
+}
+
+console.log('\n■ 受電設備エリアが2か所以上のときの構成（エリアごとの機器・エリア間のケーブル）');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  const multi: Answers = {
+    ...answers,
+    areaCount: 3,
+    areaForm: 'cubicle', areaPlacement: 'outdoor',
+    areaForm__2: 'room-open', areaPlacement__2: 'indoor', areaFloor__2: '1階',
+    areaForm__3: 'cubicle', areaPlacement__3: 'rooftop',
+    // 2か所目：LBS（PF付）で受ける。変圧器2台。1か所目の1か所目から母線で分岐、埋設ケーブル
+    'a2:areaIntake': 'lbs-pf', 'a2:lbsRatedVoltage': '7200', 'a2:lbsRatedCurrent': 200, 'a2:lbsFuseCount': 3,
+    'a2:linkCable': 'yes', 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried', 'a2:linkCableStructure': 'CVT',
+    'a2:linkCableCrossSection': '38', 'a2:linkCableLength': 20,
+    'a2:transformerCount': 2, 'a2:trConnection': 'tr-3p-dy', 'a2:trCapacity': 100, 'a2:trCapacity__2': 50, 'a2:trConnection__2': 'tr-3p-dy',
+    'a2:hasSiteVt': 'yes', 'a2:hasZpd': 'yes',
+    // 3か所目：DSのみで受ける。2か所目から、DSとVCBの間で分岐。変圧器1台
+    'a3:areaIntake': 'ds', 'a3:dsRating': '7200V 200A', 'a3:linkFrom': '2', 'a3:linkTap': 'ds-vcb',
+    'a3:trConnection': 'tr-3p-yd', 'a3:trCapacity': 75,
+  };
+  const all = buildComposition(multi);
+  const firstArea = all.filter((i) => i.area === undefined);
+  const baseline = buildComposition({ ...answers, areaCount: 1 });
+  ok(JSON.stringify(firstArea) === JSON.stringify(baseline), '2か所以上でも、1か所目の機器は、1か所だけのときと同じはずです');
+  ok(new Set(all.map((i) => i.id)).size === all.length, '機器のIDが重複しています');
+  const a2 = all.filter((i) => i.area === 1);
+  const a3 = all.filter((i) => i.area === 2);
+  ok(a2.length > 0 && a2.every((i) => i.role.startsWith('a2:') && i.id.startsWith('a2:')), '2か所目の機器の役割に「a2:」が付いていません');
+  ok(a3.length > 0 && a3.every((i) => i.role.startsWith('a3:')), '3か所目の機器の役割に「a3:」が付いていません');
+  const role = (list: typeof all, r: string) => list.find((i) => i.role === r);
+  // 2か所目：LBS（PF付）
+  ok(role(a2, 'a2:main-breaker')?.symbolId === 'lbs-pf', '2か所目の受電側がLBS（PF付）になっていません');
+  ok(role(a2, 'a2:main-breaker')?.label.join('|') === 'LBS|7200V|200A|PF×3', `2か所目のLBSの文字：${role(a2, 'a2:main-breaker')?.label.join('|')}`);
+  ok(!role(a2, 'a2:ds') && !role(a2, 'a2:ct-test-terminal'), '2か所目（LBS）に、DS・試験端子が入っています');
+  ok(role(a2, 'a2:site-vt')?.kind === 'branch-right' && Boolean(role(a2, 'a2:zpd')) && Boolean(role(a2, 'a2:ovgr')), '2か所目のVT・ZPD・OVGRが入っていません');
+  ok(role(a2, 'a2:area-frame')?.label[0]?.startsWith('オープンフレーム式'), `2か所目の枠の文字：${role(a2, 'a2:area-frame')?.label[0]}`);
+  const link2 = role(a2, 'a2:link');
+  ok(link2?.kind === 'link' && link2.link?.from === 0 && link2.link.tap === 'bus' && link2.link.dashed === true, '2か所目のつなぎ方（1か所目の高圧母線から・埋設）が違います');
+  ok(link2?.label.join('|') === '埋ケ|CVT|38mm2 20m', `2か所目のケーブルの文字：${link2?.label.join('|')}`);
+  const trs2 = a2.filter((i) => i.role === 'a2:transformer');
+  ok(trs2.length === 2 && trs2.map((t) => t.lane).join() === '0,1', `2か所目の変圧器：${trs2.length}台・列 ${trs2.map((t) => t.lane).join(',')}（2台・列0,1のはず）`);
+  ok(trs2[0]!.label.join('|').includes('3φ100kVA') && trs2[1]!.label.join('|').includes('3φ50kVA'), '2か所目の変圧器の容量が、台ごとに入っていません');
+  // 3か所目：DSのみ。2か所目から分岐
+  ok(Boolean(role(a3, 'a3:ds')) && !role(a3, 'a3:main-breaker') && !role(a3, 'a3:ct'), '3か所目（DSのみ）の受電側が違います');
+  const link3 = role(a3, 'a3:link');
+  ok(link3?.link?.from === 1 && link3.link.tap === 'ds-vcb' && link3.link.dashed === false, '3か所目のつなぎ方（2か所目のDSとVCBの間から）が違います');
+  ok(a3.filter((i) => i.role === 'a3:transformer').length === 1, '3か所目の変圧器が1台になっていません');
+  // 受電側の開閉器ごとの機器
+  const intake = (kind: string, extra: Answers = {}) =>
+    buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': kind, ...extra }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', ''));
+  const std = intake('ds-vcb');
+  ok(['ds', 'ds-vt-pf', 'ds-vt', 'main-breaker', 'ct', 'ct-test-terminal', 'ocr'].every((r) => std.includes(r)), `DS＋VCBの標準構成が揃っていません（${std.join(',')}）`);
+  const vcbOnly = intake('vcb');
+  ok(vcbOnly.includes('main-breaker') && !vcbOnly.includes('ds') && !vcbOnly.includes('ct') && !vcbOnly.includes('ocr'), `VCBのみ（CTなし）：${vcbOnly.join(',')}`);
+  const vcbCt = intake('vcb', { 'a2:hasSiteCt': 'yes' });
+  ok(vcbCt.includes('ct') && vcbCt.includes('ocr') && vcbCt.includes('ct-test-terminal'), `VCBのみ（CTあり）：${vcbCt.join(',')}`);
+  const lbsPlain = buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'lbs' }).find((i) => i.role === 'a2:main-breaker');
+  ok(lbsPlain?.symbolId === 'lbs', 'LBS（PFなし）が、PFなしのLBSの記号になっていません');
+  const none = intake('none');
+  ok(!none.includes('ds') && !none.includes('main-breaker') && none.includes('area-frame') && none.includes('link'), `開閉器なし：${none.join(',')}`);
+  // つながないとき
+  const noLink = buildComposition({ ...answers, areaCount: 2, 'a2:linkCable': 'no' }).find((i) => i.role === 'a2:link');
+  ok(!noLink, '「つながない」のに、ケーブルが入っています');
+  // 以前の案件（エリア1か所・キーに a2: なし）は、機器の数も同じ
+  ok(baseline.every((i) => i.area === undefined), '1か所の案件に、エリアの印が付いています');
+  // 未回答の必須項目は、「2か所目：」を付けて知らせる
+  const miss = missingRequired({ areaCount: 2, mainBreakerForm: 'cb', areaForm: 'cubicle', areaPlacement: 'indoor', trConnection: 'tr-3p-dy', trCapacity: 1 }).map((q) => q.label);
+  ok(miss.some((l) => l.startsWith('2か所目：')), `2か所目の未回答が、知らされていません（${miss.join(' / ')}）`);
+  console.log(`  1か所目は、1か所だけのときと同じ。2か所目 ${a2.length}件・3か所目 ${a3.length}件が、「a2:」「a3:」の役割で続く`);
+  console.log('  2か所目：LBS（PF付）・VT・ZPD・変圧器2台、1か所目の母線から埋設ケーブル。3か所目：DSのみ、2か所目のDSとVCBの間から');
+  console.log('  受電側の開閉器ごとの機器：DS＋VCB（標準）／VCBのみ／LBS／DSのみ／なし');
 }
 
 console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式→電圧、受電電圧との連動）');
