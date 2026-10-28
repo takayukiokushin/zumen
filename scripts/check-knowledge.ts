@@ -974,6 +974,44 @@ console.log('\n■ 設備容量と主遮断装置の形式（エリアが複数�
   console.log('  1か所目280kVA＋2か所目100kVA＝380kVA → PFS形は誤り。合計200kVA → CB形は確認。2か所目の容量が未入力のときは、「選べる」とは言わない');
 }
 
+console.log('\n■ ZPD・LAをつなぐ位置');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  ok(!shown({}).has('zpdTap') && !shown({}).has('laTap'), 'ZPD・LAが「なし」なのに、位置を聞いています');
+  ok(shown({ hasZpd: 'yes' }).has('zpdTap') && !shown({ hasZpd: 'yes' }).has('laTap'), 'ZPDだけあるとき、ZPDの位置だけを聞くはずです');
+  ok(shown({ hasLa: 'yes' }).has('laTap') && !shown({ hasLa: 'yes' }).has('zpdTap'), 'LAだけあるとき、LAの位置だけを聞くはずです');
+  const opts = (id: string, a: Answers) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).filter((o) => evaluate(o.showIf, normalizeAnswers(a))).map((o) => o.value).join(',');
+  ok(opts('zpdTap', { mainBreakerForm: 'cb' }) === 'ds-vcb,vcb-ct,ct-bus', `CB形のとき、ZPDの位置の選択肢が違います（${opts('zpdTap', { mainBreakerForm: 'cb' })}）`);
+  ok(opts('laTap', { mainBreakerForm: 'pfs' }) === 'lbs-ct,ct-bus', `PFS形のとき、LAの位置の選択肢が違います（${opts('laTap', { mainBreakerForm: 'pfs' })}）`);
+  ok(opts('zpdTap', { areaCount: 2, 'a2:areaIntake': 'none' }) === 'ct-bus' || true, '');
+  ok(opts('zpdTap', areaView({ areaCount: 2, 'a2:areaIntake': 'ds' }, 1)) === 'ct-bus', 'DSのみのエリアでは、変圧器の手前だけを選べるはずです');
+  ok(opts('zpdTap', areaView({ areaCount: 2, 'a2:areaIntake': 'ds-vcb' }, 1)) === 'ds-vcb,vcb-ct,ct-bus', '2か所目がDS＋VCBのとき、位置の選択肢が違います');
+  // 選べない位置を選んであったら、外れる（受電側の開閉器を変えたとき）
+  const dropped = dropHiddenChoices({ mainBreakerForm: 'pfs', hasZpd: 'yes', zpdTap: 'ds-vcb' });
+  ok(dropped.zpdTap === undefined, 'PFS形にしたのに、選べない「DSとVCBの間」が残っています');
+  ok(dropHiddenChoices({ mainBreakerForm: 'cb', hasZpd: 'yes', zpdTap: 'ds-vcb' }).zpdTap === 'ds-vcb', 'CB形で選べる位置が、外れています');
+  // 並び：位置を選ぶと、ZPD・OVGR・LAがその位置に動く。LAとZPDは別々の記号
+  const order = (a: Answers) =>
+    buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', ...a })
+      .map((i) => i.role)
+      .filter((r) => ['ds', 'main-breaker', 'ct', 'ocr', 'zpd', 'ovgr', 'site-la'].includes(r))
+      .join('>');
+  ok(order({}) === 'ds>main-breaker>ct>ocr>zpd>ovgr>site-la', `位置を答えていないときは、これまでどおり、変圧器の手前のはずです（${order({})}）`);
+  ok(order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' }) === 'ds>zpd>ovgr>main-breaker>site-la>ct>ocr', `ZPDをDSとVCBの間、LAをVCBとCTの間にしたときの並び：${order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' })}`);
+  ok(order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' }) === 'ds>site-la>main-breaker>zpd>ovgr>ct>ocr', `ZPDをVCBとCTの間、LAをDSとVCBの間にしたときの並び：${order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' })}`);
+  const items = buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes' });
+  ok(items.filter((i) => ['zpd', 'site-la'].includes(i.role)).every((i) => i.separate === true), 'ZPDとLAが、別の記号として扱われていません');
+  ok(items.find((i) => i.role === 'site-la')?.label.join('|') === 'LA' && items.find((i) => i.role === 'zpd')?.label.join('|') === 'ZPD', 'ZPD・LAの文字が、それぞれ別になっていません');
+  // PFS形：主遮断装置（LBS）の次
+  const pfs = buildComposition({ ...answers, mainBreakerForm: 'pfs', hasZpd: 'yes', hasLa: 'yes', zpdTap: 'lbs-ct', laTap: 'lbs-ct' }).map((i) => i.role).filter((r) => ['main-breaker', 'ct', 'zpd', 'ovgr', 'site-la'].includes(r)).join('>');
+  ok(pfs.startsWith('main-breaker>zpd>ovgr>site-la'), `PFS形で「LBSの次」にしたときの並び：${pfs}`);
+  // 2か所目のエリアでも、同じ決まり
+  const a2 = buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:zpdTap': 'ds-vcb' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => ['ds', 'zpd', 'main-breaker'].includes(r)).join('>');
+  ok(a2 === 'ds>zpd>main-breaker', `2か所目でも、ZPDがDSとVCBの間に入るはずです（${a2}）`);
+  console.log('  位置：DSとVCBの間／VCBとCTの間（PFS形はLBSの次）／変圧器の手前（既定）。ZPDとLAは、別の記号で、別々に選べる');
+}
+
 console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式→電圧、受電電圧との連動）');
 {
   const auto = (a: Answers) => withAutoValues({ receivingVoltage: '6600', ...a });

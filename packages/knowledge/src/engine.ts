@@ -35,7 +35,7 @@ function dropHiddenChoicesBase(answers: Answers): Answers {
       if (index < 0) continue;
       const chosen = answers[key];
       const opt = q.options.find((o) => o.value === chosen);
-      if (opt?.showIf && !evaluate(opt.showIf, viewAt(answers, index))) {
+      if (opt?.showIf && !evaluate(opt.showIf, normalizeAnswers(viewAt(answers, index)))) {
         if (out === answers) out = { ...answers };
         delete out[key];
       }
@@ -522,6 +522,13 @@ export interface PlacedItem {
    * 役割（role）には、「a2:」のように、エリアの番号が前に付く。
    */
   area?: number;
+  /**
+   * ZPD・LAをつなぐ位置の答え（ds-vcb／vcb-ct／lbs-ct／ct-bus）。
+   * 位置は、構成の並び（主回路の何番目か）で決まっている。ct-bus＝変圧器の手前（高圧母線の上）
+   */
+  tap?: string;
+  /** 直前の同じ向きの分岐と、横につなげずに、別の分岐として出す（ZPDとLAを別の記号にするため） */
+  separate?: boolean;
   /** kind==='link' のとき、前のエリアからのつなぎ方 */
   link?: {
     /** どのエリアから分岐するか（0始まり） */
@@ -629,7 +636,7 @@ export function areaView(answers: Answers, area: number): Answers {
     if (key.startsWith(prefix)) out[key.slice(prefix.length)] = value;
   }
   out.areaNo = area + 1;
-  return out;
+  return normalizeAnswers(out);
 }
 
 /** 質問ではないが、表示条件から参照してよい値（エリアの番号と、受電側の開閉器から決まる目印） */
@@ -773,10 +780,31 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' ? laneBase + i : undefined,
           row: p.row,
           unit: countKey ? i : undefined,
+          ...(p.tapFrom ? { tap: String(a[p.tapFrom] ?? 'ct-bus'), separate: true } : {}),
           note: p.note,
         });
       }
     }
   }
-  return out;
+  return placeByTap(out);
 }
+
+/**
+ * ZPD・LAを、答えた位置に動かす。
+ * - ds-vcb（DSとVCBの間）：主遮断装置（VCB）の直前
+ * - vcb-ct・lbs-ct（主遮断装置とCTの間）：主遮断装置の直後
+ * - ct-bus（変圧器の手前）：いまの位置（CTや試験端子・OCRのあと、高圧母線の上）
+ * 主遮断装置が無いときは、動かさない。
+ */
+function placeByTap(items: PlacedItem[]): PlacedItem[] {
+  const tapped = items.filter((i) => i.tap && ['ds-vcb', 'vcb-ct', 'lbs-ct'].includes(i.tap));
+  if (tapped.length === 0) return items;
+  const main = items.findIndex((i) => i.role === 'main-breaker');
+  if (main < 0) return items;
+  const rest = items.filter((i) => !tapped.includes(i));
+  const at = rest.findIndex((i) => i.role === 'main-breaker');
+  const before = tapped.filter((i) => i.tap === 'ds-vcb');
+  const after = tapped.filter((i) => i.tap !== 'ds-vcb');
+  return [...rest.slice(0, at), ...before, rest[at]!, ...after, ...rest.slice(at + 1)];
+}
+

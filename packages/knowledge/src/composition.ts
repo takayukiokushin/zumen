@@ -63,6 +63,8 @@ export interface Placement {
   labelSide?: 'left' | 'right';
   /** kind==='overlay' のとき、重ねる先の記号のロール */
   attachTo?: string;
+  /** つなぐ位置を答える質問のID（ZPD・LA）。答えに応じて、並びの位置を動かす */
+  tapFrom?: string;
   /**
    * kind==='feeder' のときの列番号の始まり。
    * 低圧の回線と、あとから結線する発電機などが同じ列に重ならないよう、
@@ -354,6 +356,7 @@ export const DOWNSTREAM: Placement[] = [
     role: 'zpd',
     symbolId: 'zpd',
     kind: 'branch-left',
+    tapFrom: 'zpdTap',
     when: { key: 'hasZpd', eq: 'yes' },
     labelTemplate: ['ZPD'],
   },
@@ -361,6 +364,7 @@ export const DOWNSTREAM: Placement[] = [
     role: 'ovgr',
     symbolId: 'relay-ovgr',
     kind: 'branch-left',
+    tapFrom: 'zpdTap',
     when: { key: 'hasZpd', eq: 'yes' },
     connectFrom: ['zpd'],
   },
@@ -368,6 +372,7 @@ export const DOWNSTREAM: Placement[] = [
     role: 'site-la',
     symbolId: 'la',
     kind: 'branch-left',
+    tapFrom: 'laTap',
     when: { key: 'hasLa', eq: 'yes' },
     labelTemplate: ['LA'],
   },
@@ -471,9 +476,9 @@ export const AREA_CHAIN: Placement[] = [
     when: { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] },
     props: { ratio: 'vtRatio' },
   },
-  { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
-  { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', when: { key: 'hasZpd', eq: 'yes' }, connectFrom: ['zpd'] },
-  { role: 'site-la', symbolId: 'la', kind: 'branch-left', when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
+  { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
+  { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, connectFrom: ['zpd'] },
+  { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
 ];
 
 /** 変圧器（台数分くり返す） */

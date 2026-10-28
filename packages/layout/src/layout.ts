@@ -401,10 +401,10 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     const rb = rotatedBox(def.box, rotate);
     const [erx, ery] = rotatedPort(def.box, entry.x, entry.y, rotate);
 
-    // 直前も同じ向きの分岐で、かつ同じ1台ぶんなら、その出口から横につなぐ。
+    // 直前も同じ向きの分岐で、かつ同じ1台ぶんなら、その出口から横につなぐ（ZPDとLAのように、別の記号にしたいものは、つながない）。
     // （コンデンサ1台目のリアクトルとコンデンサは1本の分岐、2台目は別の分岐になる）
     const chain =
-      lastBranch && lastBranch.dir === dir && lastBranch.unit === item.unit ? lastBranch : null;
+      lastBranch && lastBranch.dir === dir && lastBranch.unit === item.unit && !item.separate ? lastBranch : null;
     let tapY: number;
     let x: number;
     if (chain) {

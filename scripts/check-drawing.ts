@@ -423,6 +423,69 @@ console.log('\n■ 縦方向のバランス（母線と手前の機器の間隔�
   }
 }
 
+/* ZPD・LAは、別々の記号で、選んだ位置に描かれる。母線や他の記号に重ならない */
+console.log('\n■ ZPD・LAの位置（別々の記号・母線に重ならない）');
+{
+  const base: Answers = {
+    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A', hasSiteCt: 'yes', ctRatio: '100/5A',
+    hasZpd: 'yes', hasLa: 'yes', transformerCount: 2, trConnection: 'tr-3p-yd', trCapacity: 100, feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no',
+  };
+  const at = (a: Answers) => {
+    const d = layout(buildComposition(a), a);
+    const y = (role: string) => d.symbols.find((s) => s.role === role)?.y;
+    return { d, ds: y('ds'), vcb: y('main-breaker'), ct: y('ct'), zpd: y('zpd'), la: y('site-la'), ovgr: y('ovgr') };
+  };
+  const dflt = at(base);
+  const moved = at({ ...base, zpdTap: 'ds-vcb', laTap: 'vcb-ct' });
+  // 別々の記号：ZPDとLAの文字がそれぞれ別、位置も別
+  const labels = (d: ReturnType<typeof layout>) => ['zpd', 'site-la'].map((r) => d.symbols.find((s) => s.role === r)?.label.join('|'));
+  if (labels(dflt.d).join() !== 'ZPD,LA') fail(`ZPDとLAの文字が、別々になっていません（${labels(dflt.d).join(' / ')}）`);
+  if (dflt.zpd === dflt.la) fail('ZPDとLAが、同じ高さに重なっています');
+  // 位置：DSとVCBの間 → VCBとCTの間 → 変圧器の手前（既定）
+  if (!(moved.zpd! > moved.ds! && moved.zpd! < moved.vcb!)) fail(`ZPDが、DSとVCBの間にありません（DS ${moved.ds} / ZPD ${moved.zpd} / VCB ${moved.vcb}）`);
+  else console.log(`  ZPDを「DSとVCBの間」に：DS y=${Math.round(moved.ds!)} → ZPD y=${Math.round(moved.zpd!)} → VCB y=${Math.round(moved.vcb!)}`);
+  if (!(moved.la! > moved.vcb! && moved.la! < moved.ct!)) fail(`LAが、VCBとCTの間にありません（VCB ${moved.vcb} / LA ${moved.la} / CT ${moved.ct}）`);
+  else console.log(`  LAを「VCBとCTの間」に：VCB y=${Math.round(moved.vcb!)} → LA y=${Math.round(moved.la!)} → CT y=${Math.round(moved.ct!)}`);
+  if (!(dflt.zpd! > dflt.ct! && dflt.la! > dflt.ct!)) fail('既定の位置が、CTの下（変圧器の手前）になっていません');
+  else console.log('  位置を答えていないときは、CTの下（変圧器の手前）');
+  // ZPD・LAが、母線・変圧器・ほかの記号に重ならない（どの位置でも）
+  for (const [name, a] of [
+    ['既定（変圧器の手前）', base],
+    ['ZPD：DSとVCBの間／LA：VCBとCTの間', { ...base, zpdTap: 'ds-vcb', laTap: 'vcb-ct' }],
+    ['ZPD：VCBとCTの間／LA：DSとVCBの間', { ...base, zpdTap: 'vcb-ct', laTap: 'ds-vcb' }],
+    ['ZPD・LAとも、DSとVCBの間', { ...base, zpdTap: 'ds-vcb', laTap: 'ds-vcb' }],
+    ['PFS形：LBSの次', { ...base, mainBreakerForm: 'pfs', zpdTap: 'lbs-ct', laTap: 'lbs-ct', hasSiteCt: 'yes' }],
+  ] as [string, Answers][]) {
+    const d = layout(buildComposition(a), a);
+    const doc = fromLayout(d);
+    const issues = inspectDrawing(doc, 'A4', 'portrait');
+    const cols = findLabelCollisions(d);
+    // 記号どうしの重なり（箱どうし）
+    const boxes = d.symbols
+      .filter((s) => !s.parent && !['enclosure-cubicle'].includes(s.symbolId))
+      .map((s) => {
+        const rb = rotatedBox(getSymbolDef(s.symbolId).box, s.rotate);
+        return { role: s.role, x0: s.x + rb.dx, y0: s.y + rb.dy, x1: s.x + rb.dx + rb.w, y1: s.y + rb.dy + rb.h };
+      });
+    const overlap: string[] = [];
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const p = boxes[i]!;
+        const q = boxes[j]!;
+        if (p.x0 < q.x1 - 1 && q.x0 < p.x1 - 1 && p.y0 < q.y1 - 1 && q.y0 < p.y1 - 1) overlap.push(`${p.role}×${q.role}`);
+      }
+    }
+    // 母線（変圧器をつなぐ横線）が、ZPD・LAの箱を横切らない
+    const bus = d.wires.filter((w) => w.y1 === w.y2).sort((p, q) => Math.abs(q.x2 - q.x1) - Math.abs(p.x2 - p.x1))[0];
+    const cross = bus
+      ? boxes.filter((b) => ['zpd', 'site-la', 'ovgr'].includes(b.role) && b.y0 < bus.y1 && b.y1 > bus.y1 && b.x1 > Math.min(bus.x1, bus.x2) && b.x0 < Math.max(bus.x1, bus.x2)).map((b) => b.role)
+      : [];
+    if (issues.length || cols.length || overlap.length || cross.length) {
+      fail(`${name}：${[issues.length ? `図面の問題${issues.length}件` : '', cols.length ? `文字の重なり${cols.length}件` : '', overlap.length ? `記号の重なり ${overlap.join('、')}` : '', cross.length ? `母線が横切る ${cross.join('、')}` : ''].filter(Boolean).join(' / ')}`);
+    } else console.log(`  ${name}：重なりなし`);
+  }
+}
+
 /* 受電設備エリアが2か所以上：左から右へ並べ、枠の上端をそろえ、ケーブルでつなぐ */
 console.log('\n■ 受電設備エリアが2か所以上のときの配置');
 {
