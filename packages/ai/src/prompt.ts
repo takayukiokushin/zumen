@@ -41,6 +41,8 @@ export function buildSystemPrompt(): string {
   2か所目以降は、読み取らず、questions に「2か所目の受電設備は…ですか」のように入れて確認してください（エリアごとの入力は、人が画面で行います）。
 - 主遮断装置の形式は、高圧変圧器の合計容量（エリアが複数あるときは、すべてのエリアの合計）が300kVA以下ならPFS形（LBS）、301kVA以上ならCB形（VCB）です。
   メモに形式の記載が無くても、容量から推定できる場合は推定し、uncertain に入れてください。
+- 図に「励突抑制開閉器」（VCBと並列に入る、ヒューズ付のLBS）があれば、hasInrush を yes にし、その定格（inrushRatedVoltage・inrushRatedCurrent・
+  inrushFuseCount・inrushFuseSpec）も読み取ってください。系統用蓄電所の図面でよく見られます。
 - 3点一致（引込点・財産分界点・保安上の責任分界点が同じ地点）が全体の約99%です。
   区分開閉器（PAS・PGS）があれば3点一致の可能性が高いですが、確証が無ければ uncertain に入れてください。
 - **区分開閉器は sectionalizer で答えます。** PAS（電柱上に設置）／PGS（電柱上に設置）／UGS（キャビネット内に設置）／none（設置なし）のどれかです。

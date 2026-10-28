@@ -18,6 +18,8 @@ export type PlacementKind =
   | 'inside'
   /** 主回路を囲む枠（キュービクルの範囲など） */
   | 'frame'
+  /** ほかの機器（VCB）の横に、並列に入る（励磁突入電流抑制開閉器）。上と下を、主回路につなぐ */
+  | 'bypass'
   /** 2か所目以降のエリアを、前のエリアにつなぐケーブル（記号ではなく、つなぎ方を表す） */
   | 'link'
   /**
@@ -284,6 +286,18 @@ export const CB_CHAIN: Placement[] = [
     kind: 'series',
     labelTemplate: ['VCB', '{vcbRating}'],
   },
+  {
+    // 励磁突入電流抑制開閉器：VCBと並列に入るLBS（PF付）。VCBの左に並べ、上と下を主回路につなぐ
+    role: 'inrush-lbs',
+    symbolId: 'lbs-pf',
+    kind: 'bypass',
+    attachTo: 'main-breaker',
+    labelSide: 'left',
+    when: { all: [{ key: 'mainBreakerForm', eq: 'cb' }, { key: 'hasInrush', eq: 'yes' }] },
+    labelTemplate: ['励突抑制開閉器', 'LBS', '{inrushRatedVoltage}V', '{inrushRatedCurrent}A', 'PF×{inrushFuseCount}', '{inrushFuseSpec}'],
+    props: { ratedVoltage: 'inrushRatedVoltage', ratedCurrent: 'inrushRatedCurrent', fuseCount: 'inrushFuseCount', fuseSpec: 'inrushFuseSpec' },
+    note: 'VCBと並列。系統用蓄電所などで、励磁突入電流を抑えるために入る',
+  },
 ];
 
 /** 主遮断装置の下流（PFS形・CB形で共通） */
@@ -427,6 +441,19 @@ export const AREA_CHAIN: Placement[] = [
     when: { key: 'intakeVcb', eq: 'yes' },
     labelTemplate: ['VCB', '{vcbRating}'],
   },
+  {
+    // 励磁突入電流抑制開閉器：VCBと並列に入るLBS（PF付）。VCBの左に並べ、上と下を主回路につなぐ
+    role: 'inrush-lbs',
+    symbolId: 'lbs-pf',
+    kind: 'bypass',
+    attachTo: 'main-breaker',
+    labelSide: 'left',
+    when: { all: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'hasInrush', eq: 'yes' }] },
+    labelTemplate: ['励突抑制開閉器', 'LBS', '{inrushRatedVoltage}V', '{inrushRatedCurrent}A', 'PF×{inrushFuseCount}', '{inrushFuseSpec}'],
+    props: { ratedVoltage: 'inrushRatedVoltage', ratedCurrent: 'inrushRatedCurrent', fuseCount: 'inrushFuseCount', fuseSpec: 'inrushFuseSpec' },
+    note: 'VCBと並列。系統用蓄電所などで、励磁突入電流を抑えるために入る',
+  },
+
   {
     role: 'main-breaker',
     symbolId: 'lbs-pf',

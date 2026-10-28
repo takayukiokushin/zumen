@@ -423,6 +423,56 @@ console.log('\n■ 縦方向のバランス（母線と手前の機器の間隔�
   }
 }
 
+/* 励磁突入電流抑制開閉器：VCBの横に並列。上と下を、主回路につなぐ */
+console.log('\n■ 励磁突入電流抑制開閉器（VCBと並列）');
+{
+  const base: Answers = {
+    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 600A', hasSiteCt: 'yes', ctRatio: '300A/5A',
+    hasInrush: 'yes', inrushRatedVoltage: '7200', inrushRatedCurrent: 200, inrushFuseCount: 3, inrushFuseSpec: '7200V G75A 40kA',
+    transformerCount: 1, feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no', hasZpd: 'no', hasLa: 'no',
+  };
+  const check = (name: string, a: Answers) => {
+    const d = layout(buildComposition(a), a);
+    const sym = (role: string) => d.symbols.find((s) => s.role === role);
+    const vcb = sym('main-breaker');
+    const inr = sym('inrush-lbs');
+    if (!vcb || !inr) {
+      fail(`${name}：VCBまたは励突抑制開閉器が描かれていません`);
+      return;
+    }
+    // 入口・出口の高さが、VCBとそろっている
+    const defV = getSymbolDef(vcb.symbolId);
+    const defI = getSymbolDef(inr.symbolId);
+    const inV = vcb.y + defV.ports.find((p) => p.id === 'in')!.y;
+    const outV = vcb.y + defV.ports.find((p) => p.id === 'out')!.y;
+    const inI = inr.y + defI.ports.find((p) => p.id === 'in')!.y;
+    const outI = inr.y + defI.ports.find((p) => p.id === 'out')!.y;
+    if (Math.abs(inV - inI) > 0.5 || Math.abs(outV - outI) > 0.5) fail(`${name}：励突抑制開閉器の入口・出口の高さが、VCBとそろっていません（VCB ${inV}→${outV} / 励突 ${inI}→${outI}）`);
+    // VCBの左に離れて並ぶ
+    const right = inr.x + defI.box.w;
+    if (!(right < vcb.x - 10)) fail(`${name}：励突抑制開閉器が、VCBの左に離れていません`);
+    // 上と下を、主回路につなぐ線がある（真横→真縦）
+    const cx = inr.x + defI.ports.find((p) => p.id === 'in')!.x;
+    const hasWire = (x1: number, y1: number, x2: number, y2: number) =>
+      d.wires.some((w) => Math.abs(Math.min(w.x1, w.x2) - Math.min(x1, x2)) < 0.5 && Math.abs(Math.max(w.x1, w.x2) - Math.max(x1, x2)) < 0.5 && Math.abs(Math.min(w.y1, w.y2) - Math.min(y1, y2)) < 0.5 && Math.abs(Math.max(w.y1, w.y2) - Math.max(y1, y2)) < 0.5);
+    const up = inV - 8;
+    const down = outV + 8;
+    const spine = vcb.x + defV.ports.find((p) => p.id === 'in')!.x;
+    if (!(hasWire(spine, up, cx, up) && hasWire(cx, up, cx, inI) && hasWire(cx, outI, cx, down) && hasWire(cx, down, spine, down))) fail(`${name}：励突抑制開閉器の上下を主回路につなぐ線が、そろっていません`);
+    // 文字・記号の重なり、編集用に取り込んだときの問題
+    const cols = findLabelCollisions(d);
+    const issues = inspectDrawing(fromLayout(d), 'A4', 'portrait');
+    if (cols.length || issues.length) fail(`${name}：文字の重なり${cols.length}件／図面の問題${issues.length}件`);
+    else console.log(`  ${name}：VCBの左に並列（入口 y=${Math.round(inI)}・出口 y=${Math.round(outI)} がVCBと同じ）、上下を主回路へ。重なりなし`);
+  };
+  check('CB形・変圧器1台', base);
+  check('ZPD：DSとVCBの間／LA：VCBとCTの間', { ...base, hasZpd: 'yes', hasLa: 'yes', zpdTap: 'ds-vcb', laTap: 'vcb-ct' });
+  check('変圧器2台・ZPD・LA（既定の位置）', { ...base, transformerCount: 2, trCapacity: 100, hasZpd: 'yes', hasLa: 'yes' });
+  // 「なし」のときは、描かない（これまでと同じ）
+  const none = layout(buildComposition({ ...base, hasInrush: 'no' }), { ...base, hasInrush: 'no' });
+  if (none.symbols.some((s) => s.role === 'inrush-lbs')) fail('「なし」なのに、励突抑制開閉器が描かれています');
+}
+
 /* ZPD・LAは、別々の記号で、選んだ位置に描かれる。母線や他の記号に重ならない */
 console.log('\n■ ZPD・LAの位置（別々の記号・母線に重ならない）');
 {

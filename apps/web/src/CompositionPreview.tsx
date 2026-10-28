@@ -12,6 +12,7 @@ const KIND_LABEL: Record<string, string> = {
   feeder: '回線',
   overlay: '横線',
   link: 'ケーブル',
+  bypass: '並列',
 };
 
 /**

@@ -151,7 +151,7 @@ const composition = buildComposition(answers);
 console.log(`\n  組み立てた構成（${composition.length}件）:`);
 for (const item of composition) {
   const kind =
-    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線', free: '独立', overlay: '重ね', link: 'つなぎ' }[
+    { series: '直列', 'branch-left': '左分岐', 'branch-right': '右分岐', inside: '内蔵', frame: '枠', parallel: '並列', feeder: '回線', free: '独立', overlay: '重ね', link: 'つなぎ', bypass: '並列' }[
       item.kind as string
     ] ?? item.kind;
   const label = item.label.length ? `  「${item.label.join(' / ')}」` : '';
@@ -972,6 +972,30 @@ console.log('\n■ 設備容量と主遮断装置の形式（エリアが複数�
   if (cbUnknown.length > 0) fail(`2か所目の容量が未入力のときは、「PFS形も選べます」とは言えません（${cbUnknown.join(',')}）`);
   if (!cbOne.includes('confirm:CB形')) fail('1か所で100kVA・CB形の確認が、これまでどおり出ていません');
   console.log('  1か所目280kVA＋2か所目100kVA＝380kVA → PFS形は誤り。合計200kVA → CB形は確認。2か所目の容量が未入力のときは、「選べる」とは言わない');
+}
+
+console.log('\n■ 励磁突入電流抑制開閉器（VCBと並列のLBS）');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  ok(shown({ mainBreakerForm: 'cb' }).has('hasInrush') && !shown({ mainBreakerForm: 'pfs' }).has('hasInrush') && !shown({}).has('hasInrush'), '励磁突入電流抑制開閉器の質問は、CB形（VCBがあるとき）だけに出るはずです');
+  const yes = shown({ mainBreakerForm: 'cb', hasInrush: 'yes' });
+  ok(['inrushRatedVoltage', 'inrushRatedCurrent', 'inrushFuseCount', 'inrushFuseSpec'].every((id) => yes.has(id)), '「あり」のとき、定格・ヒューズの質問が出ていません');
+  ok(!shown({ mainBreakerForm: 'cb', hasInrush: 'no' }).has('inrushRatedCurrent'), '「なし」なのに、定格の質問が出ています');
+  const comp = (a: Answers) => buildComposition({ ...answers, mainBreakerForm: 'cb', ...a });
+  ok(!comp({}).some((i) => i.role === 'inrush-lbs'), '「あり」と答えていないのに、励突抑制開閉器が入っています');
+  const item = comp({ hasInrush: 'yes', inrushRatedVoltage: '7200', inrushRatedCurrent: 200, inrushFuseCount: 3, inrushFuseSpec: '7200V G75A 40kA' }).find((i) => i.role === 'inrush-lbs');
+  ok(item?.kind === 'bypass' && item.attachTo === 'main-breaker' && item.symbolId === 'lbs-pf', '励突抑制開閉器が、VCBと並列（bypass）のPF付LBSになっていません');
+  ok(item?.label.join('|') === '励突抑制開閉器|LBS|7200V|200A|PF×3|7200V G75A 40kA', `励突抑制開閉器の文字：${item?.label.join('|')}`);
+  // VCBの直後に並ぶ（主回路の並びは変わらない）
+  const roles = comp({ hasInrush: 'yes' }).map((i) => i.role).filter((r) => ['ds', 'main-breaker', 'inrush-lbs', 'ct'].includes(r)).join('>');
+  ok(roles === 'ds>main-breaker>inrush-lbs>ct', `並び：${roles}`);
+  // PFS形に変えて、古い「あり」が残っていても、入らない
+  ok(!buildComposition({ ...answers, mainBreakerForm: 'pfs', hasInrush: 'yes' }).some((i) => i.role === 'inrush-lbs'), 'PFS形なのに、励突抑制開閉器が入っています');
+  // 2か所目以降（VCBのみ・DS＋VCB）でも使える
+  const a2 = (kind: string) => buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': kind, 'a2:hasInrush': 'yes' }).some((i) => i.role === 'a2:inrush-lbs');
+  ok(a2('ds-vcb') && a2('vcb') && !a2('lbs-pf') && !a2('ds'), '2か所目では、VCBがあるときだけ、励突抑制開閉器が入るはずです');
+  console.log('  CB形（VCBがあるとき）だけ質問が出る。「あり」のとき、VCBの横に並列のPF付LBSが入り、文字は「励突抑制開閉器／LBS／7200V／200A／PF×3／ヒューズ定格」');
 }
 
 console.log('\n■ ZPD・LAをつなぐ位置');

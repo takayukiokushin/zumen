@@ -81,6 +81,8 @@ const LANE_GAP = 120;
 const PARALLEL_GAP = 160;
 /** 結線せずに置くものを、主回路からどれだけ下に離すか */
 const FREE_GAP = 56;
+/** 並列に入る機器（励磁突入電流抑制開閉器）を、主回路の縦線から左へ離す距離（記号の中心まで） */
+const BYPASS_OFFSET = 96;
 /** 結線せずに置くものどうしの間隔 */
 const FREE_SPACING = 170;
 
@@ -284,6 +286,29 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
         drawParallelSection();
         parallelDrawn = true;
       }
+      continue;
+    }
+
+    /* ---- ほかの機器（VCB）と並列に入る機器（励磁突入電流抑制開閉器） ---- */
+    if (item.kind === 'bypass') {
+      const target = item.attachTo ? placed.get(item.attachTo) : undefined;
+      const tIn = target ? portOf(target.def, 'in') : undefined;
+      const tOut = target ? portOf(target.def, 'out', 'sec') : undefined;
+      const inP = portOf(def, 'in');
+      const outP = portOf(def, 'out', 'sec');
+      if (!target || !tIn || !tOut || !inP || !outP) continue;
+      // 並べる相手（VCB）の入口・出口の高さに、この機器の入口・出口をそろえる。主回路の縦線から左へ離して置く
+      const entryY = target.sym.y + tIn.y;
+      const exitY = target.sym.y + tOut.y;
+      const cx = SPINE - BYPASS_OFFSET;
+      const sym = add(item, def, cx - inP.x, entryY - inP.y, 0, 'left');
+      const upY = entryY - 8;
+      const downY = exitY + 8;
+      // 主回路の縦線から、真横に出て、真下に折れて入る。出口は、真下に出て、真横に戻る
+      wires.push({ x1: SPINE, y1: upY, x2: cx, y2: upY });
+      wires.push({ x1: cx, y1: upY, x2: cx, y2: sym.y + inP.y });
+      wires.push({ x1: cx, y1: sym.y + outP.y, x2: cx, y2: downY });
+      wires.push({ x1: cx, y1: downY, x2: SPINE, y2: downY });
       continue;
     }
 
