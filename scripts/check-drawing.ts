@@ -341,6 +341,39 @@ console.log('\n■ 段ぞろえ（変圧器・コンデンサの高さ）');
   else console.log(`  変圧器側とコンデンサ側のPC ${pc.ys.length}個 も y=${pc.ys[0]} に揃いました`);
 }
 
+/* 手前の開閉器（PC・LBS）が1つだけの列は、PCの段にそろえる */
+console.log('\n■ 変圧器の手前の開閉器（PC・LBS）の高さ');
+{
+  const base: Answers = {
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600,
+    sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
+    mainBreakerForm: 'cb', dsRating: 'x', vcbRating: 'y',
+    trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
+  };
+  const pos = (a: Answers) => {
+    const d = layout(buildComposition(a), a);
+    const ys = (role: string) => d.symbols.filter((s) => s.role === role).map((s) => Math.round(s.y));
+    return { pc: ys('tr-pc'), lbs: ys('tr-lbs'), tr: ys('transformer') };
+  };
+  const mixed = pos({ ...base, transformerCount: 3, trHasPc: 'yes', trHasLbs: 'no', trHasPc__2: 'no', trHasLbs__2: 'yes', trHasPc__3: 'no', trHasLbs__3: 'no' });
+  if (mixed.pc[0] !== mixed.lbs[0]) fail(`PCの列とLBSの列で、開閉器の高さが違います（PC ${mixed.pc[0]} / LBS ${mixed.lbs[0]}）`);
+  else console.log(`  1台目PC・2台目LBS・3台目なし：PCもLBSも y=${mixed.pc[0]} に揃いました`);
+  if (new Set(mixed.tr).size !== 1) fail(`変圧器の高さが揃っていません（${mixed.tr.join(' / ')}）`);
+  const onlyLbs = pos({ ...base, transformerCount: 2, trHasLbs: 'yes' });
+  const onlyPc = pos({ ...base, transformerCount: 2, trHasPc: 'yes' });
+  if (onlyLbs.lbs[0] !== onlyPc.pc[0]) fail(`LBSだけの図とPCだけの図で、開閉器の高さが違います（${onlyLbs.lbs[0]} / ${onlyPc.pc[0]}）`);
+  else console.log(`  LBSだけの図も、PCだけの図も、開閉器は y=${onlyPc.pc[0]}`);
+  // 2つ入る列（PC→LBS）は、これまでどおり PC が上・LBS が下
+  const both = pos({ ...base, transformerCount: 2, trHasPc: 'yes', trHasLbs: 'yes', trHasPc__2: 'no', trHasLbs__2: 'yes' });
+  if (!(both.pc[0]! < both.lbs[0]!)) fail(`PCとLBSが2つ入る列で、PCがLBSの上にありません（PC ${both.pc[0]} / LBS ${both.lbs[0]}）`);
+  else if (both.lbs[1] !== both.pc[0]) fail(`2台目のLBSだけの列が、PCの段にそろっていません（${both.lbs[1]} / ${both.pc[0]}）`);
+  else console.log(`  1台目がPC＋LBS・2台目がLBSだけ：2台目のLBSは、1台目のPCの高さ（y=${both.pc[0]}）にそろった`);
+  // 手前に何も無い図は、変圧器が上に来る（1段ぶん縦に短くなる）
+  const none = pos({ ...base, transformerCount: 2 });
+  if (!(onlyLbs.tr[0]! >= none.tr[0]!)) fail('開閉器のある図の変圧器が、無い図より上にあります');
+}
+
 /* ---------- 9. 主回路の記号の大きさ ---------- */
 console.log('\n■ 記号の大きさ');
 {

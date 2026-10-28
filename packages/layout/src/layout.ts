@@ -1,6 +1,6 @@
 import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol } from '@zumen/symbols';
 import type { Port, SymbolDef } from '@zumen/symbols';
-import { ROW_COUNT } from '@zumen/knowledge';
+import { ROW, ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
 import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
 
@@ -176,7 +176,19 @@ export function layout(items: PlacedItem[], answers: Answers): DrawingLayout {
      * 変圧器は変圧器で、コンデンサはコンデンサで、どの列でも同じ高さに来る。
      * PCやLBSが無い列は、その段を空けたまま母線からの線を長く引く。
      */
-    const rowOf = (p: PlacedItem) => p.row ?? ROW_COUNT - 1;
+    /*
+     * 変圧器などの手前に入る開閉器（PC・LBS）が、その列に1つしかないときは、PCの段にそろえる。
+     * PCとLBSが混ざっていると、LBSだけが下（変圧器寄り）に来てしまい、横に並ぶほかの列と高さが合わなくなるため。
+     * 2つ入る列（PC→LBS）と、VCSが続く列（LBS→VCS）は、これまでどおりの段にする。
+     */
+    const switchRowOverride = new Map<PlacedItem, number>();
+    for (const lane of lanes) {
+      const inLane = parallels.filter((p) => (p.lane ?? 0) === lane);
+      const front = inLane.filter((p) => p.row === ROW.pc || p.row === ROW.lbs);
+      const hasVcs = inLane.some((p) => p.row === ROW.vcs);
+      if (front.length === 1 && front[0]!.row === ROW.lbs && !hasVcs) switchRowOverride.set(front[0]!, ROW.pc);
+    }
+    const rowOf = (p: PlacedItem) => switchRowOverride.get(p) ?? p.row ?? ROW_COUNT - 1;
     const rowHeight = Array.from({ length: ROW_COUNT }, () => 0);
     for (const p of parallels) {
       const def = findSymbol(p.symbolId);
