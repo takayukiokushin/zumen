@@ -56,7 +56,6 @@ export function normalizeAnswers(answers: Answers): Answers {
   if (out.sectionalizer === undefined && out.hasPas !== undefined) {
     out = { ...out, sectionalizer: out.hasPas === 'no' ? 'none' : 'pas' };
   }
-  // PASは電柱上、UGSは地上キャビネット用。引込元に合わない（または未回答の）ときは、引込元に合うほうにする
   // 以前は「区分」と「名称」の2つの欄だった（polePrefix＋poleName、cabinetPrefix＋cabinetName）。いまは1つの欄なので、つなげて読み替える
   for (const [prefixKey, nameKey] of [['polePrefix', 'poleName'], ['cabinetPrefix', 'cabinetName']] as const) {
     if (out[prefixKey] === undefined) continue;
@@ -65,8 +64,10 @@ export function normalizeAnswers(answers: Answers): Answers {
     out = { ...rest, [nameKey]: name.startsWith(String(prefix ?? '')) ? name : `${prefix ?? ''}${name}` };
   }
   const cabinet = out.sourceType === 'cabinet';
-  if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas')) out = { ...out, sectionalizer: 'ugs' };
-  else if (!cabinet && out.sectionalizer === 'ugs') out = { ...out, sectionalizer: 'pas' };
+  // 引込元が地上キャビネットのときは、PAS・PGS（電柱上）は無い。未回答（または古い回答）のときはUGSにする
+  if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas' || out.sectionalizer === 'pgs')) {
+    out = { ...out, sectionalizer: 'ugs' };
+  }
   return out;
 }
 
@@ -171,6 +172,10 @@ const GENERATOR_FUEL_LABEL: Record<string, string> = {
 export function withDerived(rawAnswers: Answers): Answers {
   const answers = normalizeAnswers(rawAnswers);
   const d: Answers = { ...answers };
+
+  // UGSが入っているキャビネットの名称。「キャビネット番号：」だけで名称がまだ無いときは、書かない
+  const ugsCabinet = String(answers.ugsCabinetName ?? '').trim();
+  d.ugsCabinetLabel = answers.sectionalizer === 'ugs' && !/^キャビネット番号\s*[：:]?$/.test(ugsCabinet) ? ugsCabinet : '';
 
   // 変圧器の電圧。「6600/」のように、自動で入った前半だけで、後ろがまだ入力されていないときは、図面に書かない
   const trVoltage = String(answers.trVoltage ?? '').trim();

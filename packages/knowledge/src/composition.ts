@@ -146,7 +146,8 @@ export const UPSTREAM: Placement[] = [
     symbolId: '{pasSymbol}',
     kind: 'series',
     when: { key: 'hasPas', eq: 'yes' },
-    labelTemplate: ['{sectionalizerName}', '{pasRatingText}', '{pasBuiltinText}'],
+    // UGSのときは、キャビネットの名称を、定格の欄のすぐ上（先頭）に書く
+    labelTemplate: ['{ugsCabinetLabel}', '{sectionalizerName}', '{pasRatingText}', '{pasBuiltinText}'],
     props: { ratedVoltage: 'pasRatedVoltage', ratedCurrent: 'pasRatedCurrent', control: 'pasControl' },
   },
   {

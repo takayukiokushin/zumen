@@ -356,18 +356,30 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     options: [
-      // 引込元が地上キャビネットのときは PAS ではなく UGS（図記号も構造も同じで、名前だけ違う）
-      { value: 'pas', label: 'PAS（電柱上）', showIf: { key: 'sourceType', ne: 'cabinet' } },
-      { value: 'ugs', label: 'UGS（地上キャビネット）', showIf: { key: 'sourceType', eq: 'cabinet' } },
-      { value: 'pgs', label: 'PGS（キャビネット内）' },
+      // PAS・PGSは電柱上に設置するもの。UGSはキャビネット内に設置するもの（図記号も構造も同じで、名前だけ違う）。
+      // 引込元が地上キャビネットのときは、PAS・PGSは無い（UGSかなし）
+      { value: 'pas', label: 'PAS', showIf: { key: 'sourceType', ne: 'cabinet' } },
+      { value: 'pgs', label: 'PGS（電柱上）', showIf: { key: 'sourceType', ne: 'cabinet' } },
+      { value: 'ugs', label: 'UGS（キャビネット内）' },
       { value: 'none', label: 'なし' },
     ],
     defaultValue: 'pas',
     ask: 'ai-uncertain',
     required: true,
     help:
-      'PAS＝電柱上の区分開閉器（高圧気中開閉器）。UGS＝引込元が地上キャビネットのときの区分開閉器で、図面には「UGS」と書く（図記号・定格・SOGなどの質問はPASと同じ）。PGS＝キャビネット内に設置される区分開閉器で、図面には「PGS」と書く。' +
-      'どちらも、SOG（制御装置）などの質問は同じ。なしのときは、地上キャビネット（電力会社のキャビネットで受電）の有無を聞く',
+      'PAS・PGS＝電柱上に設置する区分開閉器。UGS＝キャビネット内に設置する区分開閉器。図面には、選んだ名前（PAS・PGS・UGS）を書く。' +
+      '引込元が地上キャビネットのときは、UGS（またはなし）。図記号・定格・SOG（制御装置）などの質問は、どれも同じ。なしのときは、地上キャビネット（電力会社のキャビネットで受電）の有無を聞く',
+  },
+  {
+    id: 'ugsCabinetName',
+    group: 'pas',
+    label: 'UGSのキャビネット名称',
+    type: 'text',
+    // 「キャビネット番号：」を最初から入れておき、その後ろにキャビネットの名称を入力する（引込元のキャビネットとは別）
+    defaultValue: 'キャビネット番号：',
+    showIf: { key: 'sectionalizer', eq: 'ugs' },
+    ask: 'always',
+    help: 'UGSが入っているキャビネットの名称。「キャビネット番号：」が最初から入っている。その後ろに名称を入力する。図面では、UGSの右横の、定格の欄のすぐ上に書く',
   },
   {
     id: 'groundCabinet',

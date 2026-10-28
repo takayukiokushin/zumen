@@ -428,22 +428,36 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
     if (cabinetDefault?.label[0] !== 'UGS') fail(`引込元がキャビネット（区分開閉器は未回答）のとき、区分開閉器の文字が「${cabinetDefault?.label[0]}」です（UGSのはず）`);
     if ((findSymbol(cabinetDefault?.symbolId ?? '')?.altOf ?? cabinetDefault?.symbolId) !== 'pas') fail('UGSの図記号が、PASと同じ図記号ではありません');
     if (secLabel({ sourceType: 'cabinet', sectionalizer: 'pas' })?.label[0] !== 'UGS') fail('キャビネットなのにPASのまま描かれています');
+    if (secLabel({ sourceType: 'cabinet', sectionalizer: 'pgs' })?.label[0] !== 'UGS') fail('キャビネットなのにPGS（電柱上）のまま描かれています');
     if (secLabel({ sourceType: 'pole' })?.label[0] !== 'PAS') fail('電柱のとき、区分開閉器がPASになっていません');
-    if (secLabel({ sourceType: 'pole', sectionalizer: 'ugs' })?.label[0] !== 'PAS') fail('電柱なのにUGSで描かれています');
-    if (secLabel({ sourceType: 'cabinet', sectionalizer: 'pgs' })?.label[0] !== 'PGS') fail('キャビネットでPGSを選んだのに、PGSで描かれていません');
+    if (secLabel({ sourceType: 'pole', sectionalizer: 'ugs' })?.label[0] !== 'UGS') fail('電柱でUGSを選んだのに、UGSで描かれていません');
+    if (secLabel({ sourceType: 'pole', sectionalizer: 'pgs' })?.label[0] !== 'PGS') fail('電柱でPGSを選んだのに、PGSで描かれていません');
     const secQ = QUESTIONS.find((q) => q.id === 'sectionalizer');
     const shownOpts = (a: Answers) => (secQ?.options ?? []).filter((o) => evaluate(o.showIf, a)).map((o) => o.value);
     const cabOpts = shownOpts({ sourceType: 'cabinet' }).join(',');
     const poleOpts = shownOpts({ sourceType: 'pole' }).join(',');
-    if (cabOpts !== 'ugs,pgs,none') fail(`キャビネットのときの区分開閉器の選択肢が「${cabOpts}」です（ugs,pgs,none のはず）`);
-    if (poleOpts !== 'pas,pgs,none') fail(`電柱のときの区分開閉器の選択肢が「${poleOpts}」です（pas,pgs,none のはず）`);
+    if (cabOpts !== 'ugs,none') fail(`キャビネットのときの区分開閉器の選択肢が「${cabOpts}」です（ugs,none のはず）`);
+    if (poleOpts !== 'pas,pgs,ugs,none') fail(`電柱のときの区分開閉器の選択肢が「${poleOpts}」です（pas,pgs,ugs,none のはず）`);
     // UGSのときも、PASと同じ質問（定格・制御装置・内蔵機器）が出る
     const ugsQs = new Set(visibleQuestions({ sourceType: 'cabinet', sectionalizer: 'ugs' }, {}).map((q) => q.id));
     for (const id of ['pasRatedVoltage', 'pasRatedCurrent', 'pasControl']) if (!ugsQs.has(id)) fail(`UGSのとき、${id} の質問が出ていません`);
     const cleared = dropHiddenChoices({ sourceType: 'cabinet', sectionalizer: 'pas' });
     if (cleared.sectionalizer !== undefined) fail('キャビネットに切り替えたのに、選んでいたPASが残っています');
     if (!findSymbol('ugs') || findSymbol('ugs')?.abbr !== 'UGS') fail('編集画面に出す UGS の記号がありません');
-    console.log('  引込元がキャビネット：区分開閉器の文字は UGS（選択肢 UGS／PGS／なし）。電柱：PAS（PAS／PGS／なし）');
+    // 区分開閉器の選択肢の表示名
+    const optLabels = (secQ?.options ?? []).map((o) => `${o.value}=${o.label}`).join('、');
+    if (optLabels !== 'pas=PAS、pgs=PGS（電柱上）、ugs=UGS（キャビネット内）、none=なし') fail(`区分開閉器の選択肢の表示名が違います（${optLabels}）`);
+    // UGSのときだけ、UGS用のキャビネット名称を聞き、定格の欄のすぐ上（先頭）に書く
+    const ugsAsked = (a: Answers) => visibleQuestions(a, {}).some((q) => q.id === 'ugsCabinetName');
+    if (!ugsAsked({ sourceType: 'cabinet' }) || !ugsAsked({ sourceType: 'pole', sectionalizer: 'ugs' })) fail('UGSのとき、UGSのキャビネット名称を聞いていません');
+    if (ugsAsked({ sourceType: 'pole', sectionalizer: 'pas' }) || ugsAsked({ sourceType: 'pole', sectionalizer: 'pgs' })) fail('UGSでないのに、UGSのキャビネット名称を聞いています');
+    const ugsLines = secLabel({ sourceType: 'cabinet', ugsCabinetName: 'キャビネット番号：地下西3号', pasRatedVoltage: '7200', pasRatedCurrent: '300' })?.label.slice(0, 3).join('|');
+    if (ugsLines !== 'キャビネット番号：地下西3号|UGS|7200V300A') fail(`UGSの文字の並びが違います（${ugsLines}）`);
+    const ugsBlank = secLabel({ sourceType: 'cabinet', ugsCabinetName: 'キャビネット番号：' })?.label[0];
+    if (ugsBlank !== 'UGS') fail(`UGSのキャビネット名称が空のとき、先頭が「${ugsBlank}」です（UGSのはず）`);
+    const notUgs = secLabel({ sourceType: 'pole', sectionalizer: 'pas', ugsCabinetName: 'キャビネット番号：残り' })?.label.join('|');
+    if (notUgs?.includes('残り')) fail('UGSでないのに、UGSのキャビネット名称が図面に書かれています');
+    console.log('  区分開閉器の選択肢：電柱＝PAS／PGS（電柱上）／UGS（キャビネット内）／なし、キャビネット＝UGS／なし。UGSの上にキャビネット名称');
   }
   // 文字の組み立て：入力した文字をそのまま書く。「中電柱：」だけで名称が無いときは書かない
   {
