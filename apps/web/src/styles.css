@@ -445,6 +445,10 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   border-radius: 4px; font-size: calc(12px * var(--text-scale)); line-height: 1.6;
   box-shadow: 0 4px 14px rgba(0,0,0,.25); pointer-events: none; }
 .tip::before { content: ""; position: absolute; bottom: 100%; left: 16px; border: 5px solid transparent; border-bottom-color: var(--ink); }
+/* アプリ全体の吹き出し（Tooltips.tsx）。画面に固定して、はみ出さない位置に出す */
+.tip.tip-fixed { position: fixed; top: 0; left: 0; z-index: 1000; }
+.tip.tip-fixed::before { left: var(--arrow-x, 16px); transform: translateX(-50%); }
+.tip.tip-fixed.above::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: var(--ink); }
 
 /* ------------------------------------------------------------------ */
 /* ㉖㉗ ヒアリングの左の目次・右の「いまの構成」を隠す／出す             */

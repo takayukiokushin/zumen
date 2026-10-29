@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import type { User } from './session/api.ts';
 import { useT } from './i18n/useT.ts';
 import type { Key } from './i18n/index.ts';
@@ -6,11 +5,8 @@ import { GearIcon, InfoIcon } from './icons.tsx';
 
 /**
  * 上の帯。左にタブ、右端に社名・設定・ログアウト（㉙）。
- * タブはしばらくカーソルを置くと説明が出る（㉘）。
+ * タブはしばらくカーソルを置くと説明が出る（㉘。出し方は Tooltips.tsx）。
  */
-
-/** 説明が出るまでの待ち時間 */
-const TIP_DELAY = 1000;
 
 function Tab({
   label,
@@ -23,47 +19,12 @@ function Tab({
   pressed: boolean;
   onClick: () => void;
 }) {
-  const [tip, setTip] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const cancel = () => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-  };
-  useEffect(() => cancel, []);
-
+  // 説明は、アプリ全体の吹き出し（Tooltips.tsx）が、カーソルを合わせて1秒後に出す
   return (
     <span className="tab-wrap">
-      <button
-        type="button"
-        aria-pressed={pressed}
-        onClick={() => {
-          cancel();
-          setTip(false);
-          onClick();
-        }}
-        onMouseEnter={() => {
-          cancel();
-          timer.current = setTimeout(() => setTip(true), TIP_DELAY);
-        }}
-        onMouseLeave={() => {
-          cancel();
-          setTip(false);
-        }}
-        // キーボードで選んでいる人には、待たずに出す
-        onFocus={() => setTip(true)}
-        onBlur={() => {
-          cancel();
-          setTip(false);
-        }}
-      >
+      <button type="button" aria-pressed={pressed} data-tip={help} onClick={onClick}>
         {label}
       </button>
-      {tip && (
-        <span className="tip" role="tooltip">
-          {help}
-        </span>
-      )}
     </span>
   );
 }
