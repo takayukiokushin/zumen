@@ -92,7 +92,7 @@ const ja = {
   'editor.undo.help': '直前の操作を取り消します',
   'editor.redo.help': '取り消した操作をやり直します',
   'editor.delete': '削除',
-  'editor.addNote': '注記を追加',
+  'editor.addNote': 'メモを追加',
   'editor.drawWire': '線を引く',
   'editor.snapToPort': '接続点に合わせる',
   'editor.snapToPort.help': '選んでいる線の端を、いちばん近い接続点にぴったり合わせます',
