@@ -29,6 +29,7 @@ const ja = {
   'tab.drawing.help': '現在作成中の図面のプレビューを表示します',
 
   'nav.settings': '表示の設定',
+  'nav.settings.label': '設定',
   'nav.users': '利用者の管理',
   'nav.logout': 'ログアウト',
   'nav.logout.confirm': 'ログアウトします。よろしいですか。',
@@ -220,6 +221,7 @@ const en: Dict = {
   'tab.drawing.help': 'Shows the diagram you are working on',
 
   'nav.settings': 'Display settings',
+  'nav.settings.label': 'Settings',
   'nav.users': 'Manage users',
   'nav.logout': 'Sign out',
   'nav.logout.confirm': 'Sign out. Are you sure?',
@@ -408,6 +410,7 @@ const fr: Dict = {
   'tab.drawing.help': 'Affiche le schéma en cours de création',
 
   'nav.settings': 'Affichage',
+  'nav.settings.label': 'Réglages',
   'nav.users': 'Gérer les utilisateurs',
   'nav.logout': 'Se déconnecter',
   'nav.logout.confirm': 'Vous allez être déconnecté. Continuer ?',
@@ -597,6 +600,7 @@ const zh: Dict = {
   'tab.drawing.help': '显示正在制作的图纸',
 
   'nav.settings': '显示设置',
+  'nav.settings.label': '设置',
   'nav.users': '用户管理',
   'nav.logout': '退出登录',
   'nav.logout.confirm': '即将退出登录，确定吗？',
@@ -782,6 +786,7 @@ const ko: Dict = {
   'tab.drawing.help': '지금 만들고 있는 도면을 보여줍니다',
 
   'nav.settings': '화면 설정',
+  'nav.settings.label': '설정',
   'nav.users': '사용자 관리',
   'nav.logout': '로그아웃',
   'nav.logout.confirm': '로그아웃합니다. 괜찮으십니까?',

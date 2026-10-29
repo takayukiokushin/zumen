@@ -433,9 +433,9 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 .tabbar .title { font-size: calc(14.5px * var(--text-scale)); font-weight: var(--weight-strong); margin-right: calc(10px * var(--text-scale)); white-space: nowrap; }
 .tabbar .spacer { flex: 1 1 auto; }
 .tabbar .who { font-size: calc(12px * var(--text-scale)); color: var(--ink-2); white-space: nowrap; display: inline-flex; align-items: center; }
-/* 歯車は字づらが小さいので、枠の高さは変えずにマークだけ大きくする */
-.tabbar .icon-btn { padding: 0 calc(12px * var(--text-scale)); font-size: calc(22px * var(--text-scale));
-  line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+/* 歯車の下に「設定」の文字を付ける。枠の高さは変えない（マークと文字を縦に並べる） */
+.tabbar .icon-btn { padding: 0 calc(12px * var(--text-scale)); font-size: calc(11px * var(--text-scale));
+  line-height: 1.15; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
 .tabbar > * { flex: 0 0 auto; }
 
 /* ㉘ タブにしばらくカーソルを置くと出る説明 */

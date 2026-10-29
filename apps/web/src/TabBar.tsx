@@ -112,7 +112,8 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
         {t('help.button')}
       </button>
       <button type="button" className="icon-btn" title={t('nav.settings')} aria-label={t('nav.settings')} onClick={onSettings}>
-        <GearIcon />
+        <GearIcon size={1.6} />
+        <span>{t('nav.settings.label')}</span>
       </button>
       {user.role === 'admin' && (
         <button type="button" onClick={onUsers}>
