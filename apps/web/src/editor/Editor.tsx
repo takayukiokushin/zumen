@@ -9,7 +9,7 @@ import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
 import { ConfirmDialog } from '../ConfirmDialog.tsx';
-import { ZoomIcon } from '../icons.tsx';
+import { UndoIcon, ZoomIcon } from '../icons.tsx';
 import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
@@ -213,20 +213,22 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         <div className="tools">
           <button
             type="button"
-            className="btn"
+            className="btn with-icon"
             title={t('editor.undo.help')}
             onClick={() => setHistory((h) => { const n = undo(h); onDocChange?.(n.present); return n; })}
             disabled={sheetView || history.past.length === 0}
           >
+            <UndoIcon />
             {t('editor.undo')}
           </button>
           <button
             type="button"
-            className="btn"
+            className="btn with-icon"
             title={t('editor.redo.help')}
             onClick={() => setHistory((h) => { const n = redo(h); onDocChange?.(n.present); return n; })}
             disabled={sheetView || history.future.length === 0}
           >
+            <UndoIcon redo />
             {t('editor.redo')}
           </button>
           <span className="sep" />

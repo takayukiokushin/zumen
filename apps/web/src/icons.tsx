@@ -136,3 +136,15 @@ export function ZoomIcon({ kind, size = 1.3 }: IconProps & { kind: 'in' | 'out' 
   );
 }
 
+/** U字に曲がった矢印。「操作を戻す」（左へ戻る）と「操作を進める」（右へ進む、左右を反対にしたもの） */
+export function UndoIcon({ redo = false, size = 1.3 }: IconProps & { redo?: boolean }) {
+  return (
+    <svg {...base(size)} strokeWidth={1.6}>
+      <g transform={redo ? 'translate(24 0) scale(-1 1)' : undefined}>
+        <path d="M9 14 4 9l5-5" />
+        <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+      </g>
+    </svg>
+  );
+}
+
