@@ -61,7 +61,8 @@ export function ProjectBar({
             onClick={onSave}
             disabled={saving || !dirty || readOnly}
           >
-            {saving ? t('project.saving') : dirty ? t('project.save') : t('project.saved')}
+            {/* 名前は、いつも「保存」。保存したあとは、押せなくなるだけ（横に、保存した時刻が出る） */}
+            {t('project.save')}
           </button>
           <span className="saved">
             {readOnly
