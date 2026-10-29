@@ -1,4 +1,7 @@
 :root {
+  /* 吹き出し（ボタンの説明）の色。明るい画面では黒、暗い画面では白 */
+  --tip-bg: #111111;
+  --tip-fg: #ffffff;
   --paper: #eef1ef;
   --panel: #ffffff;
   --field: #ffffff;
@@ -34,12 +37,12 @@
 }
 
 /* ---- 暗い画面 ---- */
-:root[data-theme="dark"] { --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
+:root[data-theme="dark"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
   --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #98a39f; --rule: #3a4240;
   --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #6b7773; --ok: #85c7a0; --ok-soft: #1f3228;
   --need: #e9a384; --need-soft: #3b2a21; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="auto"] { --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
+  :root[data-theme="auto"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
     --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #98a39f; --rule: #3a4240;
     --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #6b7773; --ok: #85c7a0; --ok-soft: #1f3228;
     --need: #e9a384; --need-soft: #3b2a21; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
@@ -440,15 +443,15 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 
 /* ㉘ タブにしばらくカーソルを置くと出る説明 */
 .tab-wrap { position: relative; display: inline-flex; }
-.tip { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: max-content; max-width: min(320px, 70vw);
-  background: var(--ink); color: var(--panel); padding: calc(7px * var(--text-scale)) calc(11px * var(--text-scale));
-  border-radius: 4px; font-size: calc(12px * var(--text-scale)); line-height: 1.6;
-  box-shadow: 0 4px 14px rgba(0,0,0,.25); pointer-events: none; }
-.tip::before { content: ""; position: absolute; bottom: 100%; left: 16px; border: 5px solid transparent; border-bottom-color: var(--ink); }
+.tip { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: max-content; max-width: min(460px, 80vw); text-wrap: pretty;
+  background: var(--tip-bg); color: var(--tip-fg); padding: calc(8px * var(--text-scale)) calc(13px * var(--text-scale));
+  border-radius: 5px; font-size: calc(14px * var(--text-scale)); line-height: 1.6;
+  box-shadow: 0 4px 14px rgba(0,0,0,.3); pointer-events: none; }
+.tip::before { content: ""; position: absolute; bottom: 100%; left: 16px; border: 6px solid transparent; border-bottom-color: var(--tip-bg); }
 /* アプリ全体の吹き出し（Tooltips.tsx）。画面に固定して、はみ出さない位置に出す */
 .tip.tip-fixed { position: fixed; top: 0; left: 0; z-index: 1000; }
 .tip.tip-fixed::before { left: var(--arrow-x, 16px); transform: translateX(-50%); }
-.tip.tip-fixed.above::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: var(--ink); }
+.tip.tip-fixed.above::before { bottom: auto; top: 100%; border-bottom-color: transparent; border-top-color: var(--tip-bg); }
 
 /* ------------------------------------------------------------------ */
 /* ㉖㉗ ヒアリングの左の目次・右の「いまの構成」を隠す／出す             */
