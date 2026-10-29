@@ -58,6 +58,11 @@ export interface DocWire {
   at1?: Anchor;
   /** 終点のつなぎ先 */
   at2?: Anchor;
+  /**
+   * つないでいた記号が消されて、つなぎ先を失った線。
+   * 「結線を整える」で、つなぎ直せなかった行き止まりの線を見分けて消すための印
+   */
+  orphan?: boolean;
 }
 
 export interface DocFrame {
@@ -356,6 +361,7 @@ export const moveItem = (doc: Doc, id: string, dx: number, dy: number): Doc => {
           y2: it.y2 + dy,
           at1: undefined,
           at2: undefined,
+          orphan: undefined,
         };
       }
       return { ...it, x: it.x + dx, y: it.y + dy };
@@ -378,7 +384,7 @@ export const moveWireEnd = (doc: Doc, id: string, end: 1 | 2, dx: number, dy: nu
     ...doc,
     items: doc.items.map((it) => {
       if (it.kind !== 'wire' || it.id !== id) return it;
-      const w = { ...it };
+      const w = { ...it, orphan: undefined };
       const nx = (end === 1 ? w.x1 : w.x2) + dx;
       const ny = (end === 1 ? w.y1 : w.y2) + dy;
       if (end === 1) {
@@ -475,7 +481,7 @@ export const removeItem = (doc: Doc, id: string): Doc => {
         const a1 = it.at1 && gone.has(it.at1.item);
         const a2 = it.at2 && gone.has(it.at2.item);
         if (!a1 && !a2) return it;
-        return { ...it, at1: a1 ? undefined : it.at1, at2: a2 ? undefined : it.at2 };
+        return { ...it, at1: a1 ? undefined : it.at1, at2: a2 ? undefined : it.at2, orphan: true };
       }),
   };
 };

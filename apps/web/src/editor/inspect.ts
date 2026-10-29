@@ -318,7 +318,8 @@ function bridgeBrokenWires(doc: Doc): { doc: Doc; fixed: number; unsure: { x: nu
         .filter((it) => it.id !== f.wire.id)
         .map((it) => {
           if (it.id !== e.wire.id || it.kind !== 'wire') return it;
-          const w: DocWire = { ...it, dashed: it.dashed || f.wire.dashed };
+          // つなぎ直した線は、もう行き止まりではないので、「消した記号につながっていた」印は外す
+          const w: DocWire = { ...it, dashed: it.dashed || f.wire.dashed, orphan: undefined };
           if (e.end === 1) {
             w.x1 = fFarX;
             w.y1 = fFarY;
@@ -338,6 +339,50 @@ function bridgeBrokenWires(doc: Doc): { doc: Doc; fixed: number; unsure: { x: nu
   const ends = freeEnds(cur);
   const unsure = ends.filter((e) => bridgeCandidates(cur, e, ends).length > 0).map((e) => ({ x: e.x, y: e.y }));
   return { doc: cur, fixed, unsure };
+}
+
+/**
+ * 記号を消して行き止まりになった線を消す。
+ *
+ * 消した記号につないであった線のうち、つなぎ直しても、まだ端が宙に浮いているものは、
+ * 何にもつながらない線（たとえば、消したZPDへの枝線）なので、一緒に消す。
+ * 手で引いた線や、もともと浮いていた線は消さない（消した記号につながっていた線にだけ印が付いている）。
+ * 相手が一つに決まらず、確認してもらうことにした端は、残す。
+ * 印は、ここで外す（つなぎ直せたものは、そのまま残る）。
+ */
+function dropDeadEnds(doc: Doc, keep: { x: number; y: number }[]): { doc: Doc; removed: number } {
+  const near = (px: number, py: number, qx: number, qy: number) => Math.hypot(px - qx, py - qy) < 1;
+  let cur = doc;
+  let removed = 0;
+  // 1本消すと、その先につながっていた線（折れ曲がりの途中など）も行き止まりになるので、なくなるまで繰り返す
+  for (let guard = 0; guard < 50; guard++) {
+    const points: { x: number; y: number }[] = [];
+    const items: DocItem[] = [];
+    let any = false;
+    for (const it of cur.items) {
+      if (it.kind !== 'wire' || !it.orphan) {
+        items.push(it);
+        continue;
+      }
+      const dangling = !it.at1 || !it.at2;
+      const asked = keep.some((k) => near(k.x, k.y, it.x1, it.y1) || near(k.x, k.y, it.x2, it.y2));
+      if (dangling && !asked) {
+        any = true;
+        removed++;
+        points.push({ x: it.x1, y: it.y1 }, { x: it.x2, y: it.y2 });
+        continue;
+      }
+      // 残す線は、印を外す（確認を頼んだ線は、次の「整える」でも消さない）
+      items.push({ ...it, orphan: asked ? true : undefined });
+    }
+    cur = { ...cur, items };
+    if (!any) break;
+    // 消した線の端につながっていて、これで行き止まりになった線に、印を付けて、もう一度
+    const newlyFree = freeEnds(cur).filter((e) => points.some((p) => near(p.x, p.y, e.x, e.y)));
+    const mark = new Set(newlyFree.map((e) => e.wire.id));
+    cur = { ...cur, items: cur.items.map((it) => (it.kind === 'wire' && mark.has(it.id) ? { ...it, orphan: true } : it)) };
+  }
+  return { doc: cur, removed };
 }
 
 /** 2 宙に浮いた端を、近くの接続点につなぐ */
@@ -822,6 +867,11 @@ export function tidyDrawing(
   const b2 = attachFloatingEnds(next);
   next = applyAnchors(b2.doc);
   fixed.floating += b2.fixed;
+
+  // 消した記号につながっていた線のうち、つなぎ直せずに行き止まりになったものを消す
+  const dead = dropDeadEnds(next, bridgeBrokenWires(next).unsure);
+  next = dead.doc;
+  fixed.stray += dead.removed;
 
   // まず、どこにもつながっていない斜めの線をまっすぐにする
   const fw = straightenFreeWires(next);

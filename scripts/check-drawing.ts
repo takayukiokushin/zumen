@@ -1646,12 +1646,13 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
 {
   const a: Answers = {
     ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A', ctRatio: '300', transformerCount: 1,
-    feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no',
+    feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no', hasZpd: 'yes',
   };
   const base = fromLayout(layout(buildComposition(a), a));
   const floating = (d: Doc) => inspectDrawing(d, 'A3', 'landscape').filter((i) => i.kind === 'floating').length;
   // 主回路の途中の機器（上と下に線がある）や、分岐の途中の機器を消しても、線が途切れたまま残らない
-  for (const id of ['vct-indoor-1', 'ds', 'ds-vt-pf', 'main-breaker', 'ct', 'relay-tt', 'cable-head-site']) {
+  // 行き止まりになる機器（枝の先・末端）を消したときは、その線も一緒に消える
+  for (const id of ['vct-indoor-1', 'ds', 'ds-vt-pf', 'ds-vt', 'main-breaker', 'ct', 'relay-tt', 'relay', 'trip-coil', 'zpd', 'ovgr', 'transformer', 'cable-head-site']) {
     const cut = removeItem(base, id);
     const broken = floating(cut);
     const r = tidyDrawing(cut, 'A3', 'landscape');
@@ -1661,6 +1662,33 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
     else console.log(`  ${id} を消す：途切れ ${broken}か所 → 整えると 0か所`);
     // もとの図面は書き換えない（元に戻せるように、新しい図面を返す）
     if (JSON.stringify(cut) === JSON.stringify(r.doc) && broken > 0) fail(`${id}：整えても図面が変わっていません`);
+  }
+  // 複数の記号を消しても、主回路の線は途切れず、行き止まりの線だけが消える
+  {
+    const cut = ['zpd', 'relay', 'ds-vt', 'main-breaker'].reduce((d, id) => removeItem(d, id), base);
+    const r = tidyDrawing(cut, 'A3', 'landscape');
+    const ds = base.items.find((it) => it.kind === 'symbol' && it.id === 'ds');
+    const ct = base.items.find((it) => it.kind === 'symbol' && it.id === 'ct');
+    if (ds?.kind !== 'symbol' || ct?.kind !== 'symbol') fail('DS・CTが見つかりません');
+    else {
+      const top = ds.y + getSymbolDef('ds').box.h;
+      const bottom = ct.y;
+      // DSの出口からCTの入口まで、縦の線が途切れなく続いている
+      const spans = r.doc.items
+        .filter((it): it is DocWire => it.kind === 'wire' && Math.abs(it.x1) < 0.6 && Math.abs(it.x2) < 0.6)
+        .map((w) => [Math.min(w.y1, w.y2), Math.max(w.y1, w.y2)] as const)
+        .sort((p, q) => p[0] - q[0]);
+      let reach = top;
+      for (const [a, b] of spans) if (a <= reach + 1) reach = Math.max(reach, b);
+      if (reach < bottom - 1) fail(`複数の記号を消したあと、DSからCTまでの主回路が途切れています（${Math.round(reach)} < ${Math.round(bottom)}）`);
+      else if (r.issues.some((i) => i.kind === 'floating')) fail('複数の記号を消したあと、つながっていない線が残っています');
+      else console.log(`  4つの記号を消しても、主回路は途切れず、行き止まりの線 ${r.fixed.stray}本が消える`);
+    }
+    // 消した記号につながっていない線（手で引いた線）は、消さない
+    const hand: DocWire = { kind: 'wire', id: 'hand-1', x1: 500, y1: 100, x2: 500, y2: 150 };
+    const kept = tidyDrawing({ ...cut, items: [...cut.items, hand] }, 'A3', 'landscape');
+    if (!kept.doc.items.some((it) => it.id === 'hand-1')) fail('手で引いた線まで消えています');
+    else console.log('  手で引いた（消した記号につながっていない）線は、消さない');
   }
   // つなぎ直した線は、前後の記号のつなぎ先を引き継ぐ（記号を動かしても、線がついてくる）
   {
