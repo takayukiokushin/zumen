@@ -37,8 +37,11 @@ export function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   /** はじめて使うときの、「使い方」への案内。一度閉じたら、このブラウザでは出さない */
   const [firstHint, setFirstHint] = useState(() => !helpSeen());
-  /** ㉖㉗ ヒアリング画面の左の目次・右の「いまの構成」を出すか */
-  const [showNav, setShowNav] = useState(true);
+  /**
+   * ㉖㉗ ヒアリング画面の左の目次（「事前ヒアリング」の見出しと、質問のまとまりの一覧）・右の「いまの構成」を出すか。
+   * 左の目次は、ふだんは見る必要がなく、情報が多くて分かりにくいので、最初は隠しておく（「▶ 目次を出す」で開く）
+   */
+  const [showNav, setShowNav] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
 
   const [projectId, setProjectId] = useState<string | null>(null);
