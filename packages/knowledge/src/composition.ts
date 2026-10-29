@@ -444,8 +444,8 @@ export const DOWNSTREAM: Placement[] = [
         },
       ],
     },
-    labelTemplate: ['保安上の責任分界点'],
-    note: '3点不一致（約1%）。主遮断装置の図記号の中央に横線を引き、「保安上の責任分界点」と記載する',
+    labelTemplate: ['責任分界点'],
+    note: '3点不一致（約1%）。主遮断装置の図記号の中央に横線を引き、「責任分界点」と記載する',
   },
   ...INSTRUMENTS,
   {

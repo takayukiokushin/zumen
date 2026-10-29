@@ -1195,7 +1195,7 @@ console.log('\n■ 3点不一致：保安上の責任分界点（主遮断装置
     const x1 = m.x + markDef.box.w;
     if (Math.abs(lineY - centerY) > 1) fail(`${c.name}：横線の高さが図記号の中央から ${(lineY - centerY).toFixed(1)} ずれています`);
     else if (!(x0 < axisX - 100 && x1 > axisX + 10)) fail(`${c.name}：横線が主回路の縦線をまたいでいません（${x0}〜${x1}、縦線 ${axisX}）`);
-    else if (m.label.join('') !== '保安上の責任分界点') fail(`${c.name}：文言が「${m.label.join('')}」です`);
+    else if (m.label.join('') !== '責任分界点') fail(`${c.name}：文言が「${m.label.join('')}」です`);
     else console.log(`  ${c.name}：${main.symbolId} の中央（y=${centerY}）に横線、「${m.label.join('')}」`);
     // 文言が横線の上・左端にあること（主回路の縦線から離れていて、重ならない）
     if (!(m.labelAt.y < lineY && m.labelAt.x <= axisX - 100 && m.labelAt.anchor === 'start')) fail(`${c.name}：文言の位置が線の左上ではありません`);

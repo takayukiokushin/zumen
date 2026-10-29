@@ -79,10 +79,9 @@ export const protectionSymbols: SymbolDef[] = [
       { id: 'l', x: 0, y: 11, dir: 'left', role: 'secondary' },
       { id: 'b', x: 15, y: 22, dir: 'down', role: 'secondary' },
     ],
-    status: 'open-question',
-    statusNote: 'VCBを引き外すコイル。どのOCRがどのVCBに対応しているかを、はっきりさせるために描く。長方形の中に「TC」と書く形にした（自前の図）。',
+    status: 'confirmed',
+    statusNote: 'VCBを引き外すコイル。どのOCRがどのVCBに対応しているかを、はっきりさせるために描く。長方形の中に「TC」と書く形（自前の図。表記は確認済み）。',
     note: 'VCBの横に置き、点線でVCBと連動させ、OCRの出力とつなぐ。',
-    review: '手書き図面のトリップコイルの描き方（記号の形）を、現場の図面で確認してください。',
   },
   {
     id: 'la',

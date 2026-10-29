@@ -199,9 +199,9 @@
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
       <div class="stat"><b>67</b><span>記号</span></div>
-      <div class="stat"><b>66</b><span>確定</span></div>
+      <div class="stat"><b>67</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
-      <div class="stat"><b>1</b><span>要確認</span></div>
+      <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
     <div class="callout">
       <p><b>すべて独自に描き起こしています。</b>JIS C 0617 等の規格書の図版は複製せず、規格の仕様（形状・比率・意味）を参照して作図しています。</p>
@@ -212,7 +212,7 @@
   <div class="review-box">
     <h2>ご確認をお願いしたい点</h2>
     <p>テキストでも図面でも指示がなく、判断がつかないものです。</p>
-    <ol><li><a href="#sym-trip-coil"><b>TC</b> トリップコイル（遮断器の引外しコイル）</a><span>手書き図面のトリップコイルの描き方（記号の形）を、現場の図面で確認してください。</span></li></ol>
+    <ol></ol>
   </div>
 
   <div class="review-box">
@@ -407,8 +407,8 @@
         <span class="count">3</span>
       </header>
       <div class="grid">
-      <article class="card card--confirmed" id="sym-boundary-safety" data-search="保安上の責任分界点（3点不一致のとき）  保安上の責任分界点 boundary-safety 分界点 責任分界点" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 18" width="289" height="30.599999999999998" role="img" aria-label="保安上の責任分界点（3点不一致のとき）">
+      <article class="card card--confirmed" id="sym-boundary-safety" data-search="責任分界点（3点不一致のとき）  責任分界点 boundary-safety 分界点 責任分界点" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 18" width="289" height="30.599999999999998" role="img" aria-label="責任分界点（3点不一致のとき）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="0" y1="1" x2="154" y2="1" stroke-width="1" />
     <g class="ports">
@@ -417,17 +417,17 @@
 </svg></div>
         <div class="card-body">
           <div class="card-head">
-            <span class="abbr">保安上の責任分界点</span>
-            <h3>保安上の責任分界点（3点不一致のとき）</h3>
+            <span class="abbr">責任分界点</span>
+            <h3>責任分界点（3点不一致のとき）</h3>
             <span class="badge badge--confirmed">確定</span>
           </div>
           
           
           <p class="idline"><code>boundary-safety</code> ・ 接続点 0</p>
-          <p class="deflabel">既定の記載文言：<b>保安上の責任分界点</b></p>
+          <p class="deflabel">既定の記載文言：<b>責任分界点</b></p>
           
           
-          <p class="statusnote">主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「保安上の責任分界点」と記載します。</p>
+          <p class="statusnote">主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「責任分界点」と記載します。</p>
           <p class="note">3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。CB形ならVCB、PFS形ならLBS。</p>
           
         </div>
@@ -1565,7 +1565,7 @@
           
         </div>
       </article>
-      <article class="card card--open-question" id="sym-trip-coil" data-search="トリップコイル（遮断器の引外しコイル）  tc trip-coil vcb ocr 引外し" data-status="open-question">
+      <article class="card card--confirmed" id="sym-trip-coil" data-search="トリップコイル（遮断器の引外しコイル）  tc trip-coil vcb ocr 引外し" data-status="confirmed">
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 38" width="78.2" height="64.6" role="img" aria-label="トリップコイル（遮断器の引外しコイル）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <rect x="0" y="0" width="30" height="22" fill="none" stroke-width="1" />
@@ -1580,7 +1580,7 @@
           <div class="card-head">
             <span class="abbr">TC</span>
             <h3>トリップコイル（遮断器の引外しコイル）</h3>
-            <span class="badge badge--open-question">要確認</span>
+            <span class="badge badge--confirmed">確定</span>
           </div>
           
           
@@ -1588,9 +1588,9 @@
           
           
           
-          <p class="statusnote">VCBを引き外すコイル。どのOCRがどのVCBに対応しているかを、はっきりさせるために描く。長方形の中に「TC」と書く形にした（自前の図）。</p>
+          <p class="statusnote">VCBを引き外すコイル。どのOCRがどのVCBに対応しているかを、はっきりさせるために描く。長方形の中に「TC」と書く形（自前の図。表記は確認済み）。</p>
           <p class="note">VCBの横に置き、点線でVCBと連動させ、OCRの出力とつなぐ。</p>
-          <p class="flag"><span>要確認</span>手書き図面のトリップコイルの描き方（記号の形）を、現場の図面で確認してください。</p>
+          
         </div>
       </article>
       <article class="card card--confirmed" id="sym-la" data-search="避雷器  la la pas内蔵 雷" data-status="confirmed">

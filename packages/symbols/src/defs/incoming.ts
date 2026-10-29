@@ -153,17 +153,17 @@ export const BOUNDARY_SAFETY_RIGHT = 24;
 incomingSymbols.push(
   {
     id: 'boundary-safety',
-    abbr: '保安上の責任分界点',
-    nameJa: '保安上の責任分界点（3点不一致のとき）',
+    abbr: '責任分界点',
+    nameJa: '責任分界点（3点不一致のとき）',
     category: 'boundary',
     tags: ['分界点', '責任分界点'],
     box: { w: BOUNDARY_SAFETY_LEFT + BOUNDARY_SAFETY_RIGHT, h: 2 },
     shapes: [hline(1, 0, BOUNDARY_SAFETY_LEFT + BOUNDARY_SAFETY_RIGHT)],
     ports: [],
     overlay: true,
-    defaultLabel: '保安上の責任分界点',
+    defaultLabel: '責任分界点',
     status: 'confirmed',
-    statusNote: '主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「保安上の責任分界点」と記載します。',
+    statusNote: '主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「責任分界点」と記載します。',
     note: '3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。CB形ならVCB、PFS形ならLBS。',
   },
   boundary(
