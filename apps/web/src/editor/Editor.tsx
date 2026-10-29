@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
@@ -21,6 +21,16 @@ interface History {
 }
 
 const commit = (h: History, next: Doc): History => ({ past: [...h.past, h.present], present: next, future: [] });
+/** 矢印キーで1回に動かす距離（図面の座標。格子の間隔 2 の倍数） */
+const ARROW_STEP = 4;
+/** 矢印キーを、この時間（ミリ秒）以内に続けて押したら、1回の操作にまとめる */
+const ARROW_MERGE_MS = 800;
+const ARROW_MOVE: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
 const undo = (h: History): History =>
   h.past.length === 0 ? h : { past: h.past.slice(0, -1), present: h.past[h.past.length - 1]!, future: [h.present, ...h.future] };
 const redo = (h: History): History =>
@@ -73,6 +83,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   /** 「結線を整える」で直しきれなかったところ */
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
+  /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
+  const lastArrow = useRef<{ id: string; at: number } | null>(null);
 
   const doc = history.present;
   const sheetTitle = {
@@ -153,11 +165,27 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         e.preventDefault();
         apply(removeItem(doc, selectedId));
         setSelectedId(null);
+      } else if (selectedId && mode === 'select' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
+        // 選んでいる要素を、矢印キーの向きに動かす（マウスでドラッグするのと同じ動かし方）
+        e.preventDefault();
+        const [ux, uy] = ARROW_MOVE[e.key]!;
+        const next: Doc = { ...moveItem(doc, selectedId, ux * ARROW_STEP, uy * ARROW_STEP), edited: true, basis: doc.basis };
+        const now = Date.now();
+        const last = lastArrow.current;
+        lastArrow.current = { id: selectedId, at: now };
+        if (last && last.id === selectedId && now - last.at < ARROW_MERGE_MS) {
+          // 続けて押している間は、1回の操作として扱う（「操作を戻す」を1回押せば、押す前に戻る）
+          setHistory((h) => ({ ...h, present: next }));
+          onDocChange?.(next);
+        } else {
+          setHistory((h) => commit(h, next));
+          onDocChange?.(next);
+        }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selectedId, apply, sheetView]);
+  }, [doc, selectedId, apply, sheetView, mode]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
