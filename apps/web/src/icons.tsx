@@ -112,3 +112,14 @@ export function GearIcon({ size = 1.7 }: IconProps) {
     </svg>
   );
 }
+
+/** 丸の中に「i」。「困ったときはここを見る」（使い方）の目印。歯車と、大きさ・線の太さをそろえてある */
+export function InfoIcon({ size = 1.7 }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={1.4} strokeLinejoin="round" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5" />
+      <path d="M12 7.7h.01" strokeWidth={2} />
+    </svg>
+  );
+}

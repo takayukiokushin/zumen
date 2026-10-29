@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { User } from './session/api.ts';
 import { useT } from './i18n/useT.ts';
 import type { Key } from './i18n/index.ts';
-import { GearIcon } from './icons.tsx';
+import { GearIcon, InfoIcon } from './icons.tsx';
 
 /**
  * 上の帯。左にタブ、右端に社名・設定・ログアウト（㉙）。
@@ -108,8 +108,9 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
 
       <span className="spacer" />
 
-      <button type="button" onClick={onHelp}>
-        {t('help.button')}
+      <button type="button" className="icon-btn" title={t('help.button')} onClick={onHelp}>
+        <InfoIcon size={1.6} />
+        <span>{t('help.button')}</span>
       </button>
       <button type="button" className="icon-btn" title={t('nav.settings')} aria-label={t('nav.settings')} onClick={onSettings}>
         <GearIcon size={1.6} />
