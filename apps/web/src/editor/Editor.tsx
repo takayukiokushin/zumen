@@ -138,6 +138,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // 印刷プレビュー中は編集できない（Delete や 元に戻す のキーも効かせない）
+      if (sheetView) return;
       const el = e.target as HTMLElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -155,7 +157,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selectedId, apply]);
+  }, [doc, selectedId, apply, sheetView]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -182,7 +184,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             className="btn"
             title={t('editor.undo.help')}
             onClick={() => setHistory((h) => { const n = undo(h); onDocChange?.(n.present); return n; })}
-            disabled={history.past.length === 0}
+            disabled={sheetView || history.past.length === 0}
           >
             {t('editor.undo')}
           </button>
@@ -191,16 +193,17 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             className="btn"
             title={t('editor.redo.help')}
             onClick={() => setHistory((h) => { const n = redo(h); onDocChange?.(n.present); return n; })}
-            disabled={history.future.length === 0}
+            disabled={sheetView || history.future.length === 0}
           >
             {t('editor.redo')}
           </button>
           <span className="sep" />
-          <button type="button" className="btn" disabled={!selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
+          <button type="button" className="btn" disabled={sheetView || !selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
             {t('editor.delete')}
           </button>
           <button
             type="button"
+            disabled={sheetView}
             onClick={() => {
               const b = docBounds(doc);
               const { doc: next, id } = addText(doc, (b.x0 + b.x1) / 2, b.y1 + 40, '注記');
@@ -215,6 +218,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             type="button"
             aria-pressed={mode === 'wire'}
             className={mode === 'wire' ? 'on' : ''}
+            disabled={sheetView}
             onClick={() => {
               setMode((m) => (m === 'wire' ? 'select' : 'wire'));
               setSelectedId(null);
@@ -225,7 +229,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <button
             type="button"
             className="btn"
-            disabled={selected?.kind !== 'wire'}
+            disabled={sheetView || selected?.kind !== 'wire'}
             title={t('editor.snapToPort.help')}
             onClick={() => selected && apply(snapWireToPorts(doc, selected.id))}
           >
@@ -235,6 +239,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             type="button"
             className="btn"
             title={t('editor.tidy.help')}
+            disabled={sheetView}
             onClick={() => {
               const r = tidyDrawing(doc, paper, orientation, titleH);
               applyAuto(r.doc);
@@ -252,7 +257,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             {t('editor.tidy')}
           </button>
           <span className="sep" />
-          <button type="button" onClick={regenerate}>
+          <button type="button" disabled={sheetView} onClick={regenerate}>
             {t('editor.regenerate')}
           </button>
           <span className="sep" />
@@ -288,7 +293,10 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
               className="btn"
               aria-pressed={sheetView}
               title="図枠つきの、印刷したときの見た目で確かめます"
-              onClick={() => setSheetView((v) => !v)}
+              onClick={() => {
+                setSheetView((v) => !v);
+                setMode('select');
+              }}
             >
               印刷プレビュー
             </button>
@@ -299,11 +307,11 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           </button>
         </div>
         <div className="tools">
-          <button type="button" onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
+          <button type="button" disabled={sheetView} onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
             {t('editor.zoomOut')}
           </button>
           <span className="zoom">{Math.round(zoom * 100)}%</span>
-          <button type="button" onClick={() => setZoom((z) => Math.min(3, z + 0.2))}>
+          <button type="button" disabled={sheetView} onClick={() => setZoom((z) => Math.min(3, z + 0.2))}>
             {t('editor.zoomIn')}
           </button>
         </div>
@@ -313,7 +321,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         <p className="stale-note">
           <b>ヒアリングの回答が、この図面を作ったときから変わっています。</b>
           いまの図面は手で直したものなので、そのままにしてあります。
-          <button type="button" className="btn" onClick={regenerate}>
+          <button type="button" className="btn" disabled={sheetView} onClick={regenerate}>
             {t('editor.regenerate')}
           </button>
           <span className="hint">（押しても「操作を戻す」で元に戻せます）</span>
@@ -358,7 +366,10 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
       {sheetView && (
         <p className="preview-note" role="status">
-          印刷プレビュー中は編集できません。編集するときは、印刷プレビューを閉じてください
+          <span>印刷プレビュー中は編集できません。編集するときは、印刷プレビューを閉じてください</span>
+          <button type="button" className="btn" onClick={() => setSheetView(false)}>
+            印刷プレビューを閉じる
+          </button>
         </p>
       )}
 
@@ -395,7 +406,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           )}
         </div>
 
-        <aside className="side">
+        <aside className="side" inert={sheetView}>
           <section>
             <h3>{t('editor.palette')}</h3>
             <p className="hint">

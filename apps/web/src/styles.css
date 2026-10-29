@@ -559,7 +559,10 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 /* 印刷プレビュー中の注意書き（このあいだは、図面を触っても編集できない） */
 .preview-note { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale));
   background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink);
-  font-size: calc(13px * var(--text-scale)); font-weight: var(--weight-strong); }
+  font-size: calc(13px * var(--text-scale)); font-weight: var(--weight-strong);
+  display: flex; align-items: center; gap: calc(14px * var(--text-scale)); flex-wrap: wrap; }
+/* 印刷プレビュー中は、右の記号の一覧も触れない */
+.side[inert] { opacity: .5; }
 
 /* 「結線を整える」の結果 */
 .tidy-note { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale));
