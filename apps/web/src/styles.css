@@ -187,7 +187,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
   /* 用紙の指定は Editor が差し込む（A4/A3・縦横を選べるため） */
   html, body, #root { margin: 0; padding: 0; height: auto; background: #fff; zoom: 1; }
   .tabbar, .projectbar, .bar-error, .bar-lock, .editor-bar, .editor-body, .app,
-  .mode-hint, .stale-note, .panel-bar, .modal-back { display: none !important; }
+  .mode-hint, .preview-note, .stale-note, .panel-bar, .modal-back { display: none !important; }
   .shell, .shell > .body { display: block; height: auto; overflow: visible; }
   .editor { display: block; height: auto; }
   .print-root { display: block; }
@@ -555,6 +555,11 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .paper-pick .btn { min-width: calc(50px * var(--text-scale)); }
 /* 印刷では、用紙の大きさに合わせて図面を出す（寸法は Editor が差し込む） */
 @media print { .print-root svg { display: block; } }
+
+/* 印刷プレビュー中の注意書き（このあいだは、図面を触っても編集できない） */
+.preview-note { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale));
+  background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink);
+  font-size: calc(13px * var(--text-scale)); font-weight: var(--weight-strong); }
 
 /* 「結線を整える」の結果 */
 .tidy-note { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale));

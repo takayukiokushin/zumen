@@ -356,6 +356,12 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         <p className="mode-hint">{t('editor.wireHint')}</p>
       )}
 
+      {sheetView && (
+        <p className="preview-note" role="status">
+          印刷プレビュー中は編集できません。編集するときは、印刷プレビューを閉じてください
+        </p>
+      )}
+
       {/* 印刷の用紙を、選んだ大きさ・向きに合わせる */}
       <style>{`@page { size: ${sheetMm.mmW}mm ${sheetMm.mmH}mm; margin: 0; }
         .print-root svg { width: ${sheetMm.mmW}mm; height: ${sheetMm.mmH}mm; }`}</style>
