@@ -294,7 +294,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
               title="図枠つきの、印刷したときの見た目で確かめます"
               onClick={() => setSheetView((v) => !v)}
             >
-              用紙で見る
+              印刷プレビュー
             </button>
           </span>
           <span className="sep" />
