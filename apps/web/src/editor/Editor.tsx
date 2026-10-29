@@ -8,6 +8,7 @@ import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
+import { ConfirmDialog } from '../ConfirmDialog.tsx';
 import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
@@ -83,6 +84,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   /** 「結線を整える」で直しきれなかったところ */
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
+  /** 「入力した内容を反映させる」の確認の窓を出しているか */
+  const [askRegenerate, setAskRegenerate] = useState(false);
   /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
   const lastArrow = useRef<{ id: string; at: number } | null>(null);
 
@@ -285,7 +288,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             {t('editor.tidy')}
           </button>
           <span className="sep" />
-          <button type="button" disabled={sheetView} onClick={regenerate}>
+          <button type="button" disabled={sheetView} onClick={() => setAskRegenerate(true)}>
             {t('editor.regenerate')}
           </button>
           <span className="sep" />
@@ -349,7 +352,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         <p className="stale-note">
           <b>ヒアリングの回答が、この図面を作ったときから変わっています。</b>
           いまの図面は手で直したものなので、そのままにしてあります。
-          <button type="button" className="btn" disabled={sheetView} onClick={regenerate}>
+          <button type="button" className="btn" disabled={sheetView} onClick={() => setAskRegenerate(true)}>
             {t('editor.regenerate')}
           </button>
           <span className="hint">（押しても「操作を戻す」で元に戻せます）</span>
@@ -399,6 +402,27 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             印刷プレビューを閉じる
           </button>
         </p>
+      )}
+
+      {askRegenerate && (
+        <ConfirmDialog
+          title={t('editor.regenerate')}
+          message={[
+            '入力済みの内容で上書きされます。入力した内容に基づいて、図面が再作成されます。',
+            ...(doc.edited
+              ? ['この図面は手で直してあります。記号の移動・追加・削除、線やメモの変更など、手で直した内容は、この図面から失われます。']
+              : []),
+            '実行したあとでも、「操作を戻す」で、元の図面に戻せます。',
+            'よろしいですか？',
+          ]}
+          confirmLabel="実行"
+          cancelLabel="キャンセル"
+          onConfirm={() => {
+            setAskRegenerate(false);
+            regenerate();
+          }}
+          onCancel={() => setAskRegenerate(false)}
+        />
       )}
 
       {/* 印刷の用紙を、選んだ大きさ・向きに合わせる */}

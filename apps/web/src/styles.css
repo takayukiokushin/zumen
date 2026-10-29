@@ -331,6 +331,9 @@ table.picked tr.uncertain { background: var(--accent-soft); }
 .role-admin { border-color: var(--need); color: var(--need); background: var(--need-soft); }
 .role-sandbox { border-color: var(--ok); color: var(--ok); background: var(--ok-soft); }
 
+.confirm .confirm-line { margin: 0 0 8px; font-size: calc(13.5px * var(--text-scale)); line-height: 1.7; }
+.confirm .confirm-actions { display: flex; justify-content: flex-end; gap: calc(10px * var(--text-scale)); padding: 16px 20px 0; }
+
 /* ---- 重ねて出す窓 ---- */
 .modal-back { position: fixed; inset: 0; background: var(--shade); z-index: 100;
   display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
