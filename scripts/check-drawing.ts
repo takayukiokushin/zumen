@@ -1641,5 +1641,53 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
   }
 }
 
+/* ---------- 27. 記号を消したあと、「結線を整える」で途切れた線をつなぎ直す ---------- */
+console.log('\n■ 記号を消したあとの「結線を整える」（途切れた線のつなぎ直し）');
+{
+  const a: Answers = {
+    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A', ctRatio: '300', transformerCount: 1,
+    feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no',
+  };
+  const base = fromLayout(layout(buildComposition(a), a));
+  const floating = (d: Doc) => inspectDrawing(d, 'A3', 'landscape').filter((i) => i.kind === 'floating').length;
+  // 主回路の途中の機器（上と下に線がある）や、分岐の途中の機器を消しても、線が途切れたまま残らない
+  for (const id of ['vct-indoor-1', 'ds', 'ds-vt-pf', 'main-breaker', 'ct', 'relay-tt', 'cable-head-site']) {
+    const cut = removeItem(base, id);
+    const broken = floating(cut);
+    const r = tidyDrawing(cut, 'A3', 'landscape');
+    const left = r.issues.filter((i) => i.kind === 'floating').length;
+    if (broken === 0) fail(`${id}：消しても線が途切れていません（試験の前提が違います）`);
+    else if (left > 0) fail(`${id}：消したあと、整えても、つながっていない線が ${left}件 残りました`);
+    else console.log(`  ${id} を消す：途切れ ${broken}か所 → 整えると 0か所`);
+    // もとの図面は書き換えない（元に戻せるように、新しい図面を返す）
+    if (JSON.stringify(cut) === JSON.stringify(r.doc) && broken > 0) fail(`${id}：整えても図面が変わっていません`);
+  }
+  // つなぎ直した線は、前後の記号のつなぎ先を引き継ぐ（記号を動かしても、線がついてくる）
+  {
+    const ct = base.items.find((it) => it.kind === 'symbol' && it.id === 'ct');
+    const ctBottom = ct?.kind === 'symbol' ? ct.y + getSymbolDef('ct').box.h : Infinity;
+    const r = tidyDrawing(removeItem(base, 'ct'), 'A3', 'landscape');
+    const wire = r.doc.items.find((it): it is DocWire => it.kind === 'wire' && !it.dashed && it.at1?.item === 'main-breaker');
+    if (!wire) fail('CTを消したあと、VCBの出口から下へ、1本の線がつながっていません');
+    else if (wire.y2 < ctBottom) fail(`つなぎ直した線が、CTのあった場所の下まで届いていません（${Math.round(wire.y2)} < ${Math.round(ctBottom)}）`);
+    else console.log('  つなぎ直した線は、VCBの出口につながったまま、CTのあった場所の下まで届く');
+  }
+  // つなぐ相手が一つに決まらないときは、勝手につながず、印を出して確認してもらう
+  {
+    const wire = (id: string, y1: number, y2: number): DocWire => ({ kind: 'wire', id, x1: 0, y1, x2: 0, y2 });
+    const doc: Doc = { items: [wire('w-a', 0, 50), wire('w-b', 150, 100), wire('w-c', 250, 200)] };
+    const r = tidyDrawing(doc, 'A3', 'landscape');
+    const wires = r.doc.items.filter((it) => it.kind === 'wire');
+    const unsure = r.issues.filter((i) => i.kind === 'floating' && i.message.includes('2か所以上'));
+    if (wires.length !== 3) fail(`相手が一つに決まらないのに、線をつないでしまいました（線 ${wires.length}本）`);
+    else if (unsure.length === 0) fail('相手が一つに決まらないときの、確認の印が出ていません');
+    else console.log(`  相手が一つに決まらないとき：つながずに、${unsure.length}か所に確認の印`);
+    // 相手がちょうど1つなら、つなぐ
+    const ok2 = tidyDrawing({ items: [wire('w-a', 0, 50), wire('w-b', 150, 100)] }, 'A3', 'landscape');
+    if (ok2.doc.items.filter((it) => it.kind === 'wire').length !== 1) fail('向かい合う2本（相手が1つ）が、1本につながっていません');
+    else console.log('  向かい合う2本（相手が1つ）は、1本につながる');
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

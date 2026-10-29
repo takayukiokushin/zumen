@@ -208,6 +208,138 @@ function branchesInsideParent(doc: Doc, w: DocWire, x: number, y: number): boole
   return false;
 }
 
+/** 途切れた線を、向かい合う端どうしでつなぐときの、いちばん長い隙間（これより離れたものは、別の線とみなす） */
+const BRIDGE_REACH = 400;
+/** 向かい合う2本が「同じ直線の上」とみなす、横（縦）のずれ */
+const BRIDGE_SKEW = 1.5;
+
+interface FreeEnd {
+  wire: DocWire;
+  end: 1 | 2;
+  x: number;
+  y: number;
+  /** 線の向き（反対の端から、この端へ向かう単位ベクトル） */
+  dx: number;
+  dy: number;
+}
+
+/** 宙に浮いている線の端（縦横のまっすぐな線だけ）。どこにもつながっていないもの */
+function freeEnds(doc: Doc): FreeEnd[] {
+  const all = wiresOf(doc);
+  const out: FreeEnd[] = [];
+  for (const w of all) {
+    const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+    const straight = w.x1 === w.x2 || w.y1 === w.y2;
+    if (len < 0.5 || !straight) continue;
+    for (const end of [1, 2] as const) {
+      if (end === 1 ? w.at1 : w.at2) continue;
+      const x = end === 1 ? w.x1 : w.x2;
+      const y = end === 1 ? w.y1 : w.y2;
+      if (nearestPort(doc, x, y, TOUCH)) continue;
+      // ほかの線が、この点を通り抜けている（T字につながっている）なら、浮いていない。
+      // 線の端どうしが触れているだけのときは、記号を消した跡（もとは接続点だった所）なので、浮いているとみなす
+      const passesThrough = (o: DocWire) =>
+        o.id !== w.id &&
+        distToSegment(x, y, o.x1, o.y1, o.x2, o.y2) <= TOUCH &&
+        Math.hypot(x - o.x1, y - o.y1) > TOUCH &&
+        Math.hypot(x - o.x2, y - o.y2) > TOUCH;
+      if (all.some(passesThrough)) continue;
+      // 線の端が3本以上、同じ点に集まっているのは、分岐の結び目（つながっている）
+      const meeting = all.filter(
+        (o) => o.id !== w.id && (Math.hypot(x - o.x1, y - o.y1) <= TOUCH || Math.hypot(x - o.x2, y - o.y2) <= TOUCH),
+      );
+      if (meeting.length >= 2) continue;
+      // 同じ直線の上で、端と端がぴったり続いている（1本の線が2本に分かれているだけ）なら、つながっている
+      const continues = meeting.some((o) =>
+        w.x1 === w.x2 ? o.x1 === o.x2 && Math.abs(o.x1 - w.x1) <= TOUCH : w.y1 === w.y2 && o.y1 === o.y2 && Math.abs(o.y1 - w.y1) <= TOUCH,
+      );
+      if (continues) continue;
+      if (branchesInsideParent(doc, w, x, y)) continue;
+      const fromX = end === 1 ? w.x2 : w.x1;
+      const fromY = end === 1 ? w.y2 : w.y1;
+      out.push({ wire: w, end, x, y, dx: Math.sign(x - fromX), dy: Math.sign(y - fromY) });
+    }
+  }
+  return out;
+}
+
+/** 向かい合って、同じ直線の上にあり、間に記号が無い端（つなぎ直せる相手の候補） */
+function bridgeCandidates(doc: Doc, e: FreeEnd, ends: FreeEnd[]): FreeEnd[] {
+  const symbols = symbolsOf(doc);
+  return ends.filter((f) => {
+    if (f.wire.id === e.wire.id) return false;
+    if (f.dx !== -e.dx || f.dy !== -e.dy) return false;
+    // e から見て、進む向きの前にある
+    const ahead = (f.x - e.x) * e.dx + (f.y - e.y) * e.dy;
+    if (ahead < 0.5 || ahead > BRIDGE_REACH) return false;
+    // 同じ直線の上
+    const off = e.dx !== 0 ? Math.abs(f.y - e.y) : Math.abs(f.x - e.x);
+    if (off > BRIDGE_SKEW) return false;
+    // 間に記号があれば、つなぐと突き抜けてしまう
+    const probe: DocWire = { kind: 'wire', id: '', x1: e.x, y1: e.y, x2: f.x, y2: f.y };
+    return !symbols.some((s) => segmentEntersBox(probe, symbolBox(s)));
+  });
+}
+
+/**
+ * 0 記号を消して途切れた線を、つなぎ直す。
+ *
+ * 記号を消すと、その上と下（分岐なら手前と先）の線が、記号のあった場所で途切れる。
+ * 向かい合う2本の端が、同じ直線の上にあって、間に何も無く、相手がほかに無いときだけ、1本の線につなぐ
+ * （両端のつなぎ先は引き継ぐ）。
+ * 相手が2つ以上あって一つに決まらないときは、勝手につながず、印を出して確認してもらう。
+ */
+function bridgeBrokenWires(doc: Doc): { doc: Doc; fixed: number; unsure: { x: number; y: number }[] } {
+  let cur = doc;
+  let fixed = 0;
+  // つなぐたびに状況が変わるので、つなげるものが無くなるまで繰り返す
+  for (let guard = 0; guard < 200; guard++) {
+    const ends = freeEnds(cur);
+    let pair: [FreeEnd, FreeEnd] | null = null;
+    for (const e of ends) {
+      const mine = bridgeCandidates(cur, e, ends);
+      if (mine.length !== 1) continue;
+      const f = mine[0]!;
+      const theirs = bridgeCandidates(cur, f, ends);
+      if (theirs.length === 1 && theirs[0]!.wire.id === e.wire.id) {
+        pair = [e, f];
+        break;
+      }
+    }
+    if (!pair) break;
+    const [e, f] = pair;
+    // e の線の浮いた端を、f の線の反対の端まで延ばして、f の線は1本にまとめて消す
+    const fFarX = f.end === 1 ? f.wire.x2 : f.wire.x1;
+    const fFarY = f.end === 1 ? f.wire.y2 : f.wire.y1;
+    const fFar = f.end === 1 ? f.wire.at2 : f.wire.at1;
+    cur = {
+      ...cur,
+      items: cur.items
+        .filter((it) => it.id !== f.wire.id)
+        .map((it) => {
+          if (it.id !== e.wire.id || it.kind !== 'wire') return it;
+          const w: DocWire = { ...it, dashed: it.dashed || f.wire.dashed };
+          if (e.end === 1) {
+            w.x1 = fFarX;
+            w.y1 = fFarY;
+            w.at1 = fFar;
+          } else {
+            w.x2 = fFarX;
+            w.y2 = fFarY;
+            w.at2 = fFar;
+          }
+          return w;
+        }),
+    };
+    fixed++;
+  }
+
+  // 残った浮いた端のうち、相手の候補があるのに一つに決まらなかったもの
+  const ends = freeEnds(cur);
+  const unsure = ends.filter((e) => bridgeCandidates(cur, e, ends).length > 0).map((e) => ({ x: e.x, y: e.y }));
+  return { doc: cur, fixed, unsure };
+}
+
 /** 2 宙に浮いた端を、近くの接続点につなぐ */
 function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
   const issues: Issue[] = [];
@@ -673,6 +805,11 @@ export function tidyDrawing(
   next = a.doc;
   fixed.stray += a.removed;
 
+  // 記号を消して途切れた線を、向かい合う端どうしでつなぎ直す（相手が一つに決まらないときは、つながずに印を出す）
+  const br = bridgeBrokenWires(next);
+  next = applyAnchors(br.doc);
+  fixed.floating += br.fixed;
+
   const b = attachFloatingEnds(next);
   next = applyAnchors(b.doc);
   fixed.floating += b.fixed;
@@ -700,8 +837,13 @@ export function tidyDrawing(
   next = d.doc;
   fixed.overlap += d.fixed;
 
-  // 直したあと、もう一度調べ直す
-  const issues = inspectDrawing(next, paper, orientation, titleH);
+  // 直したあと、もう一度調べ直す。つなぐ相手が一つに決まらなかった端は、その旨を説明に書く
+  const unsure = bridgeBrokenWires(next).unsure;
+  const issues = inspectDrawing(next, paper, orientation, titleH).map((i) =>
+    i.kind === 'floating' && unsure.some((u) => Math.hypot(u.x - i.x, u.y - i.y) < 1)
+      ? { ...i, message: '線が途切れています。つなぐ相手が2か所以上あり、一つに決められません。どの線とつなぐか、確かめてください' }
+      : i,
+  );
   return { doc: next, fixed, issues };
 }
 
