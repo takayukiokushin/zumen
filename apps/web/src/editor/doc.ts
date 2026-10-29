@@ -97,6 +97,11 @@ export interface Doc {
    * true のものを勝手に作り直すと、直した内容が消えてしまう。
    */
   edited?: boolean;
+  /**
+   * 記号を消して空いた、縦の範囲（記号と文字が占めていた高さ）。
+   * 「結線を整える」で、ここに残った余白を詰めるのに使う（詰めたら、ここから外す）
+   */
+  vacated?: { y0: number; y1: number }[];
   /** 印刷する用紙。既定はA4の縦 */
   paper?: PaperSize;
   orientation?: Orientation;
@@ -472,8 +477,23 @@ export const snapWireToPorts = (doc: Doc, id: string): Doc => {
 /** 要素を消す。記号を消すと、内蔵しているものも一緒に消える */
 export const removeItem = (doc: Doc, id: string): Doc => {
   const gone = new Set(groupOf(doc, id));
+  // 消す記号（と文字）が占めていた高さを覚えておく。あとで、ここに残った余白を詰める
+  const freed: { y0: number; y1: number }[] = [];
+  for (const it of doc.items) {
+    if (it.kind !== 'symbol' || !gone.has(it.id)) continue;
+    const rb = rotatedBox(getSymbol(it.symbolId).box, it.rotate);
+    let y0 = it.y + rb.dy;
+    let y1 = it.y + rb.dy + rb.h;
+    if (it.label.length > 0) {
+      const r = labelRect({ x: it.x + it.labelDx, y: it.y + it.labelDy, anchor: it.labelAnchor }, it.label);
+      y0 = Math.min(y0, r.y0);
+      y1 = Math.max(y1, r.y1);
+    }
+    freed.push({ y0, y1 });
+  }
   return {
     ...doc,
+    ...(freed.length > 0 ? { vacated: [...(doc.vacated ?? []), ...freed] } : {}),
     items: doc.items
       .filter((it) => !gone.has(it.id))
       .map((it) => {

@@ -1,5 +1,5 @@
 import { getSymbol } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, sheetSize } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, rotatedBox, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
 import { applyAnchors, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, moveItem, nearestPort, portsOf } from './doc.ts';
@@ -20,7 +20,7 @@ import { applyAnchors, descendantsOf, docBounds, groupOf, groupRootOf, linkWires
  * 直しきれなかったものは、図面の上に印を出して知らせる。
  */
 
-export type IssueKind = 'floating' | 'stray' | 'through' | 'overlap' | 'skew' | 'paper';
+export type IssueKind = 'floating' | 'stray' | 'through' | 'overlap' | 'skew' | 'paper' | 'gap';
 
 export interface Issue {
   kind: IssueKind;
@@ -47,6 +47,7 @@ export const ISSUE_LABEL: Record<IssueKind, string> = {
   overlap: '重なっている文字',
   skew: '斜めになっている線',
   paper: '用紙に収まりきらない',
+  gap: '詰めた余白',
 };
 
 /**
@@ -72,6 +73,7 @@ const emptyCount = (): Record<IssueKind, number> => ({
   overlap: 0,
   skew: 0,
   paper: 0,
+  gap: 0,
 });
 
 /* ------------------------------------------------------------------ */
@@ -383,6 +385,70 @@ function dropDeadEnds(doc: Doc, keep: { x: number; y: number }[]): { doc: Doc; r
     cur = { ...cur, items: cur.items.map((it) => (it.kind === 'wire' && mark.has(it.id) ? { ...it, orphan: true } : it)) };
   }
   return { doc: cur, removed };
+}
+
+/** 余白を詰めたあとの、上の機器の下端から、下の機器の上端までの距離（自動レイアウトの、主回路の機器どうしの間隔と同じ） */
+const GAP_AFTER_DELETE = 16;
+
+/** 記号の絵が占める範囲（回していれば、回したあとの範囲） */
+function drawnBox(it: DocSymbol): Box {
+  const rb = rotatedBox(getSymbol(it.symbolId).box, it.rotate);
+  return { x0: it.x + rb.dx, y0: it.y + rb.dy, x1: it.x + rb.dx + rb.w, y1: it.y + rb.dy + rb.h };
+}
+
+/**
+ * 4 記号を消して空いた余白を詰める。
+ *
+ * 消した記号が占めていた高さ（Doc.vacated）のまわりを見て、横幅いっぱいに何も無い帯になっていれば、
+ * その帯を、上と下の機器の間隔が決まった広さ（GAP_AFTER_DELETE）になるまで詰めて、
+ * 帯より下のもの（記号・文字・線・枠）を、まとめて上へ動かす。主回路の縦線は、動かした分だけ縮む。
+ * 同じ高さに、ほかの機器（横に並んだ変圧器など）や文字が残っているときは、動かさない。
+ * 詰める高さは、消した範囲を覚えているところだけ（もともとの余白は触らない）。
+ */
+function closeVacatedBands(doc: Doc): { doc: Doc; closed: number } {
+  const vacated = doc.vacated ?? [];
+  if (vacated.length === 0) return { doc, closed: 0 };
+  let cur: Doc = { ...doc, vacated: undefined };
+  let closed = 0;
+
+  // 下のものから順に詰める（上のものの座標が、動かなくて済む）
+  for (const v of [...vacated].sort((a, b) => b.y0 - a.y0)) {
+    // 横幅いっぱいを見て、その高さに残っているもの（縦の線は、伸び縮みするので数えない）
+    const boxes: Box[] = [];
+    for (const it of cur.items) {
+      if (it.kind === 'symbol') {
+        boxes.push(drawnBox(it));
+        if (it.label.length > 0) boxes.push(textBox(it.x + it.labelDx, it.y + it.labelDy, it.label, it.labelAnchor));
+      } else if (it.kind === 'text') {
+        boxes.push(textBox(it.x, it.y, it.lines, it.anchor));
+      } else if (it.kind === 'frame') {
+        boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
+      } else if (it.y1 === it.y2 && it.x1 !== it.x2) {
+        boxes.push({ x0: Math.min(it.x1, it.x2), y0: it.y1 - 0.5, x1: Math.max(it.x1, it.x2), y1: it.y1 + 0.5 });
+      }
+    }
+    if (boxes.some((b) => b.y0 < v.y1 - 0.5 && b.y1 > v.y0 + 0.5)) continue;
+    const lo = Math.max(-Infinity, ...boxes.filter((b) => b.y1 <= v.y0 + 0.5).map((b) => b.y1));
+    const hi = Math.min(Infinity, ...boxes.filter((b) => b.y0 >= v.y1 - 0.5).map((b) => b.y0));
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) continue;
+    const shift = hi - lo - GAP_AFTER_DELETE;
+    if (shift < 1) continue;
+
+    // hi より下のものを、shift だけ上へ。線は、端ごとに見る（またいでいる縦線は縮む）
+    const mid = (lo + hi) / 2;
+    const up = (y: number) => (y >= mid ? y - shift : y);
+    cur = {
+      ...cur,
+      items: cur.items.map((it): DocItem => {
+        if (it.kind === 'wire') return { ...it, y1: up(it.y1), y2: up(it.y2) };
+        if (it.kind === 'symbol') return drawnBox(it).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
+        if (it.kind === 'text') return textBox(it.x, it.y, it.lines, it.anchor).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
+        return it.y >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
+      }),
+    };
+    closed++;
+  }
+  return { doc: applyAnchors(cur), closed };
 }
 
 /** 2 宙に浮いた端を、近くの接続点につなぐ */
@@ -872,6 +938,11 @@ export function tidyDrawing(
   const dead = dropDeadEnds(next, bridgeBrokenWires(next).unsure);
   next = dead.doc;
   fixed.stray += dead.removed;
+
+  // 消した記号の跡に残った余白を詰める（つなぎ直しのあと。記号と文字を、まとめて上へ動かす）
+  const gap = closeVacatedBands(next);
+  next = gap.doc;
+  fixed.gap += gap.closed;
 
   // まず、どこにもつながっていない斜めの線をまっすぐにする
   const fw = straightenFreeWires(next);

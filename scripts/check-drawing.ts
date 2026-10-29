@@ -19,6 +19,7 @@ import {
   replaceSymbol,
   rotateSymbol,
   tidyDoc,
+  docBounds,
 } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
@@ -1671,8 +1672,10 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
     const ct = base.items.find((it) => it.kind === 'symbol' && it.id === 'ct');
     if (ds?.kind !== 'symbol' || ct?.kind !== 'symbol') fail('DS・CTが見つかりません');
     else {
-      const top = ds.y + getSymbolDef('ds').box.h;
-      const bottom = ct.y;
+      const nds = r.doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'ds');
+      const nct = r.doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'ct');
+      const top = (nds ?? ds).y + getSymbolDef('ds').box.h;
+      const bottom = (nct ?? ct).y;
       // DSの出口からCTの入口まで、縦の線が途切れなく続いている
       const spans = r.doc.items
         .filter((it): it is DocWire => it.kind === 'wire' && Math.abs(it.x1) < 0.6 && Math.abs(it.x2) < 0.6)
@@ -1697,8 +1700,8 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
     const r = tidyDrawing(removeItem(base, 'ct'), 'A3', 'landscape');
     const wire = r.doc.items.find((it): it is DocWire => it.kind === 'wire' && !it.dashed && it.at1?.item === 'main-breaker');
     if (!wire) fail('CTを消したあと、VCBの出口から下へ、1本の線がつながっていません');
-    else if (wire.y2 < ctBottom) fail(`つなぎ直した線が、CTのあった場所の下まで届いていません（${Math.round(wire.y2)} < ${Math.round(ctBottom)}）`);
-    else console.log('  つなぎ直した線は、VCBの出口につながったまま、CTのあった場所の下まで届く');
+    else if (wire.y2 <= wire.y1 + 1 || ctBottom === Infinity) fail('つなぎ直した線が、VCBの出口から下へ伸びていません');
+    else console.log('  つなぎ直した線は、VCBの出口につながったまま、下へ伸びる');
   }
   // つなぐ相手が一つに決まらないときは、勝手につながず、印を出して確認してもらう
   {
@@ -1714,6 +1717,57 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
     const ok2 = tidyDrawing({ items: [wire('w-a', 0, 50), wire('w-b', 150, 100)] }, 'A3', 'landscape');
     if (ok2.doc.items.filter((it) => it.kind === 'wire').length !== 1) fail('向かい合う2本（相手が1つ）が、1本につながっていません');
     else console.log('  向かい合う2本（相手が1つ）は、1本につながる');
+  }
+}
+
+/* ---------- 28. 記号を消したあと、「結線を整える」で余白を詰める ---------- */
+console.log('\n■ 記号を消したあとの「結線を整える」（余白を詰める）');
+{
+  const a: Answers = {
+    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A', ctRatio: '300', transformerCount: 1,
+    feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no',
+  };
+  const base = fromLayout(layout(buildComposition(a), a));
+  const height = (d: Doc) => {
+    const b = docBounds(d);
+    return b.y1 - b.y0;
+  };
+  // 主回路の途中の機器を消すと、そのぶん図面が縮む。線・文字の問題は出ない
+  // （VCBは、トリップコイルが同じ高さに残るので、トリップコイルも一緒に消して試す）
+  for (const id of ['vct-indoor-1', 'ds', 'main-breaker', 'ct']) {
+    const cut = id === 'main-breaker' ? removeItem(removeItem(base, id), 'trip-coil') : removeItem(base, id);
+    const r = tidyDrawing(cut, 'A3', 'landscape');
+    const h0 = height(cut);
+    const h1 = height(r.doc);
+    const bad = r.issues.filter((i) => ['floating', 'through', 'overlap', 'skew'].includes(i.kind));
+    if (r.fixed.gap < 1) fail(`${id}：消した跡の余白が詰まっていません`);
+    else if (h1 > h0 - 20) fail(`${id}：図面の高さが縮んでいません（${Math.round(h0)} → ${Math.round(h1)}）`);
+    else if (bad.length) fail(`${id}：詰めたあとに問題が出ました（${bad.map((i) => i.message).slice(0, 2).join(' / ')}）`);
+    else if (r.doc.vacated) fail(`${id}：詰めたあとも、消した範囲の記録が残っています`);
+    else console.log(`  ${id} を消す：高さ ${Math.round(h0)} → ${Math.round(h1)}（${Math.round(h0 - h1)} 縮む）`);
+  }
+  // 記号どうしの間隔は、自動レイアウトの主回路の間隔（16）まで詰める。それより狭くはしない
+  {
+    const r = tidyDrawing(removeItem(base, 'ds'), 'A3', 'landscape');
+    const sym = (id: string) => r.doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === id);
+    const up = sym('vct-indoor-2');
+    const down = sym('ds-vt-pf');
+    if (!up || !down) fail('DSの上下の記号が見つかりません');
+    else {
+      const rb = rotatedBox(getSymbolDef(down.symbolId).box, down.rotate);
+      const gap = down.y + rb.dy - (up.y + getSymbolDef('vct').box.h);
+      if (gap < 16 - 0.5) fail(`詰めすぎです（上の記号の下端から下の記号の上端まで ${Math.round(gap)}）`);
+      else console.log(`  詰めたあとの間隔：上の記号の下端から、下の記号の上端まで ${Math.round(gap)}`);
+    }
+  }
+  // 横に並んだ変圧器の1台を消したときは、同じ高さに、ほかの変圧器が残っているので、動かさない
+  {
+    const three: Answers = { ...a, transformerCount: 3, trConnection__2: 'tr-3p-dy', trConnection__3: 'tr-3p-dy' };
+    const d3 = fromLayout(layout(buildComposition(three), three));
+    const cut = removeItem(d3, 'transformer-2');
+    const r = tidyDrawing(cut, 'A3', 'landscape');
+    if (r.fixed.gap !== 0) fail('横に並んだ変圧器の1台を消したら、図面を詰めてしまいました');
+    else console.log('  横に並んだ変圧器の1台を消しても、ほかの変圧器があるので、動かさない');
   }
 }
 
