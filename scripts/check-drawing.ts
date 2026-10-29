@@ -17,7 +17,6 @@ import {
   moveItem,
   portsOf,
   replaceSymbol,
-  rotateSymbol,
   tidyDoc,
   docBounds,
 } from '../apps/web/src/editor/doc.ts';
@@ -233,15 +232,14 @@ else {
   else console.log('  記号の大きさに合わせて、前後の線が自動で伸縮しました');
 }
 
-/* ---------- 5. 回しても離れないか ---------- */
-console.log('\n■ 記号を回す');
-if (tr) {
-  let d = base;
-  for (let i = 0; i < 4; i++) d = rotateSymbol(d, tr.id, 90);
-  if (worstGap(d) !== 0) fail(`4回回したあと ${worstGap(d)} のずれがあります`);
-  else console.log('  90°を4回まわしても、線の端は接続点の真上のまま');
-  const back = symbols(d).find((s) => s.id === tr.id)!;
-  if (back.rotate !== 0) fail(`4回まわして向きが ${back.rotate}° になりました`);
+/* ---------- 5. 「90度回す」は無い。ただし、自動で回して置いた記号（PFなど）の向きは、図面に残る ---------- */
+console.log('\n■ 記号の向き（自動で置いた向きは、そのまま保たれる）');
+{
+  const rotated = symbols(base).filter((s) => s.rotate !== 0);
+  const generated = layout(buildComposition(answersSpread), answersSpread).symbols.filter((s) => s.rotate !== 0);
+  if (rotated.length !== generated.length || rotated.some((s, i) => s.rotate !== generated[i]!.rotate)) {
+    fail('編集用の図面に取り込んだとき、記号の向きが変わっています');
+  } else console.log(`  回して置いた記号 ${rotated.length}個の向きが、自動レイアウトのまま`);
 }
 
 /* ---------- 6. 記号を消したときの後始末 ---------- */

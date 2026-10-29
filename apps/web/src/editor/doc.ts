@@ -644,15 +644,6 @@ export const resetLabelFromFields = (doc: Doc, id: string): Doc => ({
   items: doc.items.map((it) => (it.id === id && it.kind === 'symbol' ? { ...it, ...labelFromFields(getSymbol(it.symbolId)) } : it)),
 });
 
-/** 記号を回す。つないである線の端も、回ったあとの接続点について回る */
-export const rotateSymbol = (doc: Doc, id: string, delta: number): Doc =>
-  applyAnchors({
-    ...doc,
-    items: doc.items.map((it) =>
-      it.kind === 'symbol' && it.id === id ? { ...it, rotate: (it.rotate + delta + 360) % 360 } : it,
-    ),
-  });
-
 /* ------------------------------------------------------------------ */
 /* 動かすときの手助け                                                   */
 /* ------------------------------------------------------------------ */

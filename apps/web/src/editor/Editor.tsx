@@ -11,7 +11,7 @@ import { buildSheetSvg } from './exportSheet.ts';
 import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, rotateSymbol, setLabel, setLabelValue, snapWireToPorts, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, snapWireToPorts, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -198,9 +198,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <span className="sep" />
           <button type="button" className="btn" disabled={!selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
             {t('editor.delete')}
-          </button>
-          <button type="button" className="btn" disabled={!selectedSymbol} onClick={() => selectedSymbol && apply(rotateSymbol(doc, selectedSymbol.id, 90))}>
-            {t('editor.rotate')}
           </button>
           <button
             type="button"
