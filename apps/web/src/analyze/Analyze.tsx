@@ -9,6 +9,8 @@ interface Props {
   /** 読み取りに使った写真を案件に残すため */
   projectId: string;
   onApply: (patch: Answers) => void;
+  /** 読み取りを実行して、結果が出たときに知らせる（ヒアリング画面の表示を切り替えるため） */
+  onAnalyzed?: () => void;
   onGoToHearing: () => void;
 }
 
@@ -48,7 +50,7 @@ function toBase64(file: File): Promise<string> {
  * 読み取り結果はそのまま採用せず、必ずこの画面で人が選んでから反映する
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
-export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
+export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing }: Props) {
   const [images, setImages] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export function Analyze({ answers, projectId, onApply, onGoToHearing }: Props) {
       });
       setResult(json.result as AnalysisResult);
       setReview(json.review as ReviewItem[]);
+      onAnalyzed?.();
       // 自信がある項目は最初からチェックを入れておく
       const uncertain = new Set((json.result as AnalysisResult).uncertain);
       setChosen(

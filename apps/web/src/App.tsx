@@ -42,6 +42,12 @@ export function App() {
    * 左の目次は、ふだんは見る必要がなく、情報が多くて分かりにくいので、最初は隠しておく（「▶ 目次を出す」で開く）
    */
   const [showNav, setShowNav] = useState(false);
+  /**
+   * この案件で、スケッチの読み取りを行ったか。
+   * 読み取りに使った写真は案件に残してあるので、案件を開くときは、写真があるかで分かる。
+   * 読み取りを実行した直後も、ここを「はい」にする
+   */
+  const [sketchRead, setSketchRead] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
 
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -131,6 +137,7 @@ export function App() {
       setProjectName(p.name);
       setAnswers(p.answers ?? {});
       setDrawing(p.drawing);
+      setSketchRead(p.files.some((f) => f.media_type.startsWith('image/')));
       setDirty(false);
       setSavedAt(null);
       setError(null);
@@ -162,6 +169,7 @@ export function App() {
       setProjectName(name || '無題の案件');
       setAnswers(initial);
       setDrawing(null);
+      setSketchRead(false);
       setDirty(false);
       setError(null);
       setStale(null);
@@ -381,6 +389,7 @@ export function App() {
               answers={effective}
               projectId={projectId!}
               onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
+              onAnalyzed={() => setSketchRead(true)}
               onGoToHearing={() => setTab('hearing')}
             />
           ) : (
@@ -399,7 +408,7 @@ export function App() {
                 </button>
               </div>
               <div className={`app${showNav ? '' : ' no-nav'}${showPreview ? '' : ' no-preview'}`}>
-                <HearingForm answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} />
+                <HearingForm answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} sketchRead={sketchRead} />
                 {showPreview && <CompositionPreview answers={effective} />}
               </div>
             </div>

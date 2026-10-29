@@ -17,6 +17,8 @@ interface Props {
   onChange: (next: (prev: Answers) => Answers) => void;
   /** 左の目次を出すか（㉖） */
   showNav?: boolean;
+  /** この案件で、スケッチの読み取りを行ったか。行っていないときは、「スケッチから判定できた質問を隠す」を出さない */
+  sketchRead?: boolean;
 }
 
 /**
@@ -41,13 +43,14 @@ interface Block {
   need: boolean;
 }
 
-export function HearingForm({ answers, effective, onChange, showNav = true }: Props) {
+export function HearingForm({ answers, effective, onChange, showNav = true, sketchRead = false }: Props) {
   /** スケッチから読み取れた前提で、質問がどれだけ減るかを確かめる切り替え */
   const [aiAssist, setAiAssist] = useState(false);
 
+  // スケッチを読み取っていないときは、切り替えそのものを出さないので、隠す質問も無い
   const resolvedByAi = useMemo(
-    () => (aiAssist ? new Set(QUESTIONS.filter((q) => q.ask === 'ai-uncertain').map((q) => q.id)) : new Set<string>()),
-    [aiAssist],
+    () => (aiAssist && sketchRead ? new Set(QUESTIONS.filter((q) => q.ask === 'ai-uncertain').map((q) => q.id)) : new Set<string>()),
+    [aiAssist, sketchRead],
   );
   /** 受電設備エリアの数。2か所以上のときは、「受電設備の構成」以降を、エリアごとのブロックにする */
   const areas = areaCountOf(effective);
@@ -269,12 +272,14 @@ export function HearingForm({ answers, effective, onChange, showNav = true }: Pr
       <main className="form">
         <div className="form-head">
           <h2>ヒアリング項目</h2>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <label className="toggle">
-              <input type="checkbox" checked={aiAssist} onChange={(e) => setAiAssist(e.target.checked)} />
-              スケッチから判定できた質問を隠す
-            </label>
-          </div>
+          {sketchRead && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <label className="toggle">
+                <input type="checkbox" checked={aiAssist} onChange={(e) => setAiAssist(e.target.checked)} />
+                スケッチから判定できた質問を隠す
+              </label>
+            </div>
+          )}
         </div>
 
         {sections.flatMap((s) => [
