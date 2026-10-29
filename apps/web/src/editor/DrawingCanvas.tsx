@@ -75,7 +75,6 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
     const pick = insideSelected ? it.id : root;
 
     onSelect(pick);
-    if (it.kind === 'frame') return;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     start.current = toDrawing(e);
     setDrag({ id: pick, dx: 0, dy: 0 });
@@ -158,6 +157,12 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
                 <path
                   d={`M ${it.x} ${it.y} L ${it.x + it.w} ${it.y} M ${it.x} ${it.y} L ${it.x} ${it.y + 26} M ${it.x + it.w} ${it.y} L ${it.x + it.w} ${it.y + 26}`}
                   strokeWidth={1}
+                />
+                {/* 細い線でもつかめるように、見えない太い線を重ねる */}
+                <path
+                  d={`M ${it.x} ${it.y} L ${it.x + it.w} ${it.y} M ${it.x} ${it.y} L ${it.x} ${it.y + 26} M ${it.x + it.w} ${it.y} L ${it.x + it.w} ${it.y + 26}`}
+                  strokeWidth={18}
+                  stroke="transparent"
                 />
                 {it.label && (
                   <text x={it.x} y={it.y - 6} fontSize={LABEL_FONT} fontFamily={FONT_FAMILY} fill="currentColor" stroke="none">

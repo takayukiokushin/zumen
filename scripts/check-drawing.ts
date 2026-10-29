@@ -1874,5 +1874,22 @@ console.log('\n■ PASを動かしたとき（内蔵品・中の枝線・GR/DGR�
   }
 }
 
+/* ---------- 31. キュービクルの外枠も動かせる ---------- */
+console.log('\n■ 外枠（キュービクルの枠）を動かす');
+{
+  const frame = base.items.find((it) => it.kind === 'frame');
+  if (!frame || frame.kind !== 'frame') fail('外枠が見つかりません');
+  else {
+    const moved = moveItem(base, frame.id, 20, -12);
+    const f2 = moved.items.find((it) => it.id === frame.id);
+    const others = (d: Doc) => JSON.stringify(d.items.filter((it) => it.id !== frame.id));
+    if (f2?.kind !== 'frame' || f2.x !== frame.x + 20 || f2.y !== frame.y - 12 || f2.w !== frame.w) fail('外枠が、動かした分だけ動いていません（幅は変えない）');
+    else if (others(moved) !== others(base)) fail('外枠を動かしたら、ほかの記号や線も動きました');
+    else console.log('  外枠は、動かした分だけ動き、大きさ・ほかの記号・線は変わらない');
+    // 動かしたあとも、結線に問題は出ない
+    if (worstGap(moved) !== 0) fail('外枠を動かしたあと、線にずれが出ました');
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
