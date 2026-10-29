@@ -541,6 +541,10 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .login-size .seg { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .login-size .btn { min-width: calc(48px * var(--text-scale)); padding: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); }
 
+/* アイコンと文字を並べるボタン（縮小・拡大・戻す・進める など） */
+button.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: calc(6px * var(--text-scale)); }
+button.with-icon svg { flex: 0 0 auto; }
+
 /* 絵記号は線だけの白黒。ボタンの字づらと揃える */
 .icon-btn svg { display: block; }
 

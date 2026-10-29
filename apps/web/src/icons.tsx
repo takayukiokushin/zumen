@@ -123,3 +123,16 @@ export function InfoIcon({ size = 1.7 }: IconProps) {
     </svg>
   );
 }
+
+/** 虫眼鏡。レンズの中に、マイナス（縮小）またはプラス（拡大）を入れる */
+export function ZoomIcon({ kind, size = 1.3 }: IconProps & { kind: 'in' | 'out' }) {
+  return (
+    <svg {...base(size)} strokeWidth={1.6}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.4 15.4 21 21" />
+      <path d="M7.7 10.5h5.6" />
+      {kind === 'in' && <path d="M10.5 7.7v5.6" />}
+    </svg>
+  );
+}
+
