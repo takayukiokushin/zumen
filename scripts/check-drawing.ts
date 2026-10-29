@@ -1824,5 +1824,55 @@ console.log('\n■ 記号を動かしても、折り返した線が記号の真�
   else console.log('  取り込んだだけでは、線は1本も消えない');
 }
 
+/* ---------- 30. PASを動かすと、中の部品・枝線・GR/DGRも一緒に動く ---------- */
+console.log('\n■ PASを動かしたとき（内蔵品・中の枝線・GR/DGRが一緒に動く）');
+{
+  const cases: [string, Answers][] = [
+    ['DGR（VT・LA内蔵）', { ...answers, mainBreakerForm: 'cb', transformerCount: 1, feederCount: 0, pasControl: 'dgr', pasBuiltinVt: 'yes', pasBuiltinLa: 'yes' }],
+    ['GR（LA内蔵）', { ...answers, mainBreakerForm: 'cb', transformerCount: 1, feederCount: 0, pasControl: 'gr', pasBuiltinVt: 'no', pasBuiltinLa: 'yes' }],
+  ];
+  for (const [name, a] of cases) {
+    const d0 = fromLayout(layout(buildComposition(a), a));
+    const find = (d: Doc, id: string) => d.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === id);
+    const pas = find(d0, 'pas');
+    const relay = d0.items.find((it): it is DocSymbol => it.kind === 'symbol' && /^relay-(gr|dgr)$/.test(it.symbolId));
+    const kids = d0.items.filter((it): it is DocSymbol => it.kind === 'symbol' && it.parent === 'pas');
+    if (!pas || !relay || kids.length === 0) {
+      fail(`${name}：PAS・GR/DGR・内蔵品が見つかりません`);
+      continue;
+    }
+    const box = rotatedBox(getSymbolDef(pas.symbolId).box, pas.rotate);
+    const inBox = (x: number, y: number) => x >= pas.x + box.dx - 0.5 && x <= pas.x + box.dx + box.w + 0.5 && y >= pas.y + box.dy - 0.5 && y <= pas.y + box.dy + box.h + 0.5;
+    // PASの枠の中に端がある、つなぎ先の無い線（内蔵品への枝線）
+    const innerWires = wires(d0).filter((w) => (!w.at1 && inBox(w.x1, w.y1)) || (!w.at2 && inBox(w.x2, w.y2)));
+    // 内蔵品からGR/DGRへ向かう線（GR/DGRにつながっている線と、その手前の線）
+    const toRelay = wires(d0).filter((w) => w.at1?.item === relay.id || w.at2?.item === relay.id || (w.x1 > pas.x + box.dx + box.w && w.x2 > pas.x + box.dx + box.w && w.x1 < relay.x && w.x2 < relay.x && Math.min(w.y1, w.y2) >= pas.y && Math.max(w.y1, w.y2) <= pas.y + box.dy + box.h && !w.at1 && !w.at2));
+    let bad = '';
+    for (const [dx, dy] of [[30, -20], [-40, 60], [0, 24]] as const) {
+      const m = moveItem(d0, pas.id, dx, dy);
+      for (const o of [pas, relay, ...kids]) {
+        const n = find(m, o.id)!;
+        if (n.x - o.x !== dx || n.y - o.y !== dy || n.rotate !== o.rotate) bad ||= `${o.id} が (${dx},${dy}) どおりに動いていません`;
+      }
+      for (const w of [...innerWires, ...toRelay]) {
+        const n = m.items.find((it): it is DocWire => it.kind === 'wire' && it.id === w.id)!;
+        const moved = [n.x1 - w.x1, n.y1 - w.y1, n.x2 - w.x2, n.y2 - w.y2];
+        if (moved.some((v, i) => Math.abs(v - (i % 2 === 0 ? dx : dy)) > 0.01)) bad ||= `線 ${w.id} が一緒に動いていません`;
+      }
+      // PASの中の枝線と、GR/DGRへの線は、斜めにならない（PASの上下の主回路の線は、横に動かすと斜めになるが、これは前から）
+      for (const w of [...innerWires, ...toRelay]) {
+        const n = m.items.find((it): it is DocWire => it.kind === 'wire' && it.id === w.id)!;
+        if (n.x1 !== n.x2 && n.y1 !== n.y2) bad ||= `線 ${w.id} が斜めになりました`;
+      }
+      // 内蔵品だけを動かしたときは、その部品だけ
+    }
+    const one = moveItem(d0, kids[0]!.id, 0, 10);
+    if ([pas, relay, ...kids.slice(1)].some((o) => find(one, o.id)!.y !== o.y)) bad ||= `${kids[0]!.id} だけを動かしたのに、ほかも動きました`;
+    if (innerWires.length === 0 || toRelay.length === 0) bad ||= `試験の前提が違います（中の枝線 ${innerWires.length}本・GR/DGRへの線 ${toRelay.length}本）`;
+    if (bad) fail(`${name}：${bad}`);
+    else console.log(`  ${name}：PASを動かすと、内蔵品 ${kids.length}個・中の枝線 ${innerWires.length}本・GR/DGRとそこへの線 ${toRelay.length}本が、同じだけ動く。内蔵品だけを動かすと、その部品だけ動く`);
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

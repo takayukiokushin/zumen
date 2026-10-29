@@ -427,6 +427,81 @@ export function tidyDoc(doc: Doc): Doc {
 /* ------------------------------------------------------------------ */
 
 /**
+ * 親の記号（PAS）を動かすときに、一緒に動かすもの。
+ *
+ * PASの中は、記号の絵（主回路の縦線）と、細かい線に分かれている。内蔵品（ZCT・VT・LA）へ向かう枝線は、
+ * 一方の端がPASの枠の中（絵の上）にあって、つなぎ先を持たない。これを動かさないと、PASを動かしたとき、
+ * 枝線の端だけが取り残されて、線が自由に伸びてしまう。
+ * さらに、内蔵品から出て、GR・DGR（地絡継電器）へ向かう線（途中で曲がる）と、GR・DGRそのものも、
+ * PASに付いているものなので、一緒に動かす。
+ *
+ *   inside … 動かす線（両端が、PASの内蔵品か、PASの枠の中にあるもの）
+ *   relays … 一緒に動かす継電器（GR・DGR）と、そこへ向かう線
+ *
+ * GR・DGRへ向かう線をたどった先に、ほかの記号があったり、GR・DGR以外の継電器だったりするときは、
+ * どこまでが付属品か分からないので、動かさない（これまでどおり、線が伸びるだけ）。
+ */
+function followersOf(doc: Doc, parentId: string): { wires: Set<string>; symbols: Set<string> } {
+  const wires = new Set<string>();
+  const symbols = new Set<string>();
+  const parent = doc.items.find((i) => i.id === parentId);
+  if (!parent || parent.kind !== 'symbol') return { wires, symbols };
+  const kids = new Set(descendantsOf(doc, parentId));
+  if (kids.size === 0) return { wires, symbols };
+  const group = new Set([parentId, ...kids]);
+
+  const rb = rotatedBox(getSymbol(parent.symbolId).box, parent.rotate);
+  const box = { x0: parent.x + rb.dx - 0.5, y0: parent.y + rb.dy - 0.5, x1: parent.x + rb.dx + rb.w + 0.5, y1: parent.y + rb.dy + rb.h + 0.5 };
+  const inBox = (x: number, y: number) => x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
+  const allWires = doc.items.filter((i): i is DocWire => i.kind === 'wire');
+
+  // 1 PASの中の枝線：端が、内蔵品につながっているか、PASの枠の中にある
+  for (const w of allWires) {
+    const ok1 = w.at1 ? kids.has(w.at1.item) : inBox(w.x1, w.y1);
+    const ok2 = w.at2 ? kids.has(w.at2.item) : inBox(w.x2, w.y2);
+    if (ok1 && ok2 && (w.at1 || w.at2 || (inBox(w.x1, w.y1) && inBox(w.x2, w.y2)))) {
+      // 内蔵品につながっていて、反対の端が枠の外（GR・DGRへ向かう線）のものは、次で調べる
+      wires.add(w.id);
+    }
+  }
+
+  // 2 内蔵品からGR・DGRへ向かう線をたどる（端どうしが触れている線を、つなぎ先を持たないまま、たどっていく）
+  const touches = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by) <= 1.5;
+  for (const start of allWires) {
+    if (wires.has(start.id)) continue;
+    const fromKid = (start.at1 && kids.has(start.at1.item)) || (start.at2 && kids.has(start.at2.item));
+    if (!fromKid) continue;
+    const chain = new Set<string>([start.id]);
+    const relays = new Set<string>();
+    let bad = false;
+    for (const queue = [start]; queue.length > 0 && !bad; ) {
+      const w = queue.pop()!;
+      for (const [a, x, y] of [[w.at1, w.x1, w.y1], [w.at2, w.x2, w.y2]] as const) {
+        if (a) {
+          if (kids.has(a.item) || group.has(a.item)) continue;
+          const sym = doc.items.find((i) => i.id === a.item);
+          if (sym && sym.kind === 'symbol' && /^relay-(gr|dgr)$/.test(sym.symbolId)) relays.add(sym.id);
+          else bad = true;
+          continue;
+        }
+        // つなぎ先を持たない端：同じ点で触れているほかの線へ
+        for (const o of allWires) {
+          if (chain.has(o.id) || wires.has(o.id)) continue;
+          if (touches(x, y, o.x1, o.y1) || touches(x, y, o.x2, o.y2)) {
+            chain.add(o.id);
+            queue.push(o);
+          }
+        }
+      }
+    }
+    if (bad || relays.size !== 1) continue;
+    for (const id of chain) wires.add(id);
+    for (const id of relays) symbols.add(id);
+  }
+  return { wires, symbols };
+}
+
+/**
  * 要素を動かす。記号を動かすと、つないである線の端も接続点について回る。
  *
  * dx・dy は呼ぶ側で決めた値をそのまま使う（assistMove が格子合わせと
@@ -439,11 +514,19 @@ export const moveItem = (doc: Doc, id: string, dx: number, dy: number): Doc => {
 
   // 記号を動かすときは、内蔵しているもの（PASのZCT・VT・LAなど）も一緒に動かす
   const moving = new Set(target.kind === 'symbol' ? groupOf(doc, id) : [id]);
+  // 親の記号（PAS）を動かすときは、PASの中の枝線と、付属のGR・DGR（とそこへ向かう線）も一緒に動かす。
+  // 内蔵品だけを動かすときは、これまでどおり、その部品だけが動く
+  const follow = target.kind === 'symbol' ? followersOf(doc, id) : { wires: new Set<string>(), symbols: new Set<string>() };
+  for (const sid of follow.symbols) moving.add(sid);
 
   const moved: Doc = {
     ...doc,
     items: doc.items.map((it) => {
-      if (!moving.has(it.id)) return it;
+      if (!moving.has(it.id) && !follow.wires.has(it.id)) return it;
+      if (it.kind === 'wire' && follow.wires.has(it.id)) {
+        // 一緒に動かす線は、つなぎ先の印を残したまま、平行に動かす
+        return { ...it, x1: it.x1 + dx, y1: it.y1 + dy, x2: it.x2 + dx, y2: it.y2 + dy };
+      }
       if (it.kind === 'wire') {
         // 線そのものを動かしたときは、つないであった印をいったん外す
         return {
