@@ -101,8 +101,6 @@ const ja = {
   'editor.tidy.help': '図面全体の結線を、接続点にぴったり合わせ直します',
   'editor.regenerate': '回答の内容を反映させる',
   'editor.print': '印刷 / PDF',
-  'editor.png': 'PNG保存',
-  'editor.svg': 'SVG保存',
   'editor.zoomIn': '拡大',
   'editor.zoomOut': '縮小',
   'editor.wireHint': '線を引く：始点をクリック→終点をクリック。縦か横に自動で揃います。',
@@ -204,7 +202,7 @@ const ja = {
   'help.7.t': '図面の編集',
   'help.7.b': '記号をクリックして選ぶと、動かす・「90°回す」・「削除」ができます。「線を引く」で結線を足せます。まちがえたときは「操作を戻す」で元に戻せます。「結線を整える」は、線を接続点にぴったり合わせ直します。「回答の内容を反映させる」は、ヒアリングの回答から図面を作り直します（押しても「操作を戻す」で戻せます）。',
   'help.8.t': '図面を出力する・表示の設定',
-  'help.8.b': '図面の「印刷 / PDF」「PNG保存」「SVG保存」で書き出せます。言葉・明るさ・文字の大きさは、画面右上の歯車（表示の設定）で変えられます。',
+  'help.8.b': '図面の「印刷 / PDF」で書き出せます。言葉・明るさ・文字の大きさは、画面右上の歯車（表示の設定）で変えられます。',
 } as const;
 
 export type Key = keyof typeof ja;
@@ -293,8 +291,6 @@ const en: Dict = {
   'editor.tidy.help': 'Re-seats every line in the diagram exactly on its terminals',
   'editor.regenerate': 'Apply the answers',
   'editor.print': 'Print / PDF',
-  'editor.png': 'Save PNG',
-  'editor.svg': 'Save SVG',
   'editor.zoomIn': 'Zoom in',
   'editor.zoomOut': 'Zoom out',
   'editor.wireHint': 'Draw a line: click the start, then the end. It snaps to vertical or horizontal.',
@@ -396,7 +392,7 @@ const en: Dict = {
   'help.7.t': 'Editing the drawing',
   'help.7.b': 'Click a symbol to select it; you can move it, “Rotate 90°” or “Delete” it. Use “Draw a line” to add a connection. Use “Undo” if you make a mistake. “Tidy connections” snaps wires back onto their connection points. “Apply the answers” redraws the drawing from the hearing answers (you can still undo it).',
   'help.8.t': 'Output and display settings',
-  'help.8.b': 'Use “Print / PDF”, “Save PNG” or “Save SVG” in the drawing tab to export. Language, brightness and text size can be changed with the gear icon (display settings) at the top right.',
+  'help.8.b': 'Use “Print / PDF” in the drawing tab to export. Language, brightness and text size can be changed with the gear icon (display settings) at the top right.',
 };
 
 const fr: Dict = {
@@ -482,8 +478,6 @@ const fr: Dict = {
   'editor.tidy.help': 'Replace tous les traits du schéma exactement sur leurs bornes',
   'editor.regenerate': 'Appliquer les réponses',
   'editor.print': 'Imprimer / PDF',
-  'editor.png': 'Enregistrer en PNG',
-  'editor.svg': 'Enregistrer en SVG',
   'editor.zoomIn': 'Agrandir',
   'editor.zoomOut': 'Réduire',
   'editor.wireHint': 'Tracer : cliquez le départ, puis l’arrivée. Le trait se met à l’horizontale ou à la verticale.',
@@ -586,7 +580,7 @@ const fr: Dict = {
   'help.7.t': 'Modifier le schéma',
   'help.7.b': 'Cliquez sur un symbole pour le sélectionner : vous pouvez le déplacer, le faire pivoter de 90° ou le supprimer. « Tracer un trait » ajoute une connexion. En cas d’erreur, utilisez « Annuler ». « Remettre les liaisons d’aplomb » recale les liaisons sur leurs points de connexion. « Appliquer les réponses » redessine le schéma (vous pouvez encore annuler).',
   'help.8.t': 'Exporter et réglages d’affichage',
-  'help.8.b': 'Utilisez « Imprimer / PDF », « Enregistrer en PNG » ou « Enregistrer en SVG » dans l’onglet du schéma pour exporter. La langue, la luminosité et la taille du texte se règlent avec l’engrenage (réglages d’affichage) en haut à droite.',
+  'help.8.b': 'Utilisez « Imprimer / PDF » dans l’onglet du schéma pour exporter. La langue, la luminosité et la taille du texte se règlent avec l’engrenage (réglages d’affichage) en haut à droite.',
 };
 
 const zh: Dict = {
@@ -671,8 +665,6 @@ const zh: Dict = {
   'editor.tidy.help': '把整张图的接线重新准确对齐到接点',
   'editor.regenerate': '反映回答内容',
   'editor.print': '打印 / PDF',
-  'editor.png': '保存为PNG',
-  'editor.svg': '保存为SVG',
   'editor.zoomIn': '放大',
   'editor.zoomOut': '缩小',
   'editor.wireHint': '画线：先点起点，再点终点。线会自动变成横向或纵向。',
@@ -772,7 +764,7 @@ const zh: Dict = {
   'help.7.t': '编辑图纸',
   'help.7.b': '点击符号即可选中，可移动、“旋转90°”或“删除”。用“画线”添加接线。操作有误时用“撤销操作”。“整理接线”会把线对齐到连接点。“反映回答内容”会按问卷回答重画图纸（仍可撤销）。',
   'help.8.t': '输出与显示设置',
-  'help.8.b': '在图纸页使用“打印 / PDF”“保存为PNG”“保存为SVG”导出。语言、明暗和文字大小可通过右上角的齿轮（显示设置）更改。',
+  'help.8.b': '在图纸页使用“打印 / PDF”导出。语言、明暗和文字大小可通过右上角的齿轮（显示设置）更改。',
 };
 
 const ko: Dict = {
@@ -858,8 +850,6 @@ const ko: Dict = {
   'editor.tidy.help': '도면 전체의 결선을 접속점에 꼭 맞게 다시 맞춥니다',
   'editor.regenerate': '답변 내용 반영하기',
   'editor.print': '인쇄 / PDF',
-  'editor.png': 'PNG 저장',
-  'editor.svg': 'SVG 저장',
   'editor.zoomIn': '확대',
   'editor.zoomOut': '축소',
   'editor.wireHint': '선 긋기: 시작점을 누르고 끝점을 누르세요. 가로나 세로로 자동으로 맞춰집니다.',
@@ -960,7 +950,7 @@ const ko: Dict = {
   'help.7.t': '도면 편집',
   'help.7.b': '기호를 클릭해 선택하면 이동, “90° 돌리기”, “삭제”를 할 수 있습니다. “선 긋기”로 결선을 추가합니다. 실수하면 “작업 되돌리기”를 사용하세요. “결선 정리”는 선을 접속점에 맞게 다시 정렬합니다. “답변 내용 반영하기”는 질문 답변으로 도면을 다시 그립니다(눌러도 되돌릴 수 있습니다).',
   'help.8.t': '출력과 표시 설정',
-  'help.8.b': '도면 탭의 “인쇄 / PDF”, “PNG 저장”, “SVG 저장”으로 내보낼 수 있습니다. 언어, 밝기, 글자 크기는 오른쪽 위의 톱니바퀴(표시 설정)에서 바꿀 수 있습니다.',
+  'help.8.b': '도면 탭의 “인쇄 / PDF”로 내보낼 수 있습니다. 언어, 밝기, 글자 크기는 오른쪽 위의 톱니바퀴(표시 설정)에서 바꿀 수 있습니다.',
 };
 
 const DICTS: Record<Lang, Dict> = { ja, en, fr, zh, ko };

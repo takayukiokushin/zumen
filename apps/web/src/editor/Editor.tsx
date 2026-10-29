@@ -7,7 +7,7 @@ import { buildComposition, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT } from '../i18n/useT.ts';
-import { buildSheetSvg, downloadPng, downloadSvg } from './exportSheet.ts';
+import { buildSheetSvg } from './exportSheet.ts';
 import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
@@ -81,7 +81,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     // 右下は常に社名（作成者や図面番号は図面に入れない方針）
     footer: COMPANY_NAME,
   };
-  const fileBase = String(answers.siteName ?? '単線結線図');
   const selected = doc.items.find((i) => i.id === selectedId) ?? null;
   /** 印刷・保存用の1枚のSVG（図枠と表題欄つき） */
   const paper: PaperSize = doc.paper ?? 'A4';
@@ -300,12 +299,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <span className="sep" />
           <button type="button" onClick={() => window.print()}>
             {t('editor.print')}
-          </button>
-          <button type="button" onClick={() => void downloadPng(sheetSvg, `${fileBase}.png`)}>
-            {t('editor.png')}
-          </button>
-          <button type="button" onClick={() => downloadSvg(sheetSvg, `${fileBase}.svg`)}>
-            {t('editor.svg')}
           </button>
         </div>
         <div className="tools">
