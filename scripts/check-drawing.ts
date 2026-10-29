@@ -105,6 +105,8 @@ function worstGap(d: Doc): number {
   };
   let worst = 0;
   for (const w of wires(d)) {
+    // 折り返して描かないことにした線（長さが見えないほど短い）は、数えない
+    if (Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.01) continue;
     for (const end of [1, 2] as const) {
       const a = end === 1 ? w.at1 : w.at2;
       if (!a) continue;
@@ -1767,6 +1769,59 @@ console.log('\n■ 記号を消したあとの「結線を整える」（余白�
     if (r.fixed.gap !== 0) fail('横に並んだ変圧器の1台を消したら、図面を詰めてしまいました');
     else console.log('  横に並んだ変圧器の1台を消しても、ほかの変圧器があるので、動かさない');
   }
+}
+
+/* ---------- 29. LBSを動かしても、記号の真ん中に縦の線が出ない ---------- */
+console.log('\n■ 記号を動かしても、折り返した線が記号の真ん中を貫かない（LBSなど）');
+{
+  const cases: [string, Answers][] = [
+    ['PFS形のLBS', { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, transformerCount: 1, feederCount: 0 }],
+    ['励突抑制開閉器', { ...answers, mainBreakerForm: 'cb', hasInrush: 'yes', inrushRatedVoltage: '7200', inrushFuseCount: 3, transformerCount: 1, feederCount: 0 }],
+  ];
+  /** 縦の線が、LBSの図記号の真ん中（上と下の端から20より内側）を通っているか */
+  const through = (d: Doc, id: string): boolean => {
+    const s = d.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === id);
+    if (!s) return false;
+    const def = getSymbolDef(s.symbolId);
+    const cx = s.x + def.ports[0]!.x;
+    return d.items.some((it) => {
+      if (it.kind !== 'wire' || it.x1 !== it.x2 || Math.abs(it.x1 - cx) > 1.5) return false;
+      const lo = Math.max(Math.min(it.y1, it.y2), s.y + 20);
+      const hi = Math.min(Math.max(it.y1, it.y2), s.y + def.box.h - 20);
+      return hi - lo > 8;
+    });
+  };
+  for (const [name, a] of cases) {
+    const d0 = fromLayout(layout(buildComposition(a), a));
+    const lbs = d0.items.find((it): it is DocSymbol => it.kind === 'symbol' && /^lbs/.test(it.symbolId) && (it.id === 'main-breaker' || it.id === 'inrush-lbs'));
+    if (!lbs) {
+      fail(`${name}：LBSが見つかりません`);
+      continue;
+    }
+    if (through(d0, lbs.id)) fail(`${name}：動かす前から、LBSの真ん中に縦の線があります`);
+    let bad = 0;
+    for (const dy of [20, 40, 60, 80, -40, -80]) {
+      if (through(moveItem(d0, lbs.id, 0, dy), lbs.id)) bad++;
+    }
+    // 隣の記号を動かして、LBSの上や下をまたいだときも同じ
+    for (const other of d0.items.filter((it): it is DocSymbol => it.kind === 'symbol' && it.id !== lbs.id)) {
+      for (const dy of [60, -60]) if (through(moveItem(d0, other.id, 0, dy), lbs.id)) bad++;
+    }
+    // 元の位置へ戻せば、線も元どおりになる
+    const back = moveItem(moveItem(d0, lbs.id, 0, 80), lbs.id, 0, -80);
+    const lengths = (d: Doc) => d.items.filter((it): it is DocWire => it.kind === 'wire').map((w) => Math.round(Math.hypot(w.x2 - w.x1, w.y2 - w.y1))).join(',');
+    if (bad > 0) fail(`${name}：動かしたとき、LBSの真ん中に縦の線が出る動かし方が ${bad}通りあります`);
+    else if (lengths(back) !== lengths(d0)) fail(`${name}：80下げて80戻したのに、線が元どおりになっていません`);
+    else console.log(`  ${name}：上下に動かしても（隣を動かしても）、真ん中に縦の線は出ない。戻すと線も元どおり`);
+  }
+  // 生成した図面の線は、1本も消えない（折り返しの判定が、正しい線を消していない）
+  const a = cases[0]![1];
+  const lay = layout(buildComposition(a), a);
+  const doc = fromLayout(lay);
+  const wires = doc.items.filter((it): it is DocWire => it.kind === 'wire');
+  const lost = wires.filter((w, i) => Math.hypot(w.x2 - w.x1, w.y2 - w.y1) < 0.5 && lay.wires[i] && Math.hypot(lay.wires[i]!.x2 - lay.wires[i]!.x1, lay.wires[i]!.y2 - lay.wires[i]!.y1) >= 0.5);
+  if (lost.length) fail(`取り込んだだけで、${lost.length}本の線が消えています`);
+  else console.log('  取り込んだだけでは、線は1本も消えない');
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

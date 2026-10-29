@@ -164,6 +164,11 @@ export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
 /** 線の端がこの距離より近ければ「その接続点につないだ」とみなす */
 const ATTACH_RADIUS = 6;
 
+/** 線が、接続点の出ていく向きと逆へ、これ以上伸びていたら「折り返し」とみなす距離 */
+const FOLD_TOLERANCE = 1.5;
+/** 折り返して描かない線の、残しておく長さ（見えないほど短い。縦横の向きを覚えておくための値） */
+const COLLAPSED = 0.001;
+
 /** 動かしている途中、この距離まで近づいたら、まっすぐになる位置に吸い寄せる */
 const ASSIST_RANGE = 10;
 
@@ -182,6 +187,24 @@ function portAt(doc: Doc, a: Anchor | undefined): { x: number; y: number } | nul
   const it = doc.items.find((i) => i.id === a.item);
   if (!it || it.kind !== 'symbol') return null;
   return portsOf(it).find((p) => p.id === a.port) ?? null;
+}
+
+/**
+ * 接続点から、線が出ていく向き（記号を回していれば、回したあとの向き）。
+ * 上＝(0,-1)、下＝(0,1)、左＝(-1,0)、右＝(1,0)。無ければ null
+ */
+function outwardOf(doc: Doc, a: Anchor | undefined): { dx: number; dy: number } | null {
+  if (!a) return null;
+  const it = doc.items.find((i) => i.id === a.item);
+  if (!it || it.kind !== 'symbol') return null;
+  const port = getSymbol(it.symbolId).ports.find((p) => p.id === a.port);
+  if (!port) return null;
+  const base = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[port.dir];
+  // 時計まわりに rotate 度回す
+  const turns = (((Math.round(it.rotate / 90) % 4) + 4) % 4) as 0 | 1 | 2 | 3;
+  let [x, y] = base as [number, number];
+  for (let i = 0; i < turns; i++) [x, y] = [-y, x];
+  return { dx: x, dy: y };
 }
 
 /** その座標にいちばん近い接続点。radius より遠ければ null */
@@ -288,6 +311,42 @@ export function linkWires(doc: Doc): Doc {
   };
 }
 
+/** 両端がつないである線が、どちらかの接続点から、出ていく向きと逆向きに伸びているか（折り返し） */
+function foldsBack(
+  doc: Doc,
+  w: DocWire,
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+): boolean {
+  const fold = (from: { x: number; y: number }, to: { x: number; y: number }, out: { dx: number; dy: number } | null) =>
+    out !== null && (to.x - from.x) * out.dx + (to.y - from.y) * out.dy < -FOLD_TOLERANCE;
+  return fold(p1, p2, outwardOf(doc, w.at1)) || fold(p2, p1, outwardOf(doc, w.at2));
+}
+
+/**
+ * 片側だけつないである線で、自由な端が、つなぎ先の接続点から見て、出ていく向きと逆側にあるか。
+ * 自由な端は動かさない（縦なら縦、横なら横のまま伸び縮みする）ので、元の向き（縦／横）で測る。
+ */
+function freeEndFolds(
+  doc: Doc,
+  w: DocWire,
+  orig: DocWire,
+  anchor: Anchor | undefined,
+  p: { x: number; y: number },
+  end: 1 | 2,
+): boolean {
+  const out = outwardOf(doc, anchor);
+  if (!out) return false;
+  const fx = end === 1 ? orig.x2 : orig.x1;
+  const fy = end === 1 ? orig.y2 : orig.y1;
+  const vertical = Math.abs(orig.x2 - orig.x1) <= Math.abs(orig.y2 - orig.y1);
+  const reach = vertical ? (fy - p.y) * out.dy : (fx - p.x) * out.dx;
+  // つなぎ先の向きが、線の縦横と合っていないときは、判断しない
+  const along = vertical ? out.dy !== 0 : out.dx !== 0;
+  void w;
+  return along && reach < -FOLD_TOLERANCE;
+}
+
 /**
  * つないである端を、接続点の真上にぴったり置き直す。
  * 片側だけつないでいる線は、縦なら縦、横なら横のまま伸び縮みさせる。
@@ -316,6 +375,35 @@ export function applyAnchors(doc: Doc): Doc {
         w.x2 = p2.x;
         w.y2 = p2.y;
       }
+      /*
+       * 両端がつないである線が、記号を動かしたせいで、つなぎ先の記号の中へ折り返してしまうとき
+       * （たとえば、LBSを下へ動かして、下の機器の接続点より下に行った）は、線を描かない。
+       * 折り返した線が、記号の真ん中を貫く縦の線に見えてしまうため。
+       * つなぎ先の印は残しておくので、記号を元の位置へ戻せば、線は元どおりに出る。
+       */
+      if (p1 && p2 && foldsBack(doc, it, p1, p2)) {
+        w.x2 = p1.x;
+        w.y2 = p1.y;
+        w.x1 = p1.x;
+        w.y1 = p1.y;
+        return w;
+      }
+
+      // 片側だけつないである線でも、自由な端がつなぎ先の記号の後ろ側へ回り込むなら、同じく描かない
+      // （自由な端の位置と、縦横の向きは覚えておく。つなぎ先を元に戻せば、線は元どおりに出る）
+      if (p1 && !p2 && freeEndFolds(doc, w, it, w.at1, p1, 1)) {
+        const vertical = Math.abs(it.x2 - it.x1) <= Math.abs(it.y2 - it.y1);
+        w.x1 = it.x2 + (vertical ? 0 : COLLAPSED);
+        w.y1 = it.y2 + (vertical ? COLLAPSED : 0);
+        return w;
+      }
+      if (p2 && !p1 && freeEndFolds(doc, w, it, w.at2, p2, 2)) {
+        const vertical = Math.abs(it.x2 - it.x1) <= Math.abs(it.y2 - it.y1);
+        w.x2 = it.x1 + (vertical ? 0 : COLLAPSED);
+        w.y2 = it.y1 + (vertical ? COLLAPSED : 0);
+        return w;
+      }
+
       // 反対側が自由なら、まっすぐのまま伸び縮みさせる
       if (p1 && !p2) {
         if (vertical) w.x2 = w.x1;
