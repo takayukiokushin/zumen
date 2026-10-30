@@ -221,147 +221,173 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   return (
     <div className="editor">
-      <div className="editor-bar">
+      <div className={`editor-bar${moreOpen ? ' more-open' : ''}`}>
         <div className="tools">
-          <button
-            type="button"
-            className="btn with-icon"
-            title={t('editor.undo.help')}
-            onClick={() => setHistory((h) => { const n = undo(h); onDocChange?.(n.present); return n; })}
-            disabled={sheetView || history.past.length === 0}
-          >
-            <UndoIcon />
-            {t('editor.undo')}
-          </button>
-          <button
-            type="button"
-            className="btn with-icon"
-            title={t('editor.redo.help')}
-            onClick={() => setHistory((h) => { const n = redo(h); onDocChange?.(n.present); return n; })}
-            disabled={sheetView || history.future.length === 0}
-          >
-            <UndoIcon redo />
-            {t('editor.redo')}
-          </button>
-          <span className="sep" />
-          <button type="button" className="btn danger" disabled={sheetView || !selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
-            {t('editor.delete')}
-          </button>
-          {/* スマホでは、よく使うボタンだけを表に出し、ほかは「ほかの操作」の中にしまう（広い画面では、これまでどおり全部並ぶ） */}
+          {/* ボタンは、用途ごとに、見出し付きのグループにまとめる。スマホでは、見出しを消し、「sec」の付いたものを「ほかの操作」の中にしまう */}
+          <div className="tool-group">
+            <span className="cap">{t('editor.group.history')}</span>
+            <div className="tool-row">
+              <button
+                type="button"
+                className="btn with-icon"
+                title={t('editor.undo.help')}
+                onClick={() => setHistory((h) => { const n = undo(h); onDocChange?.(n.present); return n; })}
+                disabled={sheetView || history.past.length === 0}
+              >
+                <UndoIcon />
+                {t('editor.undo')}
+              </button>
+              <button
+                type="button"
+                className="btn with-icon"
+                title={t('editor.redo.help')}
+                onClick={() => setHistory((h) => { const n = redo(h); onDocChange?.(n.present); return n; })}
+                disabled={sheetView || history.future.length === 0}
+              >
+                <UndoIcon redo />
+                {t('editor.redo')}
+              </button>
+            </div>
+          </div>
+
+          <div className="tool-group">
+            <span className="cap">{t('editor.group.edit')}</span>
+            <div className="tool-row">
+              <button type="button" className="btn danger" disabled={sheetView || !selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
+                {t('editor.delete')}
+              </button>
+              <button
+                type="button"
+                className="sec"
+                disabled={sheetView}
+                onClick={() => {
+                  const b = docBounds(doc);
+                  const { doc: next, id } = addText(doc, (b.x0 + b.x1) / 2, b.y1 + 40, '注記');
+                  apply(next);
+                  setSelectedId(id);
+                }}
+              >
+                {t('editor.addNote')}
+              </button>
+              <button
+                type="button"
+                className={`sec${mode === 'wire' ? ' on' : ''}`}
+                aria-pressed={mode === 'wire'}
+                disabled={sheetView}
+                onClick={() => {
+                  setMode((m) => (m === 'wire' ? 'select' : 'wire'));
+                  setSelectedId(null);
+                }}
+              >
+                {t('editor.drawWire')}
+              </button>
+            </div>
+          </div>
+
+          {/* スマホ専用のボタン */}
           <button type="button" className="tools-toggle" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
             {moreOpen ? t('editor.moreClose') : t('editor.more')}
           </button>
           <button type="button" className="tools-toggle" aria-expanded={sideOpen} onClick={() => setSideOpen((v) => !v)}>
             {t('editor.sideOpen')}
           </button>
-          <div className={`tools-more${moreOpen ? ' open' : ''}`}>
-          <button
-            type="button"
-            disabled={sheetView}
-            onClick={() => {
-              const b = docBounds(doc);
-              const { doc: next, id } = addText(doc, (b.x0 + b.x1) / 2, b.y1 + 40, '注記');
-              apply(next);
-              setSelectedId(id);
-            }}
-          >
-            {t('editor.addNote')}
-          </button>
-          <span className="sep" />
-          <button
-            type="button"
-            aria-pressed={mode === 'wire'}
-            className={mode === 'wire' ? 'on' : ''}
-            disabled={sheetView}
-            onClick={() => {
-              setMode((m) => (m === 'wire' ? 'select' : 'wire'));
-              setSelectedId(null);
-            }}
-          >
-            {t('editor.drawWire')}
-          </button>
-          <button
-            type="button"
-            className="btn"
-            title={t('editor.tidy.help')}
-            disabled={sheetView}
-            onClick={() => {
-              const r = tidyDrawing(doc, paper, orientation, titleH);
-              applyAuto(r.doc);
-              const done = Object.entries(r.fixed)
-                .filter(([, n]) => n > 0)
-                .map(([k, n]) => `${ISSUE_LABEL[k as keyof typeof ISSUE_LABEL]} ${n}件`);
-              setIssues(r.issues);
-              setTidyNote(
-                done.length > 0
-                  ? `直しました：${done.join(' / ')}`
-                  : '直すところはありませんでした',
-              );
-            }}
-          >
-            {t('editor.tidy')}
-          </button>
-          <span className="sep" />
-          <button type="button" disabled={sheetView} onClick={() => setAskRegenerate(true)}>
-            {t('editor.regenerate')}
-          </button>
-          <span className="sep" />
-          <span className="paper-pick">
-            {(['A4', 'A3'] as const).map((p2) => (
+
+          <div className="tool-group sec">
+            <span className="cap">{t('editor.group.tidy')}</span>
+            <div className="tool-row">
               <button
-                key={p2}
                 type="button"
-                className="btn"
-                aria-pressed={paper === p2}
-                title={`${p2}（${sheetSize(p2, orientation).mmW}×${sheetSize(p2, orientation).mmH}mm）で印刷します`}
-                onClick={() => setPaper({ paper: p2 })}
+                className="btn sec"
+                title={t('editor.tidy.help')}
+                disabled={sheetView}
+                onClick={() => {
+                  const r = tidyDrawing(doc, paper, orientation, titleH);
+                  applyAuto(r.doc);
+                  const done = Object.entries(r.fixed)
+                    .filter(([, n]) => n > 0)
+                    .map(([k, n]) => `${ISSUE_LABEL[k as keyof typeof ISSUE_LABEL]} ${n}件`);
+                  setIssues(r.issues);
+                  setTidyNote(
+                    done.length > 0
+                      ? `直しました：${done.join(' / ')}`
+                      : '直すところはありませんでした',
+                  );
+                }}
               >
-                {p2}
+                {t('editor.tidy')}
               </button>
-            ))}
-            {([
-              ['portrait', '縦'],
-              ['landscape', '横'],
-            ] as const).map(([o, label]) => (
-              <button
-                key={o}
-                type="button"
-                className="btn"
-                aria-pressed={orientation === o}
-                onClick={() => setPaper({ orientation: o })}
-              >
-                {label}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="btn"
-              aria-pressed={sheetView}
-              title="図枠つきの、印刷したときの見た目で確かめます"
-              onClick={() => {
-                setSheetView((v) => !v);
-                setMode('select');
-              }}
-            >
-              印刷プレビュー
-            </button>
-          </span>
-          <span className="sep" />
-          <button type="button" onClick={() => window.print()}>
-            {t('editor.print')}
-          </button>
+            </div>
           </div>
-        </div>
-        <div className="tools">
-          <button type="button" className="with-icon" disabled={sheetView} onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
-            <ZoomIcon kind="out" />
-            {t('editor.zoomOut')}
-          </button>
-          <span className="zoom">{Math.round(zoom * 100)}%</span>
-          <button type="button" className="with-icon" disabled={sheetView} onClick={() => setZoom((z) => Math.min(3, z + 0.2))}>
-            <ZoomIcon kind="in" />
-            {t('editor.zoomIn')}
-          </button>
+
+          <div className="tool-group sec">
+            <span className="cap">{t('editor.group.rebuild')}</span>
+            <div className="tool-row">
+              <button type="button" disabled={sheetView} onClick={() => setAskRegenerate(true)}>
+                {t('editor.regenerate')}
+              </button>
+            </div>
+          </div>
+
+          <div className="tool-group sec">
+            <span className="cap">{t('editor.group.print')}</span>
+            <div className="tool-row">
+              <label className="tool-select">
+                <span>{t('editor.paper')}</span>
+                <select
+                  value={paper}
+                  aria-label={t('editor.paper')}
+                  onChange={(e) => setPaper({ paper: e.target.value as 'A4' | 'A3' })}
+                >
+                  {(['A4', 'A3'] as const).map((p2) => (
+                    <option key={p2} value={p2}>
+                      {p2}（{sheetSize(p2, orientation).mmW}×{sheetSize(p2, orientation).mmH}mm）
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="tool-select">
+                <span>{t('editor.orientation')}</span>
+                <select
+                  value={orientation}
+                  aria-label={t('editor.orientation')}
+                  onChange={(e) => setPaper({ orientation: e.target.value as 'portrait' | 'landscape' })}
+                >
+                  <option value="portrait">{t('editor.portrait')}</option>
+                  <option value="landscape">{t('editor.landscape')}</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn"
+                aria-pressed={sheetView}
+                title="図枠つきの、印刷したときの見た目で確かめます"
+                onClick={() => {
+                  setSheetView((v) => !v);
+                  setMode('select');
+                }}
+              >
+                印刷プレビュー
+              </button>
+              <button type="button" onClick={() => window.print()}>
+                {t('editor.print')}
+              </button>
+            </div>
+          </div>
+
+          <div className="tool-group zoom-group">
+            <span className="cap">{t('editor.group.view')}</span>
+            <div className="tool-row">
+              <button type="button" className="with-icon" disabled={sheetView} onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
+                <ZoomIcon kind="out" />
+                {t('editor.zoomOut')}
+              </button>
+              <span className="zoom">{Math.round(zoom * 100)}%</span>
+              <button type="button" className="with-icon" disabled={sheetView} onClick={() => setZoom((z) => Math.min(3, z + 0.2))}>
+                <ZoomIcon kind="in" />
+                {t('editor.zoomIn')}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

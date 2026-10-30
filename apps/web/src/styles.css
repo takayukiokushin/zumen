@@ -698,12 +698,13 @@ button.with-icon svg { flex: 0 0 auto; }
 /* ---- 図面の画面：スマートフォン（幅の狭い画面）では、よく使うボタンだけ表に出し、ほかはしまう ---- */
 /* 広い画面（パソコン・タブレット）：しまう仕組みは使わない。ボタンは、これまでどおり全部並ぶ */
 .tools-toggle, .side-close { display: none; }
-.tools-more { display: contents; }
 @media (max-width: 700px) {
   .tools-toggle { display: inline-flex; align-items: center; justify-content: center; }
-  .tools-more { display: none; }
-  .tools-more.open { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap, 10px); flex: 1 0 100%; padding-top: calc(4px * var(--text-scale)); border-top: 1px solid var(--rule-soft); }
   .tools .sep { display: none; }
+  /* スマホ：グループの見出しは出さず、「sec」のついたものは、「ほかの操作」を開くまでしまう */
+  .tool-group, .tool-row { display: contents; }
+  .tool-group > .cap { display: none; }
+  .editor-bar:not(.more-open) .sec { display: none; }
   .editor { overflow-y: auto; }
   .editor-body { display: flex; flex-direction: column; flex: 1 0 auto; }
   .canvas-wrap { flex: 1 1 auto; min-height: max(320px, 50vh); padding: calc(10px * var(--text-scale)); }
@@ -738,13 +739,25 @@ button.with-icon svg { flex: 0 0 auto; }
 /* 対象：選ぶ形のボタン（あり／なし・受電方式・用紙と向き・言葉・明るさ・文字の大きさ・線を引くモード・印刷プレビュー） */
 .radio-row button[aria-pressed="true"]::before,
 .paper-pick button[aria-pressed="true"]::before,
+.tool-row button[aria-pressed="true"]::before,
 .seg button[aria-pressed="true"]::before,
 .tools button.on::before {
   content: "✓"; margin-right: .4em; font-weight: 900; font-size: 1.15em; line-height: 1; color: var(--ok); -webkit-text-stroke: 0.9px currentColor; paint-order: stroke fill;
 }
 .radio-row button[aria-pressed="true"],
 .paper-pick button[aria-pressed="true"],
+.tool-row button[aria-pressed="true"],
 .seg button[aria-pressed="true"],
 .tools button.on { box-shadow: inset 0 0 0 1px var(--accent); }
 /* 上のタブは、チェックではなく、下に太い線を付ける */
 .tabbar button[aria-pressed="true"] { box-shadow: inset 0 -4px 0 var(--accent); font-weight: var(--weight-strong); }
+
+/* ---- 図面の画面のボタン列：用途ごとの、見出し付きのグループ ---- */
+.tools { gap: calc(8px * var(--text-scale)) calc(22px * var(--text-scale)); align-items: flex-end; }
+.tool-group { display: flex; flex-direction: column; gap: calc(3px * var(--text-scale)); }
+.tool-group > .cap { font-size: calc(11px * var(--text-scale)); color: var(--muted); letter-spacing: .04em; }
+.editor-bar > .tools { flex: 1 1 100%; }
+.zoom-group { margin-left: auto; }
+.tool-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--gap, 10px); }
+.tool-select { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
+.tool-select select { min-width: 0; width: auto; padding-right: calc(24px * var(--text-scale)); }
