@@ -26,7 +26,7 @@ interface Props {
 }
 
 /** 吸い付く範囲の、画面上の大きさ（ピクセル）。拡大・縮小しても、同じ感覚になるよう、図面の長さには直して使う */
-const SNAP_PX = 12;
+const SNAP_PX = 9;
 
 /** 拡大縮小の範囲（Editor の「拡大」「縮小」ボタンと同じ） */
 export const ZOOM_MIN = 0.4;
