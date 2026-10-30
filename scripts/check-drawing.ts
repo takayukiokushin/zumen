@@ -12,7 +12,10 @@ import {
   digest,
   groupRootOf,
   removeItem,
+  addWire,
   assistMove,
+  assistPoint,
+  assistWireNew,
   fromLayout,
   moveItem,
   portsOf,
@@ -198,6 +201,53 @@ else {
   const far = assistMove(off, inline.id, -5, 0);
   if (Math.abs(far.dx - -30) < 1e-9) fail('離れた位置なのに吸い寄せてしまいました');
   else console.log(`  離れた位置（${far.dx}）では吸い寄せませんでした`);
+}
+
+/* ---------- 3b. 線を引くときの手助け（吸い付くが、離せば突き抜けられる） ---------- */
+console.log('\n■ 線を引くときの手助け');
+{
+  const wire = (id: string, x1: number, y1: number, x2: number, y2: number): DocWire => ({ kind: 'wire', id, x1, y1, x2, y2 });
+  // 横線 w1（x 0〜100、y=0）と、縦線 w2（x=50、y -40〜-10）だけの図面
+  const mini: Doc = { ...base, items: [wire('w1', 0, 0, 100, 0), wire('w2', 50, -40, 50, -10)] };
+  const ok = (cond: boolean, okMsg: string, ngMsg: string) => (cond ? console.log(`  ${okMsg}`) : fail(ngMsg));
+
+  const e = assistPoint(mini, 103, 3);
+  ok(e.kind === 'end' && e.x === 100 && e.y === 0, '始点：線の端の近くを指すと、その端に吸い付く', `線の端に吸い付きません（${JSON.stringify(e)}）`);
+  const onw = assistPoint(mini, 62, 4);
+  ok(onw.kind === 'wire' && onw.y === 0 && onw.x === 62, '始点：線の途中を指すと、線の上（ずれない位置）に吸い付く（枝分かれ）', `線の上に吸い付きません（${JSON.stringify(onw)}）`);
+  const far = assistPoint(mini, 200, 200);
+  ok(far.kind === 'grid', '始点：何も近くになければ、格子に合わせるだけ', `遠いのに吸い付きました（${JSON.stringify(far)}）`);
+
+  // 縦の線を、横線 w1 に向けて引く：近づくと、ちょうど線の上で止まる
+  const stop = assistWireNew(mini, 30, -50, 30, -3);
+  ok(stop.kind === 'wire' && stop.x === 30 && stop.y === 0, '終点：横線の近くまで引くと、横線の上でぴったり止まる（はみ出さない）', `横線の上で止まりません（${JSON.stringify(stop)}）`);
+  // 突き抜けたいときは、離せばよい（範囲の外なら、吸い付かない）
+  const through = assistWireNew(mini, 30, -50, 30, 15);
+  ok(through.kind === 'grid' && through.y > 0, '終点：吸い付く範囲より先まで引けば、横線を突き抜けて引ける', `突き抜けられません（${JSON.stringify(through)}）`);
+  // 横の線を、縦線 w2 に向けて引く
+  const stopV = assistWireNew(mini, 0, -25, 47, -25);
+  ok(stopV.kind === 'wire' && stopV.x === 50, '終点：縦線の近くまで引くと、縦線のところで止まる', `縦線で止まりません（${JSON.stringify(stopV)}）`);
+  const missV = assistWireNew(mini, 0, -60, 47, -60);
+  ok(missV.kind !== 'wire', '終点：縦線の長さの範囲の外では、吸い付かない', `範囲の外なのに吸い付きました（${JSON.stringify(missV)}）`);
+  // 線の端に向けて引く
+  const toEnd = assistWireNew(mini, 150, 0, 103, 0);
+  ok(toEnd.kind === 'end' && toEnd.x === 100, '終点：既存の線の端の近くまで引くと、端に吸い付く', `線の端に吸い付きません（${JSON.stringify(toEnd)}）`);
+  // 揃う位置
+  const al = assistWireNew(mini, 0, -80, 103, -80);
+  ok(al.kind === 'align' && al.x === 100 && al.guideX === 100, '終点：線の端と、たてが揃う位置に、目安の線つきで吸い付く', `揃う位置に吸い付きません（${JSON.stringify(al)}）`);
+
+  // addWire：吸い付きあり／なし（Alt キー）
+  const withA = addWire(mini, 103, 3, 140, 3).doc.items.find((i) => i.kind === 'wire' && i.id !== 'w1' && i.id !== 'w2') as DocWire;
+  ok(withA && withA.x1 === 100 && withA.y1 === 0, '線を追加：始点が、線の端にぴったり合う', `始点が合いません（${JSON.stringify(withA)}）`);
+  const noA = addWire(mini, 103, 3, 140, 3, { assist: false }).doc.items.find((i) => i.kind === 'wire' && i.id !== 'w1' && i.id !== 'w2') as DocWire;
+  ok(noA && noA.x1 === 104 && noA.y1 === 4, '線を追加（Altキーを押しながら）：吸い付かず、格子に合わせるだけ', `吸い付かない指定なのに吸い付きました（${JSON.stringify(noA)}）`);
+
+  // 記号を動かすとき、ほかの線と揃う位置にも吸い付く
+  const sym = symbols(base).find((s) => portsOf(s).length > 0)!;
+  const p0 = portsOf(sym)[0]!;
+  const withV: Doc = { ...mini, items: [...base.items, wire('wx', p0.x + 6, p0.y - 500, p0.x + 6, p0.y + 500)] };
+  const mv = assistMove(withV, sym.id, 5.5, 0);
+  ok(Math.abs(mv.dx - 6) < 1e-9 && mv.guideX === p0.x + 6, '記号を動かす：近くの縦線と、たてが揃う位置に吸い付く', `縦線と揃いません（${JSON.stringify(mv)}）`);
 }
 
 /* ---------- 4. 記号を差し替えると線が伸縮するか ---------- */

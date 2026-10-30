@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
-import type { Doc, DocItem } from './doc.ts';
-import { assistMove, assistWireEnd, docBounds, groupOf, groupRootOf, itemBounds, moveItem, moveWireEnd } from './doc.ts';
+import type { Doc, DocItem, PointAssist } from './doc.ts';
+import { snap } from '@zumen/layout';
+import { assistMove, assistPoint, assistWireEnd, assistWireNew, docBounds, groupOf, groupRootOf, itemBounds, moveItem, moveWireEnd } from './doc.ts';
 import type { Issue } from './inspect.ts';
 
 interface Props {
@@ -14,7 +15,7 @@ interface Props {
   /** 線の端を動かして伸縮したとき */
   onWireEnd: (id: string, end: 1 | 2, dx: number, dy: number) => void;
   /** 線を引き終えたとき */
-  onAddWire: (x1: number, y1: number, x2: number, y2: number) => void;
+  onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean }) => void;
   /** 'wire' のときは2点をクリックして線を引く */
   mode: 'select' | 'wire';
   zoom: number;
@@ -53,6 +54,8 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
   /** 線を引いている途中の始点と、いまのカーソル位置 */
   const [wireStart, setWireStart] = useState<{ x: number; y: number } | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  /** 線を引くモードで、いま吸い付いている先（つなぐ先の目印を出すため）。Alt キーを押している間は無し */
+  const [hint, setHint] = useState<PointAssist | null>(null);
 
   /* ---- 指での操作：2本指で拡大縮小・動かす／何も無いところを1本指でなぞって動かす ---- */
   /** いま画面に触れている指（touch のみ） */
@@ -223,7 +226,12 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (mode === 'wire' && wireStart) setCursor(toDrawing(e));
+    if (mode === 'wire') {
+      const p = toDrawing(e);
+      if (wireStart) setCursor(p);
+      // Alt（Mac は option）キーを押している間は、吸い付けない（わざとずらしたり、突き抜けたりしたいとき）
+      setHint(e.altKey ? null : wireStart ? assistWireNew(doc, wireStart.x, wireStart.y, p.x, p.y) : assistPoint(doc, p.x, p.y));
+    }
     if (!drag || !start.current) return;
     const p = toDrawing(e);
     const rawDx = p.x - start.current.x;
@@ -251,13 +259,18 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
       return;
     }
     const p = toDrawing(e);
+    const free = e.altKey;
     if (!wireStart) {
-      setWireStart(p);
+      // 始点も吸い付ける（接続点・線の端・線の上）
+      const a = free ? { x: snap(p.x), y: snap(p.y) } : assistPoint(doc, p.x, p.y);
+      setWireStart({ x: a.x, y: a.y });
       setCursor(p);
+      setHint(null);
     } else {
-      onAddWire(wireStart.x, wireStart.y, p.x, p.y);
+      onAddWire(wireStart.x, wireStart.y, p.x, p.y, { assist: !free });
       setWireStart(null);
       setCursor(null);
+      setHint(null);
     }
   };
 
@@ -394,10 +407,20 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
             className="preview"
             x1={wireStart.x}
             y1={wireStart.y}
-            x2={Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? wireStart.x : cursor.x}
-            y2={Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? cursor.y : wireStart.y}
+            x2={hint ? hint.x : Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? wireStart.x : cursor.x}
+            y2={hint ? hint.y : Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? cursor.y : wireStart.y}
             strokeWidth={1}
           />
+        )}
+        {/* 吸い付く先の目印（丸）。揃う位置のときは、目安の線 */}
+        {mode === 'wire' && hint && (hint.kind === 'port' || hint.kind === 'end' || hint.kind === 'wire') && (
+          <circle className="snap-mark" cx={hint.x} cy={hint.y} r={5} pointerEvents="none" />
+        )}
+        {mode === 'wire' && hint?.guideX !== undefined && (
+          <line className="guide" x1={hint.guideX} y1={vb.y} x2={hint.guideX} y2={vb.y + vb.h} pointerEvents="none" />
+        )}
+        {mode === 'wire' && hint?.guideY !== undefined && (
+          <line className="guide" x1={vb.x} y1={hint.guideY} x2={vb.x + vb.w} y2={hint.guideY} pointerEvents="none" />
         )}
 
         {/* 直しきれなかったところに、赤い印を出す */}

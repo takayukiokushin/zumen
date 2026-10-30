@@ -605,44 +605,31 @@ export const moveWireEnd = (doc: Doc, id: string, end: 1 | 2, dx: number, dy: nu
   return tidyDoc(next);
 };
 
-/** 線を追加する。始点と終点から縦か横に揃えて引く */
+/**
+ * 線を追加する。始点と終点から縦か横に揃えて引く。
+ * 近くの接続点・線の端・線の上には、軽く吸い寄せる（assist: false なら、格子に合わせるだけ。意図して離したいとき）。
+ */
 export const addWire = (
   doc: Doc,
   x1: number,
   y1: number,
   x2: number,
   y2: number,
+  opts: { assist?: boolean } = {},
 ): { doc: Doc; id: string } => {
-  // 引き始め・引き終わりが接続点の近くなら、そこにぴったり合わせる
-  const a = nearestPort(doc, x1, y1, ASSIST_RANGE) ?? { x: snap(x1), y: snap(y1) };
-  const b = nearestPort(doc, x2, y2, ASSIST_RANGE) ?? { x: snap(x2), y: snap(y2) };
-  const [ax, ay, bx, by] = straighten(a.x, a.y, b.x, b.y);
+  const assist = opts.assist !== false;
+  const a = assist ? assistPoint(doc, x1, y1) : { x: snap(x1), y: snap(y1) };
+  const [ax, ay, bx, by] = assist
+    ? (() => {
+        const e = assistWireNew(doc, a.x, a.y, x2, y2);
+        return [a.x, a.y, e.x, e.y] as [number, number, number, number];
+      })()
+    : straighten(a.x, a.y, snap(x2), snap(y2));
   const id = nextId('wire');
   return {
     doc: tidyDoc({ ...doc, items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by }] }),
     id,
   };
-};
-
-/** 選んでいる線を、いちばん近い記号の接続点にきっちり合わせる */
-export const snapWireToPorts = (doc: Doc, id: string): Doc => {
-  const wire = doc.items.find((it) => it.id === id);
-  if (!wire || wire.kind !== 'wire') return doc;
-  const a = nearestPort(doc, wire.x1, wire.y1, 12);
-  const b = nearestPort(doc, wire.x2, wire.y2, 12);
-  const linked: Doc = {
-    ...doc,
-    items: doc.items.map((it) =>
-      it.id !== id
-        ? it
-        : {
-            ...wire,
-            at1: a ? { item: a.item, port: a.port } : wire.at1,
-            at2: b ? { item: b.item, port: b.port } : wire.at2,
-          },
-    ),
-  };
-  return applyAnchors(linked);
 };
 
 /** 要素を消す。記号を消すと、内蔵しているものも一緒に消える */
@@ -889,6 +876,15 @@ export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number): 
     }
   }
 
+  // ③ ほかの線と、たて・よこが揃う位置（縦の線なら x、横の線なら y）。この記号につながっている線は、一緒に動くので対象外
+  for (const it of doc.items) {
+    if (it.kind !== 'wire' || it.at1?.item === id || it.at2?.item === id) continue;
+    for (const p of pts) {
+      if (isVerticalWire(it)) wantX.push({ d: it.x1 - p.x, at: it.x1 });
+      else wantY.push({ d: it.y1 - p.y, at: it.y1 });
+    }
+  }
+
   const bx = pick(rawDx, wantX);
   const by = pick(rawDy, wantY);
   return {
@@ -899,15 +895,160 @@ export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number): 
   };
 }
 
-/** 線の端を動かしている途中、近くの接続点に吸い寄せる */
+/** 線の端を動かしている途中、近くの接続点・線の端・線の上に軽く吸い寄せる */
 export function assistWireEnd(doc: Doc, id: string, end: 1 | 2, rawDx: number, rawDy: number): MoveAssist {
   const w = doc.items.find((it) => it.id === id);
   if (!w || w.kind !== 'wire') return { dx: snap(rawDx), dy: snap(rawDy) };
   const fromX = end === 1 ? w.x1 : w.x2;
   const fromY = end === 1 ? w.y1 : w.y2;
-  const p = nearestPort(doc, fromX + rawDx, fromY + rawDy, ASSIST_RANGE);
-  if (!p) return { dx: snap(rawDx), dy: snap(rawDy) };
-  return { dx: p.x - fromX, dy: p.y - fromY, guideX: p.x, guideY: p.y };
+  const fixedX = end === 1 ? w.x2 : w.x1;
+  const fixedY = end === 1 ? w.y2 : w.y1;
+  const rawX = fromX + rawDx;
+  const rawY = fromY + rawDy;
+  // 反対側がつないであって動かせないときは、そこから縦か横に伸ばした線の上で吸い寄せる。
+  // 反対側が自由なら、持っている点そのものを吸い寄せる
+  const p = (end === 1 ? w.at2 : w.at1) ? assistWireNew(doc, fixedX, fixedY, rawX, rawY, id) : assistPoint(doc, rawX, rawY, id);
+  return { dx: p.x - fromX, dy: p.y - fromY, guideX: p.guideX ?? (p.kind === 'grid' || p.kind === 'align' ? undefined : p.x), guideY: p.guideY ?? (p.kind === 'grid' || p.kind === 'align' ? undefined : p.y) };
+}
+
+/* ------------------------------------------------------------------ */
+/* 線を引くときの手助け                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 吸い付いた先の種類。
+ * port＝記号の接続点、end＝ほかの線の端、wire＝ほかの線の上（枝分かれ）、align＝ほかと揃う位置、grid＝格子（吸い付いていない）
+ */
+export type AssistKind = 'port' | 'end' | 'wire' | 'align' | 'grid';
+
+export interface PointAssist {
+  x: number;
+  y: number;
+  kind: AssistKind;
+  /** 揃った位置に引く目安の線（kind が align のとき） */
+  guideX?: number;
+  guideY?: number;
+}
+
+/** 縦の線か（縦横の差が同じなら縦。straighten と同じ決め方） */
+function isVerticalWire(w: { x1: number; y1: number; x2: number; y2: number }): boolean {
+  return Math.abs(w.x2 - w.x1) <= Math.abs(w.y2 - w.y1);
+}
+
+/** 自分以外の線の端 */
+function wireEndsOf(doc: Doc, exclude?: string): { x: number; y: number }[] {
+  const out: { x: number; y: number }[] = [];
+  for (const it of doc.items) {
+    if (it.kind !== 'wire' || it.id === exclude) continue;
+    out.push({ x: it.x1, y: it.y1 }, { x: it.x2, y: it.y2 });
+  }
+  return out;
+}
+
+/** ある1点を、近くの接続点・線の端・線の上に吸い寄せる。何も近くになければ、格子に合わせるだけ */
+export function assistPoint(doc: Doc, x: number, y: number, exclude?: string): PointAssist {
+  const port = nearestPort(doc, x, y, ASSIST_RANGE);
+  if (port) return { x: port.x, y: port.y, kind: 'port' };
+
+  let best: { x: number; y: number } | null = null;
+  let bestD = ASSIST_RANGE;
+  for (const e of wireEndsOf(doc, exclude)) {
+    const d = Math.hypot(e.x - x, e.y - y);
+    if (d <= bestD) {
+      bestD = d;
+      best = e;
+    }
+  }
+  if (best) return { x: best.x, y: best.y, kind: 'end' };
+
+  // 線の上（途中）。線の方向には、格子に合わせた位置を取り、線からずれないようにする
+  let on: { x: number; y: number } | null = null;
+  bestD = ASSIST_RANGE;
+  for (const it of doc.items) {
+    if (it.kind !== 'wire' || it.id === exclude) continue;
+    const vertical = isVerticalWire(it);
+    const lo = vertical ? Math.min(it.y1, it.y2) : Math.min(it.x1, it.x2);
+    const hi = vertical ? Math.max(it.y1, it.y2) : Math.max(it.x1, it.x2);
+    const along = Math.max(lo, Math.min(hi, snap(vertical ? y : x)));
+    const px = vertical ? it.x1 : along;
+    const py = vertical ? along : it.y1;
+    const d = Math.hypot(px - x, py - y);
+    if (d <= bestD) {
+      bestD = d;
+      on = { x: px, y: py };
+    }
+  }
+  if (on) return { x: on.x, y: on.y, kind: 'wire' };
+  return { x: snap(x), y: snap(y), kind: 'grid' };
+}
+
+/** 「ほかと揃う位置」に吸い寄せる範囲（つなぐ先への吸い付きより、控えめにする） */
+const ALIGN_RANGE = 5;
+
+/**
+ * 新しい線の終点。始点 (sx,sy) から縦か横に伸ばした線の上で、
+ * 近くの 接続点 ＞ ほかの線の端 ＞ ほかの線（そこで止まる・枝分かれ） に軽く吸い寄せ、
+ * 無ければ、ほかの接続点・線の端と揃う位置、それも無ければ格子に合わせる。
+ * 吸い寄せは、近づいたときだけ。離れていれば、ほかの線を突き抜けて引ける。
+ */
+export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, rawY: number, exclude?: string): PointAssist {
+  const horizontal = Math.abs(rawX - sx) > Math.abs(rawY - sy);
+  const raw = horizontal ? rawX : rawY;
+  const perp = horizontal ? sy : sx;
+  const at = (along: number): [number, number] => (horizontal ? [along, sy] : [sx, along]);
+
+  /** 吸い寄せ先の候補。score は、遠さに、種類ごとの優先（小さいほど優先）を足したもの */
+  const cands: { along: number; kind: AssistKind; score: number }[] = [];
+  const consider = (px: number, py: number, kind: AssistKind, pri: number) => {
+    const a = horizontal ? px : py;
+    const off = Math.abs((horizontal ? py : px) - perp);
+    if (off > ATTACH_RADIUS) return; // この線の延長上にない
+    const gap = Math.abs(a - raw);
+    if (gap <= ASSIST_RANGE) cands.push({ along: a, kind, score: gap + pri * 0.4 });
+  };
+  for (const it of doc.items) {
+    if (it.kind === 'symbol') for (const p of portsOf(it)) consider(p.x, p.y, 'port', 0);
+  }
+  for (const e of wireEndsOf(doc, exclude)) consider(e.x, e.y, 'end', 1);
+  // 直角に交わる線：その線のところで止める（突き抜けも、離せば可能）
+  for (const it of doc.items) {
+    if (it.kind !== 'wire' || it.id === exclude) continue;
+    if (isVerticalWire(it) !== horizontal) continue; // 同じ向きの線は、端だけ（上で見ている）
+    const lo = horizontal ? Math.min(it.y1, it.y2) : Math.min(it.x1, it.x2);
+    const hi = horizontal ? Math.max(it.y1, it.y2) : Math.max(it.x1, it.x2);
+    if (perp < lo - ATTACH_RADIUS || perp > hi + ATTACH_RADIUS) continue; // その線の長さの範囲に入っていない
+    const a = horizontal ? it.x1 : it.y1;
+    const gap = Math.abs(a - raw);
+    if (gap <= ASSIST_RANGE) cands.push({ along: a, kind: 'wire', score: gap + 2 * 0.4 });
+  }
+  cands.sort((a, b) => a.score - b.score);
+  const hit = cands[0];
+  if (hit) {
+    const [x, y] = at(hit.along);
+    return { x, y, kind: hit.kind };
+  }
+
+  // 揃う位置（ほかの接続点・線の端と、たて・よこが同じ）
+  let align: number | null = null;
+  let alignGap = ALIGN_RANGE;
+  const alignWith = (px: number, py: number) => {
+    const a = horizontal ? px : py;
+    const gap = Math.abs(a - raw);
+    if (gap <= alignGap) {
+      alignGap = gap;
+      align = a;
+    }
+  };
+  for (const it of doc.items) {
+    if (it.kind === 'symbol') for (const p of portsOf(it)) alignWith(p.x, p.y);
+  }
+  for (const e of wireEndsOf(doc, exclude)) alignWith(e.x, e.y);
+  if (align !== null) {
+    const [x, y] = at(align);
+    return horizontal ? { x, y, kind: 'align', guideX: align } : { x, y, kind: 'align', guideY: align };
+  }
+  const [x, y] = at(snap(raw));
+  return { x, y, kind: 'grid' };
 }
 
 /* ------------------------------------------------------------------ */

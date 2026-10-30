@@ -178,6 +178,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .canvas .handle { fill: #fff; stroke: var(--draw-accent); stroke-width: 1.5; cursor: pointer; }
 .canvas .handle:hover { fill: var(--draw-accent-soft); }
 .canvas .preview { stroke: var(--draw-accent); stroke-dasharray: 4 3; pointer-events: none; }
+.canvas .snap-mark { fill: none; stroke: #1f7a45; stroke-width: 1.6; pointer-events: none; }
 .canvas .guide { stroke: var(--draw-accent); stroke-width: 0.6; stroke-dasharray: 2 3; opacity: 0.7; pointer-events: none; }
 .tools button.on { background: var(--accent-soft); border-color: var(--accent); }
 .mode-hint { font-size: calc(12px * var(--text-scale)); color: var(--accent-text); margin-left: 6px; }

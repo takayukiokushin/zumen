@@ -13,7 +13,7 @@ import { UndoIcon, ZoomIcon } from '../icons.tsx';
 import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, snapWireToPorts, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -277,15 +277,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <button
             type="button"
             className="btn"
-            disabled={sheetView || selected?.kind !== 'wire'}
-            title={t('editor.snapToPort.help')}
-            onClick={() => selected && apply(snapWireToPorts(doc, selected.id))}
-          >
-            {t('editor.snapToPort')}
-          </button>
-          <button
-            type="button"
-            className="btn"
             title={t('editor.tidy.help')}
             disabled={sheetView}
             onClick={() => {
@@ -465,8 +456,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             onSelect={setSelectedId}
             onMoveEnd={(id, dx, dy) => apply(moveItem(doc, id, dx, dy))}
             onWireEnd={(id, end, dx, dy) => apply(moveWireEnd(doc, id, end, dx, dy))}
-            onAddWire={(x1, y1, x2, y2) => {
-              const { doc: next, id } = addWire(doc, x1, y1, x2, y2);
+            onAddWire={(x1, y1, x2, y2, opts) => {
+              const { doc: next, id } = addWire(doc, x1, y1, x2, y2, opts);
               apply(next);
               setSelectedId(id);
               setMode('select');
