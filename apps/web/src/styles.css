@@ -641,7 +641,7 @@ button.with-icon svg { flex: 0 0 auto; }
 .joblist .jobs .c-del .btn { min-width: 0; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
 /* 狭い画面（スマートフォン）では、表をやめて、1つの案件を1枚のカードにする（名前・日時・ボタンを縦に並べる） */
 @media (max-width: 640px) {
-  /* 検索欄は1段目いっぱいに、件数と「新しい案件」は2段目に */
+  /* 検索欄は1段目いっぱいに、件数と「案件を追加」は2段目に */
   .joblist .search-row { flex-wrap: wrap; }
   .joblist .search-row input { flex: 1 1 100%; }
   .joblist .search-row .count { flex: 1 1 auto; }
