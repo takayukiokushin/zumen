@@ -163,6 +163,12 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
       if (sheetView) return;
       const el = e.target as HTMLElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
+      // 線を引くモードは、Esc キーで解除する（引きかけの線も、取りやめ）
+      if (e.key === 'Escape' && mode === 'wire' && !e.isComposing) {
+        e.preventDefault();
+        setMode('select');
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         setHistory((h) => {
@@ -459,8 +465,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             onAddWire={(x1, y1, x2, y2, opts) => {
               const { doc: next, id } = addWire(doc, x1, y1, x2, y2, opts);
               apply(next);
+              // 線を引くモードは続ける（次の線を、続けて引ける）。やめるときは、Esc キーか「線を引く」をもう一度押す
               setSelectedId(id);
-              setMode('select');
             }}
             mode={mode}
             zoom={zoom}

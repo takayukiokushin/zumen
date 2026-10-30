@@ -71,6 +71,13 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
   /** 拡大縮小の前後で、指の位置がずれないよう、動かす前の位置を覚えておく */
   const anchor = useRef<{ fx: number; fy: number; sl: number; st: number; sw: number; sh: number } | null>(null);
 
+  // 線を引くモードに入った・出たときは、引きかけの線を捨てる（Esc で解除したときも、ここで片づく）
+  useLayoutEffect(() => {
+    setWireStart(null);
+    setCursor(null);
+    setHint(null);
+  }, [mode]);
+
   const scroller = () => svgRef.current?.parentElement ?? null;
 
   useLayoutEffect(() => {
