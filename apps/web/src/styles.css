@@ -21,6 +21,8 @@
   --ok: #2f6b45;
   --ok-soft: #e0efe6;
   --need: #9c4320;
+  --danger: #b3261e;
+  --danger-soft: #fbe9e7;
   --need-soft: #f7e6de;
   --shade: rgba(22, 26, 24, .4);
   --font: "IPAGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
@@ -40,12 +42,12 @@
 :root[data-theme="dark"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
   --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #98a39f; --rule: #3a4240;
   --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #6b7773; --ok: #85c7a0; --ok-soft: #1f3228;
-  --need: #e9a384; --need-soft: #3b2a21; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
+  --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
     --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #98a39f; --rule: #3a4240;
     --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #6b7773; --ok: #85c7a0; --ok-soft: #1f3228;
-    --need: #e9a384; --need-soft: #3b2a21; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
+    --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
 }
 
 /* ---- 文字を太くする ---- */
@@ -393,8 +395,6 @@ table.users .you { color: var(--muted); font-size: calc(11px * var(--text-scale)
 .btn:hover:not(:disabled) { border-color: var(--accent); }
 .btn:disabled { color: var(--muted); cursor: default; background: var(--alt); }
 .btn.primary { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
-.btn.danger { color: var(--need); border-color: var(--need-soft); }
-.btn.danger:hover:not(:disabled) { border-color: var(--need); background: var(--need-soft); }
 
 /* ---- 図面の道具立て：大きさを揃え、押し間違いを防ぐ ---- */
 .tools .btn, .tools button { min-width: 84px; padding: 7px 14px; font-size: calc(12.5px * var(--text-scale)); }
@@ -451,8 +451,12 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   background: var(--accent-soft); border-color: var(--accent); color: var(--ink);
 }
 .btn.primary, button.primary { background: var(--accent-soft); border-color: var(--accent); font-weight: var(--weight-strong); }
-.btn.danger { color: var(--need); border-color: var(--rule); }
-.btn.danger:hover:not(:disabled) { border-color: var(--need); background: var(--need-soft); }
+/* 消す・削除のボタンは、ほかのボタンと見分けがつくよう、赤い文字と赤い枠にする（押せないときは、ほかと同じ灰色） */
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+.btn.danger:disabled { color: var(--muted); border-color: var(--rule); }
+/* 隣のボタンと間違えて押さないよう、消すボタンの両側は、少し広くあける */
+.tools .btn.danger, .row-actions .btn.danger { margin-inline: calc(6px * var(--text-scale)); }
 
 /* ------------------------------------------------------------------ */
 /* 上の帯：タブと、右端の社名・設定・ログアウト（㉙）                    */

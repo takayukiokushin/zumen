@@ -57,10 +57,11 @@ const TEXT: [string, string[]][] = [
   ['muted', ['paper', 'panel', 'field', 'alt', 'accent-soft']],
   ['accent-text', ['paper', 'panel', 'accent-soft']],
   ['need', ['paper', 'panel', 'need-soft']],
+  ['danger', ['paper', 'panel', 'field', 'alt', 'danger-soft']],
   ['ok', ['paper', 'panel', 'ok-soft']],
 ];
 /** 枠線の色と、その両側にある背景 */
-const BORDER: [string, string[]][] = [['control-border', ['paper', 'panel', 'field']]];
+const BORDER: [string, string[]][] = [['control-border', ['paper', 'panel', 'field']], ['danger', ['paper', 'panel', 'field']]];
 
 for (const [name, theme] of [['ライト', light], ['ダーク', dark]] as const) {
   console.log(`■ ${name}`);

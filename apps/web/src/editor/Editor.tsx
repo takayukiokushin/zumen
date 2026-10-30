@@ -235,7 +235,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             {t('editor.redo')}
           </button>
           <span className="sep" />
-          <button type="button" className="btn" disabled={sheetView || !selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
+          <button type="button" className="btn danger" disabled={sheetView || !selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
             {t('editor.delete')}
           </button>
           <button
