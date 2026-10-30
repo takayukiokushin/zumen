@@ -15,7 +15,7 @@ interface Props {
   /** 線の端を動かして伸縮したとき */
   onWireEnd: (id: string, end: 1 | 2, dx: number, dy: number) => void;
   /** 線を引き終えたとき */
-  onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean }) => void;
+  onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く */
   mode: 'select' | 'wire';
   zoom: number;
@@ -24,6 +24,9 @@ interface Props {
   /** 「結線を整える」で直しきれなかったところ。赤い印で知らせる */
   issues?: Issue[];
 }
+
+/** 吸い付く範囲の、画面上の大きさ（ピクセル）。拡大・縮小しても、同じ感覚になるよう、図面の長さには直して使う */
+const SNAP_PX = 12;
 
 /** 拡大縮小の範囲（Editor の「拡大」「縮小」ボタンと同じ） */
 export const ZOOM_MIN = 0.4;
@@ -199,6 +202,13 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
   const pad = 40;
   const vb = { x: b.x0 - pad, y: b.y0 - pad, w: b.x1 - b.x0 + pad * 2, h: b.y1 - b.y0 + pad * 2 };
 
+  /** 吸い付く範囲（図面の長さ）。画面で SNAP_PX ピクセルになるよう、拡大率に合わせる */
+  const snapRange = () => {
+    const m = svgRef.current?.getScreenCTM();
+    const scale = m && m.a > 0 ? m.a : 1;
+    return Math.max(3, Math.min(40, SNAP_PX / scale));
+  };
+
   /** 画面の座標を図面の座標に直す */
   const toDrawing = (e: { clientX: number; clientY: number }) => {
     const svg = svgRef.current!;
@@ -230,15 +240,15 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
       const p = toDrawing(e);
       if (wireStart) setCursor(p);
       // Alt（Mac は option）キーを押している間は、吸い付けない（わざとずらしたり、突き抜けたりしたいとき）
-      setHint(e.altKey ? null : wireStart ? assistWireNew(doc, wireStart.x, wireStart.y, p.x, p.y) : assistPoint(doc, p.x, p.y));
+      setHint(e.altKey ? null : wireStart ? assistWireNew(doc, wireStart.x, wireStart.y, p.x, p.y, undefined, snapRange()) : assistPoint(doc, p.x, p.y, undefined, snapRange()));
     }
     if (!drag || !start.current) return;
     const p = toDrawing(e);
     const rawDx = p.x - start.current.x;
     const rawDy = p.y - start.current.y;
     const a = drag.end
-      ? assistWireEnd(doc, drag.id, drag.end, rawDx, rawDy)
-      : assistMove(doc, drag.id, rawDx, rawDy);
+      ? assistWireEnd(doc, drag.id, drag.end, rawDx, rawDy, snapRange())
+      : assistMove(doc, drag.id, rawDx, rawDy, snapRange());
     setDrag({ id: drag.id, end: drag.end, dx: a.dx, dy: a.dy, guideX: a.guideX, guideY: a.guideY });
   };
 
@@ -262,12 +272,12 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
     const free = e.altKey;
     if (!wireStart) {
       // 始点も吸い付ける（接続点・線の端・線の上）
-      const a = free ? { x: snap(p.x), y: snap(p.y) } : assistPoint(doc, p.x, p.y);
+      const a = free ? { x: snap(p.x), y: snap(p.y) } : assistPoint(doc, p.x, p.y, undefined, snapRange());
       setWireStart({ x: a.x, y: a.y });
       setCursor(p);
       setHint(null);
     } else {
-      onAddWire(wireStart.x, wireStart.y, p.x, p.y, { assist: !free });
+      onAddWire(wireStart.x, wireStart.y, p.x, p.y, { assist: !free, range: snapRange() });
       setWireStart(null);
       setCursor(null);
       setHint(null);
@@ -414,7 +424,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
         )}
         {/* 吸い付く先の目印（丸）。揃う位置のときは、目安の線 */}
         {mode === 'wire' && hint && (hint.kind === 'port' || hint.kind === 'end' || hint.kind === 'wire') && (
-          <circle className="snap-mark" cx={hint.x} cy={hint.y} r={5} pointerEvents="none" />
+          <circle className="snap-mark" cx={hint.x} cy={hint.y} r={snapRange() * 0.6} pointerEvents="none" />
         )}
         {mode === 'wire' && hint?.guideX !== undefined && (
           <line className="guide" x1={hint.guideX} y1={vb.y} x2={hint.guideX} y2={vb.y + vb.h} pointerEvents="none" />

@@ -615,13 +615,14 @@ export const addWire = (
   y1: number,
   x2: number,
   y2: number,
-  opts: { assist?: boolean } = {},
+  opts: { assist?: boolean; range?: number } = {},
 ): { doc: Doc; id: string } => {
   const assist = opts.assist !== false;
-  const a = assist ? assistPoint(doc, x1, y1) : { x: snap(x1), y: snap(y1) };
+  const range = opts.range ?? ASSIST_RANGE;
+  const a = assist ? assistPoint(doc, x1, y1, undefined, range) : { x: snap(x1), y: snap(y1) };
   const [ax, ay, bx, by] = assist
     ? (() => {
-        const e = assistWireNew(doc, a.x, a.y, x2, y2);
+        const e = assistWireNew(doc, a.x, a.y, x2, y2, undefined, range);
         return [a.x, a.y, e.x, e.y] as [number, number, number, number];
       })()
     : straighten(a.x, a.y, snap(x2), snap(y2));
@@ -823,9 +824,9 @@ interface Candidate {
 }
 
 /** 候補のうち、いま指している量にいちばん近いもの。遠ければ null */
-function pick(raw: number, cands: Candidate[]): Candidate | null {
+function pick(raw: number, cands: Candidate[], range = ASSIST_RANGE): Candidate | null {
   let best: Candidate | null = null;
-  let bestGap = ASSIST_RANGE;
+  let bestGap = range;
   for (const c of cands) {
     const gap = Math.abs(c.d - raw);
     if (gap < bestGap) {
@@ -840,7 +841,7 @@ function pick(raw: number, cands: Candidate[]): Candidate | null {
  * 記号を動かしている途中、結線がまっすぐになる位置に軽く吸い寄せる。
  * 先に「つないである線がまっすぐになる位置」、次に「ほかの記号と揃う位置」を見る。
  */
-export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number): MoveAssist {
+export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number, range = ASSIST_RANGE): MoveAssist {
   const target = doc.items.find((it) => it.id === id);
   if (!target || target.kind !== 'symbol') return { dx: snap(rawDx), dy: snap(rawDy) };
 
@@ -885,8 +886,8 @@ export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number): 
     }
   }
 
-  const bx = pick(rawDx, wantX);
-  const by = pick(rawDy, wantY);
+  const bx = pick(rawDx, wantX, range);
+  const by = pick(rawDy, wantY, range);
   return {
     dx: bx ? bx.d : snap(rawDx),
     dy: by ? by.d : snap(rawDy),
@@ -896,7 +897,7 @@ export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number): 
 }
 
 /** 線の端を動かしている途中、近くの接続点・線の端・線の上に軽く吸い寄せる */
-export function assistWireEnd(doc: Doc, id: string, end: 1 | 2, rawDx: number, rawDy: number): MoveAssist {
+export function assistWireEnd(doc: Doc, id: string, end: 1 | 2, rawDx: number, rawDy: number, range = ASSIST_RANGE): MoveAssist {
   const w = doc.items.find((it) => it.id === id);
   if (!w || w.kind !== 'wire') return { dx: snap(rawDx), dy: snap(rawDy) };
   const fromX = end === 1 ? w.x1 : w.x2;
@@ -907,7 +908,7 @@ export function assistWireEnd(doc: Doc, id: string, end: 1 | 2, rawDx: number, r
   const rawY = fromY + rawDy;
   // 反対側がつないであって動かせないときは、そこから縦か横に伸ばした線の上で吸い寄せる。
   // 反対側が自由なら、持っている点そのものを吸い寄せる
-  const p = (end === 1 ? w.at2 : w.at1) ? assistWireNew(doc, fixedX, fixedY, rawX, rawY, id) : assistPoint(doc, rawX, rawY, id);
+  const p = (end === 1 ? w.at2 : w.at1) ? assistWireNew(doc, fixedX, fixedY, rawX, rawY, id, range) : assistPoint(doc, rawX, rawY, id, range);
   return { dx: p.x - fromX, dy: p.y - fromY, guideX: p.guideX ?? (p.kind === 'grid' || p.kind === 'align' ? undefined : p.x), guideY: p.guideY ?? (p.kind === 'grid' || p.kind === 'align' ? undefined : p.y) };
 }
 
@@ -946,12 +947,12 @@ function wireEndsOf(doc: Doc, exclude?: string): { x: number; y: number }[] {
 }
 
 /** ある1点を、近くの接続点・線の端・線の上に吸い寄せる。何も近くになければ、格子に合わせるだけ */
-export function assistPoint(doc: Doc, x: number, y: number, exclude?: string): PointAssist {
-  const port = nearestPort(doc, x, y, ASSIST_RANGE);
+export function assistPoint(doc: Doc, x: number, y: number, exclude?: string, range = ASSIST_RANGE): PointAssist {
+  const port = nearestPort(doc, x, y, range);
   if (port) return { x: port.x, y: port.y, kind: 'port' };
 
   let best: { x: number; y: number } | null = null;
-  let bestD = ASSIST_RANGE;
+  let bestD = range;
   for (const e of wireEndsOf(doc, exclude)) {
     const d = Math.hypot(e.x - x, e.y - y);
     if (d <= bestD) {
@@ -963,7 +964,7 @@ export function assistPoint(doc: Doc, x: number, y: number, exclude?: string): P
 
   // 線の上（途中）。線の方向には、格子に合わせた位置を取り、線からずれないようにする
   let on: { x: number; y: number } | null = null;
-  bestD = ASSIST_RANGE;
+  bestD = range;
   for (const it of doc.items) {
     if (it.kind !== 'wire' || it.id === exclude) continue;
     const vertical = isVerticalWire(it);
@@ -991,7 +992,9 @@ const ALIGN_RANGE = 5;
  * 無ければ、ほかの接続点・線の端と揃う位置、それも無ければ格子に合わせる。
  * 吸い寄せは、近づいたときだけ。離れていれば、ほかの線を突き抜けて引ける。
  */
-export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, rawY: number, exclude?: string): PointAssist {
+export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, rawY: number, exclude?: string, range = ASSIST_RANGE): PointAssist {
+  // この線の延長上とみなす、横方向のずれの許容。範囲に合わせて広げる（画面で、狙いやすいように）
+  const perpTol = Math.max(ATTACH_RADIUS, range * 0.6);
   const horizontal = Math.abs(rawX - sx) > Math.abs(rawY - sy);
   const raw = horizontal ? rawX : rawY;
   const perp = horizontal ? sy : sx;
@@ -1002,9 +1005,9 @@ export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, ra
   const consider = (px: number, py: number, kind: AssistKind, pri: number) => {
     const a = horizontal ? px : py;
     const off = Math.abs((horizontal ? py : px) - perp);
-    if (off > ATTACH_RADIUS) return; // この線の延長上にない
+    if (off > perpTol) return; // この線の延長上にない
     const gap = Math.abs(a - raw);
-    if (gap <= ASSIST_RANGE) cands.push({ along: a, kind, score: gap + pri * 0.4 });
+    if (gap <= range) cands.push({ along: a, kind, score: gap + pri * 0.4 });
   };
   for (const it of doc.items) {
     if (it.kind === 'symbol') for (const p of portsOf(it)) consider(p.x, p.y, 'port', 0);
@@ -1016,10 +1019,10 @@ export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, ra
     if (isVerticalWire(it) !== horizontal) continue; // 同じ向きの線は、端だけ（上で見ている）
     const lo = horizontal ? Math.min(it.y1, it.y2) : Math.min(it.x1, it.x2);
     const hi = horizontal ? Math.max(it.y1, it.y2) : Math.max(it.x1, it.x2);
-    if (perp < lo - ATTACH_RADIUS || perp > hi + ATTACH_RADIUS) continue; // その線の長さの範囲に入っていない
+    if (perp < lo - perpTol || perp > hi + perpTol) continue; // その線の長さの範囲に入っていない
     const a = horizontal ? it.x1 : it.y1;
     const gap = Math.abs(a - raw);
-    if (gap <= ASSIST_RANGE) cands.push({ along: a, kind: 'wire', score: gap + 2 * 0.4 });
+    if (gap <= range) cands.push({ along: a, kind: 'wire', score: gap + 2 * 0.4 });
   }
   cands.sort((a, b) => a.score - b.score);
   const hit = cands[0];
@@ -1030,7 +1033,7 @@ export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, ra
 
   // 揃う位置（ほかの接続点・線の端と、たて・よこが同じ）
   let align: number | null = null;
-  let alignGap = ALIGN_RANGE;
+  let alignGap = Math.max(ALIGN_RANGE, range * 0.5);
   const alignWith = (px: number, py: number) => {
     const a = horizontal ? px : py;
     const gap = Math.abs(a - raw);
