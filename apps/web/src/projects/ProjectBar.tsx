@@ -67,11 +67,13 @@ export function ProjectBar({
           <span className="saved">
             {readOnly
               ? t('project.readonly')
-              : dirty
-                ? t('project.hasUnsaved')
-                : savedAt
-                  ? `${new Date(savedAt).toLocaleTimeString(lang)} ${t('project.savedAt')}`
-                  : ''}
+              : saving
+                ? t('project.saving')
+                : dirty
+                  ? t('project.hasUnsaved')
+                  : savedAt
+                    ? `${new Date(savedAt).toLocaleTimeString(lang)} ${t('project.savedAt')}`
+                    : ''}
           </span>
         </>
       )}
