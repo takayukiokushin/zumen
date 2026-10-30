@@ -39,7 +39,6 @@ export function Field({ question: question, fieldKey, value, onChange, context }
       <label htmlFor={fieldKey}>
         {q.type === 'boolean' ? '' : q.label}
         {q.required && <span className="req">必須</span>}
-        {q.ask === 'ai-uncertain' && <span className="ai">AI判定可</span>}
         {q.unit && <span className="unit">（{q.unit}）</span>}
       </label>
 
