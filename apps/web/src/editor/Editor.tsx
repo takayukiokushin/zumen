@@ -84,6 +84,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const [mode, setMode] = useState<'select' | 'wire'>('select');
   /** 用紙のまま（図枠つき）で見るか。印刷の見た目をそのまま確かめられる */
   const [sheetView, setSheetView] = useState(false);
+  /** スマホ（幅の狭い画面）で、ほかの操作のボタン列・記号パレットを開いているか */
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
   /** 「結線を整える」で直しきれなかったところ */
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
@@ -238,6 +241,14 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <button type="button" className="btn danger" disabled={sheetView || !selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
             {t('editor.delete')}
           </button>
+          {/* スマホでは、よく使うボタンだけを表に出し、ほかは「ほかの操作」の中にしまう（広い画面では、これまでどおり全部並ぶ） */}
+          <button type="button" className="tools-toggle" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
+            {moreOpen ? t('editor.moreClose') : t('editor.more')}
+          </button>
+          <button type="button" className="tools-toggle" aria-expanded={sideOpen} onClick={() => setSideOpen((v) => !v)}>
+            {t('editor.sideOpen')}
+          </button>
+          <div className={`tools-more${moreOpen ? ' open' : ''}`}>
           <button
             type="button"
             disabled={sheetView}
@@ -342,6 +353,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <button type="button" onClick={() => window.print()}>
             {t('editor.print')}
           </button>
+          </div>
         </div>
         <div className="tools">
           <button type="button" className="with-icon" disabled={sheetView} onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
@@ -466,7 +478,10 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           )}
         </div>
 
-        <aside className="side" inert={sheetView}>
+        <aside className={`side${sideOpen ? ' open' : ''}`} inert={sheetView}>
+          <button type="button" className="btn side-close" onClick={() => setSideOpen(false)}>
+            {t('common.close')}
+          </button>
           <section>
             <h3>{t('editor.palette')}</h3>
             <p className="hint">

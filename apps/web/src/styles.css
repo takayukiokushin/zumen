@@ -693,3 +693,22 @@ button.with-icon svg { flex: 0 0 auto; }
   .app > .preview { order: -1; flex: none; max-height: 45vh; overflow-y: auto; border-left: 0; border-bottom: 1px solid var(--rule); }
   .app > .nav { order: -2; flex: none; max-height: 40vh; overflow-y: auto; border-right: 0; border-bottom: 1px solid var(--rule); }
 }
+
+/* ---- 図面の画面：スマートフォン（幅の狭い画面）では、よく使うボタンだけ表に出し、ほかはしまう ---- */
+/* 広い画面（パソコン・タブレット）：しまう仕組みは使わない。ボタンは、これまでどおり全部並ぶ */
+.tools-toggle, .side-close { display: none; }
+.tools-more { display: contents; }
+@media (max-width: 700px) {
+  .tools-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  .tools-more { display: none; }
+  .tools-more.open { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap, 10px); flex: 1 0 100%; padding-top: calc(4px * var(--text-scale)); border-top: 1px solid var(--rule-soft); }
+  .tools .sep { display: none; }
+  .editor { overflow-y: auto; }
+  .editor-body { display: flex; flex-direction: column; flex: 1 0 auto; }
+  .canvas-wrap { flex: 1 1 auto; min-height: max(320px, 50vh); padding: calc(10px * var(--text-scale)); }
+  /* 記号の一覧と、選んだものの設定は、ボタンで下から出す */
+  .side { display: none; }
+  .side.open { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; max-height: 55vh; overflow-y: auto;
+    border-left: 0; border-top: 2px solid var(--accent); box-shadow: 0 -6px 18px rgba(0, 0, 0, .25); }
+  .side-close { display: flex; margin-left: auto; margin-bottom: calc(6px * var(--text-scale)); }
+}

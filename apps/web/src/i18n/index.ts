@@ -183,6 +183,9 @@ const ja = {
 
   'common.loading': '読み込み中…',
   'common.close': '閉じる',
+  'editor.more': 'ほかの操作',
+  'editor.moreClose': 'ほかの操作を閉じる',
+  'editor.sideOpen': '記号・設定',
   'dialog.confirmTitle': '確認',
   'dialog.cancel': 'キャンセル',
   'dialog.confirm': '実行',
@@ -381,6 +384,9 @@ const en: Dict = {
 
   'common.loading': 'Loading…',
   'common.close': 'Close',
+  'editor.more': 'More tools',
+  'editor.moreClose': 'Hide tools',
+  'editor.sideOpen': 'Symbols & settings',
   'dialog.confirmTitle': 'Confirm',
   'dialog.cancel': 'Cancel',
   'dialog.confirm': 'Continue',
@@ -577,6 +583,9 @@ const fr: Dict = {
 
   'common.loading': 'Chargement…',
   'common.close': 'Fermer',
+  'editor.more': 'Autres outils',
+  'editor.moreClose': 'Masquer les outils',
+  'editor.sideOpen': 'Symboles et réglages',
   'dialog.confirmTitle': 'Confirmation',
   'dialog.cancel': 'Annuler',
   'dialog.confirm': 'Continuer',
@@ -769,6 +778,9 @@ const zh: Dict = {
 
   'common.loading': '读取中…',
   'common.close': '关闭',
+  'editor.more': '更多操作',
+  'editor.moreClose': '收起操作',
+  'editor.sideOpen': '符号与设置',
   'dialog.confirmTitle': '确认',
   'dialog.cancel': '取消',
   'dialog.confirm': '执行',
@@ -963,6 +975,9 @@ const ko: Dict = {
 
   'common.loading': '읽는 중…',
   'common.close': '닫기',
+  'editor.more': '기타 작업',
+  'editor.moreClose': '작업 닫기',
+  'editor.sideOpen': '기호·설정',
   'dialog.confirmTitle': '확인',
   'dialog.cancel': '취소',
   'dialog.confirm': '실행',
