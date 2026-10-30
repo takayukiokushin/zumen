@@ -1,0 +1,28 @@
+アプリの「音声入力から作成」に貼り付けてください。
+
+```json
+{
+  "format": "zumen-voice",
+  "version": "v7yc85",
+  "answers": {
+    "sourceType": "pole",
+    "poleName": "中電柱：北山12",
+    "sectionalizer": "pas",
+    "cableInstallation": "buried",
+    "areaForm": "cubicle",
+    "areaPlacement": "outdoor",
+    "mainBreakerForm": "cb",
+    "transformerCount": 2,
+    "trUsage": "動力",
+    "trCapacity": 200,
+    "trUsage__2": "電灯",
+    "trCapacity__2": 100
+  },
+  "uncertain": ["trCapacity__2"],
+  "evidence": {
+    "trCapacity__2": "2台目が電灯で100キロかな、ちょっと自信ない"
+  },
+  "notes": [],
+  "questions": []
+}
+```

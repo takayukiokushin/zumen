@@ -2,6 +2,7 @@
 
 Claude のプロジェクトの指示文（`docs/claude-voice-instruction.txt`）だけを読んだ Claude に、話された内容（`sample-N-spoken.txt`。聞き間違いと、お客様名称を話す場面を含む）を渡して、
 返してもらった文章が `sample-N-claude-output.txt` です。
+例3は、話された内容に足りない項目があり、Claude が1回だけ聞き返す場面です（聞き返しは `sample-3-claude-question.txt`、その答えのあとに出た文章が `sample-3-claude-output.txt`）。
 
 - `pnpm check` は、この出力を、アプリの読み取り（`parseVoiceResult`）に通して、**取り込めない項目が無い**ことと、**お客様名称が入っていない**ことを確かめます。
 - 質問の名前や選べる値を変えて、この確認が通らなくなったら、指示文を作り直し（`pnpm voice`）、Claude のプロジェクトで、もう一度試してください。

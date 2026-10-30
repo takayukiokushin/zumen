@@ -1,31 +1,12 @@
-聞き取った内容を、まとめます。
+聞き取った内容を読み返します。
 
-1. 系統用の蓄電所です。引込元は、地上のキャビネットで、キャビネット番号は「ちか23」と聞こえました。
-2. 区分開閉器は UGS で、キャビネットの中です。責任分界点は、3点一致です。
-3. 引込ケーブルは、埋設（埋ケ）の CVT です。
-4. 受電設備は、2か所です。
-5. 1か所目は、電気室の中のキュービクルで、地上1階です。DS と VCB の標準構成（CB形）で、励突抑制開閉器があります。
-6. VT は DS の次に2台で、V結線です。CT は VCB の二次側に2台です。
-7. 継電器は3個です。OCR は CT の1組目で試験端子あり。UVR は VT の1組目で試験端子なし。OVR は、つける場所が決まっていません。
-8. 変圧器は2台で、どちらも動力です。1台目が 2250kVA、2台目が 1000kVA です。
-9. 補助変圧器は1台で、動力用です。1台目の変圧器の低圧側につながり、150kVA、550V から 220V、MCCB は 400A です。
-10. 2か所目は、1か所目の DS と VCB の間から、埋設ケーブルで分岐します。VCB のみで、変圧器は1台、動力用の 500kVA です。
+1. 系統用の蓄電所です。引込は地上キャビネットで、キャビネット番号は「ちか、23」。区分開閉器はUGS、責任分界点は3点一致です。引込ケーブルは、埋設のCVTです。
+2. 受電設備は2か所です。1か所目は、電気室の中のキュービクルで、1階です。DSとVCBの標準構成で、VTはDSの次に2台（V結線）、CTはVCBの二次側に2台です。励突抑制開閉器があります。
+3. 継電器は3個です。OCRはCT1組目で試験端子あり。UVRはVT1組目で試験端子なし。OVRは、場所は決まっていません。
+4. 変圧器は2台で、どちらも動力用です。1台目が2250kVA、2台目が1000kVAです。補助変圧器は1台で、動力用、1台目の変圧器の低圧側、150kVA、550Vから220V、MCCBは400Aです。
+5. 2か所目は、1か所目のDSとVCBの間から、埋設ケーブルで分岐しています。VCBのみで、変圧器は1台、動力用の500kVAです。
 
-お客様の名前は、お話がありましたが、記録していません。事業場名称・表題欄への記載名・図面名称は、アプリの中で入力してください。
-
-次の項目は、まだ分かっていません：
-- 受電方式（高圧か、特別高圧か）
-- UGS の定格電圧と定格電流
-- 引込ケーブルの断面積と長さ
-- 励突抑制開閉器の定格電流とヒューズ定格
-- DS と VCB の定格
-- CT の変流比
-- 変圧器の結線方式（3台ぶん）
-- 蓄電ユニットの規模
-- 2か所目の形態と設置場所、VT・CT の有無
-
-よろしければ、アプリ用の文章を出します。
-
+聞き返すことは、ありません。そのまま、アプリ用の文章を出します。
 アプリの「音声入力から作成」に貼り付けてください。
 
 ```json
@@ -33,17 +14,17 @@
   "format": "zumen-voice",
   "version": "v7yc85",
   "answers": {
+    "hasBattery": "yes",
     "sourceType": "cabinet",
     "cabinetName": "キャビネット番号：ちか23",
     "boundaryPattern": "coincident",
     "sectionalizer": "ugs",
-    "ugsCabinetName": "キャビネット番号：ちか23",
     "cableInstallation": "buried",
     "cableStructure": "CVT",
     "areaCount": 2,
     "areaForm": "room-cubicle",
     "areaPlacement": "indoor",
-    "areaFloor": "地上1階",
+    "areaFloor": "1階",
     "mainBreakerForm": "cb",
     "hasInrush": "yes",
     "vtSetCount": 1,
@@ -67,13 +48,12 @@
     "trCapacity": 2250,
     "trUsage__2": "動力",
     "trCapacity__2": 1000,
-    "hasBattery": "yes",
     "auxTrCount": 1,
-    "auxTrFrom": 1,
+    "auxTrFrom": "1",
     "auxTrUsage": "動力",
     "auxTrCapacity": 150,
     "auxTrVoltage": "550V/220V",
-    "auxTrMccb": 400,
+    "auxTrMccb": "400",
     "a2:linkCable": "yes",
     "a2:linkTap": "ds-vcb",
     "a2:linkCableInstallation": "buried",
@@ -82,83 +62,12 @@
     "a2:trUsage": "動力",
     "a2:trCapacity": 500
   },
-  "uncertain": ["cabinetName", "ugsCabinetName", "areaPlacement"],
+  "uncertain": ["cabinetName", "areaPlacement"],
   "evidence": {
-    "sourceType": "引込は地上キャビネット",
-    "cabinetName": "キャビネット番号は、ちか、にじゅうさん",
-    "boundaryPattern": "責任分界点は3点一致",
-    "sectionalizer": "区分開閉器はユージーエス",
-    "ugsCabinetName": "キャビネットの中",
-    "cableInstallation": "埋ケ",
-    "cableStructure": "シーブイティー",
-    "areaCount": "受電設備は2か所",
-    "areaForm": "電気室の中のキュービクル",
-    "areaPlacement": "電気室の中",
-    "areaFloor": "地上の1階",
-    "mainBreakerForm": "ディーエス、ブイシービーの標準構成",
-    "hasInrush": "励突抑制開閉器あり",
-    "vtSetCount": "ブイティーはディーエスの次",
-    "vtPosition": "ディーエスの次",
-    "vtCount": "ブイティーは2台",
-    "vtConnection": "ブイ結線",
-    "ctSetCount": "シーティーはブイシービーの二次側",
-    "ctPosition": "ブイシービーの二次側",
-    "ctCount": "シーティーは2台",
-    "relayCount": "継電器は3個",
-    "relayType": "1個目はオーシーアール",
-    "relayAt": "シーティーの1組目",
-    "relayTest": "試験端子あり",
-    "relayType__2": "2個目はユーブイアール",
-    "relayAt__2": "ブイティーの1組目",
-    "relayTest__2": "試験端子なし",
-    "relayType__3": "3個目はオーブイアール",
-    "relayAt__3": "どこについてるかは決まってません",
-    "transformerCount": "変圧器は2台",
-    "trUsage": "どっちも動力",
-    "trCapacity": "1台目が2250キロ",
-    "trUsage__2": "どっちも動力",
-    "trCapacity__2": "2台目が1000キロ",
-    "hasBattery": "系統用の蓄電所",
-    "auxTrCount": "補助変圧器があって、1台",
-    "auxTrFrom": "1台目の変圧器の低圧側",
-    "auxTrUsage": "動力用",
-    "auxTrCapacity": "150キロ",
-    "auxTrVoltage": "550ボルトから220ボルト",
-    "auxTrMccb": "MCCBは400アンペア",
-    "a2:linkCable": "1か所目から埋ケで分岐",
-    "a2:linkTap": "DSとVCBの間から",
-    "a2:linkCableInstallation": "埋ケ",
-    "a2:areaIntake": "VCBだけ",
-    "a2:transformerCount": "変圧器が1台",
-    "a2:trUsage": "動力用",
-    "a2:trCapacity": "500キロ"
+    "cabinetName": "ちか、にじゅうさん",
+    "areaPlacement": "電気室の中のキュービクルで、地上の1階"
   },
-  "notes": [
-    "お客様の名前は話されたが、記録していない（表題欄に関わるため、アプリの中で入力する）",
-    "キャビネット番号の「ちか」は、聞き間違いの可能性あり。UGS が入っているキャビネットは、引込元のキャビネットと同じとして書いた",
-    "OVR は、つける場所が決まっていない（relayAt は none）",
-    "2か所目は、1か所目の DS と VCB の間から埋設ケーブルで分岐する"
-  ],
-  "questions": [
-    { "questionId": "receivingType", "ask": "受電方式は、高圧受電ですか、特別高圧受電ですか", "why": "話されなかったため" },
-    { "questionId": "cabinetName", "ask": "キャビネット番号の「ちか」は、正しい文字を教えてください", "why": "音声で「ちか、にじゅうさん」と聞こえ、文字が分からなかったため" },
-    { "questionId": "pasRatedVoltage", "ask": "UGS の定格電圧は 6600V ですか、7200V ですか", "why": "話されなかったため（7200V と 6600V は機器で使い分けるため、決め打ちしない）" },
-    { "questionId": "pasRatedCurrent", "ask": "UGS の定格電流は、100・200・300・400A のどれですか", "why": "話されなかったため" },
-    { "questionId": "cableCrossSection", "ask": "引込ケーブルの断面積は、いくつですか", "why": "話されなかったため" },
-    { "questionId": "cableLength", "ask": "引込ケーブルの長さは、何メートルですか", "why": "話されなかったため（不明なら空欄でよい）" },
-    { "questionId": "dsRating", "ask": "DS の定格は、いくつですか", "why": "話されなかったため" },
-    { "questionId": "vcbRating", "ask": "VCB の定格は、いくつですか", "why": "話されなかったため" },
-    { "questionId": "inrushRatedCurrent", "ask": "励突抑制開閉器の定格電流は、何アンペアですか", "why": "あり、とだけ話されたため" },
-    { "questionId": "inrushFuseSpec", "ask": "励突抑制開閉器のヒューズの定格は、いくつですか", "why": "あり、とだけ話されたため" },
-    { "questionId": "ctRatio", "ask": "CT の変流比（1次側の電流）は、いくつですか", "why": "話されなかったため" },
-    { "questionId": "trConnection", "ask": "1台目の変圧器（2250kVA）の結線方式は、何ですか", "why": "動力とだけ話されたため" },
-    { "questionId": "trConnection__2", "ask": "2台目の変圧器（1000kVA）の結線方式は、何ですか", "why": "動力とだけ話されたため" },
-    { "questionId": "batteryCapacity", "ask": "蓄電ユニットの規模は、どれくらいですか", "why": "話されなかったため" },
-    { "questionId": "areaForm__2", "ask": "2か所目の形態は、キュービクル式ですか、電気室ですか、ほかですか", "why": "話されなかったため" },
-    { "questionId": "areaPlacement__2", "ask": "2か所目の設置場所は、屋内・屋上・屋外のどれですか", "why": "話されなかったため" },
-    { "questionId": "a2:trConnection", "ask": "2か所目の変圧器（500kVA）の結線方式は、何ですか", "why": "動力とだけ話されたため" },
-    { "questionId": "a2:hasSiteVt", "ask": "2か所目に、VT はありますか", "why": "VCB のみ、とだけ話されたため" },
-    { "questionId": "a2:hasSiteCt", "ask": "2か所目に、CT はありますか", "why": "VCB のみ、とだけ話されたため" }
-  ]
+  "notes": [],
+  "questions": []
 }
 ```
