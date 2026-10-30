@@ -242,6 +242,24 @@ console.log('\n■ 線を引くときの手助け');
   const noA = addWire(mini, 103, 3, 140, 3, { assist: false }).doc.items.find((i) => i.kind === 'wire' && i.id !== 'w1' && i.id !== 'w2') as DocWire;
   ok(noA && noA.x1 === 104 && noA.y1 === 4, '線を追加（Altキーを押しながら）：吸い付かず、格子に合わせるだけ', `吸い付かない指定なのに吸い付きました（${JSON.stringify(noA)}）`);
 
+  // 平行な線と、同じ長さ（前に引いた線と、長さをそろえて並べる）
+  const len = assistWireNew(mini, 30, 20, 127, 20);
+  ok(len.kind === 'align' && len.x === 130 && len.guideX === 130, '終点：平行な線（長さ100）と同じ長さになる位置に、目安の線つきで吸い付く', `同じ長さの位置に吸い付きません（${JSON.stringify(len)}）`);
+  const lenL = assistWireNew(mini, 230, 20, 133, 20);
+  ok(lenL.kind === 'align' && lenL.x === 130, '終点：左向きに引くときも、同じ長さの位置に吸い付く', `左向きで吸い付きません（${JSON.stringify(lenL)}）`);
+  const lenFar = assistWireNew(mini, 30, 20, 150, 20);
+  ok(lenFar.kind !== 'align' || lenFar.x !== 130, '終点：同じ長さから遠いときは、吸い付かない', `遠いのに吸い付きました（${JSON.stringify(lenFar)}）`);
+
+  // 既存の線を動かすとき
+  const m1: Doc = { ...mini, items: [...mini.items, wire('m1', 200, 40, 260, 40)] };
+  const mvH = assistMove(m1, 'm1', 0, -37, 10);
+  ok(mvH.dy === -40 && mvH.guideY === 0, '線を動かす：平行な線（高さ0）と、同じ高さに並ぶ位置に吸い付く', `同じ高さに吸い付きません（${JSON.stringify(mvH)}）`);
+  const mvFar = assistMove(m1, 'm1', 0, -25, 10);
+  ok(mvFar.dy !== -40, '線を動かす：離れているときは、吸い付かない（わざとずらして置ける）', `離れているのに吸い付きました（${JSON.stringify(mvFar)}）`);
+  const m2: Doc = { ...mini, items: [...mini.items, wire('m2', 100, -25, 160, -25)] };
+  const mvE = assistMove(m2, 'm2', -47, 0, 10);
+  ok(mvE.dx === -50 && mvE.guideX === 50, '線を動かす：線の端が、縦線の上に乗る位置に吸い付く（枝分かれ・止まる）', `縦線の上に吸い付きません（${JSON.stringify(mvE)}）`);
+
   // 記号を動かすとき、ほかの線と揃う位置にも吸い付く
   const sym = symbols(base).find((s) => portsOf(s).length > 0)!;
   const p0 = portsOf(sym)[0]!;

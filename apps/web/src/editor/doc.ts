@@ -843,6 +843,7 @@ function pick(raw: number, cands: Candidate[], range = ASSIST_RANGE): Candidate 
  */
 export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number, range = ASSIST_RANGE): MoveAssist {
   const target = doc.items.find((it) => it.id === id);
+  if (target?.kind === 'wire') return assistWireMove(doc, target, rawDx, rawDy, range);
   if (!target || target.kind !== 'symbol') return { dx: snap(rawDx), dy: snap(rawDy) };
 
   const pts = portsOf(target);
@@ -894,6 +895,51 @@ export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number, r
     guideX: bx?.at,
     guideY: by?.at,
   };
+}
+
+/**
+ * 既存の線そのものを動かしている途中の手助け。次の位置に、軽く吸い寄せる。
+ * ① 線の端が、記号の接続点・ほかの線の端に重なる位置
+ * ② 線の端が、直角に交わる線の上に乗る位置（枝分かれ・そこで止まる）
+ * ③ 平行な線と、同じ線上（横線なら同じ高さ、縦線なら同じ左右位置）に並ぶ位置
+ * 離せば吸い付かないので、わざとずらして置くこともできる。
+ */
+function assistWireMove(doc: Doc, w: DocWire, rawDx: number, rawDy: number, range: number): MoveAssist {
+  const vertical = isVerticalWire(w);
+  const ends = [
+    { x: w.x1, y: w.y1 },
+    { x: w.x2, y: w.y2 },
+  ];
+  const tol = Math.max(ATTACH_RADIUS, range * 0.6);
+  const wantX: Candidate[] = [];
+  const wantY: Candidate[] = [];
+
+  const targets: { x: number; y: number }[] = wireEndsOf(doc, w.id);
+  for (const it of doc.items) if (it.kind === 'symbol') targets.push(...portsOf(it));
+  for (const e of ends) {
+    for (const t of targets) {
+      wantX.push({ d: t.x - e.x, at: t.x });
+      wantY.push({ d: t.y - e.y, at: t.y });
+    }
+  }
+  for (const o of doc.items) {
+    if (o.kind !== 'wire' || o.id === w.id) continue;
+    const ov = isVerticalWire(o);
+    for (const e of ends) {
+      if (ov) {
+        if (e.y >= Math.min(o.y1, o.y2) - tol && e.y <= Math.max(o.y1, o.y2) + tol) wantX.push({ d: o.x1 - e.x, at: o.x1 });
+      } else if (e.x >= Math.min(o.x1, o.x2) - tol && e.x <= Math.max(o.x1, o.x2) + tol) {
+        wantY.push({ d: o.y1 - e.y, at: o.y1 });
+      }
+    }
+    if (ov === vertical) {
+      if (vertical) wantX.push({ d: o.x1 - w.x1, at: o.x1 });
+      else wantY.push({ d: o.y1 - w.y1, at: o.y1 });
+    }
+  }
+  const bx = pick(rawDx, wantX, range);
+  const by = pick(rawDy, wantY, range);
+  return { dx: bx ? bx.d : snap(rawDx), dy: by ? by.d : snap(rawDy), guideX: bx?.at, guideY: by?.at };
 }
 
 /** 線の端を動かしている途中、近くの接続点・線の端・線の上に軽く吸い寄せる */
@@ -1033,7 +1079,7 @@ export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, ra
 
   // 揃う位置（ほかの接続点・線の端と、たて・よこが同じ）
   let align: number | null = null;
-  let alignGap = Math.max(ALIGN_RANGE, range * 0.5);
+  let alignGap = Math.max(ALIGN_RANGE, range);
   const alignWith = (px: number, py: number) => {
     const a = horizontal ? px : py;
     const gap = Math.abs(a - raw);
@@ -1046,6 +1092,21 @@ export function assistWireNew(doc: Doc, sx: number, sy: number, rawX: number, ra
     if (it.kind === 'symbol') for (const p of portsOf(it)) alignWith(p.x, p.y);
   }
   for (const e of wireEndsOf(doc, exclude)) alignWith(e.x, e.y);
+  // 平行な線と、同じ長さになる位置（前に引いた線と、長さをそろえて並べるとき）
+  const dir = Math.sign(raw - (horizontal ? sx : sy));
+  if (dir !== 0) {
+    for (const it of doc.items) {
+      if (it.kind !== 'wire' || it.id === exclude || isVerticalWire(it) === horizontal) continue;
+      const len = horizontal ? Math.abs(it.x2 - it.x1) : Math.abs(it.y2 - it.y1);
+      if (len < 1) continue;
+      const a = (horizontal ? sx : sy) + dir * len;
+      const gap = Math.abs(a - raw);
+      if (gap <= alignGap) {
+        alignGap = gap;
+        align = a;
+      }
+    }
+  }
   if (align !== null) {
     const [x, y] = at(align);
     return horizontal ? { x, y, kind: 'align', guideX: align } : { x, y, kind: 'align', guideY: align };
