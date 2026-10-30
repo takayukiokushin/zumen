@@ -1,0 +1,97 @@
+聞き取った内容を、読み返します。
+
+1. 引込元は、電柱です。「中電柱：猪子山（分）81」です。ASは、ありません。
+2. 責任分界点は、3点一致です。
+3. 区分開閉器は、PASです。SOGはDGR付きで、VTとLAも内蔵されています。
+4. 引込ケーブルは、埋設（埋ケ）で、構造はCVTです。
+5. 受電設備は、キュービクル式で、屋外（地上）に置かれています。
+6. DSの次にVT、そのあとVCB、その下にCTが2台です。CTの変流比は、100（100/5A）ですね。
+7. OCRは、CTについていて、試験端子はあります。
+8. 変圧器は1台で、動力用、300kVA、三相Δ-Y結線ですね。
+9. 高圧コンデンサは、ありません。
+
+お客様の名前など（事業場名称・表題欄への記載名・図面名称）は、記録していません。事業場名称・表題欄への記載名・図面名称は、アプリの中で入力してください。
+
+次の項目は、まだ分かっていません：受電方式（高圧か特別高圧か）、PASの定格電圧と定格電流、引込ケーブルの断面積と長さ。
+なお、変圧器の合計が300kVAなので、ふつうはPFS形ですが、今回はVCBがあるとのことなので、CB形で書きました。ここは、確認してください。
+
+アプリの「音声入力から作成」に貼り付けてください。
+
+```json
+{
+  "format": "zumen-voice",
+  "version": "v7yc85",
+  "answers": {
+    "sourceType": "pole",
+    "poleName": "中電柱：猪子山（分）81",
+    "hasAs": "no",
+    "boundaryPattern": "coincident",
+    "sectionalizer": "pas",
+    "pasControl": "dgr",
+    "pasBuiltinVt": "yes",
+    "pasBuiltinLa": "yes",
+    "cableInstallation": "buried",
+    "cableStructure": "CVT",
+    "areaForm": "cubicle",
+    "areaPlacement": "outdoor",
+    "mainBreakerForm": "cb",
+    "vtSetCount": 1,
+    "vtPosition": "primary",
+    "ctSetCount": 1,
+    "ctPosition": "secondary",
+    "ctCount": 2,
+    "ctRatio": "100",
+    "relayCount": 1,
+    "relayType": "OCR",
+    "relayAt": "ct-1",
+    "relayTest": "yes",
+    "transformerCount": 1,
+    "trUsage": "動力",
+    "trConnection": "tr-3p-dy",
+    "trCapacity": 300,
+    "hasCapacitor": "no"
+  },
+  "uncertain": ["mainBreakerForm"],
+  "evidence": {
+    "sourceType": "引込は中電柱",
+    "poleName": "中電柱の、猪子山分の81番",
+    "hasAs": "ASはなしで",
+    "boundaryPattern": "3点一致です",
+    "sectionalizer": "区分開閉器はパス",
+    "pasControl": "ディージーアール付き",
+    "pasBuiltinVt": "ブイティーとエルエーも内蔵",
+    "pasBuiltinLa": "ブイティーとエルエーも内蔵",
+    "cableInstallation": "ケーブルは埋ケ",
+    "cableStructure": "シーブイティー",
+    "areaForm": "受電設備はキュービクル",
+    "areaPlacement": "屋外の地上に置いてます",
+    "mainBreakerForm": "ディーエスの次にブイティー、そのあとブイシービー、その下にシーティー",
+    "vtSetCount": "ディーエスの次にブイティー",
+    "vtPosition": "ディーエスの次にブイティー",
+    "ctSetCount": "ブイシービーの下にシーティー",
+    "ctPosition": "ブイシービーの下にシーティー",
+    "ctCount": "シーティーが2台",
+    "ctRatio": "変流比は100",
+    "relayCount": "オーシーアールはシーティーについてて",
+    "relayType": "オーシーアール",
+    "relayAt": "オーシーアールはシーティーについてて",
+    "relayTest": "試験端子ありです",
+    "transformerCount": "変圧器は1台",
+    "trUsage": "動力用",
+    "trConnection": "デルタ-ワイ結線",
+    "trCapacity": "さんびゃくキロ",
+    "hasCapacitor": "コンデンサはなしです"
+  },
+  "notes": [
+    "事業場名称・表題欄への記載名・図面名称は、アプリの中で入力してください。"
+  ],
+  "questions": [
+    { "questionId": "receivingType", "ask": "受電方式は、高圧受電ですか、特別高圧受電ですか。", "why": "話されなかったため。" },
+    { "questionId": "mainBreakerForm", "ask": "主遮断装置はVCB（CB形）で合っていますか。", "why": "変圧器の合計容量が300kVAで、ふつうはPFS形になるが、話ではDSとVCBがあるとのことだったため。" },
+    { "questionId": "pasRatedVoltage", "ask": "PASの定格電圧は、7200Vですか、6600Vですか。", "why": "話されなかったため。" },
+    { "questionId": "pasRatedCurrent", "ask": "PASの定格電流は、何アンペアですか。", "why": "話されなかったため。" },
+    { "questionId": "cableCrossSection", "ask": "引込ケーブルの断面積は、何mm2ですか。", "why": "話されなかったため。" },
+    { "questionId": "cableLength", "ask": "引込ケーブルの長さは、何mですか。", "why": "話されなかったため。" }
+  ]
+}
+```

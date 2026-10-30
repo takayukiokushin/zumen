@@ -160,5 +160,21 @@ console.log('\n■ 貼り付けた文章の読み取り');
   console.log('  形の違う文章（空・ふつうの文章・目印なし・答えなし・壊れたJSON）は、理由を出して、読み取らない');
 }
 
+console.log('\n■ Claude（指示文だけを読んだもの）が実際に出した文章の例');
+{
+  for (const n of [1, 2]) {
+    const text = readFileSync(new URL(`../docs/voice-samples/sample-${n}-claude-output.txt`, import.meta.url), 'utf8');
+    const p = parseVoiceResult(text);
+    ok(p.ok && p.rejected.length === 0, `例${n}：取り込めない項目があります（${p.error ?? ''}${p.rejected.map((r) => `${r.key}：${r.reason}`).join('、')}）。指示文を見直してください`);
+    // お客様名称は、出力のどこにも入っていない（話された名前の言葉が、文章に出てこない）
+    for (const name of ['マルマル製作所', 'ばつばつエナジー']) ok(!text.includes(name), `例${n}：お客様名称（${name}）が、出力に入っています`);
+    for (const id of ['siteName', 'customerNameForTitleBlock', 'drawingName']) ok(!(id in (p.result?.answers ?? {})), `例${n}：手入力の項目 ${id} が、答えに入っています`);
+    // 取り込んだ答えから、構成が作れる
+    const items = buildComposition({ receivingVoltage: 6600, ...(p.result?.answers as Answers) });
+    ok(items.some((i) => i.role === 'transformer'), `例${n}：取り込んだ答えから、構成が作れません`);
+    if (p.ok && p.rejected.length === 0) console.log(`  例${n}：${Object.keys(p.result!.answers).length}項目を、そのまま取り込めた。お客様名称は入っていない。構成は ${items.length}件`);
+  }
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
