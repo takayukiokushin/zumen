@@ -1,4 +1,5 @@
 import type { User } from './session/api.ts';
+import { useDialogs } from './Dialogs.tsx';
 import { useT } from './i18n/useT.ts';
 import type { Key } from './i18n/index.ts';
 import { GearIcon, InfoIcon } from './icons.tsx';
@@ -54,6 +55,7 @@ interface Props {
 
 export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers, onLogout, dirty = false }: Props) {
   const t = useT();
+  const { ask } = useDialogs();
   return (
     <div className="tabbar">
       <span className="title">{t('app.name')}</span>
@@ -91,7 +93,9 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
         type="button"
         onClick={() => {
           // 保存していない変更があるときは、それが消えることを先に伝える
-          if (window.confirm(t(dirty ? 'nav.logout.confirmUnsaved' : 'nav.logout.confirm'))) onLogout();
+          void ask({ title: t('nav.logout'), message: [t(dirty ? 'nav.logout.confirmUnsaved' : 'nav.logout.confirm')], confirmLabel: t('nav.logout') }).then((yes) => {
+            if (yes) onLogout();
+          });
         }}
       >
         {t('nav.logout')}

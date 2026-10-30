@@ -16,6 +16,7 @@ import { UserAdmin } from './projects/UserAdmin.tsx';
 import { SettingsPanel } from './settings/SettingsPanel.tsx';
 import { HelpPanel } from './help/HelpPanel.tsx';
 import { helpSeen, markHelpSeen } from './help/seen.ts';
+import { useDialogs } from './Dialogs.tsx';
 import { useLang, useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
@@ -28,6 +29,7 @@ export const DEFAULTS: Answers = Object.fromEntries(
 
 export function App() {
   const t = useT();
+  const { ask } = useDialogs();
   const lang = useLang();
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [tab, setTab] = useState<Tab>('hearing');
@@ -122,8 +124,8 @@ export function App() {
    * 保存していない変更があるとき、別の案件へ移ってよいかを確かめる。
    * 移ってよい（または、失うものが無い）なら true。
    */
-  const confirmLeave = (): boolean =>
-    !dirty || window.confirm(`「${projectName}」${t('project.unsavedLeave')}`);
+  const confirmLeave = async (): Promise<boolean> =>
+    !dirty || ask({ title: t('project.unsavedTitle'), message: [`「${projectName}」${t('project.unsavedLeave')}`], confirmLabel: t('project.unsavedGo') });
 
   /** 開いている案件から離れるとき、編集中の印を外しておく */
   const leaveCurrent = async () => {
@@ -309,7 +311,9 @@ export function App() {
             type="button"
             disabled={saving}
             onClick={() => {
-              if (window.confirm(t('stale.overwriteConfirm'))) void save(true);
+              void ask({ title: t('stale.overwrite'), message: [t('stale.overwriteConfirm')], confirmLabel: t('stale.overwrite') }).then((yes) => {
+                if (yes) void save(true);
+              });
             }}
           >
             {t('stale.overwrite')}
@@ -318,8 +322,9 @@ export function App() {
             type="button"
             disabled={saving}
             onClick={() => {
-              if (!window.confirm(t('stale.reloadConfirm'))) return;
-              void openProject(projectId!);
+              void ask({ title: t('stale.reload'), message: [t('stale.reloadConfirm')], confirmLabel: t('stale.reload') }).then((yes) => {
+                if (yes) void openProject(projectId!);
+              });
             }}
           >
             {t('stale.reload')}
@@ -338,18 +343,18 @@ export function App() {
           <button
             type="button"
             onClick={() => {
-              const warning = dirty
-                ? 'この画面の未保存の変更は破棄され、保存されている内容を読み直します。\n'
-                : '';
-              if (
-                window.confirm(
-                  `${lockedBy.userName}さんから編集を引き継ぎます。\n` +
-                    warning +
-                    `${lockedBy.userName}さんの未保存の変更も失われます。よろしいですか。`,
-                )
-              ) {
-                void openProject(projectId!, true);
-              }
+              const warning = dirty ? ['この画面の未保存の変更は破棄され、保存されている内容を読み直します。'] : [];
+              void ask({
+                title: t('lock.takeover'),
+                message: [
+                  `${lockedBy.userName}さんから編集を引き継ぎます。`,
+                  ...warning,
+                  `${lockedBy.userName}さんの未保存の変更も失われます。よろしいですか。`,
+                ],
+                confirmLabel: t('lock.takeover'),
+              }).then((yes) => {
+                if (yes) void openProject(projectId!, true);
+              });
             }}
           >
             {t('lock.takeover')}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../session/api.ts';
 import type { PracticeSource, ProjectSummary, Role, TrashItem } from '../session/api.ts';
+import { useDialogs } from '../Dialogs.tsx';
 import { useLang, useT } from '../i18n/useT.ts';
 
 /**
@@ -21,7 +22,7 @@ interface Props {
    * 開いている案件に、保存していない変更があるときの確認。
    * 別の案件を開く・新しく作る前に呼ぶ。false なら取りやめる。
    */
-  canLeave: () => boolean;
+  canLeave: () => Promise<boolean>;
 }
 
 /** 名前の中の、探した言葉のところを目立たせる */
@@ -40,6 +41,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
 
 export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Props) {
   const t = useT();
+  const { ask, input } = useDialogs();
   const lang = useLang();
   const [list, setList] = useState<ProjectSummary[] | null>(null);
   const [q, setQ] = useState('');
@@ -72,15 +74,15 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     return list.filter((p) => p.name.toLowerCase().includes(needle));
   }, [list, q]);
 
-  const create = () => {
+  const create = async () => {
     // 名前を聞く前に確かめる（入力した名前が無駄にならないように）
-    if (!canLeave()) return;
-    const name = window.prompt(t('project.newName'), q.trim() || t('project.newDefault'));
+    if (!(await canLeave())) return;
+    const name = await input({ title: t('project.new'), message: [t('project.newName')], defaultValue: q.trim() || t('project.newDefault') });
     if (name !== null) onNew(name, name.trim() !== '' && name.trim() !== t('project.newDefault'));
   };
 
   const remove = async (p: ProjectSummary) => {
-    if (!window.confirm(`「${p.name}」${t('project.deleteConfirm')}`)) return;
+    if (!(await ask({ title: t('project.delete'), message: [`「${p.name}」${t('project.deleteConfirm')}`], confirmLabel: t('project.delete') }))) return;
     try {
       setError(null);
       await api.deleteProject(p.id);
@@ -93,8 +95,8 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
 
   /** 本番の案件を練習用にコピーして、そのまま開く。本番の案件は変わらない */
   const copyToPractice = async (src: PracticeSource) => {
-    if (!window.confirm(`「${src.name}」${t('project.practice.confirm')}`)) return;
-    if (!canLeave()) return;
+    if (!(await ask({ message: [`「${src.name}」${t('project.practice.confirm')}`] }))) return;
+    if (!(await canLeave())) return;
     try {
       setError(null);
       const r = await api.copyToPractice(src.id);
@@ -133,7 +135,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
           <span className="count">
             {shown ? `${shown.length}${t('project.count')}` : ''}
           </span>
-          <button type="button" className="btn primary" onClick={create}>
+          <button type="button" className="btn primary" onClick={() => void create()}>
             ＋ {t('project.new')}
           </button>
         </div>
@@ -185,8 +187,10 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       className="btn primary job-open"
                       onClick={() => {
                         // 開いている案件に戻るだけなら、何も失わないので確認しない
-                        if (p.id !== currentId && !canLeave()) return;
-                        onOpen(p.id);
+                        void (async () => {
+                          if (p.id !== currentId && !(await canLeave())) return;
+                          onOpen(p.id);
+                        })();
                       }}
                     >
                       {t('project.open')}

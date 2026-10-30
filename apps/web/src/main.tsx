@@ -4,11 +4,14 @@ import './styles.css';
 import { App } from './App.tsx';
 import { SettingsProvider } from './settings/settings.tsx';
 import { TooltipLayer } from './Tooltips.tsx';
+import { DialogsProvider } from './Dialogs.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <SettingsProvider>
-      <App />
+      <DialogsProvider>
+        <App />
+      </DialogsProvider>
       <TooltipLayer />
     </SettingsProvider>
   </StrictMode>,

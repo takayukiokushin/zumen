@@ -653,3 +653,8 @@ button.with-icon svg { flex: 0 0 auto; }
 
 /* 指で押す端末（タブレット・スマホ）では、小さめのボタンも44px以上にする（上の共通ルールより後に書く） */
 @media (pointer: coarse) { .panel-toggle, .thumbs button { min-height: 44px; } }
+
+/* ---- アプリ内の確認・入力の窓（Dialogs.tsx）。ほかの窓（設定・利用者の管理など）の上に重ねる ---- */
+.dialog-back { z-index: 300; }
+.dialog-input-row { display: flex; gap: var(--gap, 10px); align-items: stretch; margin-top: calc(6px * var(--text-scale)); }
+.dialog-input-row input { flex: 1 1 auto; min-width: 0; }

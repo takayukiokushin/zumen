@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../session/api.ts';
 import type { Role, User } from '../session/api.ts';
+import { useDialogs } from '../Dialogs.tsx';
 import { useT } from '../i18n/useT.ts';
 
 /**
@@ -10,6 +11,7 @@ import { useT } from '../i18n/useT.ts';
 
 export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
   const t = useT();
+  const { ask, input } = useDialogs();
   const [users, setUsers] = useState<User[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -62,17 +64,21 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
     }, `利用者を追加しました：${id.trim()}`);
   };
 
-  const resetPassword = (u: User) => {
-    const pw = window.prompt(
-      `${u.name}（${u.id}）の新しいパスワードを入れてください。\n10文字以上。IDと同じ・よくある言葉・連番は使えません。` +
-        '\n※ ログインが止まっている場合も、ここで変えればすぐ入れるようになります。',
-    );
+  const resetPassword = async (u: User) => {
+    const pw = await input({
+      title: `${u.name}（${u.id}）の新しいパスワード`,
+      message: [
+        '新しいパスワードを入れてください。10文字以上。IDと同じ・よくある言葉・連番は使えません。',
+        '※ ログインが止まっている場合も、ここで変えればすぐ入れるようになります。',
+      ],
+      secret: true,
+    });
     if (!pw) return;
     void run(() => api.setUserPassword(u.id, pw), `${u.id} のパスワードを変えました。`);
   };
 
-  const remove = (u: User) => {
-    if (!window.confirm(`${u.name}（${u.id}）を消します。元に戻せません。よろしいですか。`)) return;
+  const remove = async (u: User) => {
+    if (!(await ask({ title: `${u.name}（${u.id}）を消す`, message: [`${u.name}（${u.id}）を消します。元に戻せません。よろしいですか。`], confirmLabel: t('users.remove') }))) return;
     void run(() => api.removeUser(u.id), `${u.id} を消しました。`);
   };
 

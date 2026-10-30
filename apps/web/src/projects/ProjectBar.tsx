@@ -1,3 +1,4 @@
+import { useDialogs } from '../Dialogs.tsx';
 import { useLang, useT } from '../i18n/useT.ts';
 
 interface Props {
@@ -31,6 +32,7 @@ export function ProjectBar({
   onSave,
 }: Props) {
   const t = useT();
+  const { input } = useDialogs();
   const lang = useLang();
   return (
     <div className="projectbar">
@@ -49,8 +51,9 @@ export function ProjectBar({
             type="button"
             disabled={readOnly}
             onClick={() => {
-              const name = window.prompt(t('project.name'), projectName);
-              if (name) onRename(name);
+              void input({ title: t('project.rename'), message: [t('project.name')], defaultValue: projectName }).then((name) => {
+                if (name) onRename(name);
+              });
             }}
           >
             {t('project.rename')}
