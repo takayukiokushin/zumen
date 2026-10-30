@@ -303,6 +303,10 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     lastBranch = null;
   }
 
+  // トリップコイルがつながる継電器（OCR）。コイルは主回路から離して置くので、
+  // OCRも同じ位置まで右へ寄せて置き、コイルからOCRへの線が曲がらず、まっすぐ降りるようにする
+  const coilTargets = new Set(items.filter((i) => i.kind === 'coil').flatMap((i) => i.connectFrom?.slice(0, 1) ?? []));
+
   for (const item of items) {
     const def = findSymbol(item.symbolId);
     if (!def) continue;
@@ -481,7 +485,10 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const railX = Math.max(...sources.map((v) => v.x * dir)) * dir + 18 * dir;
       const midY = sources.reduce((a, v) => a + v.y, 0) / sources.length;
       const entry = portOf(def, dir > 0 ? 'l' : 'r', 'in') ?? def.ports[0]!;
-      const x = dir > 0 ? railX + BRANCH_OFFSET : railX - BRANCH_OFFSET - def.box.w;
+      let x = dir > 0 ? railX + BRANCH_OFFSET : railX - BRANCH_OFFSET - def.box.w;
+      // トリップコイルがつながるOCRは、コイルの真下に来る位置（主回路から COIL_MIN_X 以上）まで右へ寄せる
+      const coilTop = dir > 0 && coilTargets.has(item.id) ? portOf(def, 'top') : undefined;
+      if (coilTop) x = Math.max(x, SPINE + COIL_MIN_X - coilTop.x);
       const sym = add(item, def, x, midY - entry.y, 0, dir > 0 ? 'right' : 'left');
       const target = sym.x + entry.x;
       if (item.sourceLabel === 'below') {
@@ -543,6 +550,18 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       pendingDashed = false;
       x = dir > 0 ? BRANCH_OFFSET - rb.dx : -BRANCH_OFFSET - rb.dx - rb.w;
       wires.push({ x1: SPINE, y1: tapY, x2: x + erx, y2: tapY });
+    }
+    // トリップコイルがつながるOCRは、コイルの真下に来る位置（主回路から COIL_MIN_X 以上）まで、右へ離して置く
+    // （試験端子が無いときは、主回路から直接、真横に出る線の先にOCRが来る）
+    const coilTop2 = dir > 0 && !chain && coilTargets.has(item.id) ? portOf(def, 'top') : undefined;
+    if (coilTop2) {
+      const topX = x + rb.dx + coilTop2.x;
+      if (topX < SPINE + COIL_MIN_X) {
+        x += SPINE + COIL_MIN_X - topX;
+        // 主回路から出た線も、その分、長くする（さきほど引いた線を、置き直す）
+        const w = wires[wires.length - 1]!;
+        w.x2 = x + erx;
+      }
     }
     const sym = add(item, def, x, tapY - ery, rotate, dir > 0 ? 'right' : 'left');
     if (chain) {

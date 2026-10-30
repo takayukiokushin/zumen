@@ -6,6 +6,7 @@
  *
  *   node --experimental-strip-types scripts/check-drawing.ts
  */
+import { readFileSync } from 'node:fs';
 import {
   applyAnchors,
   descendantsOf,
@@ -1677,6 +1678,36 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
       else if (coil.y > ocr.y) fail('トリップコイルが、OCRより下にあります');
       else console.log('  トリップコイル：VCBと点線で連動し、OCRの上の端子へ線がつながる');
     }
+  }
+
+  // トリップコイルからOCRへの線は、曲がらず、1本の縦の直線になる（すべての構成で）。
+  // 音声入力の例（試験端子つき・CT2台）は、これまで、線が途中でカクッと折れていた構成なので、加える
+  const voiceSample = (() => {
+    const t = readFileSync(new URL('../docs/voice-samples/sample-1-claude-output.txt', import.meta.url), 'utf8');
+    return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).answers as Answers;
+  })();
+  const straightCases: [string, Answers][] = [...cases, ['音声入力の例1（試験端子つき・CT2台）', { receivingVoltage: 6600, ...voiceSample } as Answers]];
+  for (const [name, a] of straightCases) {
+    const d = layout(buildComposition(a), a);
+    const coils = d.symbols.filter((s) => s.role.endsWith('trip-coil'));
+    if (coils.length === 0) continue;
+    const coilDef = getSymbolDef(coils[0]!.symbolId);
+    const bPort = coilDef.ports.find((p) => p.id === 'b')!;
+    for (const coil of coils) {
+      const startX = coil.x + bPort.x;
+      const startY = coil.y + bPort.y;
+      // コイルの下端から出る線をたどる：横に曲がる線（途中で x が変わる線）があってはならない
+      const out = d.wires.filter((w) => Math.abs(w.x1 - startX) < 0.6 && Math.abs(w.y1 - startY) < 0.6 && !w.dashed);
+      // 1本の縦の線が、そのままOCRの上の端子まで届いている（途中で横に曲がって、別の線につながっていない）
+      const ocrTop = getSymbolDef('relay-ocr').ports.find((p) => p.id === 'top')!;
+      const straight =
+        out.length === 1 &&
+        Math.abs(out[0]!.x1 - out[0]!.x2) < 0.6 &&
+        out[0]!.y2 > out[0]!.y1 &&
+        d.symbols.some((o) => o.symbolId === 'relay-ocr' && Math.abs(o.x + ocrTop.x - out[0]!.x2) < 0.6 && Math.abs(o.y + ocrTop.y - out[0]!.y2) < 0.6);
+      if (!straight) fail(`${name}：トリップコイルからOCRへの線が、まっすぐではありません（${out.length}本・${out.map((w) => `(${Math.round(w.x1)},${Math.round(w.y1)})→(${Math.round(w.x2)},${Math.round(w.y2)})`).join(' ')}）`);
+    }
+    console.log(`  ${name}：トリップコイル ${coils.length}個、OCRへの線はすべてまっすぐ`);
   }
 
   // 名前だけの継電器：OCRの真上に、隙間を空けて置く。線はつながない
