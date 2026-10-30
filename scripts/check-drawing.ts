@@ -283,6 +283,14 @@ console.log('\n■ 用紙の自動選び');
   ok(tall.paper === 'A3' && tall.scale >= 0.8, `A4に収まらない大きな図面は、A3（${tall.orientation === 'portrait' ? '縦' : '横'}・倍率 ${tall.scale.toFixed(2)}）`, `大きな図面が A3 になりません（${JSON.stringify(tall)}）`);
   const huge = chooseSheet(wireDoc(0, 6000), title);
   ok(huge.paper === 'A3' && huge.scale < 0.8, `どの用紙でも収まらないときは、いちばん大きく出せる用紙（A3・倍率 ${huge.scale.toFixed(2)}）`, `収まらない図面の用紙がおかしい（${JSON.stringify(huge)}）`);
+  // 利用者が向きを選んだとき：その向きだけで決める（図面の形に合わせた自動の向きとは逆でも、そのとおりになる）
+  const forcedP = chooseSheet(wireDoc(900, 0), title, 'portrait');
+  const forcedL = chooseSheet(base, title, 'landscape');
+  ok(forcedP.orientation === 'portrait' && forcedL.orientation === 'landscape', '向きを選ぶと、その向きになる（横長の図面を縦に、ふつうの図面を横に）', `選んだ向きにならない（${JSON.stringify([forcedP, forcedL])}）`);
+  // 用紙の名前（A3・A4）を、図面の指摘に出さない
+  const paperMsgs = [wireDoc(0, 6000), wireDoc(900, 0), wireDoc(3000, 3000)]
+    .flatMap((d) => inspectDrawing(d, 'A3', 'portrait').filter((i) => i.kind === 'paper').map((i) => i.message));
+  ok(paperMsgs.length > 0 && paperMsgs.every((m) => !/A[34]/.test(m)), '大きすぎる図面の指摘に、用紙の名前（A3・A4）が出ない', `指摘に用紙の名前が出ています（${paperMsgs.join(' / ')}）`);
 }
 
 /* ---------- 4. 記号を差し替えると線が伸縮するか ---------- */

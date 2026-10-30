@@ -102,8 +102,7 @@ export interface Doc {
    * 「結線を整える」で、ここに残った余白を詰めるのに使う（詰めたら、ここから外す）
    */
   vacated?: { y0: number; y1: number }[];
-  /** 印刷する用紙。既定はA4の縦 */
-  paper?: PaperSize;
+  /** 印刷する向き。利用者が選んだとき（縦・横のボタン）だけ入る。無ければ、図面の形に合わせて自動で決まる */
   orientation?: Orientation;
 }
 

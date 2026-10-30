@@ -784,51 +784,52 @@ function fitScale(doc: Doc, paper: PaperSize, orientation: Orientation, titleH =
 export const SHEET_READABLE = 0.8;
 
 /**
- * 図面の大きさに合わせて、用紙の大きさと向きを自動で決める。
- * 小さい用紙（A4 → A3）から順に、縦と横の両方を試し、読める大きさ（80%以上）で出せる用紙があれば、そこで決める
+ * 図面の大きさに合わせて、図面を描く台紙の大きさ（A4 か A3）と向きを自動で決める。
+ * 台紙の大きさは、画面には出さない（印刷するときの実際の用紙は、印刷の設定画面で選ぶ。台紙は A 判と同じ縦横比なので、
+ * どの用紙でも、図面は用紙いっぱいに拡大・縮小されて収まる）。台紙は、図面が大きいときに、文字や線が小さくなりすぎないための内部の都合。
+ * 小さい台紙（A4 → A3）から順に、縦と横の両方を試し、読める大きさ（80%以上）で出せる台紙があれば、そこで決める
  * （縦と横で差があるときは、大きく出せるほう。ほぼ同じなら縦）。
- * どの用紙でも収まらなければ、いちばん大きく出せるもの（同じくらいなら、小さい用紙）。
- * 表題の高さは、事業場名称が長いと2行になるので、用紙ごとに計算する。
+ * どの台紙でも収まらなければ、いちばん大きく出せるもの（同じくらいなら、小さい台紙）。
+ * `only` を渡すと、その向きだけで決める（利用者が向きを選んだとき）。
+ * 表題の高さは、事業場名称が長いと2行になるので、台紙ごとに計算する。
  */
-export function chooseSheet(doc: Doc, title: TitleBlock): { paper: PaperSize; orientation: Orientation; scale: number } {
+export function chooseSheet(
+  doc: Doc,
+  title: TitleBlock,
+  only?: Orientation,
+): { paper: PaperSize; orientation: Orientation; scale: number } {
   let best: { paper: PaperSize; orientation: Orientation; scale: number } | null = null;
   for (const paper of ['A4', 'A3'] as PaperSize[]) {
-    const tries = (['portrait', 'landscape'] as Orientation[]).map((orientation) => {
+    const tries = (only ? [only] : (['portrait', 'landscape'] as Orientation[])).map((orientation) => {
       const titleH = layoutTitle(title, sheetSize(paper, orientation).w, SHEET_MARGIN).titleH;
       return { paper, orientation, scale: fitScale(doc, paper, orientation, titleH) };
     });
     // 縦と横で、ほぼ同じなら縦
-    const pick = tries[1]!.scale > tries[0]!.scale + 0.02 ? tries[1]! : tries[0]!;
+    const pick = tries.length === 2 && tries[1]!.scale > tries[0]!.scale + 0.02 ? tries[1]! : tries[0]!;
     if (pick.scale >= SHEET_READABLE) return pick;
     if (!best || pick.scale > best.scale + 0.02) best = pick;
   }
   return best!;
 }
 
-const PAPER_LABEL = (p: PaperSize, o: Orientation) => `${p}の${o === 'portrait' ? '縦' : '横'}`;
+const ORIENT_LABEL = (o: Orientation) => (o === 'portrait' ? '縦' : '横');
 
-/** 5 用紙に対して図面が大きすぎないか。もっと合う用紙があれば勧める */
+/** 台紙に対して図面が大きすぎないか。向きを変えると大きく出せるなら勧める */
 function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation, titleH?: number): Issue[] {
   const now = fitScale(doc, paper, orientation, titleH);
   if (now >= 0.6) return [];
 
-  // 4通りのうち、いちばん大きく出せるものを探す
-  let best = { paper, orientation, scale: now };
-  for (const p2 of ['A4', 'A3'] as PaperSize[]) {
-    for (const o2 of ['portrait', 'landscape'] as Orientation[]) {
-      const sc = fitScale(doc, p2, o2, titleH);
-      if (sc > best.scale + 0.02) best = { paper: p2, orientation: o2, scale: sc };
-    }
-  }
+  const other: Orientation = orientation === 'portrait' ? 'landscape' : 'portrait';
+  const sc = fitScale(doc, paper, other, titleH);
   const b = docBounds(doc);
   const where = { x: (b.x0 + b.x1) / 2, y: b.y0 };
-  if (best.paper === paper && best.orientation === orientation) {
+  if (sc > now + 0.02) {
     return [
       {
         kind: 'paper',
         message:
-          `図面が大きく、${PAPER_LABEL(paper, orientation)}に ${Math.round(now * 100)}% まで` +
-          '縮めて収めています。用紙を変えても、これ以上は大きくなりません',
+          `いまは${ORIENT_LABEL(orientation)}向きで、用紙いっぱいに ${Math.round(now * 100)}% まで縮めています。` +
+          `${ORIENT_LABEL(other)}向きにすると ${Math.round(sc * 100)}% で出せます`,
         ...where,
       },
     ];
@@ -836,9 +837,7 @@ function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation, titleH
   return [
     {
       kind: 'paper',
-      message:
-        `いまは${PAPER_LABEL(paper, orientation)}で ${Math.round(now * 100)}% まで縮めています。` +
-        `${PAPER_LABEL(best.paper, best.orientation)}にすると ${Math.round(best.scale * 100)}% で出せます`,
+      message: `図面が大きく、用紙いっぱいに ${Math.round(now * 100)}% まで縮めて収めています。向きを変えても、これ以上は大きくなりません`,
       ...where,
     },
   ];

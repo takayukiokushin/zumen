@@ -57,7 +57,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     [composition],
   );
   const generated = useMemo(() => {
-    // 用紙の大きさと向きは、図面の大きさから自動で決まる（受電設備エリアが多くて横に広いときは、横向き・A3になる）
     return fromLayout(layout(composition, answers), basis);
   }, [composition, answers, basis]);
 
@@ -96,15 +95,20 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   };
   const selected = doc.items.find((i) => i.id === selectedId) ?? null;
   /** 印刷・保存用の1枚のSVG（図枠と表題欄つき） */
-  // 用紙の大きさと向きは、図面の大きさに合わせて、自動で決まる
-  const chosen = useMemo(() => chooseSheet(doc, sheetTitle), [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer]);
+  // 向きは、利用者が選んだもの（なければ、図面の形に合わせた自動の判定）。
+  // 図面を描く台紙の大きさ（A4・A3）は、図面の大きさで内部的に決まる（画面には出さない。実際の用紙は、印刷の設定画面で選ぶ）
+  const auto = useMemo(() => chooseSheet(doc, sheetTitle), [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer]);
+  const chosen = useMemo(
+    () => (doc.orientation ? chooseSheet(doc, sheetTitle, doc.orientation) : auto),
+    [doc, auto, sheetTitle.site, sheetTitle.name, sheetTitle.footer],
+  );
   const paper: PaperSize = chosen.paper;
   const orientation: Orientation = chosen.orientation;
   const sheetSvg = useMemo(
     () => buildSheetSvg(doc, sheetTitle, paper, orientation),
     [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
   );
-  /** 印刷のときの用紙の実寸。@page と図面の大きさを合わせるのに使う */
+  /** 図面を描く台紙の縦横の比（印刷プレビューの形）。実際の用紙の大きさは、印刷の設定画面で決まる */
   const sheetMm = sheetSize(paper, orientation);
   /** 表題まわりの高さ。事業場名称が長くて2行になると高くなり、そのぶん図面を少し縮めて収める */
   const titleH = layoutTitle(sheetTitle, sheetMm.w, SHEET_MARGIN).titleH;
@@ -139,7 +143,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   /** ヒアリングの回答から作り直す（編集内容は履歴に残るので元に戻せる） */
   const regenerate = () => {
-    const fresh = generated;
+    const fresh: Doc = doc.orientation ? { ...generated, orientation: doc.orientation } : generated;
     setHistory((h) => commit(h, fresh));
     onDocChange?.(fresh);
     setSelectedId(null);
@@ -322,11 +326,18 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
             <div className="tool-row">
-              <span className="tool-info" title={t('editor.sheetNow.help')}>
-                {t('editor.sheetNow')}
-                <b>
-                  {paper}・{orientation === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
-                </b>
+              <span className="paper-pick" role="group" title={t('editor.orientation.help')}>
+                {(['portrait', 'landscape'] as Orientation[]).map((o) => (
+                  <button
+                    key={o}
+                    type="button"
+                    className="btn"
+                    aria-pressed={orientation === o}
+                    onClick={() => applyAuto({ ...doc, orientation: o })}
+                  >
+                    {o === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
+                  </button>
+                ))}
               </span>
               <button
                 type="button"
@@ -440,9 +451,10 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         />
       )}
 
-      {/* 印刷の用紙を、選んだ大きさ・向きに合わせる */}
-      <style>{`@page { size: ${sheetMm.mmW}mm ${sheetMm.mmH}mm; margin: 0; }
-        .print-root svg { width: ${sheetMm.mmW}mm; height: ${sheetMm.mmH}mm; }`}</style>
+      {/* 印刷の向きだけを指定する。用紙の大きさは、印刷の設定画面（プリンター）で決まり、図面は、その用紙いっぱいに収まる */}
+      <style>{`@page { size: ${orientation}; margin: 0; }
+        .print-root { position: fixed; inset: 0; }
+        .print-root svg { width: 100%; height: 100%; }`}</style>
       <div className="print-root" aria-hidden="true" dangerouslySetInnerHTML={{ __html: sheetSvg }} />
 
       <div className="editor-body">
