@@ -712,3 +712,23 @@ button.with-icon svg { flex: 0 0 auto; }
     border-left: 0; border-top: 2px solid var(--accent); box-shadow: 0 -6px 18px rgba(0, 0, 0, .25); }
   .side-close { display: flex; margin-left: auto; margin-bottom: calc(6px * var(--text-scale)); }
 }
+
+/* ---- 窓（設定・使い方・利用者の管理など）：スマートフォン（幅の狭い画面）では、画面いっぱいに近く広げて、はみ出しをなくす ---- */
+@media (max-width: 700px) {
+  .modal-back { padding: calc(10px * var(--text-scale)) calc(8px * var(--text-scale)); }
+  .modal > header { padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale)); }
+  .modal section { padding: calc(14px * var(--text-scale)) calc(14px * var(--text-scale)) 0; }
+  .modal .err, .modal .ok-note { margin: 12px calc(14px * var(--text-scale)) 0; }
+  .size-row input[type="range"] { min-width: 0; }
+  .size-row .val { min-width: 3.4em; }
+  /* 利用者の一覧：表をやめて、1人を1枚のカードにする（種類・ID・名前を1行、ボタンを次の行） */
+  table.users, table.users tbody { display: block; }
+  table.users thead { display: none; }
+  table.users tr { display: flex; flex-wrap: wrap; align-items: center; gap: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); padding: calc(10px * var(--text-scale)) 0; border-bottom: 1px solid var(--rule-soft); }
+  table.users td { display: block; padding: 0; border: 0; }
+  table.users .role { margin-left: 0; white-space: nowrap; }
+  table.users td.row-actions { flex: 1 0 100%; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--gap, 10px); }
+  .add-user { grid-template-columns: 1fr; }
+  .add-user label { min-width: 0; }
+  .add-user input, .add-user select { min-width: 0; width: 100%; }
+}
