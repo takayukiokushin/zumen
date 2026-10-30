@@ -1137,7 +1137,13 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const rel = (id: string) => m.find((i) => i.id === id);
   ok(rel('relay-2')?.symbolId === 'relay-uvr' && rel('relay-2')?.connectFrom?.[0] === 'relay-tt-2', 'UVRが、VTの試験端子の先につながっていません');
   ok(rel('relay-tt-2')?.connectFrom?.[0] === 'site-vt-2', 'VTにつく試験端子が、VT2組目の右の端につながっていません');
-  ok(rel('relay-3')?.connectFrom?.[0] === 'site-vt-2' && !m.some((i) => i.id === 'relay-tt-3'), 'OVR（試験端子なし）が、UVRと同じVTの二次側に並列でつながっていません');
+  ok(rel('relay-3')?.connectFrom?.[0] === 'relay-tt-2' && !m.some((i) => i.id === 'relay-tt-3'), 'OVRが、UVRと同じ試験端子（VT→試験端子→UVR・OVR）に並列でつながっていません');
+  // 試験端子は、VTごとに1つだけ。UVRとOVRの両方が「あり」でも、2つにはならない
+  const shared = buildComposition({ ...multi, relayTest__3: 'yes' });
+  ok(shared.filter((i) => i.role === 'relay-tt' && i.ref !== 'ct-1').length === 1 && shared.find((i) => i.id === 'relay-3')?.connectFrom?.[0] === 'relay-tt-2', 'UVR・OVRの両方が試験端子「あり」のとき、試験端子が1つにまとまっていません');
+  // UVRが「なし」で、OVRだけ「あり」でも、試験端子は1つで、UVRもその先につながる
+  const onlyOvr = buildComposition({ ...multi, relayTest__2: 'no', relayTest__3: 'yes' });
+  ok(onlyOvr.find((i) => i.id === 'relay-2')?.connectFrom?.[0] === 'relay-tt-3' && onlyOvr.find((i) => i.id === 'relay-3')?.connectFrom?.[0] === 'relay-tt-3', 'OVRだけ試験端子「あり」のとき、UVRとOVRが同じ試験端子の先につながっていません');
   ok(rel('relay-note-4')?.kind === 'note-above' && rel('relay-note-4')?.attachTo === 'relay-1', '置き場所が決まっていない継電器が、OCRの真上の名前だけになっていません');
   ok(rel('site-vt-pf-2')?.label.join('|') === 'VT＋PF×2|V結線|6600/110V', `V結線のVTの文字が違います（${rel('site-vt-pf-2')?.label.join('|')}）`);
   // VTの2組目（二次側）は、CTのあと。継電器は、つながる先のすぐあと

@@ -1014,7 +1014,7 @@ export const QUESTIONS: Question[] = [
     autoValue: [{ value: 'yes' }],
     showIf: { key: 'relayAt', in: [...CT_AT_VALUES, ...VT_AT_VALUES] },
     ask: 'always',
-    help: 'あり・なしの両方がある。最初は「あり」',
+    help: 'あり・なしの両方がある。最初は「あり」。VTにつく継電器（UVR・OVR）の試験端子は、VTごとに1つだけ（VT→試験端子→UVR・OVR）。どれか1つでも「あり」なら、その1つが入る',
   },
   {
     id: 'hasZpd',

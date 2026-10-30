@@ -1726,8 +1726,8 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
     }
   }
 
-  // VTにつく継電器：VTの二次側（右の端）から、継電器ごとに並列。1つ目は試験端子→UVRの順に右へ、
-  // 2つ目（OVR）は、その下に上下に並ぶ。VTの文字は、線の下へ動く。どの継電器も、線でつながっている
+  // VTにつく継電器：VT → 試験端子（VTごとに1つ）→ UVR・OVR。UVRとOVRは試験端子の二次側から並列で、
+  // OVRはUVRの下に上下に並ぶ。VTの文字は、線の下へ動く。どの継電器も、線でつながっている
   {
     const d = layout(buildComposition(multi), multi);
     const sym = (id: string) => d.symbols.find((s) => s.id === id);
@@ -1739,7 +1739,7 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
     else {
       const midY = (s: typeof vt) => s.y + getSymbolDef(s.symbolId).box.h / 2;
       const firstRow = [tt, uvr].every((s) => Math.abs(midY(s) - midY(vt)) < 1) && vt.x < tt.x && tt.x < uvr.x;
-      const stacked = ovr.y > uvr.y + getSymbolDef(uvr.symbolId).box.h && Math.abs(ovr.x - tt.x) < 1;
+      const stacked = ovr.y > uvr.y + getSymbolDef(uvr.symbolId).box.h && Math.abs(ovr.x - uvr.x) < 1;
       const labelBelow = vt.labelAt.y > vt.y + getSymbolDef('vt').box.h;
       const entryOf = (s: typeof vt) => {
         const def = getSymbolDef(s.symbolId);
@@ -1748,11 +1748,11 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
       };
       const e = entryOf(ovr);
       const reached = d.wires.some((w) => (Math.abs(w.x2 - e.x) < 0.5 && Math.abs(w.y2 - e.y) < 0.5) || (Math.abs(w.x1 - e.x) < 0.5 && Math.abs(w.y1 - e.y) < 0.5));
-      if (!firstRow) fail('VTにつく1つ目の継電器が、VTの右へ、試験端子→継電器の順に並んでいません');
+      if (!firstRow) fail('VT→試験端子→UVRが、右へ1列に並んでいません');
       else if (!stacked) fail('OVRが、UVRの下に（上下に並ぶように）置かれていません');
       else if (!reached) fail('OVRに、線がつながっていません（空中に浮いています）');
       else if (!labelBelow) fail('VTの文字が、継電器につなぐ線の下に動いていません');
-      else console.log('  VTにつく継電器：VTの二次側から並列。UVRの下にOVRが上下に並び、線でつながる。VTの文字は線の下');
+      else console.log('  VTにつく継電器：VT→試験端子→UVR・OVR（並列）。UVRの下にOVRが上下に並び、線でつながる。VTの文字は線の下');
     }
   }
 

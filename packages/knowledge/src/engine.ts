@@ -880,6 +880,17 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
     else r.note = i;
     relays.set(unitOf(i), r);
   }
+  // VTにつく継電器の試験端子は、VTごとに1つ（そのVTにつく継電器のうち、最初に試験端子ありとされたもの）
+  const vtTest = new Map<number, PlacedItem>();
+  const vtFirst = new Map<number, number>();
+  const vtTestPut = new Set<number>();
+  for (const [u, r] of [...relays.entries()].sort((a, b) => a[0] - b[0])) {
+    const m = /^vt-(\d+)$/.exec((r.relay ?? r.note)?.ref ?? '');
+    if (!m || !r.relay || !vtOf.get(Number(m[1]) - 1)) continue;
+    const ou = Number(m[1]) - 1;
+    if (!vtFirst.has(ou)) vtFirst.set(ou, u);
+    if (r.tt && !vtTest.has(ou)) vtTest.set(ou, r.tt);
+  }
   const noted: PlacedItem[] = [];
   for (const [u, r] of [...relays.entries()].sort((a, b) => a[0] - b[0])) {
     const head = r.relay ?? r.note;
@@ -909,17 +920,20 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
       }
       put(r.relay, stage, ownerUnit, 3 + u * 2);
     } else {
-      // VTにつく継電器：VTの二次側（右の端）から、継電器ごとに並列につなぐ（上下に並ぶ）。
-      // 試験端子があれば、VT→試験端子→継電器と、横へ続ける
-      let last = owner.id;
-      for (const [part, sub] of [[r.tt, 2 + u * 2], [r.relay, 3 + u * 2]] as const) {
-        if (!part) continue;
-        part.connectFrom = [last];
-        part.sourceLabel = 'below';
-        part.separate = false;
-        last = part.id;
-        put(part, stage, ownerUnit, sub);
+      // VTにつく継電器：VT → 試験端子 → 継電器。試験端子は、VTごとに1つだけ（継電器ごとには付けない）。
+      // 継電器が複数あるときは、試験端子（なければVT）の二次側から、並列につなぐ（上下に並ぶ）
+      const shared = vtTest.get(ownerUnit);
+      if (shared && !vtTestPut.has(ownerUnit)) {
+        vtTestPut.add(ownerUnit);
+        shared.connectFrom = [owner.id];
+        shared.sourceLabel = 'below';
+        shared.separate = false;
+        put(shared, stage, ownerUnit, 2 + (vtFirst.get(ownerUnit) ?? u) * 2);
       }
+      r.relay.connectFrom = [shared?.id ?? owner.id];
+      r.relay.sourceLabel = 'below';
+      r.relay.separate = false;
+      put(r.relay, stage, ownerUnit, 3 + u * 2);
     }
   }
 
