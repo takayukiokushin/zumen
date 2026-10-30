@@ -873,7 +873,9 @@ export const QUESTIONS: Question[] = [
       { value: 'independent', label: '独立（それぞれ別に接続）' },
       { value: 'v', label: 'V結線' },
     ],
-    autoValue: [{ value: 'independent' }],
+    // 1組のVTが2台のときは、V結線にするのがふつう。それ以外の台数のときは、独立を初期値にする
+    // （台数は、文字でも数でも入る。「1より多く、2以下」で、2台のときを数として見る）
+    autoValue: [{ when: { all: [{ key: 'vtCount', gt: 1 }, { key: 'vtCount', lte: 2 }] }, value: 'v' }, { value: 'independent' }],
     showIf: { key: 'vtCount', gt: 1 },
     ask: 'always',
     help: 'V結線のときは、図面に「V結線」と書く',

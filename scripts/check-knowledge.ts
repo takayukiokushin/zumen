@@ -535,7 +535,10 @@ console.log('\n■ CT・VTの台数（「CT×2」「VT＋PF×2」）と、受電
     ['CT 2台', lab({ ctCount: '2', ctRatio: '100' }, 'ct'), ['CT×2', '100/5A']],
     ['CT 3台（数）', lab({ ctCount: 3, ctRatio: '100' }, 'ct'), ['CT×3', '100/5A']],
     ['VT＋PF 1台', lab({ vtCount: '1' }, 'ds-vt-pf'), ['VT＋PF', '6600/110V']],
-    ['VT＋PF 2台', lab({ vtCount: '2' }, 'ds-vt-pf'), ['VT＋PF×2', '6600/110V']],
+    ['VT＋PF 2台（接続は、初期値のV結線）', lab({ vtCount: '2' }, 'ds-vt-pf'), ['VT＋PF×2', 'V結線', '6600/110V']],
+    ['VT＋PF 2台（数）', lab({ vtCount: 2 }, 'ds-vt-pf'), ['VT＋PF×2', 'V結線', '6600/110V']],
+    ['VT＋PF 2台（独立を、自分で選んだ）', lab({ vtCount: '2', vtConnection: 'independent' }, 'ds-vt-pf'), ['VT＋PF×2', '6600/110V']],
+    ['VT＋PF 3台（接続は、初期値の独立）', lab({ vtCount: '3' }, 'ds-vt-pf'), ['VT＋PF×3', '6600/110V']],
   ];
   for (const [name, got, want] of rows) {
     if (JSON.stringify(got) !== JSON.stringify(want)) fail(`${name}：「${got.join(' / ')}」になっています（期待：「${want.join(' / ')}」）`);
