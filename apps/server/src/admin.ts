@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import {
   adminCount,
+  currentTokenKey,
   createUser,
   deleteUser,
   listUsers,
@@ -59,7 +60,8 @@ admin.put('/users/:id/password', async (c) => {
   if ((password ?? '').length < MIN_PASSWORD) {
     return c.json({ error: `パスワードは${MIN_PASSWORD}文字以上にしてください。` }, 400);
   }
-  if (!setPassword(id, password!)) return c.json({ error: `利用者が見つかりません: ${id}。すでに消されたかもしれません。一覧を開き直して確かめてください。` }, 404);
+  // 自分のパスワードを変えたときは、いまの画面のログインは残す（ほかの端末のログインは切れる）
+  if (!setPassword(id, password!, id === c.get('user').id ? currentTokenKey(c) : null)) return c.json({ error: `利用者が見つかりません: ${id}。すでに消されたかもしれません。一覧を開き直して確かめてください。` }, 404);
   // パスワードを変えたら、止まっていたログインも解除する（駆け込みの逃げ道）
   unlockUser(id);
   return c.json({ ok: true });

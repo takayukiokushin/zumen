@@ -85,4 +85,14 @@ addColumnIfMissing('projects', 'deleted_at', 'TEXT');
 addColumnIfMissing('projects', 'deleted_by', 'TEXT');
 addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'member'");
 
+/**
+ * ログインの印の保存の形を変えた（user_version 1）。古い形のものは使えないので、一度だけ捨てる
+ * （全員、もう一度ログインすることになる。案件のデータには影響しない）。
+ */
+const userVersion = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+if (userVersion < 1) {
+  db.exec('DELETE FROM sessions');
+  db.exec('PRAGMA user_version = 1');
+}
+
 export const now = (): string => new Date().toISOString();

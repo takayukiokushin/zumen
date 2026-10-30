@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { FILES_DIR, db, now } from './db.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
+import { FILE_CSP, isPhotoType } from './security.ts';
 
 /** 案件（プロジェクト）の保存・呼び出し。ヒアリング回答・図面・現地写真を一式で扱う */
 
@@ -396,6 +397,9 @@ projects.post('/:id/files', async (c) => {
     | { fileName?: string; mediaType?: string; data?: string }
     | null;
   if (!body?.data || !body.mediaType) return c.json({ error: '画像が選ばれていません。画像を選んでから、もう一度お試しください。' }, 400);
+  if (!isPhotoType(body.mediaType)) {
+    return c.json({ error: `この種類のファイルは追加できません（${String(body.mediaType).slice(0, 40)}）。JPEG・PNG などの写真を選んでください。` }, 400);
+  }
 
   const buf = Buffer.from(body.data, 'base64');
   if (buf.byteLength > MAX_FILE_BYTES) {
@@ -405,7 +409,7 @@ projects.post('/:id/files', async (c) => {
   writeFileSync(resolve(FILES_DIR, id), buf);
   db.prepare(
     'INSERT INTO project_files (id, project_id, file_name, media_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, projectId, body.fileName ?? '写真', body.mediaType, buf.byteLength, now());
+  ).run(id, projectId, String(body.fileName ?? '写真').slice(0, 200), body.mediaType, buf.byteLength, now());
   return c.json({ id, size: buf.byteLength }, 201);
 });
 
@@ -421,7 +425,9 @@ projects.get('/:id/files/:fileId', (c) => {
   try {
     const buf = readFileSync(resolve(FILES_DIR, row.id));
     return c.body(buf as unknown as ArrayBuffer, 200, {
-      'content-type': row.media_type,
+      // 以前に入れられたものに、写真以外の種類が混ざっていても、画面として動かさない
+      'content-type': isPhotoType(row.media_type) ? row.media_type : 'application/octet-stream',
+      'content-security-policy': FILE_CSP,
       'cache-control': 'private, max-age=86400',
     });
   } catch {

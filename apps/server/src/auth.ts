@@ -1,7 +1,8 @@
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import type { Context, Next } from 'hono';
 import { db, now } from './db.ts';
+import { isHttps } from './security.ts';
 
 /** ログインの仕組み。社内数名を想定し、ID＋パスワードとセッションだけの最小構成 */
 
@@ -13,6 +14,20 @@ const COOKIE = 'zumen_session';
 const SESSION_DAYS = 10;
 /** 延ばすのは、残りがこれだけ減ったとき。毎回の書き込みを避けるため（1時間に1回まで） */
 const RENEW_AFTER_MS = 60 * 60_000;
+
+/**
+ * ログインの印（セッション）は、データベースには、そのままの形で置かない。
+ * 控えのデータ（Dropbox など）が外に出ても、そこから他人になりすませないようにするため。
+ */
+function tokenKey(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+/** 今ブラウザが持っているログインの印（保存用の形）。無ければ null */
+export function currentTokenKey(c: Context): string | null {
+  const token = getCookie(c, COOKIE);
+  return token ? tokenKey(token) : null;
+}
 
 /* ---------------- 総当たり対策 ---------------- */
 
@@ -43,7 +58,18 @@ function lockedFor(id: string): number {
 }
 
 /** まちがえた回数を1つ増やし、いま何回目かを返す */
+/** 失敗の記録に残すIDの数の上限（でたらめなIDを大量に送られても、記憶が増え続けないように） */
+const MAX_TRACKED = 5000;
+
 function recordFail(id: string): number {
+  if (fails.size >= MAX_TRACKED && !fails.has(id)) {
+    for (const [k, v] of fails) if (Date.now() - v.last > FORGET_MS) fails.delete(k);
+    // それでも多ければ、いちばん古く記録されたものから忘れる
+    for (const k of fails.keys()) {
+      if (fails.size < MAX_TRACKED) break;
+      fails.delete(k);
+    }
+  }
   const f = fails.get(id) ?? { count: 0, last: 0, until: 0 };
   f.count += 1;
   f.last = Date.now();
@@ -109,9 +135,16 @@ export function createUser(id: string, name: string, password: string, role: Rol
   );
 }
 
-export function setPassword(id: string, password: string): boolean {
+/**
+ * パスワードを変える。変えたら、その人のログイン中の状態（セッション）を切る。
+ * （パスワードを変えた理由が「知られたかもしれない」場合に、すでに入っている人を締め出すため）
+ * keepTokenKey を渡すと、その1つだけは残す（変えた本人の、いまの画面が切れないように）。
+ */
+export function setPassword(id: string, password: string, keepTokenKey?: string | null): boolean {
   const r = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(password), id);
-  return Number(r.changes) > 0;
+  if (Number(r.changes) === 0) return false;
+  db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(id, keepTokenKey ?? '');
+  return true;
 }
 
 /** 利用者を消す。その人のログイン中の状態（セッション）もまとめて消える */
@@ -162,7 +195,7 @@ export function login(c: Context, userId: string, password: string): LoginResult
   const token = randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + SESSION_DAYS * 86400_000);
   db.prepare('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)').run(
-    token,
+    tokenKey(token),
     row.id,
     now(),
     expires.toISOString(),
@@ -177,13 +210,15 @@ function setSessionCookie(c: Context, token: string): void {
     sameSite: 'Lax',
     path: '/',
     maxAge: SESSION_DAYS * 86400,
-    secure: process.env.NODE_ENV === 'production',
+    // HTTPS（暗号化された通信）で届いたときだけ、暗号化されていない通信には付けない印をつける。
+    // 社内の http でのつなぎ方では、付けるとログインできなくなる
+    secure: process.env.NODE_ENV === 'production' || isHttps(c),
   });
 }
 
 export function logout(c: Context): void {
   const token = getCookie(c, COOKIE);
-  if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+  if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(tokenKey(token));
   deleteCookie(c, COOKIE, { path: '/' });
 }
 
@@ -199,16 +234,16 @@ export function currentUser(c: Context): User | null {
       `SELECT u.id AS id, u.name AS name, u.role AS role, s.expires_at AS expires_at
        FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`,
     )
-    .get(token) as { id: string; name: string; role: Role; expires_at: string } | undefined;
+    .get(tokenKey(token)) as { id: string; name: string; role: Role; expires_at: string } | undefined;
   if (!row) return null;
   const left = new Date(row.expires_at).getTime() - Date.now();
   if (left < 0) {
-    db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(tokenKey(token));
     return null;
   }
   if (left < SESSION_DAYS * 86400_000 - RENEW_AFTER_MS) {
     const expires = new Date(Date.now() + SESSION_DAYS * 86400_000).toISOString();
-    db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(expires, token);
+    db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(expires, tokenKey(token));
     setSessionCookie(c, token);
   }
   return { id: row.id, name: row.name, role: row.role };

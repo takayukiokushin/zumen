@@ -17,12 +17,16 @@ import { admin } from './admin.ts';
 import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
 import { SERVER_VERSION } from './version.ts';
+import { bodyLimits, securityHeaders } from './security.ts';
 
 /**
  * 案件の保管と解析を行うサーバー。
  * Claude APIキーはここにだけ置き、利用者の端末やブラウザには配らない。
  */
 const app = new Hono<{ Variables: { user: User } }>();
+
+app.use('*', securityHeaders);
+app.use('/api/*', bodyLimits);
 
 app.get('/api/health', (c) =>
   c.json({

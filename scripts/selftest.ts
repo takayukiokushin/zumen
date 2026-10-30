@@ -8,6 +8,7 @@
  * 本物の案件には触らず、一時フォルダの中だけで試して、終わったら片付ける。
  */
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import type { ChildProcess } from 'node:child_process';
 import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -170,6 +171,14 @@ try {
   }
   const spa = await fetch(`${base}/dareka/nai/page`);
   check('知らない住所でも画面が開く', spa.ok);
+  {
+    const r = await fetch(base + '/');
+    const csp = r.headers.get('content-security-policy') ?? '';
+    check('画面に、外のスクリプトを動かさない決まりが付いている', csp.includes("script-src 'self'") && csp.includes("frame-ancestors 'none'"), csp ? '' : '無し');
+    check('他のサイトに埋め込まれない・種類を決め直されない', r.headers.get('x-frame-options') === 'DENY' && r.headers.get('x-content-type-options') === 'nosniff');
+    const api = await fetch(base + '/api/health');
+    check('通信（API）の返事にも同じ決まりが付く', api.headers.get('x-content-type-options') === 'nosniff');
+  }
 
   /* ---------- 5. ログイン ---------- */
   say('\n■ ログイン');
@@ -179,6 +188,15 @@ try {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ userId, password: 'testpass123' }),
+    });
+    if (!r.ok) throw new Error(`ログインできません: ${userId}`);
+    return (r.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  }
+  async function login2(userId: string, password: string): Promise<string> {
+    const r = await fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId, password }),
     });
     if (!r.ok) throw new Error(`ログインできません: ${userId}`);
     return (r.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
@@ -198,14 +216,32 @@ try {
     body: JSON.stringify({ userId: 'tester1', password: 'chigau-password' }),
   });
   check('間違ったパスワードは断る', badLogin.status === 401, `${badLogin.status}`);
+  {
+    const loginWith = async (headers: Record<string, string>) =>
+      fetch(`${base}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify({ userId: 'tester1', password: 'testpass123' }),
+      });
+    const plain = (await loginWith({})).headers.get('set-cookie') ?? '';
+    const viaHttps = (await loginWith({ 'x-forwarded-proto': 'https' })).headers.get('set-cookie') ?? '';
+    check('社内の http では、ログインの印に Secure を付けない（付けるとログインできない）', !/;\s*secure/i.test(plain) && /httponly/i.test(plain));
+    check('HTTPS（暗号化された通信）で届いたときは、Secure を付ける', /;\s*secure/i.test(viaHttps) && /samesite=lax/i.test(viaHttps));
+  }
   const noCookie = await fetch(`${base}/api/projects`);
   check('ログインせずには案件を見られない', noCookie.status === 401, `${noCookie.status}`);
 
   // 使っている間は、ログインの期限が延びる（開いたまま10日を超えても、保存できるように）
   {
     const c = await login('tester1');
-    const token = c.split('=')[1] ?? '';
+    const rawToken = c.split('=')[1] ?? '';
+    const token = createHash('sha256').update(rawToken).digest('hex');
     const sdb = new DatabaseSync(join(dataDir, 'zumen.db'));
+    check(
+      'ログインの印は、データベースにそのままの形では置かない',
+      (sdb.prepare('SELECT COUNT(*) AS n FROM sessions WHERE token = ?').get(rawToken) as { n: number }).n === 0 &&
+        (sdb.prepare('SELECT COUNT(*) AS n FROM sessions WHERE token = ?').get(token) as { n: number }).n === 1,
+    );
     const left = () =>
       (new Date((sdb.prepare('SELECT expires_at FROM sessions WHERE token = ?').get(token) as { expires_at: string }).expires_at).getTime() - Date.now()) /
       86400_000;
@@ -559,6 +595,23 @@ try {
     body: JSON.stringify({ id: 'mijikai', name: '短い', password: 'abc', role: 'member' }),
   });
   check('短すぎるパスワードは断る', shortPw.status === 400, `${shortPw.status}`);
+  {
+    const tsuika = await login2('tsuika', 'password123');
+    const before = await call(tsuika, '/api/auth/me');
+    const tsuika2 = await login2('tsuika', 'password123'); // 同じ人の、もう1台の端末
+    const change = await call(kanri, '/api/admin/users/tsuika/password', { method: 'PUT', body: JSON.stringify({ password: 'newpassword456' }) });
+    const afterOld = (await (await call(tsuika, '/api/auth/me')).json()) as { user: unknown };
+    const afterOld2 = (await (await call(tsuika2, '/api/auth/me')).json()) as { user: unknown };
+    check(
+      'パスワードを変えると、その人のすでに入っているログインが切れる',
+      change.ok && ((await before.json()) as { user: unknown }).user !== null && afterOld.user === null && afterOld2.user === null,
+    );
+    const kanriStill = (await (await call(kanri, '/api/auth/me')).json()) as { user: unknown };
+    check('他の人には影響しない', kanriStill.user !== null);
+    const selfChange = await call(kanri, '/api/admin/users/kanri/password', { method: 'PUT', body: JSON.stringify({ password: 'testpass123' }) });
+    const kanriAfterSelf = (await (await call(kanri, '/api/auth/me')).json()) as { user: unknown };
+    check('自分のパスワードを変えても、いまの画面のログインは切れない', selfChange.ok && kanriAfterSelf.user !== null);
+  }
   const removed = await call(kanri, '/api/admin/users/tsuika', { method: 'DELETE' });
   check('管理用は利用者を消せる', removed.ok, `${removed.status}`);
   const selfRemove = await call(kanri, '/api/admin/users/kanri', { method: 'DELETE' });
@@ -581,6 +634,22 @@ try {
   const fileId = ((await upload.json()) as { id: string }).id;
   const got = await call(a, `/api/projects/${created.id}/files/${fileId}`);
   check('添付した写真を取り出せる', got.ok && (got.headers.get('content-type') ?? '').includes('image/png'));
+  check(
+    '取り出した写真では、スクリプトが動かない決まりが付いている',
+    (got.headers.get('content-security-policy') ?? '').includes('sandbox') && got.headers.get('x-content-type-options') === 'nosniff',
+  );
+  for (const bad of ['text/html', 'image/svg+xml', 'application/javascript']) {
+    const r = await call(a, `/api/projects/${created.id}/files`, {
+      method: 'POST',
+      body: JSON.stringify({ fileName: 'x', mediaType: bad, data: Buffer.from('<script>alert(1)</script>').toString('base64') }),
+    });
+    check(`写真ではない種類（${bad}）は、添付できない`, r.status === 400, `${r.status}`);
+  }
+  {
+    const big = 'x'.repeat(11 * 1024 * 1024);
+    const r = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: 'a', password: big }) }).catch(() => null);
+    check('極端に大きな通信は、読み込む前に断る', r !== null && r.status === 413, `${r?.status}`);
+  }
 
   /* ---------- 9. 控え（バックアップ） ---------- */
   say('\n■ 控え（バックアップ）');
