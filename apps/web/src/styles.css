@@ -645,10 +645,26 @@ button.with-icon svg { flex: 0 0 auto; }
   padding-right: 4px;
   white-space: nowrap;
 }
-/* 狭い画面（スマートフォン）では、横にはみ出さないよう、ボタンを縦に並べる（幅の比は同じ） */
+/* 狭い画面（スマートフォン）では、表をやめて、1つの案件を1枚のカードにする（名前・日時・ボタンを縦に並べる） */
 @media (max-width: 640px) {
-  .joblist .jobs td.row-actions { flex-wrap: wrap; justify-content: flex-end; gap: calc(14px * var(--text-scale)); }
-  .joblist .jobs .row-actions .job-open { width: calc(168px * var(--text-scale)); max-width: 100%; }
+  /* 検索欄は1段目いっぱいに、件数と「新しい案件」は2段目に */
+  .joblist .search-row { flex-wrap: wrap; }
+  .joblist .search-row input { flex: 1 1 100%; }
+  .joblist .search-row .count { flex: 1 1 auto; }
+  .joblist .search-row .btn.primary { white-space: nowrap; }
+  .analyze.joblist { padding: calc(12px * var(--text-scale)) calc(10px * var(--text-scale)) 60px; }
+  .joblist .panel { padding: calc(14px * var(--text-scale)); }
+  .joblist table.jobs, .joblist .jobs tbody { display: block; }
+  .joblist .jobs thead { display: none; }
+  .joblist .jobs tr { display: grid; gap: calc(6px * var(--text-scale)); padding: calc(12px * var(--text-scale)); margin: 0 0 calc(12px * var(--text-scale));
+    border: 1px solid var(--rule); border-radius: 3px; background: var(--field); }
+  .joblist .jobs tr.current { background: var(--accent-soft); border-color: var(--accent); }
+  .joblist .jobs td { display: block; padding: 0; border: 0; }
+  .joblist .jobs td.when { white-space: normal; }
+  .joblist .jobs td[data-label]::before { content: attr(data-label) "："; }
+  .joblist .jobs td.row-actions { display: flex; flex-wrap: nowrap; justify-content: stretch; gap: var(--gap, 10px); margin-top: calc(6px * var(--text-scale)); }
+  .joblist .jobs .row-actions .job-open, .joblist .jobs .row-actions .btn.primary { flex: 1 1 auto; width: auto; min-width: 0; }
+  .joblist .jobs .row-actions .job-delete { flex: 0 0 auto; width: auto; min-width: calc(72px * var(--text-scale)); padding-left: 12px; padding-right: 12px; }
 }
 
 /* 受電設備エリアが2か所以上のとき：エリアごとの大きなまとまり */

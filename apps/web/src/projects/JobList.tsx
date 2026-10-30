@@ -274,11 +274,11 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       <span className="name">{p.name}</span>
                       {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
                     </td>
-                    <td className="when">
+                    <td className="when" data-label={t('project.trashDeleted')}>
                       {new Date(p.deletedAt).toLocaleString(lang)}
                       {p.deletedBy ? `（${p.deletedBy}）` : ''}
                     </td>
-                    <td className="when">{new Date(p.purgeAt).toLocaleDateString(lang)}</td>
+                    <td className="when" data-label={t('project.trashPurge')}>{new Date(p.purgeAt).toLocaleDateString(lang)}</td>
                     <td className="row-actions">
                       <button type="button" className="btn primary" onClick={() => void restore(p.id, p.name)}>
                         {t('project.restore')}
