@@ -473,6 +473,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             }}
             mode={mode}
             zoom={zoom}
+            onZoom={setZoom}
             issues={issues ?? []}
           />
           )}

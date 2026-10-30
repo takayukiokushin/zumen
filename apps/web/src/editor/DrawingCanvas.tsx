@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
 import type { Doc, DocItem } from './doc.ts';
@@ -18,8 +18,20 @@ interface Props {
   /** 'wire' のときは2点をクリックして線を引く */
   mode: 'select' | 'wire';
   zoom: number;
+  /** 2本指で拡大縮小したとき（指で操作する端末用） */
+  onZoom?: (zoom: number) => void;
   /** 「結線を整える」で直しきれなかったところ。赤い印で知らせる */
   issues?: Issue[];
+}
+
+/** 拡大縮小の範囲（Editor の「拡大」「縮小」ボタンと同じ） */
+export const ZOOM_MIN = 0.4;
+export const ZOOM_MAX = 3;
+
+/** 指で操作するときの、つまんだ・なぞった状態 */
+interface Pinch {
+  startDist: number;
+  startZoom: number;
 }
 
 /** 動かしている最中の状態。dx・dy は吸い寄せたあとの値 */
@@ -34,13 +46,143 @@ interface Drag {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom, onZoom, issues = [] }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
   /** 線を引いている途中の始点と、いまのカーソル位置 */
   const [wireStart, setWireStart] = useState<{ x: number; y: number } | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+
+  /* ---- 指での操作：2本指で拡大縮小・動かす／何も無いところを1本指でなぞって動かす ---- */
+  /** いま画面に触れている指（touch のみ） */
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<Pinch | null>(null);
+  /** 2本指の操作のあと、残った指は、離すまで何もしない */
+  const ignored = useRef(new Set<number>());
+  /** 何も無いところを1本指でなぞっている状態。動かしていなければ、離したときに「選択を外す」 */
+  const pan = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+  /** 拡大縮小の前後で、指の位置がずれないよう、動かす前の位置を覚えておく */
+  const anchor = useRef<{ fx: number; fy: number; sl: number; st: number; sw: number; sh: number } | null>(null);
+
+  const scroller = () => svgRef.current?.parentElement ?? null;
+
+  useLayoutEffect(() => {
+    const a = anchor.current;
+    const sc = scroller();
+    if (!a || !sc) return;
+    sc.scrollLeft = (a.sl + a.fx) * (sc.scrollWidth / a.sw) - a.fx;
+    sc.scrollTop = (a.st + a.fy) * (sc.scrollHeight / a.sh) - a.fy;
+    anchor.current = null;
+  }, [zoom]);
+
+  const centerOf = () => {
+    const pts = [...touches.current.values()];
+    return { x: (pts[0]!.x + pts[1]!.x) / 2, y: (pts[0]!.y + pts[1]!.y) / 2 };
+  };
+  const distOf = () => {
+    const pts = [...touches.current.values()];
+    return Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
+  };
+
+  /**
+   * 指の操作は、図面の外側の枠（動かせる領域）全体で受ける。
+   * 図面の外に指が置かれても、2本指の操作ができるように。また、記号などの処理より先に受ける（捕まえて止めることがある）
+   */
+  const latest = useRef({ zoom, mode, onSelect, onZoom });
+  latest.current = { zoom, mode, onSelect, onZoom };
+
+  useLayoutEffect(() => {
+    const sc = svgRef.current?.parentElement;
+    if (!sc) return;
+    const stop = (e: Event) => e.stopPropagation();
+
+    const down = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const n = touches.current.size;
+      if (n === 2) {
+        // 2本目の指：動かしかけていた記号は、そのまま元に戻す（確定しない）
+        setDrag(null);
+        start.current = null;
+        pan.current = null;
+        setWireStart(null);
+        setCursor(null);
+        pinch.current = { startDist: Math.max(1, distOf()), startZoom: latest.current.zoom };
+        stop(e);
+      } else if (n > 2 || ignored.current.has(e.pointerId)) {
+        stop(e);
+      } else if (latest.current.mode === 'select' && !(e.target as Element).closest?.('g.item')) {
+        // 1本指で、記号でないところ：なぞれば画面が動く。ちょんと触れただけなら、離したときに選択を外す
+        pan.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+      }
+    };
+
+    const move = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
+      const prev = touches.current.get(e.pointerId);
+      if (!prev) return;
+      const cur = { x: e.clientX, y: e.clientY };
+      touches.current.set(e.pointerId, cur);
+      if (pinch.current && touches.current.size === 2) {
+        stop(e);
+        // 2本指：指の間隔で拡大縮小し、指の中心が動いた分だけ、画面を動かす
+        const c = centerOf();
+        const r = sc.getBoundingClientRect();
+        const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pinch.current.startZoom * (distOf() / pinch.current.startDist)));
+        sc.scrollLeft -= (cur.x - prev.x) / 2;
+        sc.scrollTop -= (cur.y - prev.y) / 2;
+        const z = latest.current.zoom;
+        if (latest.current.onZoom && Math.abs(next - z) > 0.01) {
+          anchor.current = { fx: c.x - r.left, fy: c.y - r.top, sl: sc.scrollLeft, st: sc.scrollTop, sw: sc.scrollWidth, sh: sc.scrollHeight };
+          latest.current.onZoom(next);
+        }
+        return;
+      }
+      if (ignored.current.has(e.pointerId) || touches.current.size > 1) {
+        stop(e);
+        return;
+      }
+      const p = pan.current;
+      if (p && p.id === e.pointerId) {
+        if (!p.moved && Math.hypot(cur.x - p.x, cur.y - p.y) > 6) p.moved = true;
+        if (p.moved) {
+          sc.scrollLeft -= cur.x - prev.x;
+          sc.scrollTop -= cur.y - prev.y;
+        }
+      }
+    };
+
+    const up = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
+      const wasPinching = pinch.current !== null;
+      touches.current.delete(e.pointerId);
+      const p = pan.current;
+      if (p && p.id === e.pointerId) {
+        pan.current = null;
+        if (!p.moved && latest.current.mode === 'select') latest.current.onSelect(null);
+      }
+      if (ignored.current.delete(e.pointerId)) stop(e);
+      if (wasPinching) {
+        stop(e);
+        if (touches.current.size < 2) {
+          pinch.current = null;
+          for (const id of touches.current.keys()) ignored.current.add(id);
+        }
+      }
+    };
+
+    sc.addEventListener('pointerdown', down, true);
+    sc.addEventListener('pointermove', move, true);
+    sc.addEventListener('pointerup', up, true);
+    sc.addEventListener('pointercancel', up, true);
+    return () => {
+      sc.removeEventListener('pointerdown', down, true);
+      sc.removeEventListener('pointermove', move, true);
+      sc.removeEventListener('pointerup', up, true);
+      sc.removeEventListener('pointercancel', up, true);
+    };
+  }, []);
 
   // 表示用の図面。動かしている最中も、結線をつないだまま見せる
   const view = !drag
@@ -104,7 +246,8 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
     if (mode !== 'wire') {
-      onSelect(null);
+      // 指のときは、なぞれば画面が動くので、「選択を外す」のは、離したときに上の処理で行う
+      if (e.pointerType !== 'touch') onSelect(null);
       return;
     }
     const p = toDrawing(e);
