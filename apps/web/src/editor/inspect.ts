@@ -1,6 +1,6 @@
 import { getSymbol } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, rotatedBox, sheetSize } from '@zumen/layout';
-import type { Orientation, PaperSize } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
+import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
 import { applyAnchors, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, moveItem, nearestPort, portsOf } from './doc.ts';
 
@@ -778,6 +778,31 @@ function fitScale(doc: Doc, paper: PaperSize, orientation: Orientation, titleH =
   const areaW = s.w - SHEET_MARGIN * 2 - SHEET_PAD * 2;
   const areaH = s.h - SHEET_MARGIN * 2 - titleH - SHEET_PAD * 2 - 18;
   return Math.min(areaW / Math.max(b.x1 - b.x0, 1), areaH / Math.max(b.y1 - b.y0, 1), 1);
+}
+
+/** 用紙を自動で決めるとき、「このくらいの大きさで出せれば読める」とする倍率（これ以上で収まる、いちばん小さい用紙を選ぶ） */
+export const SHEET_READABLE = 0.8;
+
+/**
+ * 図面の大きさに合わせて、用紙の大きさと向きを自動で決める。
+ * 小さい用紙（A4 → A3）から順に、縦と横の両方を試し、読める大きさ（80%以上）で出せる用紙があれば、そこで決める
+ * （縦と横で差があるときは、大きく出せるほう。ほぼ同じなら縦）。
+ * どの用紙でも収まらなければ、いちばん大きく出せるもの（同じくらいなら、小さい用紙）。
+ * 表題の高さは、事業場名称が長いと2行になるので、用紙ごとに計算する。
+ */
+export function chooseSheet(doc: Doc, title: TitleBlock): { paper: PaperSize; orientation: Orientation; scale: number } {
+  let best: { paper: PaperSize; orientation: Orientation; scale: number } | null = null;
+  for (const paper of ['A4', 'A3'] as PaperSize[]) {
+    const tries = (['portrait', 'landscape'] as Orientation[]).map((orientation) => {
+      const titleH = layoutTitle(title, sheetSize(paper, orientation).w, SHEET_MARGIN).titleH;
+      return { paper, orientation, scale: fitScale(doc, paper, orientation, titleH) };
+    });
+    // 縦と横で、ほぼ同じなら縦
+    const pick = tries[1]!.scale > tries[0]!.scale + 0.02 ? tries[1]! : tries[0]!;
+    if (pick.scale >= SHEET_READABLE) return pick;
+    if (!best || pick.scale > best.scale + 0.02) best = pick;
+  }
+  return best!;
 }
 
 const PAPER_LABEL = (p: PaperSize, o: Orientation) => `${p}の${o === 'portrait' ? '縦' : '横'}`;

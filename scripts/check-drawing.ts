@@ -28,7 +28,7 @@ import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTIO
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { rotatedBox, rotatedPort, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
-import { inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
+import { chooseSheet, inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -266,6 +266,22 @@ console.log('\n■ 線を引くときの手助け');
   const withV: Doc = { ...mini, items: [...base.items, wire('wx', p0.x + 6, p0.y - 500, p0.x + 6, p0.y + 500)] };
   const mv = assistMove(withV, sym.id, 5.5, 0);
   ok(Math.abs(mv.dx - 6) < 1e-9 && mv.guideX === p0.x + 6, '記号を動かす：近くの縦線と、たてが揃う位置に吸い付く', `縦線と揃いません（${JSON.stringify(mv)}）`);
+}
+
+/* ---------- 3c. 用紙の大きさと向きは、図面の大きさから自動で決まる ---------- */
+console.log('\n■ 用紙の自動選び');
+{
+  const title = { site: '山田工場', name: 'キュービクル式高圧受電設備単線結線図' };
+  const wireDoc = (x2: number, y2: number): Doc => ({ ...base, items: [{ kind: 'wire', id: 'w', x1: 0, y1: 0, x2, y2 }] });
+  const ok = (cond: boolean, okMsg: string, ngMsg: string) => (cond ? console.log(`  ${okMsg}`) : fail(ngMsg));
+  const c0 = chooseSheet(base, title);
+  ok(c0.paper === 'A4' && c0.orientation === 'portrait' && c0.scale >= 0.8, `ふつうの図面は、A4の縦（倍率 ${c0.scale.toFixed(2)}）`, `ふつうの図面が A4縦になりません（${JSON.stringify(c0)}）`);
+  const wide = chooseSheet(wireDoc(900, 0), title);
+  ok(wide.paper === 'A4' && wide.orientation === 'landscape', `横に長い図面は、A4の横（倍率 ${wide.scale.toFixed(2)}）`, `横に長いのに A4横になりません（${JSON.stringify(wide)}）`);
+  const tall = chooseSheet(wireDoc(0, 1300), title);
+  ok(tall.paper === 'A3' && tall.scale >= 0.8, `A4に収まらない大きな図面は、A3（${tall.orientation === 'portrait' ? '縦' : '横'}・倍率 ${tall.scale.toFixed(2)}）`, `大きな図面が A3 になりません（${JSON.stringify(tall)}）`);
+  const huge = chooseSheet(wireDoc(0, 6000), title);
+  ok(huge.paper === 'A3' && huge.scale < 0.8, `どの用紙でも収まらないときは、いちばん大きく出せる用紙（A3・倍率 ${huge.scale.toFixed(2)}）`, `収まらない図面の用紙がおかしい（${JSON.stringify(huge)}）`);
 }
 
 /* ---------- 4. 記号を差し替えると線が伸縮するか ---------- */

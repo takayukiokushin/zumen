@@ -10,7 +10,7 @@ import { useT } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
 import { ConfirmDialog } from '../ConfirmDialog.tsx';
 import { UndoIcon, ZoomIcon } from '../icons.tsx';
-import { ISSUE_LABEL, tidyDrawing } from './inspect.ts';
+import { ISSUE_LABEL, chooseSheet, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, tidyDoc } from './doc.ts';
@@ -57,23 +57,15 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     [composition],
   );
   const generated = useMemo(() => {
-    const doc = fromLayout(layout(composition, answers), basis);
-    // 受電設備エリアが2か所以上のときは、横に並ぶので、用紙は横向きにする（3か所以上は、A3）
-    const areas = Math.max(...composition.map((i) => (i.area ?? 0) + 1));
-    return areas >= 2 ? { ...doc, orientation: 'landscape' as const, ...(areas >= 3 ? { paper: 'A3' as const } : {}) } : doc;
+    // 用紙の大きさと向きは、図面の大きさから自動で決まる（受電設備エリアが多くて横に広いときは、横向き・A3になる）
+    return fromLayout(layout(composition, answers), basis);
   }, [composition, answers, basis]);
-
-  /** 作り直しても、用紙の大きさと向きだけは選んだままにする */
-  const keepPaper = (fresh: Doc, from: Doc | null | undefined): Doc =>
-    from?.paper === undefined && from?.orientation === undefined
-      ? fresh
-      : { ...fresh, paper: from.paper ?? fresh.paper, orientation: from.orientation ?? fresh.orientation };
 
   const [history, setHistory] = useState<History>(() => {
     // 手で直していない図面は、いつでも回答から作り直してよい。
     // 手で直したものは、勝手に作り直さずそのまま開く（案内だけ出す）
     if (!initialDoc || initialDoc.edited !== true) {
-      return { past: [], present: keepPaper(generated, initialDoc), future: [] };
+      return { past: [], present: generated, future: [] };
     }
     // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく
     return { past: [], present: tidyDoc(initialDoc), future: [] };
@@ -104,8 +96,10 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   };
   const selected = doc.items.find((i) => i.id === selectedId) ?? null;
   /** 印刷・保存用の1枚のSVG（図枠と表題欄つき） */
-  const paper: PaperSize = doc.paper ?? 'A4';
-  const orientation: Orientation = doc.orientation ?? 'portrait';
+  // 用紙の大きさと向きは、図面の大きさに合わせて、自動で決まる
+  const chosen = useMemo(() => chooseSheet(doc, sheetTitle), [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer]);
+  const paper: PaperSize = chosen.paper;
+  const orientation: Orientation = chosen.orientation;
   const sheetSvg = useMemo(
     () => buildSheetSvg(doc, sheetTitle, paper, orientation),
     [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
@@ -145,14 +139,11 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   /** ヒアリングの回答から作り直す（編集内容は履歴に残るので元に戻せる） */
   const regenerate = () => {
-    const fresh = keepPaper(generated, doc);
+    const fresh = generated;
     setHistory((h) => commit(h, fresh));
     onDocChange?.(fresh);
     setSelectedId(null);
   };
-
-  /** 用紙の設定を変える（図面の一部として保存する） */
-  const setPaper = (next: Partial<Pick<Doc, 'paper' | 'orientation'>>) => applyAuto({ ...doc, ...next });
 
   /** 手で直したあとに回答が変わっている。勝手に作り直さず、案内だけ出す */
   const stale = doc.edited === true && doc.basis !== undefined && doc.basis !== basis;
@@ -331,31 +322,12 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
             <div className="tool-row">
-              <label className="tool-select">
-                <span>{t('editor.paper')}</span>
-                <select
-                  value={paper}
-                  aria-label={t('editor.paper')}
-                  onChange={(e) => setPaper({ paper: e.target.value as 'A4' | 'A3' })}
-                >
-                  {(['A4', 'A3'] as const).map((p2) => (
-                    <option key={p2} value={p2}>
-                      {p2}（{sheetSize(p2, orientation).mmW}×{sheetSize(p2, orientation).mmH}mm）
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="tool-select">
-                <span>{t('editor.orientation')}</span>
-                <select
-                  value={orientation}
-                  aria-label={t('editor.orientation')}
-                  onChange={(e) => setPaper({ orientation: e.target.value as 'portrait' | 'landscape' })}
-                >
-                  <option value="portrait">{t('editor.portrait')}</option>
-                  <option value="landscape">{t('editor.landscape')}</option>
-                </select>
-              </label>
+              <span className="tool-info" title={t('editor.sheetNow.help')}>
+                {t('editor.sheetNow')}
+                <b>
+                  {paper}・{orientation === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
+                </b>
+              </span>
               <button
                 type="button"
                 className="btn"

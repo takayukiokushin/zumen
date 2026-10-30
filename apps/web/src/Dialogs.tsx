@@ -67,7 +67,7 @@ function useDialogKeys(boxRef: React.RefObject<HTMLElement | null>, onCancel: ()
         return;
       }
       if (e.key === 'Tab' && boxRef.current) {
-        const items = [...boxRef.current.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')].filter((x) => !(x as HTMLButtonElement).disabled);
+        const items = Array.from(boxRef.current.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')).filter((x) => !(x as HTMLButtonElement).disabled);
         const first = items[0];
         const last = items[items.length - 1];
         const active = document.activeElement as HTMLElement | null;

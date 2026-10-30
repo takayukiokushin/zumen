@@ -760,5 +760,7 @@ button.with-icon svg { flex: 0 0 auto; }
 .editor-bar > .tools { flex: 1 1 100%; }
 .zoom-group { margin-left: auto; }
 .tool-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--gap, 10px); }
+.tool-info { font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); white-space: nowrap; }
+.tool-info b { font-weight: var(--weight-strong); color: var(--ink); }
 .tool-select { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
 .tool-select select { min-width: 0; width: auto; padding-right: calc(24px * var(--text-scale)); }
