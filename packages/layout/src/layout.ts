@@ -134,6 +134,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   let lastBranch: { role: string; dir: number; sym: PlacedSymbol; def: SymbolDef; unit?: number } | null = null;
   /** 直前までの分岐が占めている下端（文字を含む）。次の分岐をここより下に出す */
   let branchBottom = -Infinity;
+  /** 同じ機器（VT）の二次側につなぐ継電器の積み上げ：1つ目の位置と、いまの下端 */
+  const stacks = new Map<string, { railX: number; x: number; bottom: number }>();
   /** 名前だけの継電器を、置き先ごとに何個重ねたか */
   const noteCount = new Map<string, number>();
 
@@ -489,8 +491,18 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       // トリップコイルがつながるOCRは、コイルの真下に来る位置（主回路から COIL_MIN_X 以上）まで右へ寄せる
       const coilTop = dir > 0 && coilTargets.has(item.id) ? portOf(def, 'top') : undefined;
       if (coilTop) x = Math.max(x, SPINE + COIL_MIN_X - coilTop.x);
-      const sym = add(item, def, x, midY - entry.y, 0, dir > 0 ? 'right' : 'left');
+      // 同じ機器の二次側につなぐ2つ目以降は、1つ目の下に並べる（並列）
+      const stackKey = item.sourceLabel === 'below' && sources.length === 1 ? sources[0]!.from.sym.id : undefined;
+      const stack = stackKey ? stacks.get(stackKey) : undefined;
+      let atY = midY;
+      if (stack) {
+        x = stack.x;
+        atY = stack.bottom + 14 + entry.y;
+      }
+      const sym = add(item, def, x, atY - entry.y, 0, dir > 0 ? 'right' : 'left');
       const target = sym.x + entry.x;
+      if (stackKey && !stack) stacks.set(stackKey, { railX, x, bottom: sym.y + def.box.h });
+      else if (stack) stack.bottom = Math.max(stack.bottom, sym.y + def.box.h);
       if (item.sourceLabel === 'below') {
         // つなぎ元（VT）の文字は、右へ続く線と重ならないよう、記号の下へ動かす。下端が増えるぶん、次の機器を下げる
         for (const v of sources) {
@@ -502,7 +514,12 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
         branchBottom = Math.max(branchBottom, sym.y + def.box.h);
         pendingGap = Math.max(pendingGap, branchBottom - spineY + 10);
       }
-      if (sources.length === 1) {
+      if (stack) {
+        // 1つ目の継電器へ向かう線から、縦に分かれて下へ降りる
+        const v = sources[0]!;
+        wires.push({ x1: stack.railX, y1: v.y, x2: stack.railX, y2: atY });
+        wires.push({ x1: stack.railX, y1: atY, x2: target, y2: atY });
+      } else if (sources.length === 1) {
         // つなぎ元が1つなら、曲げずに1本でまっすぐ引く。
         // 分けて引くと、途中が「記号を突き抜けている線」と見なされて切られ、
         // ZCTから出る線が途切れて見えることがあった

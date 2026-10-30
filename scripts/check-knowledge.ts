@@ -1137,7 +1137,7 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const rel = (id: string) => m.find((i) => i.id === id);
   ok(rel('relay-2')?.symbolId === 'relay-uvr' && rel('relay-2')?.connectFrom?.[0] === 'relay-tt-2', 'UVRが、VTの試験端子の先につながっていません');
   ok(rel('relay-tt-2')?.connectFrom?.[0] === 'site-vt-2', 'VTにつく試験端子が、VT2組目の右の端につながっていません');
-  ok(rel('relay-3')?.connectFrom?.[0] === 'relay-2' && !m.some((i) => i.id === 'relay-tt-3'), 'OVR（試験端子なし）が、UVRの右につながっていません');
+  ok(rel('relay-3')?.connectFrom?.[0] === 'site-vt-2' && !m.some((i) => i.id === 'relay-tt-3'), 'OVR（試験端子なし）が、UVRと同じVTの二次側に並列でつながっていません');
   ok(rel('relay-note-4')?.kind === 'note-above' && rel('relay-note-4')?.attachTo === 'relay-1', '置き場所が決まっていない継電器が、OCRの真上の名前だけになっていません');
   ok(rel('site-vt-pf-2')?.label.join('|') === 'VT＋PF×2|V結線|6600/110V', `V結線のVTの文字が違います（${rel('site-vt-pf-2')?.label.join('|')}）`);
   // VTの2組目（二次側）は、CTのあと。継電器は、つながる先のすぐあと
@@ -1157,7 +1157,10 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   // 初期値：1個目はOCR（CT）、2個目はUVR（VT）。試験端子は、いつも「あり」から
   const auto = withAutoValues(normalizeAnswers({ ...base, relayCount: '3' }));
   ok(auto.relayType === 'OCR' && auto.relayType__2 === 'UVR' && auto.relayType__3 === 'OVR', '継電器の種類の初期値（OCR・UVR・OVR）が違います');
-  ok(auto.relayAt === 'ct-1' && auto.relayAt__2 === 'vt-1' && auto.relayAt__3 === 'none' && auto.relayTest === 'yes' && auto.relayTest__2 === 'yes', '継電器の置き場所・試験端子の初期値が違います');
+  ok(auto.relayAt === 'ct-1' && auto.relayAt__2 === 'vt-1' && auto.relayAt__3 === 'vt-1' && auto.relayTest === 'yes' && auto.relayTest__2 === 'yes', '継電器の置き場所（OCR→CT、UVR・OVR→VT）・試験端子の初期値が違います');
+  // VTが無い構成では、OVRも「置き場所は決まっていない」
+  const noVt = withAutoValues(normalizeAnswers({ ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no', relayCount: '3' }));
+  ok(noVt.relayAt__3 !== 'vt-1', 'VTが無いのに、OVRがVTにつく初期値になっています');
   // 継電器の記号が、すべての種類にある
   for (const c of ['OCR', 'UVR', 'OVR', 'OCGR', 'OVGR', 'UFR', 'OFR', 'RPR', 'UPR', 'DSR', '2E', '3E']) {
     ok(Boolean(getSymbolForCheck(`relay-${c.toLowerCase()}`)), `継電器 ${c} の記号がありません`);

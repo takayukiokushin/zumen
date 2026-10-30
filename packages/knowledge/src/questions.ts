@@ -991,14 +991,16 @@ export const QUESTIONS: Question[] = [
       })),
       { value: 'none', label: '置き場所は決まっていない（名前だけ書く）' },
     ],
-    // 1個目はCT、2個目はVT。どちらも無ければ「置き場所は決まっていない」
+    // 種類で決める：OCRはCT、UVR・OVRはVT。どちらも無ければ「置き場所は決まっていない」
     autoValue: [
+      { when: { all: [{ key: 'relayType', eq: 'OCR' }, CT_SHOWN] }, value: 'ct-1' },
+      { when: { all: [{ key: 'relayType', in: ['UVR', 'OVR'] }, VT_SHOWN] }, value: 'vt-1' },
       { when: { all: [{ key: 'unitNo', eq: 1 }, CT_SHOWN] }, value: 'ct-1' },
-      { when: { all: [{ key: 'unitNo', eq: 2 }, VT_SHOWN] }, value: 'vt-1' },
+      { when: { all: [{ key: 'unitNo', gt: 1 }, VT_SHOWN] }, value: 'vt-1' },
       { value: 'none' },
     ],
     ask: 'always',
-    help: 'CTにつく継電器は、CTの二次側（試験端子の先）に置く。VTにつく継電器は、VTの右の端につなぐ。決まっていないときは、OCRの上に名前だけ書く',
+    help: 'CTにつく継電器は、CTの二次側（試験端子の先）に置く。VTにつく継電器（UVR・OVR）は、VTの二次側（右の端）につなぐ。UVRとOVRが両方あるときは、上下に並べる。決まっていないときは、OCRの上に名前だけ書く',
   },
   {
     id: 'relayTest',

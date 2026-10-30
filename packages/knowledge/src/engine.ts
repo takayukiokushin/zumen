@@ -880,8 +880,6 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
     else r.note = i;
     relays.set(unitOf(i), r);
   }
-  /** VTにつなぐ継電器の、つなぎ先（最後につないだもの） */
-  const tail = new Map<number, string>();
   const noted: PlacedItem[] = [];
   for (const [u, r] of [...relays.entries()].sort((a, b) => a[0] - b[0])) {
     const head = r.relay ?? r.note;
@@ -911,8 +909,9 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
       }
       put(r.relay, stage, ownerUnit, 3 + u * 2);
     } else {
-      // VTにつく継電器：VTの右の端から、横へ続ける（複数あるときは、前の継電器の右へ）
-      let last = tail.get(ownerUnit) ?? owner.id;
+      // VTにつく継電器：VTの二次側（右の端）から、継電器ごとに並列につなぐ（上下に並ぶ）。
+      // 試験端子があれば、VT→試験端子→継電器と、横へ続ける
+      let last = owner.id;
       for (const [part, sub] of [[r.tt, 2 + u * 2], [r.relay, 3 + u * 2]] as const) {
         if (!part) continue;
         part.connectFrom = [last];
@@ -921,7 +920,6 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
         last = part.id;
         put(part, stage, ownerUnit, sub);
       }
-      tail.set(ownerUnit, last);
     }
   }
 
