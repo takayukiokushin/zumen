@@ -678,7 +678,7 @@ button.with-icon svg { flex: 0 0 auto; }
 .preview .chain li.area-head { font-weight: var(--weight-strong); background: var(--accent-soft); border-top: 2px solid var(--accent); margin-top: calc(10px * var(--text-scale)); }
 
 /* 指で押す端末（タブレット・スマホ）では、小さめのボタンも44px以上にする（上の共通ルールより後に書く） */
-@media (pointer: coarse) { .panel-toggle, .thumbs button { min-height: 44px; } }
+@media (pointer: coarse) { .panel-toggle, .thumbs button, .switch, .toggle { min-height: 44px; } .size-row input[type="range"] { height: 44px; } }
 
 /* ---- アプリ内の確認・入力の窓（Dialogs.tsx）。ほかの窓（設定・利用者の管理など）の上に重ねる ---- */
 .dialog-back { z-index: 300; }
