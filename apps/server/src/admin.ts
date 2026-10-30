@@ -11,6 +11,7 @@ import {
   unlockUser,
 } from './auth.ts';
 import type { Role, User } from './auth.ts';
+import { checkPassword } from './password-policy.ts';
 
 /**
  * 利用者の管理。管理用のアカウントだけが使える。
@@ -19,7 +20,6 @@ import type { Role, User } from './auth.ts';
 export const admin = new Hono<{ Variables: { user: User } }>();
 admin.use('*', requireAdmin);
 
-const MIN_PASSWORD = 8;
 
 /** IDに使える文字（人に伝えるときに混乱しないよう、記号は控えめに） */
 const ID_PATTERN = /^[A-Za-z0-9._@-]{2,64}$/;
@@ -42,9 +42,8 @@ admin.post('/users', async (c) => {
     return c.json({ error: 'IDは半角の英数字と . _ - @ で、2〜64文字にしてください。' }, 400);
   }
   if (!name) return c.json({ error: '名前を入れてください。' }, 400);
-  if (password.length < MIN_PASSWORD) {
-    return c.json({ error: `パスワードは${MIN_PASSWORD}文字以上にしてください。` }, 400);
-  }
+  const weak = checkPassword(password, id);
+  if (weak) return c.json({ error: weak }, 400);
   if (!ROLES.includes(role)) return c.json({ error: 'アカウントの種類を、一覧から選び直してください。' }, 400);
   if (listUsers().some((u) => u.id === id)) {
     return c.json({ error: `そのIDはすでに使われています: ${id}。別のIDにしてください。` }, 409);
@@ -57,9 +56,8 @@ admin.post('/users', async (c) => {
 admin.put('/users/:id/password', async (c) => {
   const id = c.req.param('id');
   const { password } = (await c.req.json().catch(() => ({}))) as { password?: string };
-  if ((password ?? '').length < MIN_PASSWORD) {
-    return c.json({ error: `パスワードは${MIN_PASSWORD}文字以上にしてください。` }, 400);
-  }
+  const weak = checkPassword(password ?? '', id);
+  if (weak) return c.json({ error: weak }, 400);
   // 自分のパスワードを変えたときは、いまの画面のログインは残す（ほかの端末のログインは切れる）
   if (!setPassword(id, password!, id === c.get('user').id ? currentTokenKey(c) : null)) return c.json({ error: `利用者が見つかりません: ${id}。すでに消されたかもしれません。一覧を開き直して確かめてください。` }, 404);
   // パスワードを変えたら、止まっていたログインも解除する（駆け込みの逃げ道）

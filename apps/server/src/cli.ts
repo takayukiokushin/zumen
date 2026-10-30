@@ -3,6 +3,7 @@ import './env.ts';
 import { createUser, deleteUser, listUsers, ROLE_LABEL, ROLES, setPassword } from './auth.ts';
 import type { Role } from './auth.ts';
 import { backup, sourceDir } from './backup.ts';
+import { checkPassword } from './password-policy.ts';
 import { checkApiKey, explainApiError } from './apikey.ts';
 
 /**
@@ -24,7 +25,10 @@ try {
       if (!id || !name || !password) {
         throw new Error('使い方: add <ID> <名前> <パスワード> [種類: admin / member / sandbox]');
       }
-      if (password.length < 8) throw new Error('パスワードは8文字以上にしてください。');
+      {
+        const weak = checkPassword(password, id);
+        if (weak) throw new Error(weak);
+      }
       if (!ROLES.includes(role as Role)) {
         throw new Error('種類は admin（管理用）／ member（標準）／ sandbox（練習用）のどれかです。');
       }
@@ -35,7 +39,10 @@ try {
     case 'passwd': {
       const [id, password] = args;
       if (!id || !password) throw new Error('使い方: passwd <ID> <新しいパスワード>');
-      if (password.length < 8) throw new Error('パスワードは8文字以上にしてください。');
+      {
+        const weak = checkPassword(password, id);
+        if (weak) throw new Error(weak);
+      }
       if (!setPassword(id, password)) throw new Error(`利用者が見つかりません: ${id}`);
       console.log(`パスワードを変更しました: ${id}`);
       break;

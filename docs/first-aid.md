@@ -111,7 +111,7 @@ claude
    ANTHROPIC_API_KEY= の右側にAPIキーを貼って保存
    確認は `pnpm --filter @zumen/server apikey`
 6. 同じ .env の一番下の BACKUP_DIR= に、Dropboxなど同期フォルダのパスを書く（先頭の#を消す）
-7. 最初のアカウントを作る（パスワードは8文字以上）
+7. 最初のアカウントを作る（パスワードは10文字以上）
    pnpm --filter @zumen/server user:add kanri 管理者 パスワード admin
    pnpm --filter @zumen/server user:add fujielex 株式会社フジエレックス パスワード member
    pnpm --filter @zumen/server user:add renshu 練習用 パスワード sandbox

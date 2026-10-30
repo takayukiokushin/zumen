@@ -137,7 +137,7 @@ if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
   echo
   echo "確認用のID（test）は消しました。"
   echo "実際に使う人のIDは、次のように作ってください。"
-  echo "  pnpm --filter @zumen/server user:add <ID> <名前> <8文字以上のパスワード>"
+  echo "  pnpm --filter @zumen/server user:add <ID> <名前> <10文字以上のパスワード>"
 fi
 
 echo

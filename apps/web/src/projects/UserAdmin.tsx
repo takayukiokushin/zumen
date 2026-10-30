@@ -64,7 +64,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
 
   const resetPassword = (u: User) => {
     const pw = window.prompt(
-      `${u.name}（${u.id}）の新しいパスワードを入れてください。\n8文字以上。` +
+      `${u.name}（${u.id}）の新しいパスワードを入れてください。\n10文字以上。IDと同じ・よくある言葉・連番は使えません。` +
         '\n※ ログインが止まっている場合も、ここで変えればすぐ入れるようになります。',
     );
     if (!pw) return;
@@ -176,7 +176,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
               </select>
             </label>
             <p className="hint role-help">{t(`users.help.${role}`)}</p>
-            <button type="submit" className="btn primary" disabled={!id || !name || password.length < 8}>
+            <button type="submit" className="btn primary" disabled={!id || !name || password.length < 10}>
               {t('users.addButton')}
             </button>
           </form>

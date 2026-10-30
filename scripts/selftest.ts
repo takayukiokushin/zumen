@@ -587,7 +587,7 @@ try {
   check('管理用は利用者の一覧を見られる', adminUsers.users.length === 5, `${adminUsers.users.length}人`);
   const made = await call(kanri, '/api/admin/users', {
     method: 'POST',
-    body: JSON.stringify({ id: 'tsuika', name: '追加した人', password: 'password123', role: 'member' }),
+    body: JSON.stringify({ id: 'tsuika', name: '追加した人', password: 'Mizu-Kawa-7391', role: 'member' }),
   });
   check('管理用は利用者を追加できる', made.status === 201, `${made.status}`);
   const shortPw = await call(kanri, '/api/admin/users', {
@@ -596,10 +596,36 @@ try {
   });
   check('短すぎるパスワードは断る', shortPw.status === 400, `${shortPw.status}`);
   {
-    const tsuika = await login2('tsuika', 'password123');
+    const tryPw = (id: string, password: string) =>
+      call(kanri, '/api/admin/users', { method: 'POST', body: JSON.stringify({ id, name: '試験', password, role: 'member' }) });
+    const weak: [string, string, string][] = [
+      ['9文字', 'Abcd-1234', 'ninemoji1'],
+      ['IDと同じ', 'sameasid01', 'sameasid01'],
+      ['IDを含む', 'sameasid01-Xy7', 'sameasid01'],
+      ['よくある言葉', 'Password2026', 'weak01'],
+      ['連番（数字）', '9876543210', 'weak02'],
+      ['連番（英字）', 'abcdefghij12', 'weak03'],
+      ['キーボードの並び', 'Qwertyuiop-7', 'weak04'],
+      ['同じ文字', 'aaaaaaaaaaaa', 'weak05'],
+      ['短い並びの繰り返し', 'x7Kx7Kx7Kx7K', 'weak06'],
+      ['数字だけ', '48203957164', 'weak07'],
+      ['アプリの名前', 'Zumen-Kakunin-93', 'weak08'],
+    ];
+    for (const [label, pw, id] of weak) {
+      const r = await tryPw(id, pw);
+      check(`弱いパスワード（${label}）は断る`, r.status === 400, `${r.status}`);
+    }
+    const good = await tryPw('strong01', 'Mizu-Hikari-4729');
+    check('十分なパスワードは受け付ける', good.status === 201, `${good.status}`);
+    await call(kanri, '/api/admin/users/strong01', { method: 'DELETE' });
+    const weakChange = await call(kanri, '/api/admin/users/tester1/password', { method: 'PUT', body: JSON.stringify({ password: 'Password2026' }) });
+    check('パスワードの変更でも、弱いものは断る', weakChange.status === 400, `${weakChange.status}`);
+  }
+  {
+    const tsuika = await login2('tsuika', 'Mizu-Kawa-7391');
     const before = await call(tsuika, '/api/auth/me');
-    const tsuika2 = await login2('tsuika', 'password123'); // 同じ人の、もう1台の端末
-    const change = await call(kanri, '/api/admin/users/tsuika/password', { method: 'PUT', body: JSON.stringify({ password: 'newpassword456' }) });
+    const tsuika2 = await login2('tsuika', 'Mizu-Kawa-7391'); // 同じ人の、もう1台の端末
+    const change = await call(kanri, '/api/admin/users/tsuika/password', { method: 'PUT', body: JSON.stringify({ password: 'Kawari-Pw-5820' }) });
     const afterOld = (await (await call(tsuika, '/api/auth/me')).json()) as { user: unknown };
     const afterOld2 = (await (await call(tsuika2, '/api/auth/me')).json()) as { user: unknown };
     check(

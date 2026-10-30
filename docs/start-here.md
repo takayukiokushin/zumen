@@ -145,7 +145,7 @@ Mac mini 1台を「サーバー役」にして、社内の他のパソコンやi
      admin   … 管理用。すべての案件＋画面から利用者の管理ができる
      member  … 標準。案件をみんなで共有する。ふだん使うのはこれ
      sandbox … 練習用。自分が作ったものだけ。他の人には見えない
-   最初はこの3つを作ります。パスワードは8文字以上で、私が決めます:
+   最初はこの3つを作ります。パスワードは10文字以上で、私が決めます:
      pnpm --filter @zumen/server user:add kanri 管理者 <パスワード> admin
      pnpm --filter @zumen/server user:add fujielex 株式会社フジエレックス <パスワード> member
      pnpm --filter @zumen/server user:add renshu 練習用 <パスワード> sandbox
