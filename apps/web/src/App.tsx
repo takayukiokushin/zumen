@@ -8,6 +8,7 @@ import { HearingForm } from './HearingForm.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
 import { Analyze } from './analyze/Analyze.tsx';
+import { Voice } from './voice/Voice.tsx';
 import { JobList } from './projects/JobList.tsx';
 import { TabBar } from './TabBar.tsx';
 import type { Tab } from './TabBar.tsx';
@@ -383,6 +384,12 @@ export function App() {
                 setDrawing(doc);
                 setDirty(true);
               }}
+            />
+          ) : tab === 'voice' ? (
+            <Voice
+              answers={effective}
+              onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
+              onGoToHearing={() => setTab('hearing')}
             />
           ) : tab === 'analyze' ? (
             <Analyze

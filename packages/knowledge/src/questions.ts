@@ -70,6 +70,12 @@ export interface Question {
   keepEmpty?: boolean;
   /** この条件を満たすときだけ表示する */
   showIf?: Condition;
+  /**
+   * アプリの中で、人が手で入力する項目（お客様名称・事業場名称など）。
+   * 情報漏えいを避けるため、音声やAIには渡さない。AIの指示文には載せず、
+   * AIが作った文章に入っていても、取り込まない。
+   */
+  manualOnly?: boolean;
   ask: AskWhen;
   required?: boolean;
   /**
@@ -289,12 +295,13 @@ const RELAY_CHOICES: Choice[] = [
 
 export const QUESTIONS: Question[] = [
   /* ---------------- お客様・現場 ---------------- */
-  { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true },
+  { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true, manualOnly: true },
   {
     id: 'customerNameForTitleBlock',
     group: 'customer',
     label: '表題欄への記載名',
     type: 'text',
+    manualOnly: true,
     ask: 'always',
     help: '事業場名称と異なる書き方（略称など）をする場合に入力する',
   },
@@ -1423,6 +1430,7 @@ export const QUESTIONS: Question[] = [
     group: 'title',
     label: '図面名称',
     type: 'text',
+    manualOnly: true,
     ask: 'always',
     help: '空欄のときは、受電設備の形態から自動で決まります（例：キュービクル式高圧受電設備単線結線図）。書いた場合は、それを優先します',
   },

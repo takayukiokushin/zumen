@@ -26,6 +26,8 @@ const ja = {
   'tab.drawing': '図面',
   'tab.analyze.help': 'すでにある図面や手書きのスケッチから、図面を作成します',
   'tab.hearing.help': '必要事項を入力して、そこから図面を作成します',
+  'tab.voice': '音声入力から作成',
+  'tab.voice.help': 'Claude に声で話した内容から、図面を作成します',
   'tab.drawing.help': '現在作成中の図面のプレビューを表示します',
 
   'nav.settings': '表示の設定',
@@ -213,6 +215,8 @@ const en: Dict = {
   'tab.drawing': 'Diagram',
   'tab.analyze.help': 'Builds a diagram from an existing drawing or a hand-drawn sketch',
   'tab.hearing.help': 'Answer the questions, and a diagram is built from them',
+  'tab.voice': 'Create by voice',
+  'tab.voice.help': 'Create a drawing from what you told Claude by voice',
   'tab.drawing.help': 'Shows the diagram you are working on',
 
   'nav.settings': 'Display settings',
@@ -397,6 +401,8 @@ const fr: Dict = {
   'tab.drawing': 'Schéma',
   'tab.analyze.help': 'Crée un schéma à partir d’un plan existant ou d’un croquis à la main',
   'tab.hearing.help': 'Répondez aux questions : le schéma en est déduit',
+  'tab.voice': 'Créer par la voix',
+  'tab.voice.help': 'Créer un schéma à partir de ce que vous avez dit à Claude',
   'tab.drawing.help': 'Affiche le schéma en cours de création',
 
   'nav.settings': 'Affichage',
@@ -582,6 +588,8 @@ const zh: Dict = {
   'tab.drawing': '图纸',
   'tab.analyze.help': '根据已有图纸或手绘草图生成图纸',
   'tab.hearing.help': '填写必要事项，据此生成图纸',
+  'tab.voice': '语音输入创建',
+  'tab.voice.help': '根据对 Claude 口述的内容创建图纸',
   'tab.drawing.help': '显示正在制作的图纸',
 
   'nav.settings': '显示设置',
@@ -763,6 +771,8 @@ const ko: Dict = {
   'tab.drawing': '도면',
   'tab.analyze.help': '기존 도면이나 손으로 그린 스케치에서 도면을 만듭니다',
   'tab.hearing.help': '필요한 항목을 입력하면 그것으로 도면을 만듭니다',
+  'tab.voice': '음성 입력으로 작성',
+  'tab.voice.help': 'Claude에게 말로 설명한 내용으로 도면을 작성합니다',
   'tab.drawing.help': '지금 만들고 있는 도면을 보여줍니다',
 
   'nav.settings': '화면 설정',

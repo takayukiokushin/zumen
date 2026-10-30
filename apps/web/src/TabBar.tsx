@@ -29,11 +29,12 @@ function Tab({
   );
 }
 
-export type Tab = 'analyze' | 'hearing' | 'drawing';
+export type Tab = 'analyze' | 'hearing' | 'voice' | 'drawing';
 
 const TABS: [Tab, Key, Key][] = [
   ['analyze', 'tab.analyze', 'tab.analyze.help'],
   ['hearing', 'tab.hearing', 'tab.hearing.help'],
+  ['voice', 'tab.voice', 'tab.voice.help'],
   ['drawing', 'tab.drawing', 'tab.drawing.help'],
 ];
 

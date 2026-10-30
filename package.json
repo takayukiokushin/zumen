@@ -8,8 +8,9 @@
   "scripts": {
     "catalog": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-catalog.ts",
     "typecheck": "tsc -b",
+    "voice": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-voice-instruction.ts",
     "sample": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-sample-drawing.ts",
-    "check": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-knowledge.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-symbols.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-drawing.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-messages.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-contrast.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version.ts",
+    "check": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-knowledge.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-symbols.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-drawing.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-messages.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-contrast.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-version.ts && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-voice.ts",
     "selftest": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/selftest.ts",
     "dev": "pnpm --filter @zumen/web dev",
     "build": "pnpm --filter @zumen/web build",

@@ -201,6 +201,23 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .analyze h2 { margin: 0 0 6px; font-size: calc(16px * var(--text-scale)); }
 .analyze .hint { margin: 0 0 14px; font-size: calc(12.5px * var(--text-scale)); color: var(--muted); line-height: 1.7; }
 .analyze .hint b { color: var(--ink); }
+/* 音声入力から作成 */
+.voice-steps { margin: 0 0 12px; padding-left: 1.4em; }
+.voice-steps li { margin-bottom: 6px; }
+.analyze .notice { margin: 0; padding: calc(9px * var(--text-scale)) calc(12px * var(--text-scale)); background: var(--accent-soft);
+  border: 1px solid var(--accent); font-size: calc(13px * var(--text-scale)); line-height: 1.7; }
+.voice-paste { width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 10px 12px; font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: calc(12px * var(--text-scale)); line-height: 1.6; background: var(--field); color: var(--ink); border: 1px solid var(--control-border, var(--rule)); }
+.voice .err, .voice .warn-note, .voice .rejected { margin: 12px 0 0; padding: calc(9px * var(--text-scale)) calc(12px * var(--text-scale));
+  font-size: calc(12.5px * var(--text-scale)); line-height: 1.7; }
+.voice .warn-note { background: var(--accent-soft); border: 1px solid var(--accent); }
+.voice .rejected { background: var(--need-soft); border: 1px solid var(--need); }
+.voice .rejected ul { margin: 6px 0; padding-left: 1.3em; }
+.voice .rejected code { font-size: calc(12px * var(--text-scale)); }
+.voice-actions { display: flex; flex-wrap: wrap; gap: calc(8px * var(--text-scale)); margin-bottom: 10px; }
+.ok-note-inline { margin: 0 0 10px; font-size: calc(12.5px * var(--text-scale)); color: var(--ok); }
+.analyze details summary { cursor: pointer; margin: 6px 0 8px; font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
+
 .drop { display: grid; place-items: center; gap: 6px; padding: 28px; border: 2px dashed var(--rule);
   border-radius: 3px; cursor: pointer; color: var(--muted); font-size: calc(13px * var(--text-scale)); background: var(--paper); }
 .drop:hover { border-color: var(--accent); color: var(--ink-2); }

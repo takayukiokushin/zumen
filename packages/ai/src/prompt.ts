@@ -2,38 +2,10 @@ import { QUESTIONS, QUESTION_GROUPS } from '@zumen/knowledge';
 import { SYMBOLS } from '@zumen/symbols';
 
 /**
- * 手書きメモを読み取らせるための指示文を、ナレッジベースから組み立てる。
- * 記号や質問が増えても、この関数の中身を書き換える必要はない。
+ * 設備の読み取りで、気をつけること（手書きメモの読み取りと、音声入力の指示文で共通）。
+ * 「メモ」「図」は、読み取り元（手書きメモ・スケッチ・話された内容）のことを指す。
  */
-export function buildSystemPrompt(): string {
-  const groups = QUESTION_GROUPS.map((g) => {
-    const qs = QUESTIONS.filter((q) => q.group === g.id);
-    const lines = qs.map((q) => {
-      const opts = q.options?.length
-        ? `（${q.options.map((o) => `${o.value}=${o.label}${o.share ? `・${o.share}` : ''}`).join(' / ')}）`
-        : q.unit
-          ? `（単位: ${q.unit}）`
-          : '';
-      return `  - ${q.id}: ${q.label}${opts}${q.help ? ` ※${q.help}` : ''}`;
-    });
-    return `【${g.label}】\n${lines.join('\n')}`;
-  }).join('\n\n');
-
-  const symbols = SYMBOLS.map((s) => `  - ${s.abbr}（${s.nameJa}）`).join('\n');
-
-  return `あなたは高圧受電設備の単線結線図を作図する技術者の補助をします。
-現地調査で書かれた手書きメモ・ラフスケッチ・写真を読み取り、作図に必要な項目を埋めてください。
-
-# 最も大事なこと
-
-- **メモに書いてあることだけを読み取ってください。** 書いていないことを推測で埋めないでください。
-- 読み取れなかった項目は answers に入れないでください。空欄のまま人が答えます。
-- 読み取ったが自信がない項目は、answers に入れたうえで uncertain にもIDを入れてください。
-- この出力は「たたき台」です。最終的な正しさは有資格者が確認します。断定しすぎないでください。
-
-# 特に注意する点
-
-- **定格電圧は 7200V と 6600V を現場で使い分けます。** メモに書いてある値をそのまま読み取り、
+export const DOMAIN_RULES = `- **定格電圧は 7200V と 6600V を現場で使い分けます。** メモに書いてある値をそのまま読み取り、
   書いていなければ空欄にして questions で確認してください。どちらかに決め打ちしないでください。
 - **PFS形はVT・CTが入る現場と入らない現場があります。** メモの図から判断できないときは確認してください。
   CB形は構成上、DSの次にVT、VCBの下にCTが必ず入ります。
@@ -82,7 +54,41 @@ export function buildSystemPrompt(): string {
   ただし、**引込ケーブルが無い現場**があります（電柱の上に受電設備を構成する場合など。区分開閉器の後が、
   ケーブルを介さずふつうの電線でつながる）。図にケーブルの記載が無く、電線でつながっているときは、
   cableInstallation を none にしてください。定格電圧は 3300・6600・22000 のどれかです。
-- 長さが読み取れない場合は cableLength を空欄にしてください（図面には「- m」と記載されます）。
+- 長さが読み取れない場合は cableLength を空欄にしてください（図面には「- m」と記載されます）。`;
+
+/**
+ * 手書きメモを読み取らせるための指示文を、ナレッジベースから組み立てる。
+ * 記号や質問が増えても、この関数の中身を書き換える必要はない。
+ */
+export function buildSystemPrompt(): string {
+  const groups = QUESTION_GROUPS.map((g) => {
+    const qs = QUESTIONS.filter((q) => q.group === g.id);
+    const lines = qs.map((q) => {
+      const opts = q.options?.length
+        ? `（${q.options.map((o) => `${o.value}=${o.label}${o.share ? `・${o.share}` : ''}`).join(' / ')}）`
+        : q.unit
+          ? `（単位: ${q.unit}）`
+          : '';
+      return `  - ${q.id}: ${q.label}${opts}${q.help ? ` ※${q.help}` : ''}`;
+    });
+    return `【${g.label}】\n${lines.join('\n')}`;
+  }).join('\n\n');
+
+  const symbols = SYMBOLS.map((s) => `  - ${s.abbr}（${s.nameJa}）`).join('\n');
+
+  return `あなたは高圧受電設備の単線結線図を作図する技術者の補助をします。
+現地調査で書かれた手書きメモ・ラフスケッチ・写真を読み取り、作図に必要な項目を埋めてください。
+
+# 最も大事なこと
+
+- **メモに書いてあることだけを読み取ってください。** 書いていないことを推測で埋めないでください。
+- 読み取れなかった項目は answers に入れないでください。空欄のまま人が答えます。
+- 読み取ったが自信がない項目は、answers に入れたうえで uncertain にもIDを入れてください。
+- この出力は「たたき台」です。最終的な正しさは有資格者が確認します。断定しすぎないでください。
+
+# 特に注意する点
+
+${DOMAIN_RULES}
 
 # 読み取ってほしい項目
 
