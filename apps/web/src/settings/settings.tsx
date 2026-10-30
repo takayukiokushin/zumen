@@ -52,12 +52,19 @@ function load(): Settings {
   }
 }
 
+/**
+ * 文字の「標準」の大きさ。設定の「標準（1）」のときに、これだけ大きく出す。
+ * 設定の段階（小・標準・大…）は、この大きさを基準にした、相対の大きさのまま。
+ * 標準が小さめだったため、初めて見る人でも読みやすいよう、少し大きくした。
+ */
+export const BASE_TEXT_SCALE = 1.1;
+
 /** 設定を実際の画面に効かせる。CSS側はこの印と変数だけを見る */
 function applyToDocument(s: Settings): void {
   const el = document.documentElement;
   el.dataset.theme = s.theme;
   el.dataset.bold = s.bold ? 'on' : 'off';
-  el.style.setProperty('--text-scale', String(s.textScale));
+  el.style.setProperty('--text-scale', String(s.textScale * BASE_TEXT_SCALE));
   el.style.setProperty('--ui-scale', String(s.uiScale));
   el.lang = s.lang;
 }

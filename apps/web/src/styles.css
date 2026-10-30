@@ -26,7 +26,7 @@
   --font: "IPAGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
 
   /* 表示の設定（settings.tsx が書き換える） */
-  --text-scale: 1;
+  --text-scale: 1.1; /* settings.tsx の BASE_TEXT_SCALE と同じ値（読み込み直後の見た目をそろえるため） */
   --ui-scale: 1;
   --weight: 400;
   --weight-strong: 600;
@@ -106,7 +106,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .subgroup .fields { padding-top: 8px; padding-bottom: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
 .field label { font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); display: flex; gap: 6px; align-items: baseline; }
-.field .req { font-size: calc(10px * var(--text-scale)); color: var(--need); background: var(--need-soft); padding: 0 5px; border-radius: 2px; }
+.field .req { font-size: calc(10.5px * var(--text-scale)); color: var(--need); background: var(--need-soft); padding: 0 5px; border-radius: 2px; }
 .field .unit { font-size: calc(11px * var(--text-scale)); color: var(--muted); }
 .field input[type="text"], .field input[type="number"], .field input[type="date"], .field select {
   padding: 7px 10px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px; width: 100%; }
@@ -126,7 +126,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .chain li.series { background: var(--paper); }
 .chain li.inside { margin-left: 18px; color: var(--ink-2); }
 .chain li.branch-left, .chain li.branch-right { margin-left: 10px; color: var(--ink-2); }
-.chain .kind { flex: 0 0 auto; font-size: calc(10px * var(--text-scale)); color: var(--muted); width: 3.4em; }
+.chain .kind { flex: 0 0 auto; font-size: calc(10.5px * var(--text-scale)); color: var(--muted); width: 3.4em; }
 .chain .name { font-weight: 600; }
 .chain .lbl { display: block; font-size: calc(11px * var(--text-scale)); color: var(--muted); }
 .warn { margin-top: 16px; padding: 10px 12px; background: var(--need-soft); font-size: calc(12px * var(--text-scale)); color: var(--ink-2); }
@@ -172,7 +172,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .palette button:hover { border-color: var(--accent); background: var(--accent-soft); }
 .palette .thumb { display: grid; place-items: center; height: 46px; color: var(--ink); }
 .palette .thumb svg { max-width: 100%; max-height: 44px; }
-.palette .cap { font-size: calc(9.5px * var(--text-scale)); color: var(--muted); }
+.palette .cap { font-size: calc(10.5px * var(--text-scale)); color: var(--muted); }
 .canvas .handle { fill: #fff; stroke: var(--draw-accent); stroke-width: 1.5; cursor: pointer; }
 .canvas .handle:hover { fill: var(--draw-accent-soft); }
 .canvas .preview { stroke: var(--draw-accent); stroke-dasharray: 4 3; pointer-events: none; }
@@ -228,7 +228,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 14px 0; }
 .thumbs figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .thumbs img { width: 100%; height: 90px; object-fit: contain; background: var(--paper); border: 1px solid var(--rule-soft); }
-.thumbs figcaption { font-size: calc(10.5px * var(--text-scale)); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thumbs figcaption { font-size: calc(11px * var(--text-scale)); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .thumbs button { font-size: calc(11px * var(--text-scale)); padding: 3px; background: var(--field); border: 1px solid var(--rule); cursor: pointer; }
 button.primary { padding: 9px 18px; background: var(--accent-soft); border: 1px solid var(--accent);
   border-radius: 2px; cursor: pointer; font-size: calc(13.5px * var(--text-scale)); }
@@ -251,7 +251,7 @@ table.picked { width: 100%; border-collapse: collapse; font-size: calc(12.5px * 
 table.picked th, table.picked td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
 table.picked th { font-size: calc(11.5px * var(--text-scale)); color: var(--muted); font-weight: 400; }
 table.picked tr.uncertain { background: var(--accent-soft); }
-.warn-tag { font-size: calc(10px * var(--text-scale)); color: var(--accent-text); margin-left: 6px; }
+.warn-tag { font-size: calc(10.5px * var(--text-scale)); color: var(--accent-text); margin-left: 6px; }
 .notes { margin: 0; padding-left: 1.2em; font-size: calc(13px * var(--text-scale)); display: grid; gap: 6px; }
 
 /* ---- ログイン ---- */
