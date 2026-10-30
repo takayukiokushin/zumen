@@ -684,3 +684,12 @@ button.with-icon svg { flex: 0 0 auto; }
 .dialog-back { z-index: 300; }
 .dialog-input-row { display: flex; gap: var(--gap, 10px); align-items: stretch; margin-top: calc(6px * var(--text-scale)); }
 .dialog-input-row input { flex: 1 1 auto; min-width: 0; }
+
+/* ---- スマートフォン（幅の狭い画面）：設備を入力する画面は、1列にする ---- */
+@media (max-width: 700px) {
+  .app, .app.no-nav, .app.no-preview, .app.no-nav.no-preview { display: flex; flex-direction: column; overflow-y: auto; }
+  .app > .form { overflow: visible; flex: none; padding: calc(14px * var(--text-scale)) calc(12px * var(--text-scale)) 80px; }
+  /* 目次と「いまの構成」を開いたときは、入力欄の上に出す（高さは画面の半分までで、中を動かせる） */
+  .app > .preview { order: -1; flex: none; max-height: 45vh; overflow-y: auto; border-left: 0; border-bottom: 1px solid var(--rule); }
+  .app > .nav { order: -2; flex: none; max-height: 40vh; overflow-y: auto; border-right: 0; border-bottom: 1px solid var(--rule); }
+}

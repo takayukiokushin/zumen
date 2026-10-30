@@ -51,7 +51,8 @@ export function App() {
    * 読み取りを実行した直後も、ここを「はい」にする
    */
   const [sketchRead, setSketchRead] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  // スマホ（幅の狭い画面）では、入力欄を広く使うため、「いまの構成」は最初は隠しておく
+  const [showPreview, setShowPreview] = useState(() => !window.matchMedia?.('(max-width: 700px)').matches);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState('');
