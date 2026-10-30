@@ -739,7 +739,7 @@ button.with-icon svg { flex: 0 0 auto; }
 .paper-pick button[aria-pressed="true"]::before,
 .seg button[aria-pressed="true"]::before,
 .tools button.on::before {
-  content: "✓"; margin-right: .4em; font-weight: 700; color: var(--ink);
+  content: "✓"; margin-right: .4em; font-weight: 700; color: var(--ok);
 }
 .radio-row button[aria-pressed="true"],
 .paper-pick button[aria-pressed="true"],
