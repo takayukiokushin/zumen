@@ -58,8 +58,6 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
   const { ask } = useDialogs();
   return (
     <div className="tabbar">
-      <span className="title">{t('app.name')}</span>
-
       {TABS.map(([id, label, help]) =>
         enabled ? (
           <Tab key={id} label={t(label)} help={t(help)} pressed={tab === id} onClick={() => onTab(id)} />

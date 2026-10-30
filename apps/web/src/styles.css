@@ -463,7 +463,6 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 /* 上の帯：タブと、右端の社名・設定・ログアウト（㉙）                    */
 /* ------------------------------------------------------------------ */
 .tabbar { gap: var(--gap, 10px); padding: calc(7px * var(--text-scale)) calc(14px * var(--text-scale)); }
-.tabbar .title { font-size: calc(14.5px * var(--text-scale)); font-weight: var(--weight-strong); margin-right: calc(10px * var(--text-scale)); white-space: nowrap; }
 .tabbar { flex-wrap: wrap; row-gap: calc(6px * var(--text-scale)); }
 /* 右側（使い方・設定・利用者の管理・氏名・ログアウト）。左のタブと同じ段に入らないときは、2段目の右端に回る */
 .tabbar > .tabbar-right { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: var(--gap, 10px); margin-left: auto; flex: 0 1 auto; max-width: 100%; }
@@ -473,9 +472,8 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   line-height: 1.15; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
 .tabbar > * { flex: 0 0 auto; }
 
-/* 狭い画面（スマートフォン）：名前は1段目、4つのタブは2段目に等分、右側は3段目 */
+/* 狭い画面（スマートフォン）：4つのタブは1段目に等分、右側は2段目 */
 @media (max-width: 700px) {
-  .tabbar .title { flex: 1 0 100%; }
   .tabbar > button, .tabbar > .tab-wrap { flex: 1 1 0; min-width: 0; }
   .tabbar .tab-wrap button { width: 100%; }
   .tabbar > button, .tabbar .tab-wrap button { min-width: 0; padding-left: 4px; padding-right: 4px; white-space: normal; line-height: 1.3; }
