@@ -128,6 +128,32 @@ export function App() {
   const confirmLeave = async (): Promise<boolean> =>
     !dirty || ask({ title: t('project.unsavedTitle'), message: [`「${projectName}」${t('project.unsavedLeave')}`], confirmLabel: t('project.unsavedGo') });
 
+  /**
+   * 図面の名称を変える。事業場名称も、同じ名前に変わる。
+   * ただし、事業場名称を手で別の名前にしているときは、変えてよいかを、「はい／いいえ」で聞く。
+   * （空、または、これまでの図面の名称と同じなら、手で変えていないので、聞かずに自動で変える）
+   */
+  const renameProject = async (name: string) => {
+    const oldName = projectName.trim();
+    const next = name.trim();
+    setProjectName(name);
+    setDirty(true);
+    if (!next || next === oldName) return;
+    const site = String(answers.siteName ?? '').trim();
+    if (site === next) return;
+    if (site === '' || site === oldName) {
+      updateAnswers((prev) => ({ ...prev, siteName: next }));
+      return;
+    }
+    const yes = await ask({
+      title: t('project.site.title'),
+      message: [`${t('project.site.now')}「${site}」`, `${t('project.site.ask')}「${next}」`],
+      confirmLabel: t('dialog.yes'),
+      cancelLabel: t('dialog.no'),
+    });
+    if (yes) updateAnswers((prev) => ({ ...prev, siteName: next }));
+  };
+
   /** 開いている案件から離れるとき、編集中の印を外しておく */
   const leaveCurrent = async () => {
     if (projectId && !readOnly) await api.releaseLock(projectId).catch(() => undefined);
@@ -268,10 +294,7 @@ export function App() {
         listing={listing}
         // 一覧を開いているときに、もう一度押すと閉じる（開いている案件が無いときは、戻る先が無いので開いたまま）
         onList={() => setShowList((open) => (projectId ? !open : true))}
-        onRename={(name) => {
-          setProjectName(name);
-          setDirty(true);
-        }}
+        onRename={(name) => void renameProject(name)}
         onSave={() => void save()}
         readOnly={readOnly}
       />
