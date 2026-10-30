@@ -39,6 +39,15 @@ console.log('■ Claude用の指示文');
   for (const q of manual) ok(!text.includes(`- ${q.id}：`), `手入力の項目 ${q.id} が、項目の一覧に載っています`);
   ok(text.includes('お客様名称') || text.includes('事業場名称'), '「声に出さないでほしいもの」に、事業場名称などが書かれていません');
   ok(text.includes('聞かないでください') && text.includes('出力にも入れないでください'), '手入力の項目を、聞かない・出力に入れない、という指示がありません');
+  ok(!text.includes('アプリの中で入力してください」と'), '手入力の項目について、「アプリで入力してください」と案内する指示が残っています（案内は不要）');
+  // 聞き返しは、必ず確認すること（6つ）だけ。1回だけ。最初の一言は無い
+  ok(text.includes('必ず確認すること') && text.includes('まとめて1回だけ') && text.includes('もう聞き返さず'), '聞き返しを、1回だけ・必ず確認することだけにする指示がありません');
+  for (const id of ['sourceType', 'sectionalizer', 'mainBreakerForm', 'transformerCount', 'areaCount']) {
+    const sec = text.slice(text.indexOf('# 必ず確認すること'), text.indexOf('# 声に出さないでほしいもの'));
+    ok(sec.includes(`（${id}）`), `「必ず確認すること」に ${id} がありません`);
+  }
+  ok(!text.includes('現地の設備を教えてください'), '最初の一言の指示が残っています（やめる）');
+  ok(text.includes('細かい項目は、聞かないでください'), '細かい項目（定格など）は聞かない、という指示がありません');
   // そのほかの項目は、すべて載っている
   const missing = QUESTIONS.filter((q) => !q.manualOnly && !text.includes(`- ${q.id}：`));
   ok(missing.length === 0, `項目の一覧に載っていない項目があります（${missing.map((q) => q.id).slice(0, 5).join('、')}）`);
