@@ -25,6 +25,8 @@ interface History {
 const commit = (h: History, next: Doc): History => ({ past: [...h.past, h.present], present: next, future: [] });
 /** 矢印キーで1回に動かす距離（図面の座標。格子の間隔 2 の倍数） */
 const ARROW_STEP = 4;
+/** Shift キーを押しながら矢印キーを押したときは、この倍数だけ大きく動かす */
+const ARROW_SHIFT_TIMES = 5;
 /** 矢印キーを、この時間（ミリ秒）以内に続けて押したら、1回の操作にまとめる */
 const ARROW_MERGE_MS = 800;
 const ARROW_MOVE: Record<string, [number, number]> = {
@@ -173,7 +175,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         // 選んでいる要素を、矢印キーの向きに動かす（マウスでドラッグするのと同じ動かし方）
         e.preventDefault();
         const [ux, uy] = ARROW_MOVE[e.key]!;
-        const next: Doc = { ...moveItem(doc, selectedId, ux * ARROW_STEP, uy * ARROW_STEP), edited: true, basis: doc.basis };
+        const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
+        const next: Doc = { ...moveItem(doc, selectedId, ux * step, uy * step), edited: true, basis: doc.basis };
         const now = Date.now();
         const last = lastArrow.current;
         lastArrow.current = { id: selectedId, at: now };
