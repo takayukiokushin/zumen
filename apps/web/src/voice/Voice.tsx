@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Answers } from '@zumen/knowledge';
-import { VOICE_VERSION, buildReview, buildVoiceInstruction, buildVoiceItemList, parseVoiceResult } from '@zumen/ai';
+import { VOICE_VERSION, buildReview, buildVoiceInstruction, parseVoiceResult } from '@zumen/ai';
 import type { ReviewItem, VoiceParse } from '@zumen/ai';
 import { AnalysisReview } from '../analyze/AnalysisReview.tsx';
 
@@ -51,8 +51,6 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
   const seq = useRef(0);
 
   const full = useMemo(() => buildVoiceInstruction(), []);
-  const head = useMemo(() => buildVoiceInstruction({ listInline: false }), []);
-  const list = useMemo(() => buildVoiceItemList(), []);
 
   const copy = async (what: string, value: string) => {
     const ok = await copyText(value);
@@ -132,20 +130,21 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
 
       <section className="panel">
         <h2>Claude のプロジェクトを用意する（最初の1回だけ・管理する人）</h2>
+        <ol className="hint voice-steps">
+          <li>Claude のアプリで、プロジェクトを1つ新しく作ります。</li>
+          <li>
+            下の<b>「Claude用の指示文をコピー」</b>を押し、コピーした文章を、プロジェクトの<b>「指示」</b>の欄に、<b>そのまま全部</b>貼り付けます。
+          </li>
+          <li>プロジェクトを会社の人と共有します（全員が同じように使えます）。</li>
+        </ol>
         <p className="hint">
-          Claude で、プロジェクトを1つ作り、下の「指示文」を、プロジェクトの指示に入れます。会社の人と共有すれば、全員が同じように使えます。
-          質問を増やしたときは、新しい指示文を、入れ直してください（いまの版：<b>{VOICE_VERSION}</b>）。
+          この文章は、Claude に「どんな順番で聞き取り、どんな形の文章で答えるか」を教えるものです。
+          質問を増やしたときは、新しくコピーして、指示の欄を入れ替えてください（いまの版：<b>{VOICE_VERSION}</b>）。
           古い指示文で作られた文章を貼り付けると、アプリが知らせます。
         </p>
         <div className="voice-actions">
-          <button type="button" className="primary" onClick={() => void copy('指示文（全部）', full)}>
+          <button type="button" className="primary" onClick={() => void copy('指示文', full)}>
             Claude用の指示文をコピー
-          </button>
-          <button type="button" className="btn" onClick={() => void copy('指示文（項目の一覧なし）', head)}>
-            長すぎるとき：指示文だけをコピー
-          </button>
-          <button type="button" className="btn" onClick={() => void copy('項目の一覧', list)}>
-            項目の一覧だけをコピー（プロジェクトの知識に入れる）
           </button>
         </div>
         {copied && <p className="ok-note-inline">{copied}</p>}
