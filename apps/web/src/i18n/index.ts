@@ -39,7 +39,7 @@ const ja = {
 
   'project.choose': '案件を選ぶ',
   'project.list': '図面一覧',
-  'project.nameLabel': '図面:',
+  'project.nameLabel': '図面：',
   'project.new': '新しい案件',
   'project.newName': '案件の名前を入れてください。',
   'project.search': '名前で探す',
