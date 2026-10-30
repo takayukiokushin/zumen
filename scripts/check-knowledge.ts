@@ -593,6 +593,18 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
   const bat = (a: Answers) => shown(a).filter((q) => ['batteryCapacity', 'batteryTransformer'].includes(q.id)).map((q) => q.id);
   if (bat({ hasBattery: 'no' }).length > 0 || bat({ hasBattery: 'yes' }).length === 0) fail('蓄電所の質問の出方が違います');
   else console.log('  「ありますか？」の3つの質問は、いつも出る。蓄電所も、いいえなら規模・変圧器の質問は出ない');
+
+  // 蓄電池ユニットをつなぐ変圧器：初期値は、1台目。「つながない」を選べば、単独で置く
+  const q = QUESTIONS.find((x) => x.id === 'batteryTransformer');
+  if (q?.defaultValue !== '1') fail(`蓄電池ユニットをつなぐ変圧器の初期値が、1台目になっていません（${q?.defaultValue}）`);
+  const batt = (a: Answers) => buildComposition({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, hasBattery: 'yes', batteryCapacity: '2,000kW', ...a }).find((i) => i.role === 'battery');
+  const dflt = batt({});
+  const none = batt({ batteryTransformer: 'none' });
+  const second = batt({ batteryTransformer: '2' });
+  if (dflt?.kind !== 'feeder') fail('蓄電池ユニットが、変圧器につながる形（feeder）で入っていません');
+  else if (none?.kind !== 'free') fail('「つながない」を選んでも、単独（free）になっていません');
+  else if (second?.kind !== 'feeder') fail('2台目を選んでも、つながる形になっていません');
+  else console.log('  蓄電池ユニット：何も選ばなければ1台目の変圧器につなぐ／「つながない」なら単独／2台目も選べる');
 }
 
 console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／電灯および動力のV結線の容量');

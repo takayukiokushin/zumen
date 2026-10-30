@@ -1247,10 +1247,11 @@ export const QUESTIONS: Question[] = [
     label: '蓄電池ユニットは、どの変圧器につなぎますか？',
     type: 'select',
     options: TRANSFORMER_CHOICES,
-    defaultValue: 'none',
+    // 「はい」と答えたときの初期値は、1台目の変圧器
+    defaultValue: '1',
     showIf: { key: 'hasBattery', eq: 'yes' },
     ask: 'always',
-    help: 'つなぎ先が決まっていなければ「つながない」のままでよい',
+    help: '最初は、1台目の変圧器につなぐ設定になっている。つなぎ先が決まっていなければ「つながない」を選ぶ',
   },
 
   /* ---------------- 補助変圧器（系統用蓄電所のとき。台ごと） ---------------- */
