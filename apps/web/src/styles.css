@@ -201,6 +201,10 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .analyze h2 { margin: 0 0 6px; font-size: calc(16px * var(--text-scale)); }
 .analyze .hint { margin: 0 0 14px; font-size: calc(12.5px * var(--text-scale)); color: var(--muted); line-height: 1.7; }
 .analyze .hint b { color: var(--ink); }
+.analyze .privacy-note { margin: 0 0 14px; padding: calc(9px * var(--text-scale)) calc(14px * var(--text-scale));
+  border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 3px; color: var(--ink);
+  font-size: calc(12.5px * var(--text-scale)); line-height: 1.7; }
+.analyze .privacy-note b { display: block; }
 /* 音声入力から作成 */
 .voice-steps { margin: 0 0 12px; padding-left: 1.4em; }
 .voice-steps li { margin-bottom: 6px; }

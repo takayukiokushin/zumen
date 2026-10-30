@@ -121,6 +121,12 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
           この画面で確認して、採用するものだけを反映します。
         </p>
 
+        <p className="privacy-note">
+          <b>個人情報（お客様の名前・住所・電話番号など）は、書かないでください。</b>
+          個人情報が写っている画像は、選ばないでください。
+          選んだ画像は、読み取りのため、外部の AI に送られます。
+        </p>
+
         <label className="drop">
           <input type="file" accept="image/*" multiple onChange={(e) => void pick(e.target.files)} />
           <span>画像を選ぶ / ここにドラッグ</span>
