@@ -732,3 +732,18 @@ button.with-icon svg { flex: 0 0 auto; }
   .add-user label { min-width: 0; }
   .add-user input, .add-user select { min-width: 0; width: 100%; }
 }
+
+/* ---- 選んでいる状態は、色だけで知らせない：チェックマークと、太めの枠を付ける ---- */
+/* 対象：選ぶ形のボタン（あり／なし・受電方式・用紙と向き・言葉・明るさ・文字の大きさ・線を引くモード・印刷プレビュー） */
+.radio-row button[aria-pressed="true"]::before,
+.paper-pick button[aria-pressed="true"]::before,
+.seg button[aria-pressed="true"]::before,
+.tools button.on::before {
+  content: "✓"; margin-right: .4em; font-weight: 700; color: var(--ink);
+}
+.radio-row button[aria-pressed="true"],
+.paper-pick button[aria-pressed="true"],
+.seg button[aria-pressed="true"],
+.tools button.on { box-shadow: inset 0 0 0 1px var(--accent); }
+/* 上のタブは、チェックではなく、下に太い線を付ける */
+.tabbar button[aria-pressed="true"] { box-shadow: inset 0 -4px 0 var(--accent); font-weight: var(--weight-strong); }
