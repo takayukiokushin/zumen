@@ -636,16 +636,11 @@ button.with-icon svg { flex: 0 0 auto; }
 .ratings .rating .unit { color: var(--muted, inherit); font-size: 0.92em; }
 
 /* 図面一覧の「開く」「消す」：押し間違いを防ぐため、間隔を広げ、「開く」は2倍・「消す」は半分の幅にする（標準の幅は84） */
-.joblist .jobs td.row-actions { gap: calc(40px * var(--text-scale)); flex-wrap: nowrap; }
-.joblist .jobs .row-actions .job-open { width: calc(168px * var(--text-scale)); min-width: calc(168px * var(--text-scale)); }
-.joblist .jobs .row-actions .job-delete {
-  /* 半分の幅。ほかの言語で文字が長いときだけ、文字が収まる幅まで広げる */
-  width: calc(42px * var(--text-scale));
-  min-width: min-content;
-  padding-left: 4px;
-  padding-right: 4px;
-  white-space: nowrap;
-}
+/* 一覧：左から「開く」・名前・更新日時・（「消す」は右端）。「開く」は、名前のすぐ左に小さく置き、「消す」と離す */
+.joblist .jobs .c-act { width: calc(84px * var(--text-scale)); white-space: nowrap; }
+.joblist .jobs .c-act .btn { min-width: 0; width: 100%; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
+.joblist .jobs .c-del { width: calc(76px * var(--text-scale)); text-align: right; white-space: nowrap; }
+.joblist .jobs .c-del .btn { min-width: 0; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
 /* 狭い画面（スマートフォン）では、表をやめて、1つの案件を1枚のカードにする（名前・日時・ボタンを縦に並べる） */
 @media (max-width: 640px) {
   /* 検索欄は1段目いっぱいに、件数と「新しい案件」は2段目に */
@@ -663,9 +658,17 @@ button.with-icon svg { flex: 0 0 auto; }
   .joblist .jobs td { display: block; padding: 0; border: 0; }
   .joblist .jobs td.when { white-space: normal; }
   .joblist .jobs td[data-label]::before { content: attr(data-label) "："; }
-  .joblist .jobs td.row-actions { display: flex; flex-wrap: nowrap; justify-content: stretch; gap: var(--gap, 10px); margin-top: calc(6px * var(--text-scale)); }
-  .joblist .jobs .row-actions .job-open, .joblist .jobs .row-actions .btn.primary { flex: 1 1 auto; width: auto; min-width: 0; }
-  .joblist .jobs .row-actions .job-delete { flex: 0 0 auto; width: auto; min-width: calc(72px * var(--text-scale)); padding-left: 12px; padding-right: 12px; }
+  /* カード：1行目は名前、次に日時、最後に、ボタン（左に「開く」、右に「消す」）。「開く」と「消す」は、横いっぱいに離れる */
+  .joblist .jobs tr { grid-template-columns: 1fr auto; align-items: center; }
+  .joblist .jobs .c-name { grid-column: 1 / -1; order: 1; }
+  .joblist .jobs .c-info { grid-column: 1 / -1; order: 2; }
+  .joblist .jobs .c-act { grid-column: 1 / -1; order: 3; width: auto; margin-top: calc(6px * var(--text-scale)); }
+  .joblist .jobs tr.has-del .c-act { grid-column: 1; }
+  .joblist .jobs .c-del { order: 4; grid-column: 2; width: auto; margin-top: calc(6px * var(--text-scale)); }
+  /* 「開く」は左に、「消す」は右端に。間を広くあけて、押し間違いを防ぐ */
+  .joblist .jobs .c-act { justify-self: start; }
+  .joblist .jobs .c-act .btn { width: auto; min-width: calc(128px * var(--text-scale)); }
+  .joblist .jobs .c-del { justify-self: end; }
 }
 
 /* 受電設備エリアが2か所以上のとき：エリアごとの大きなまとまり */

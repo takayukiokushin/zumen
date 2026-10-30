@@ -163,28 +163,21 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
           <table className="jobs">
             <thead>
               <tr>
+                <th className="c-act" />
                 <th>{t('project.name')}</th>
                 <th>{t('project.updated')}</th>
-                <th />
+                <th className="c-del" />
               </tr>
             </thead>
             <tbody>
               {shown.map((p) => (
-                <tr key={p.id} className={p.id === currentId ? 'current' : ''}>
-                  <td>
-                    <span className="name">
-                      <Highlight text={p.name} needle={q.trim()} />
-                    </span>
-                    {p.lock && p.lock.userId !== meId && (
-                      <b className="editing">　{p.lock.userName}さんが{t('project.editing')}</b>
-                    )}
-                    {p.file_count > 0 && <span className="when">　写真{p.file_count}枚</span>}
-                  </td>
-                  <td className="when">{new Date(p.updated_at).toLocaleString(lang)}</td>
-                  <td className="row-actions">
+                <tr key={p.id} className={`has-del${p.id === currentId ? ' current' : ''}`}>
+                  {/* 「開く」は、名前のすぐ左に。「消す」は、右端に離して置く（押し間違いを防ぐ） */}
+                  <td className="c-act">
                     <button
                       type="button"
                       className="btn primary job-open"
+                      aria-label={`${p.name}を${t('project.open')}`}
                       onClick={() => {
                         // 開いている案件に戻るだけなら、何も失わないので確認しない
                         void (async () => {
@@ -195,6 +188,18 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     >
                       {t('project.open')}
                     </button>
+                  </td>
+                  <td className="c-name">
+                    <span className="name">
+                      <Highlight text={p.name} needle={q.trim()} />
+                    </span>
+                    {p.lock && p.lock.userId !== meId && (
+                      <b className="editing">　{p.lock.userName}さんが{t('project.editing')}</b>
+                    )}
+                    {p.file_count > 0 && <span className="when">　写真{p.file_count}枚</span>}
+                  </td>
+                  <td className="when c-info">{new Date(p.updated_at).toLocaleString(lang)}</td>
+                  <td className="c-del">
                     <button
                       type="button"
                       className="btn danger job-delete"
@@ -223,26 +228,26 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
               <table className="jobs">
                 <thead>
                   <tr>
+                    <th className="c-act" />
                     <th>{t('project.name')}</th>
                     <th>{t('project.updated')}</th>
-                    <th />
                   </tr>
                 </thead>
                 <tbody>
                   {sources.map((p) => (
                     <tr key={p.id}>
-                      <td>
-                        <span className="name">{p.name}</span>
-                        {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
-                      </td>
-                      <td className="when">
-                        {new Date(p.updatedAt).toLocaleString(lang)}
-                        {p.updatedBy ? `（${p.updatedBy}）` : ''}
-                      </td>
-                      <td className="row-actions">
+                      <td className="c-act">
                         <button type="button" className="btn primary" onClick={() => void copyToPractice(p)}>
                           {t('project.practice.copy')}
                         </button>
+                      </td>
+                      <td className="c-name">
+                        <span className="name">{p.name}</span>
+                        {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
+                      </td>
+                      <td className="when c-info">
+                        {new Date(p.updatedAt).toLocaleString(lang)}
+                        {p.updatedBy ? `（${p.updatedBy}）` : ''}
                       </td>
                     </tr>
                   ))}
@@ -261,29 +266,29 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
             <table className="jobs">
               <thead>
                 <tr>
+                  <th className="c-act" />
                   <th>{t('project.name')}</th>
                   <th>{t('project.trashDeleted')}</th>
                   <th>{t('project.trashPurge')}</th>
-                  <th />
                 </tr>
               </thead>
               <tbody>
                 {trash.map((p) => (
                   <tr key={p.id}>
-                    <td>
-                      <span className="name">{p.name}</span>
-                      {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
-                    </td>
-                    <td className="when" data-label={t('project.trashDeleted')}>
-                      {new Date(p.deletedAt).toLocaleString(lang)}
-                      {p.deletedBy ? `（${p.deletedBy}）` : ''}
-                    </td>
-                    <td className="when" data-label={t('project.trashPurge')}>{new Date(p.purgeAt).toLocaleDateString(lang)}</td>
-                    <td className="row-actions">
+                    <td className="c-act">
                       <button type="button" className="btn primary" onClick={() => void restore(p.id, p.name)}>
                         {t('project.restore')}
                       </button>
                     </td>
+                    <td className="c-name">
+                      <span className="name">{p.name}</span>
+                      {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
+                    </td>
+                    <td className="when c-info" data-label={t('project.trashDeleted')}>
+                      {new Date(p.deletedAt).toLocaleString(lang)}
+                      {p.deletedBy ? `（${p.deletedBy}）` : ''}
+                    </td>
+                    <td className="when c-info" data-label={t('project.trashPurge')}>{new Date(p.purgeAt).toLocaleDateString(lang)}</td>
                   </tr>
                 ))}
               </tbody>
