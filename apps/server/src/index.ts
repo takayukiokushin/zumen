@@ -142,10 +142,22 @@ function lanAddresses(): string[] {
 }
 
 const port = Number(process.env.PORT ?? 8787);
-serve({ fetch: app.fetch, port }, (info) => {
+/**
+ * どこからの接続を受けるか。
+ * 何も書かなければ、社内の他のパソコンからも直接つなげる（これまでどおり）。
+ * .env に LISTEN_HOST=127.0.0.1 と書くと、このパソコンの中からしかつなげなくなる
+ * （社内の他のパソコンは、https の住所だけを使う。通信が暗号化される）。
+ */
+const listenHost = process.env.LISTEN_HOST?.trim() || undefined;
+const closedToLan = listenHost === '127.0.0.1' || listenHost === 'localhost' || listenHost === '::1';
+serve({ fetch: app.fetch, port, ...(listenHost ? { hostname: listenHost } : {}) }, (info) => {
   console.log(`サーバーを起動しました: http://127.0.0.1:${info.port}`);
-  for (const address of lanAddresses()) {
-    console.log(`  社内の他のパソコンからは: http://${address}:${info.port}`);
+  if (closedToLan) {
+    console.log('  社内の他のパソコンからは、この住所では開けません（https の住所を使ってください）。');
+  } else {
+    for (const address of lanAddresses()) {
+      console.log(`  社内の他のパソコンからは: http://${address}:${info.port}`);
+    }
   }
   if (listUsers().length === 0) {
     console.warn('※ 利用者が登録されていません。`pnpm --filter @zumen/server user:add <ID> <名前> <パスワード>` で追加してください。');

@@ -158,6 +158,37 @@ try {
   const health = (await (await fetch(`${base}/api/health`)).json()) as { userCount: number };
   check('登録した利用者が見えている', health.userCount === 5, `${health.userCount}人`);
 
+  /* ---------- 3b. 社内の直接のつなぎ方を閉じる設定 ---------- */
+  say('\n■ 社内からの直接のつなぎ方を閉じる設定（LISTEN_HOST）');
+  {
+    const port2 = await freePort();
+    const s2 = spawn(
+      process.execPath,
+      ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'apps/server/src/index.ts'],
+      { cwd: ROOT, env: { ...process.env, ...env, PORT: String(port2), LISTEN_HOST: '127.0.0.1' } },
+    );
+    let log2 = '';
+    s2.stdout?.on('data', (d) => (log2 += String(d)));
+    s2.stderr?.on('data', (d) => (log2 += String(d)));
+    let up2 = false;
+    for (let i = 0; i < 40 && !up2; i++) {
+      await sleep(500);
+      up2 = await fetch(`http://127.0.0.1:${port2}/api/health`).then((r) => r.ok).catch(() => false);
+    }
+    check('LISTEN_HOST=127.0.0.1 でも、このパソコンの中からは開ける', up2);
+    const lan = Object.values((await import('node:os')).networkInterfaces())
+      .flatMap((l) => l ?? [])
+      .find((n) => n.family === 'IPv4' && !n.internal)?.address;
+    if (lan) {
+      const viaLan = await fetch(`http://${lan}:${port2}/api/health`, { signal: AbortSignal.timeout(3000) }).then((r) => r.ok).catch(() => false);
+      check('LISTEN_HOST=127.0.0.1 のときは、社内側の住所からは開けない', !viaLan, `${lan}`);
+    } else {
+      ok('（このパソコンには社内側の住所が無いため、閉じたことの確認は省略）');
+    }
+    check('閉じたことを、起動のときの表示で知らせる', log2.includes('https の住所を使ってください'));
+    s2.kill();
+  }
+
   /* ---------- 4. 画面の配信 ---------- */
   say('\n■ 画面の配信');
   for (const [path, type] of [
@@ -176,6 +207,9 @@ try {
     const csp = r.headers.get('content-security-policy') ?? '';
     check('画面に、外のスクリプトを動かさない決まりが付いている', csp.includes("script-src 'self'") && csp.includes("frame-ancestors 'none'"), csp ? '' : '無し');
     check('他のサイトに埋め込まれない・種類を決め直されない', r.headers.get('x-frame-options') === 'DENY' && r.headers.get('x-content-type-options') === 'nosniff');
+    check('http で届いたときは、https 専用の覚え込みは付けない', r.headers.get('strict-transport-security') === null);
+    const viaHttps = await fetch(base + '/', { headers: { 'x-forwarded-proto': 'https' } });
+    check('https で届いたときは、今後 http では入らないよう覚えさせる', (viaHttps.headers.get('strict-transport-security') ?? '').includes('max-age='));
     const api = await fetch(base + '/api/health');
     check('通信（API）の返事にも同じ決まりが付く', api.headers.get('x-content-type-options') === 'nosniff');
   }

@@ -28,6 +28,8 @@ export const securityHeaders: MiddlewareHandler = async (c, next) => {
   c.header('x-content-type-options', 'nosniff');
   c.header('x-frame-options', 'DENY');
   c.header('referrer-policy', 'same-origin');
+  // HTTPS で届いたときは、この住所には、今後 http では入らないよう、ブラウザに覚えさせる（半年）
+  if (isHttps(c)) c.header('strict-transport-security', 'max-age=15552000');
   // 現地写真など、自分で個別に決めているときは、そちらを優先する
   if (!c.res.headers.has('content-security-policy')) c.header('content-security-policy', CSP);
 };
