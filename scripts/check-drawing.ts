@@ -1894,6 +1894,49 @@ console.log('\n■ 記号を消したあとの「結線を整える」（余白�
       else console.log(`  詰めたあとの間隔：上の記号の下端から、下の記号の上端まで ${Math.round(gap)}`);
     }
   }
+  // 全体の間隔を整える：長すぎる帯は縮め、狭すぎる帯は広げる。自動で作った図面は、そのまま
+  {
+    /** 指定の高さより下のものを、まとめて dy だけ動かす（手で動かして間隔が変わった図面を作る。縦線は伸び縮みする） */
+    const slide = (d: Doc, from: number, dy: number): Doc => ({
+      ...d,
+      items: d.items.map((it) => {
+        if (it.kind === 'wire') return { ...it, y1: it.y1 >= from ? it.y1 + dy : it.y1, y2: it.y2 >= from ? it.y2 + dy : it.y2, at1: undefined, at2: undefined };
+        return it.y >= from ? { ...it, y: it.y + dy } : it;
+      }) as Doc['items'],
+    });
+    const posOf = (d: Doc) => d.items.filter((it): it is DocSymbol => it.kind === 'symbol').map((it) => `${it.id}:${Math.round(it.y)}`).join(',');
+    const clean = tidyDrawing(base, 'A3', 'landscape');
+    if (posOf(clean.doc) !== posOf(base)) fail('自動で作った図面が、「結線を整える」で動いてしまいました（間隔の整え直しが、強すぎます）');
+    else console.log('  自動で作った図面は、「結線を整える」を押しても、間隔が動かない');
+    for (const n of [1, 2, 3]) {
+      const t = readFileSync(new URL(`../docs/voice-samples/sample-${n}-claude-output.txt`, import.meta.url), 'utf8');
+      const sa: Answers = { receivingVoltage: 6600, siteName: 'x', ...JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).answers };
+      const sd = fromLayout(layout(buildComposition(sa), sa));
+      const sr = tidyDrawing(sd, 'A3', 'landscape');
+      if (posOf(sr.doc) !== posOf(sd) || sr.fixed.gap !== 0) fail(`音声入力の例 ${n} の図面が、「結線を整える」で動いてしまいました`);
+    }
+    const ds = base.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'ds');
+    if (!ds) fail('DSが見つかりません');
+    else {
+      const long = slide(base, ds.y, 120);
+      const r1 = tidyDrawing(long, 'A3', 'landscape');
+      const bad1 = r1.issues.filter((i) => ['floating', 'through', 'overlap', 'skew'].includes(i.kind));
+      if (!(height(r1.doc) < height(long) - 60) || r1.fixed.gap < 1) fail(`間延びした図面が縮んでいません（${Math.round(height(long))} → ${Math.round(height(r1.doc))}）`);
+      else if (bad1.length) fail(`縮めたあとに問題が出ました（${bad1.map((i) => i.message).slice(0, 2).join(' / ')}）`);
+      else console.log(`  間延びした図面（DSの上に 120 の隙間）：高さ ${Math.round(height(long))} → ${Math.round(height(r1.doc))}`);
+      const tight = slide(base, ds.y, -14);
+      const r2 = tidyDrawing(tight, 'A3', 'landscape');
+      const upper = r2.doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'vct-indoor-2');
+      const dsAfter = r2.doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'ds');
+      const gapNow = upper && dsAfter ? dsAfter.y + rotatedBox(getSymbolDef(dsAfter.symbolId).box, dsAfter.rotate).dy - (upper.y + getSymbolDef('vct').box.h) : -1;
+      const bad2 = r2.issues.filter((i) => ['floating', 'through', 'overlap', 'skew'].includes(i.kind));
+      if (gapNow < 11.5) fail(`詰まりすぎた間隔が広がっていません（${Math.round(gapNow)}）`);
+      else if (bad2.length) fail(`広げたあとに問題が出ました（${bad2.map((i) => i.message).slice(0, 2).join(' / ')}）`);
+      else console.log(`  詰まりすぎた間隔（2）：${Math.round(gapNow)} に広がる`);
+      const again = tidyDrawing(r1.doc, 'A3', 'landscape');
+      if (posOf(again.doc) !== posOf(r1.doc)) fail('整えたあとに、もう一度押すと、さらに動きます');
+    }
+  }
   // 横に並んだ変圧器の1台を消したときは、同じ高さに、ほかの変圧器が残っているので、動かさない
   {
     const three: Answers = { ...a, transformerCount: 3, trConnection__2: 'tr-3p-dy', trConnection__3: 'tr-3p-dy' };

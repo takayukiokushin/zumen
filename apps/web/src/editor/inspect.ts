@@ -47,7 +47,7 @@ export const ISSUE_LABEL: Record<IssueKind, string> = {
   overlap: '重なっている文字',
   skew: '斜めになっている線',
   paper: '用紙に収まりきらない',
-  gap: '詰めた余白',
+  gap: '整えた間隔',
 };
 
 /**
@@ -397,6 +397,87 @@ function drawnBox(it: DocSymbol): Box {
 }
 
 /**
+ * 帯（上の機器の下端 lo と、下の機器の上端 hi の間）より下のものを、shift だけ上へ動かす（マイナスなら下へ）。
+ * 記号・文字・枠は、hi より下にあるものをまとめて動かす。線は、端ごとに見る（帯をまたいでいる縦線は、伸び縮みする）。
+ */
+function shiftBelow(doc: Doc, lo: number, hi: number, shift: number): Doc {
+  const mid = (lo + hi) / 2;
+  const up = (y: number) => (y >= mid ? y - shift : y);
+  return {
+    ...doc,
+    items: doc.items.map((it): DocItem => {
+      if (it.kind === 'wire') return { ...it, y1: up(it.y1), y2: up(it.y2) };
+      if (it.kind === 'symbol') return drawnBox(it).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
+      if (it.kind === 'text') return textBox(it.x, it.y, it.lines, it.anchor).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
+      return it.y >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
+    }),
+  };
+}
+
+/**
+ * 横幅いっぱいに何も無い帯のうち、長すぎるものは縮め、狭すぎるものは広げて、機器どうしの間隔を整える。
+ *
+ * 自動で作った図面に出てくる帯（いちばん長いもので 55 ほど）は、そのままにする。
+ * - BAND_LONG より長い帯 → BAND_LONG_TO に縮める
+ * - BAND_NARROW より狭い帯 → BAND_NARROW_TO に広げる
+ * 帯の上と下が同じ高さに並んだほかの機器や文字があるところは、帯にならないので動かさない。
+ * 下の帯から順に直す（上の帯の位置が、動かなくて済む）。
+ */
+const BAND_LONG = 64;
+const BAND_LONG_TO = 40;
+const BAND_NARROW = 4;
+const BAND_NARROW_TO = 12;
+function balanceBands(doc: Doc): { doc: Doc; fixed: number } {
+  let cur = doc;
+  let fixed = 0;
+  for (const band of [...emptyBands(doc)].reverse()) {
+    const g = band.y1 - band.y0;
+    const want = g > BAND_LONG ? BAND_LONG_TO : g < BAND_NARROW ? BAND_NARROW_TO : g;
+    if (Math.abs(want - g) < 0.5) continue;
+    cur = shiftBelow(cur, band.y0, band.y1, g - want);
+    fixed++;
+  }
+  return { doc: applyAnchors(cur), fixed };
+}
+
+/** 図面に描かれているもの（記号・文字・枠・横の線）の範囲。縦の線は、動かすと伸び縮みするので数えない */
+function contentBoxes(doc: Doc, joinLabels = false): Box[] {
+  const boxes: Box[] = [];
+  for (const it of doc.items) {
+    if (it.kind === 'symbol') {
+      const body = drawnBox(it);
+      if (it.label.length === 0) {
+        boxes.push(body);
+        continue;
+      }
+      const lb = textBox(it.x + it.labelDx, it.y + it.labelDy, it.label, it.labelAnchor);
+      // 記号と文字を1つのかたまりとして数えると、文字だけが帯の向こう側に取り残されない
+      if (joinLabels) boxes.push({ x0: Math.min(body.x0, lb.x0), y0: Math.min(body.y0, lb.y0), x1: Math.max(body.x1, lb.x1), y1: Math.max(body.y1, lb.y1) });
+      else boxes.push(body, lb);
+    } else if (it.kind === 'text') {
+      boxes.push(textBox(it.x, it.y, it.lines, it.anchor));
+    } else if (it.kind === 'frame') {
+      boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
+    } else if (it.y1 === it.y2 && it.x1 !== it.x2) {
+      boxes.push({ x0: Math.min(it.x1, it.x2), y0: it.y1 - 0.5, x1: Math.max(it.x1, it.x2), y1: it.y1 + 0.5 });
+    }
+  }
+  return boxes;
+}
+
+/** 横幅いっぱいに、何も描かれていない横の帯（上端・下端）。上から順 */
+export function emptyBands(doc: Doc): { y0: number; y1: number }[] {
+  const spans = contentBoxes(doc, true).map((b) => [b.y0, b.y1] as const).sort((a, b) => a[0] - b[0]);
+  const bands: { y0: number; y1: number }[] = [];
+  let reach = -Infinity;
+  for (const [a, b] of spans) {
+    if (reach > -Infinity && a > reach + 0.5) bands.push({ y0: reach, y1: a });
+    reach = Math.max(reach, b);
+  }
+  return bands;
+}
+
+/**
  * 4 記号を消して空いた余白を詰める。
  *
  * 消した記号が占めていた高さ（Doc.vacated）のまわりを見て、横幅いっぱいに何も無い帯になっていれば、
@@ -414,19 +495,7 @@ function closeVacatedBands(doc: Doc): { doc: Doc; closed: number } {
   // 下のものから順に詰める（上のものの座標が、動かなくて済む）
   for (const v of [...vacated].sort((a, b) => b.y0 - a.y0)) {
     // 横幅いっぱいを見て、その高さに残っているもの（縦の線は、伸び縮みするので数えない）
-    const boxes: Box[] = [];
-    for (const it of cur.items) {
-      if (it.kind === 'symbol') {
-        boxes.push(drawnBox(it));
-        if (it.label.length > 0) boxes.push(textBox(it.x + it.labelDx, it.y + it.labelDy, it.label, it.labelAnchor));
-      } else if (it.kind === 'text') {
-        boxes.push(textBox(it.x, it.y, it.lines, it.anchor));
-      } else if (it.kind === 'frame') {
-        boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
-      } else if (it.y1 === it.y2 && it.x1 !== it.x2) {
-        boxes.push({ x0: Math.min(it.x1, it.x2), y0: it.y1 - 0.5, x1: Math.max(it.x1, it.x2), y1: it.y1 + 0.5 });
-      }
-    }
+    const boxes = contentBoxes(cur);
     if (boxes.some((b) => b.y0 < v.y1 - 0.5 && b.y1 > v.y0 + 0.5)) continue;
     const lo = Math.max(-Infinity, ...boxes.filter((b) => b.y1 <= v.y0 + 0.5).map((b) => b.y1));
     const hi = Math.min(Infinity, ...boxes.filter((b) => b.y0 >= v.y1 - 0.5).map((b) => b.y0));
@@ -434,18 +503,7 @@ function closeVacatedBands(doc: Doc): { doc: Doc; closed: number } {
     const shift = hi - lo - GAP_AFTER_DELETE;
     if (shift < 1) continue;
 
-    // hi より下のものを、shift だけ上へ。線は、端ごとに見る（またいでいる縦線は縮む）
-    const mid = (lo + hi) / 2;
-    const up = (y: number) => (y >= mid ? y - shift : y);
-    cur = {
-      ...cur,
-      items: cur.items.map((it): DocItem => {
-        if (it.kind === 'wire') return { ...it, y1: up(it.y1), y2: up(it.y2) };
-        if (it.kind === 'symbol') return drawnBox(it).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
-        if (it.kind === 'text') return textBox(it.x, it.y, it.lines, it.anchor).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
-        return it.y >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
-      }),
-    };
+    cur = shiftBelow(cur, lo, hi, shift);
     closed++;
   }
   return { doc: applyAnchors(cur), closed };
@@ -967,6 +1025,11 @@ export function tidyDrawing(
   const gap = closeVacatedBands(next);
   next = gap.doc;
   fixed.gap += gap.closed;
+
+  // 全体の間隔：長すぎる帯は縮め、狭すぎる帯は広げる（自動で作った図面の間隔は、そのまま）
+  const bal = balanceBands(next);
+  next = bal.doc;
+  fixed.gap += bal.fixed;
 
   // まず、どこにもつながっていない斜めの線をまっすぐにする
   const fw = straightenFreeWires(next);
