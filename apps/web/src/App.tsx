@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ConnectionError, LockedError, StaleError } from './session/api.ts';
 import { SAVE_RETRY } from './session/messages.ts';
 import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
 import { HearingForm } from './HearingForm.tsx';
+import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
 import { Analyze } from './analyze/Analyze.tsx';
@@ -33,6 +34,8 @@ export function App() {
   const lang = useLang();
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [tab, setTab] = useState<Tab>('hearing');
+  /** 「設備を入力して作成」のスクロール位置。別のタブへ移って戻ったときに、同じ位置へ戻すため */
+  const hearingScroll = useRef(newScrollStore());
   /** 案件の一覧を出しているか（㉚）。案件を開いていないときは必ず一覧 */
   const [showList, setShowList] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -441,7 +444,7 @@ export function App() {
               onGoToHearing={() => setTab('hearing')}
             />
           ) : (
-            <div className="hearing-pane">
+            <KeepScroll store={hearingScroll.current} projectId={projectId} className="hearing-pane">
               <div className="panel-bar">
                 <button type="button" className="panel-toggle" aria-pressed={!showNav} onClick={() => setShowNav((v) => !v)}>
                   {showNav ? `◀ ${t('hearing.hideNav')}` : `▶ ${t('hearing.showNav')}`}
@@ -459,7 +462,7 @@ export function App() {
                 <HearingForm answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} sketchRead={sketchRead} />
                 {showPreview && <CompositionPreview answers={effective} />}
               </div>
-            </div>
+            </KeepScroll>
           )}
         </Shield>
       </div>
