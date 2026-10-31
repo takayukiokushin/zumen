@@ -154,6 +154,8 @@ const ja = {
   'project.unsavedLeave': 'には、保存していない変更があります。別の案件を開いたり新しく作ったりすると、その変更は消えます。続けますか。',
   'project.unsavedTitle': '保存していない変更',
   'project.unsavedGo': '別の案件へ進む',
+  'project.autoSaveLeave': '現在編集中の内容は、自動で保存されます。よろしいですか？',
+  'project.autoSaveTitle': '別の案件を開く',
 
   'role.admin': '管理用',
   'role.member': '標準',
@@ -367,6 +369,8 @@ const en: Dict = {
   'project.unsavedLeave': ' has unsaved changes. Opening or creating another job will discard them. Continue?',
   'project.unsavedTitle': 'Unsaved changes',
   'project.unsavedGo': 'Leave without saving',
+  'project.autoSaveLeave': 'What you are editing now will be saved automatically. Continue?',
+  'project.autoSaveTitle': 'Open another job',
 
   'role.admin': 'Admin',
   'role.member': 'Standard',
@@ -578,6 +582,8 @@ const fr: Dict = {
   'project.unsavedLeave': ' contient des modifications non enregistrées. Ouvrir ou créer une autre affaire les fera perdre. Continuer ?',
   'project.unsavedTitle': 'Modifications non enregistrées',
   'project.unsavedGo': 'Continuer sans enregistrer',
+  'project.autoSaveLeave': 'Ce que vous modifiez en ce moment sera enregistré automatiquement. Continuer ?',
+  'project.autoSaveTitle': 'Ouvrir un autre dossier',
 
   'role.admin': 'Administrateur',
   'role.member': 'Standard',
@@ -785,6 +791,8 @@ const zh: Dict = {
   'project.unsavedLeave': ' 中有尚未保存的更改。打开或新建其他项目后，这些更改将丢失。要继续吗？',
   'project.unsavedTitle': '有未保存的更改',
   'project.unsavedGo': '不保存并离开',
+  'project.autoSaveLeave': '当前正在编辑的内容将自动保存。确定继续吗？',
+  'project.autoSaveTitle': '打开其他案件',
 
   'role.admin': '管理',
   'role.member': '标准',
@@ -994,6 +1002,8 @@ const ko: Dict = {
   'project.unsavedLeave': '에 저장하지 않은 변경이 있습니다. 다른 건을 열거나 새로 만들면 그 변경이 사라집니다. 계속하시겠습니까?',
   'project.unsavedTitle': '저장되지 않은 변경',
   'project.unsavedGo': '저장하지 않고 이동',
+  'project.autoSaveLeave': '지금 편집 중인 내용은 자동으로 저장됩니다. 계속하시겠습니까?',
+  'project.autoSaveTitle': '다른 안건 열기',
 
   'role.admin': '관리용',
   'role.member': '표준',

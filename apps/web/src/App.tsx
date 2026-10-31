@@ -123,10 +123,19 @@ export function App() {
 
   /**
    * 保存していない変更があるとき、別の案件へ移ってよいかを確かめる。
+   * 「実行」なら、いまの内容を保存してから、移る（保存できなかったときは、移らずに今の案件に留まる）。
+   * 「キャンセル」なら、何もせず、今の案件に留まる。編集中のデータが消えないことを、いちばん大事にする。
    * 移ってよい（または、失うものが無い）なら true。
    */
-  const confirmLeave = async (): Promise<boolean> =>
-    !dirty || ask({ title: t('project.unsavedTitle'), message: [`「${projectName}」${t('project.unsavedLeave')}`], confirmLabel: t('project.unsavedGo') });
+  const confirmLeave = async (): Promise<boolean> => {
+    if (!dirty) return true;
+    // 他の人が編集中で、保存できない状態のときは、自動で保存できないので、変更が消えることを伝える
+    if (readOnly) {
+      return ask({ title: t('project.unsavedTitle'), message: [`「${projectName}」${t('project.unsavedLeave')}`], confirmLabel: t('project.unsavedGo') });
+    }
+    if (!(await ask({ title: t('project.autoSaveTitle'), message: [t('project.autoSaveLeave')] }))) return false;
+    return save();
+  };
 
   /**
    * 図面の名称を変える。事業場名称も、同じ名前に変わる。
@@ -211,8 +220,9 @@ export function App() {
     }
   };
 
-  const save = async (force = false) => {
-    if (!projectId) return;
+  /** 保存する。保存できたら true（別の端末で更新されていた・通信できなかったなどのときは false） */
+  const save = async (force = false): Promise<boolean> => {
+    if (!projectId) return false;
     setSaving(true);
     setError(null);
     try {
@@ -227,16 +237,18 @@ export function App() {
       setBaseUpdatedAt(r.updatedAt);
       setStale(null);
       setDirty(false);
+      return true;
     } catch (e) {
       if (e instanceof StaleError) {
         // 画面の内容はそのまま残し、上書きするか読み込み直すかを選んでもらう
         setStale({ updatedAt: e.updatedAt, by: e.updatedByName });
-        return;
+        return false;
       }
       if (e instanceof LockedError) setLockedBy(e.lock);
       // 通信が届かなかったときは、つながってからもう一度保存すればよいと伝える
       const retry = e instanceof ConnectionError ? SAVE_RETRY : '';
       setError(`${e instanceof Error ? e.message : '保存できませんでした。'}${retry}`);
+      return false;
     } finally {
       setSaving(false);
     }
