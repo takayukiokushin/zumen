@@ -1141,6 +1141,23 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(sendRoles({ sendoutSwitch: 'ds', sendoutGroundRelay: 'dgr' }) === 'sendout-ds', 'DSだけのとき、DGRの答えが残っていても、描いています');
   ok(sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr', hasZpd: 'no' }) === 'sendout-vcb', 'ZPDが「ない」のとき、送り出しのDGRを描いています');
   ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:hasOvgr': 'yes', 'a2:mainGroundRelay': 'dgr' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => /ovgr|zct|ground/.test(r)).join() === 'main-zct,main-ground-relay,ovgr', '2か所目のOVGR・DGRが入っていません');
+  // ZCTの取り付け位置（DGRを選んだときだけ聞く）
+  ok(!gq(cbBase).has('mainZctPos') && gq({ ...cbBase, mainGroundRelay: 'dgr' }).has('mainZctPos'), 'ZCTの位置の質問が、DGRを選んだときだけ出るはずです');
+  const zOpts = (QUESTIONS.find((q) => q.id === 'mainZctPos')?.options ?? []).map((o) => o.value).join(',');
+  ok(zOpts === 'cable,bus-primary,bus-secondary', `ZCTの位置の選択肢が違います（${zOpts}）`);
+  const zRoles = (a: Answers) => buildComposition({ ...cbBase, mainGroundRelay: 'dgr', ...a }).map((i) => i.role).filter((r) => ['cable-head-site', 'ds', 'main-zct', 'main-ground-relay', 'main-breaker', 'ct'].includes(r)).join('>');
+  const zc = zRoles({});
+  ok(zc.indexOf('main-zct') < zc.indexOf('cable-head-site') && zc.indexOf('main-ground-relay') < zc.indexOf('cable-head-site'), `既定（高圧ケーブル）では、ZCT・DGRが引込ケーブル側に入るはずです（${zc}）`);
+  ok(zRoles({ mainZctPos: 'bus-primary' }) === 'cable-head-site>ds>main-zct>main-ground-relay>main-breaker>ct', `母線の一次側の並びが違います（${zRoles({ mainZctPos: 'bus-primary' })}）`);
+  ok(zRoles({ mainZctPos: 'bus-secondary' }) === 'cable-head-site>ds>main-breaker>main-zct>main-ground-relay>ct', `母線の二次側の並びが違います（${zRoles({ mainZctPos: 'bus-secondary' })}）`);
+  for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
+    ok(buildComposition({ ...cbBase, mainGroundRelay: 'dgr', mainZctPos: pos }).filter((i) => i.role === 'trip-coil').length === 1, `ZCTの位置が ${pos} のとき、TCが1つに共有されていません`);
+  }
+  ok(!zRoles({ mainGroundRelay: 'none', mainZctPos: 'bus-primary' }).includes('main-zct'), 'DGRなしのとき、位置の答えが残っていてもZCTを描いています');
+  ok(sq({ ...two, sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' }).has('sendoutZctPos') && !sq({ ...two, sendoutSwitch: 'vcb' }).has('sendoutZctPos'), '送り出しのZCTの位置の質問が、DGRを選んだときだけ出るはずです');
+  // 送り出しは、並びそのものは同じで、位置は ZCT の pos に載る（上下の入れ替えは作図側）
+  const sZpos = (pos: string) => buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', hasZpd: 'yes', sendoutSwitch: 'ds-vcb', sendoutGroundRelay: 'dgr', sendoutZctPos: pos }).find((i) => i.role === 'sendout-zct')?.pos;
+  ok(['cable', 'bus-primary', 'bus-secondary'].every((p) => sZpos(p) === p), `送り出しのZCTの位置の答えが、図に渡っていません（${['cable', 'bus-primary', 'bus-secondary'].map(sZpos).join()}）`);
   // 並び：位置を選ぶと、ZPD・LAがその位置に動く（OVGRは、ZPDの有無だけでは入らない）。LAとZPDは別々の記号
   const order = (a: Answers) =>
     buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', ...a })

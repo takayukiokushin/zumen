@@ -2282,6 +2282,51 @@ console.log('\n■ DGRの遮断（TC）');
   }
 }
 
+/* ---------- DGRのZCTの取り付け位置（高圧ケーブル／開閉器の一次側／二次側）---------- */
+{
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', mainGroundRelay: 'dgr' };
+  const wireAtP = (d: ReturnType<typeof layout>, x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+  const problems = (d: ReturnType<typeof layout>) => findLabelCollisions(d).length > 0 ? '文字が重なっています' : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
+  const posName: Record<string, string> = { cable: '高圧ケーブル', 'bus-primary': '開閉器の一次側', 'bus-secondary': '開閉器の二次側' };
+  for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
+    for (const [name, extra] of [['VCB（OCRあり）', {}], ['VCB（DGRだけ）', { relayCount: '0' }], ['LBS', { mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3 }]] as [string, Answers][]) {
+      const a: Answers = { ...base, mainZctPos: pos, ...extra };
+      const d = layout(buildComposition(a), a);
+      const tcs = d.symbols.filter((s) => s.symbolId === 'trip-coil');
+      const z = d.symbols.find((s) => s.role === 'main-zct');
+      const r = d.symbols.find((s) => s.role === 'main-ground-relay');
+      const brk = d.symbols.find((s) => s.role === 'main-breaker');
+      const label = `主遮断装置・ZCT=${posName[pos]}・${name}`;
+      if (tcs.length !== 1 || !z || !r || !brk) { fail(`${label}：TC（${tcs.length}個）・ZCT・DGR・開閉器のどれかが足りません`); continue; }
+      const zSec = portAbs(z, 'sec');
+      const rl = portAbs(r, 'l');
+      const cableSide = pos === 'cable';
+      const ordered = cableSide ? true : pos === 'bus-primary' ? z.y < brk.y : z.y > brk.y;
+      const bad = !ordered ? 'ZCTの上下の位置が違います' : !wireAtP(d, zSec.x, zSec.y) || !wireAtP(d, rl.x, rl.y) ? 'ZCTとDGRが、線でつながっていません' : problems(d);
+      if (bad) fail(`${label}：${bad}`);
+      else console.log(`  ${label}：ZCT＋DGR、TCは1つ。線・文字が重ならない`);
+    }
+  }
+  for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
+    for (const [name, sw] of [['VCB', 'vcb'], ['DS＋VCB', 'ds-vcb'], ['LBS', 'lbs']] as const) {
+      const a: Answers = { ...base, mainGroundRelay: 'none', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: sw, sendoutGroundRelay: 'dgr', sendoutZctPos: pos };
+      const d = layout(buildComposition(a), a);
+      const z = d.symbols.find((s) => s.id === 'sendout-zct');
+      const r = d.symbols.find((s) => s.id === 'sendout-ground-relay');
+      const t = d.symbols.find((s) => s.id === 'sendout-trip-coil');
+      const brk = d.symbols.find((s) => s.id === (sw === 'lbs' ? 'sendout-lbs' : 'sendout-vcb'));
+      const label = `送り出し（${name}）・ZCT=${posName[pos]}`;
+      if (!z || !r || !t || !brk) { fail(`${label}：ZCT・DGR・TC・開閉器のどれかが描かれていません`); continue; }
+      const zSec = portAbs(z, 'sec');
+      const rl = portAbs(r, 'l');
+      const ordered = pos === 'bus-primary' ? z.y < brk.y : z.y > brk.y;
+      const bad = !ordered ? 'ZCTの上下の位置が違います' : !wireAtP(d, zSec.x, zSec.y) || !wireAtP(d, rl.x, rl.y) ? 'ZCTとDGRが、線でつながっていません' : problems(d);
+      if (bad) fail(`${label}：${bad}`);
+      else console.log(`  ${label}：ZCT＋DGR＋TC。線・文字が重ならない`);
+    }
+  }
+}
+
 /* ---------- 3か所以上のエリア：どのエリアから分岐するか、エリアごとに違ってよい ---------- */
 console.log('\n■ 3か所以上のエリアのつなぎ方（1→2→3、1→2と1→3、4か所など）');
 {

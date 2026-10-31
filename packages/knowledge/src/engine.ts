@@ -859,10 +859,16 @@ const INSTRUMENT_ROLES: ReadonlySet<string> = new Set([...VT_ROLES, 'ct', 'relay
  *   - トリップコイルは、VCBとOCRの両方があるときだけ入れ、OCRとつなぐ
  */
 function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
-  const blockAt = items.findIndex((i) => INSTRUMENT_ROLES.has(i.role));
-  if (blockAt < 0) return items;
-  const rest = items.filter((i) => !INSTRUMENT_ROLES.has(i.role));
-  const inst = items.filter((i) => INSTRUMENT_ROLES.has(i.role));
+  // 主遮断装置のDGR用のZCTを、母線（主遮断装置の一次側・二次側）に付けるときは、その位置へ動かすため、CT・VTなどと一緒に並べ直す
+  // （ZCTの横のDGRも、ZCTと一緒に動かす）
+  const busZct = items.find((i) => i.role === 'main-zct' && (i.pos === 'bus-primary' || i.pos === 'bus-secondary'));
+  const isInst = (i: PlacedItem) => INSTRUMENT_ROLES.has(i.role) || (busZct !== undefined && (i === busZct || i.role === 'main-ground-relay'));
+  const firstInst = items.findIndex((i) => INSTRUMENT_ROLES.has(i.role));
+  if (firstInst < 0 && !busZct) return items;
+  const rest = items.filter((i) => !isInst(i));
+  const inst = items.filter(isInst);
+  // CT・VT・継電器のかたまりが入っていた位置（rest の中の何番目か）。CT・VTなどが無いときは、最後
+  const blockAt = firstInst >= 0 ? items.slice(0, firstInst).filter((i) => !isInst(i)).length : rest.length;
 
   const unitOf = (i: PlacedItem) => i.unit ?? 0;
   const ctOf = new Map<number, PlacedItem>();
@@ -884,6 +890,11 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
   };
 
   for (const i of inst) {
+    // 主遮断装置の一次側：VCB・LBSの手前（CT・VTのあと）。二次側：VCB・LBSのすぐ後ろ（CTの前）
+    if (i === busZct || (busZct && i.role === 'main-ground-relay')) {
+      put(i, busZct.pos === 'bus-primary' ? 3 : 4, busZct.pos === 'bus-primary' ? 99 : -1, i === busZct ? 0 : 1);
+      continue;
+    }
     if (i.role === 'ct') put(i, ctStage(i), unitOf(i), 0);
     else if (i.role === 'ds-vt-pf' || i.role === 'ds-vt' || i.role === 'site-vt-pf' || i.role === 'site-vt') {
       put(i, i.role.startsWith('ds') ? 1 : 5, unitOf(i), i.role.endsWith('-pf') ? 0 : 1);
@@ -967,7 +978,7 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
   // トリップコイル：主遮断装置（VCB・LBS）ごとに1つ。OCR（VCBのとき）・主遮断装置のDGR・GRのうち、付いているものを、すべて、このコイルにつなぐ
   const coil = inst.find((i) => i.role === 'trip-coil');
   const mainBreaker = rest.find((i) => i.role === 'main-breaker');
-  const grounds = rest.filter((i) => i.role === 'main-ground-relay').map((i) => i.id);
+  const grounds = [...rest, ...inst].filter((i) => i.role === 'main-ground-relay').map((i) => i.id);
   const ocrTrips = ocr && mainBreaker?.symbolId === 'vcb' ? [ocr.id] : [];
   if (coil && mainBreaker && (mainBreaker.symbolId === 'vcb' || mainBreaker.symbolId === 'lbs-pf' || mainBreaker.symbolId === 'lbs') && (ocrTrips.length > 0 || grounds.length > 0)) {
     keyOf.set(coil, [9, 0, 0, 0]);

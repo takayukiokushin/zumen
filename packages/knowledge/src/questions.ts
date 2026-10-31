@@ -1179,6 +1179,23 @@ export const QUESTIONS: Question[] = [
       'ZPDを「なし」にすると、DGRも描かない（「あり」に戻すと、また描く）',
   },
   {
+    // 主遮断装置のDGRのZCTを、どこに付けるか。ほとんどは、高圧ケーブル
+    id: 'mainZctPos',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'DGRのZCTの取り付け位置は？',
+    type: 'select',
+    options: [
+      { value: 'cable', label: '高圧ケーブル（引込の高圧ケーブル）' },
+      { value: 'bus-primary', label: '母線（主遮断装置の一次側）' },
+      { value: 'bus-secondary', label: '母線（主遮断装置の二次側）' },
+    ],
+    defaultValue: 'cable',
+    dropdown: true,
+    showIf: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { any: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'intakeLbs', eq: 'yes' }] }] },
+    ask: 'always',
+    help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、主遮断装置の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
+  },
+  {
     id: 'hasLa',
     group: 'receiving', section: 'ZPD・LA・接地',
     label: '受電設備内にLA（避雷器）はありますか？',
@@ -1638,6 +1655,26 @@ export const QUESTIONS: Question[] = [
     help:
       '送り出しの開閉器が、VCB・LBS・DS＋VCBのときだけ答える（DSだけでは遮断できない）。DGRは、このエリアにZPDがあるときだけ選べる。' +
       'DGRを選ぶと、送り出しの高圧ケーブルにZCTを付け、DGRをZCTの横に描き、DGRから送り出しの開閉器まで、TC（遮断の線）を描く',
+  },
+
+  {
+    // 送り出しの開閉器のDGRのZCTを、どこに付けるか。ほとんどは、高圧ケーブル（送り出しの高圧ケーブル）
+    id: 'sendoutZctPos',
+    group: 'sendout',
+    label: 'DGRのZCTの取り付け位置は？',
+    type: 'select',
+    options: [
+      { value: 'cable', label: '高圧ケーブル（送り出しの高圧ケーブル）' },
+      { value: 'bus-primary', label: '母線（送り出しの開閉器の一次側）' },
+      { value: 'bus-secondary', label: '母線（送り出しの開閉器の二次側）' },
+    ],
+    defaultValue: 'cable',
+    dropdown: true,
+    showIf: {
+      all: [SENDOUT_SHOWN, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }, { key: 'hasZpd', eq: 'yes' }],
+    },
+    ask: 'always',
+    help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
   },
 
   /* ---------------- エリア間の接続（2か所目以降のエリア） ---------------- */

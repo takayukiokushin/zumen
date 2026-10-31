@@ -254,19 +254,14 @@ export const UPSTREAM: Placement[] = [
     note: 'この枠から下がキュービクル（電気室）の中。高圧マンション（電柱上構成）のときは描かない',
   },
   {
-    role: 'cable-head-site',
-    symbolId: 'cable-head',
-    kind: 'series',
-    when: { key: 'cableInstallation', ne: 'none' },
-    note: '受電側の端末。同じ記号を180°回転して使う',
-  },
-  {
-    // 主遮断装置に付くDGR：ZCTは、引込の高圧ケーブルに付ける（受電側の端末のすぐ下）。DGRは、ZCTの横。
+    // 主遮断装置に付くDGR：ZCTは、初期値では、引込の高圧ケーブルに付ける（ケーブルの受電側の端末の手前）。DGRは、ZCTの横。
+    // 「母線」を選んだときは、主遮断装置の一次側・二次側（下のDOWNSTREAMの、同じ役割の記号）。
     // DGRは、ZPDが「ある」ときだけ（ZPDとDGRの間に、線は引かない）
     role: 'main-zct',
     symbolId: 'zct',
     kind: 'series',
-    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+    posFrom: 'mainZctPos',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { not: { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] } }] },
     note: '主遮断装置のDGR用のZCT。引込の高圧ケーブルに付ける',
   },
   {
@@ -275,6 +270,13 @@ export const UPSTREAM: Placement[] = [
     kind: 'branch-right',
     when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
     connectFrom: ['main-zct'],
+  },
+  {
+    role: 'cable-head-site',
+    symbolId: 'cable-head',
+    kind: 'series',
+    when: { key: 'cableInstallation', ne: 'none' },
+    note: '受電側の端末。同じ記号を180°回転して使う',
   },
   {
     role: 'vct-indoor',
@@ -465,6 +467,15 @@ export const DOWNSTREAM: Placement[] = [
     labelTemplate: ['責任分界点'],
     note: '3点不一致（約1%）。主遮断装置の図記号の中央に横線を引き、「責任分界点」と記載する',
   },
+  {
+    // 主遮断装置のDGR用のZCTを、母線に付けるとき（主遮断装置の一次側・二次側）。位置は、engine が、主遮断装置の前後に置く
+    role: 'main-zct',
+    symbolId: 'zct',
+    kind: 'series',
+    posFrom: 'mainZctPos',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] }] },
+    note: '主遮断装置のDGR用のZCT。母線（主遮断装置の一次側または二次側）に付ける',
+  },
   ...INSTRUMENTS,
   {
     role: 'zpd',
@@ -515,19 +526,12 @@ export const AREA_CHAIN: Placement[] = [
     labelTemplate: ['{areaLabel}'],
   },
   {
-    // ケーブルを受ける側の端末（1か所目の「受電側の端末」と同じ。180°回して使う）
-    role: 'cable-head-site',
-    symbolId: 'cable-head',
-    kind: 'series',
-    when: { all: [{ key: 'linkCable', ne: 'no' }, { not: { key: 'areaForm', eq: 'apartment-pole' } }] },
-    note: 'エリアの枠の中の、ケーブルを受ける端末',
-  },
-  {
-    // 主遮断装置に付くDGR（1か所目と同じ）：ZCTは、このエリアの引込の高圧ケーブルに付け、DGRは、ZCTの横。ZPDが「ある」ときだけ
+    // 主遮断装置に付くDGR（1か所目と同じ）：ZCTは、初期値では、このエリアの引込の高圧ケーブルに付け、DGRは、ZCTの横。ZPDが「ある」ときだけ
     role: 'main-zct',
     symbolId: 'zct',
     kind: 'series',
-    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+    posFrom: 'mainZctPos',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { not: { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] } }] },
   },
   {
     role: 'main-ground-relay',
@@ -535,6 +539,14 @@ export const AREA_CHAIN: Placement[] = [
     kind: 'branch-right',
     when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
     connectFrom: ['main-zct'],
+  },
+  {
+    // ケーブルを受ける側の端末（1か所目の「受電側の端末」と同じ。180°回して使う）
+    role: 'cable-head-site',
+    symbolId: 'cable-head',
+    kind: 'series',
+    when: { all: [{ key: 'linkCable', ne: 'no' }, { not: { key: 'areaForm', eq: 'apartment-pole' } }] },
+    note: 'エリアの枠の中の、ケーブルを受ける端末',
   },
   {
     // このエリアの受電側にも電柱があって、PAS（区分開閉器）が付いている場合（2か所目以降だけ）。ASとは別の機器
@@ -589,6 +601,15 @@ export const AREA_CHAIN: Placement[] = [
     labelTemplate: ['LBS', '{lbsRatedVoltage}V', '{lbsRatedCurrent}A'],
     props: { ratedVoltage: 'lbsRatedVoltage', ratedCurrent: 'lbsRatedCurrent' },
   },
+  {
+    // 主遮断装置のDGR用のZCTを、母線に付けるとき（主遮断装置の一次側・二次側）。位置は、engine が、主遮断装置の前後に置く
+    role: 'main-zct',
+    symbolId: 'zct',
+    kind: 'series',
+    posFrom: 'mainZctPos',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] }] },
+    note: '主遮断装置のDGR用のZCT。母線（主遮断装置の一次側または二次側）に付ける',
+  },
   ...INSTRUMENTS,
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
   { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { all: [{ key: 'hasZpd', eq: 'yes' }, { key: 'hasOvgr', eq: 'yes' }] }, connectFrom: ['zpd'] },
@@ -628,6 +649,7 @@ export const SENDOUT: Placement[] = [
     role: 'sendout-zct',
     symbolId: 'zct',
     kind: 'sendout',
+    posFrom: 'sendoutZctPos',
     when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
   {
