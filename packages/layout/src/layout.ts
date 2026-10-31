@@ -1080,8 +1080,12 @@ const AREA_GAP = 140;
 const TAP_OFFSET = 8;
 /** 同じエリアから出る、高さの違う線の幹どうしの間隔 */
 const TRUNK_STEP = 10;
-/** 送り出しのDGRの中心が、送り出しの線より上にある高さ */
-const DGR_RISE = 70;
+/** 送り出しの開閉器の縦の並び：すきまの左の端から並びの縦線まで／並びから右へ伸びる幅（文字まで）／DGR・TCがあるときの幅／並びどうしの間隔／ZCTの二次側からDGRまで */
+const STACK_LEFT = 28;
+const STACK_W = 96;
+const STACK_W_GROUND = 164;
+const STACK_STEP = 40;
+const DGR_OFFSET = 40;
 /** ケーブルの端末から、幹の縦線までの距離 */
 const HEAD_MARGIN = 10;
 /** 送り出しの開閉器の前後・あいだの線の長さ */
@@ -1187,16 +1191,19 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const coil = pick('sendout-trip-coil');
     return zct && relay && coil ? { zct, relay, coil } : undefined;
   };
-  /** ZCT（横向き）の幅と、前後の線 */
-  const zctRun = (area: number) => (groundOf(area) ? getSymbol('zct').box.h + SENDOUT_GAP * 2 : 0);
-  const runOf = (area: number) => sendoutsOf(area).reduce((w, i) => w + getSymbol(i.symbolId).box.h + SENDOUT_GAP, SENDOUT_GAP);
 
-  /** エリアの手前（左）のすきまの広さ。そのエリアの左のエリアから出る線の幹と、送り出しの開閉器が入る広さ */
+  /** 送り出しの開閉器の縦の並び（DS・VCB・ZCT・端末）の、すきまの左の端からの位置と、右へ伸びる幅（DGR・TCがあると広い） */
+  const stackW = (area: number) => (groundOf(area) ? STACK_W_GROUND : STACK_W);
+  /** エリアの手前（左）のすきまの広さ。そのエリアの左のエリアから出る線の幹と、送り出しの開閉器の並びが入る広さ */
   const gapBefore = (p: number): number => {
     const mine = trunks.filter((x) => x.from === p - 1);
     if (mine.length === 0) return AREA_GAP;
-    // 送り出しの開閉器と、ケーブルの端末（40）が、すきまの中に入る広さ
-    const run = (sendoutsOf(p - 1).length > 0 ? runOf(p - 1) - SENDOUT_GAP : 0) + zctRun(p - 1) + getSymbol('cable-head').box.h + HEAD_MARGIN + SENDOUT_GAP + 12;
+    if (sendoutsOf(p - 1).length > 0) {
+      const w = stackW(p - 1);
+      return Math.max(AREA_GAP, STACK_LEFT + mine.length * (w + STACK_STEP) + TRUNK_STEP * mine.length + 40);
+    }
+    // ケーブルの端末（横向き）が、すきまの中に入る広さ
+    const run = getSymbol('cable-head').box.h + HEAD_MARGIN + SENDOUT_GAP + 12;
     return Math.max(AREA_GAP, 2 * run, 2 * (TRUNK_STEP * mine.length + 20));
   };
 
@@ -1247,8 +1254,16 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     .forEach((l, i) => lanes.set(l, i + 1));
   const ey = baseTop;
   const tyOf = (l: LinkInfo) => ey - LINK_RISE - (lanes.get(l) ?? 0) * laneStep;
-  /** 幹の、縦の線の位置（元のエリアの右のすきまの真ん中から、幹ごとに少しずつ右へ） */
+  /** すきまの左の端（元のエリアなどの右の端）。このエリアの左の端から、すきまの広さを引いた位置 */
+  const gapLeftOf = (from: number): number => {
+    const next = moved[from + 1];
+    return next ? next.part.result.bounds.x0 + next.dx - gapBefore(from + 1) : moved[from]!.part.result.bounds.x1 + moved[from]!.dx;
+  };
+  /** 送り出しの開閉器の並び（縦）の、縦線の位置 */
+  const stackX = (tr: Trunk): number => gapLeftOf(tr.from) + STACK_LEFT + tr.index * (stackW(tr.from) + STACK_STEP);
+  /** 幹の、縦の線の位置（送り出しの開閉器があるときは、並びの右。無いときは、すきまの真ん中から、幹ごとに少しずつ右へ） */
   const trunkX = (tr: Trunk): number => {
+    if (sendoutsOf(tr.from).length > 0) return stackX(tr) + stackW(tr.from) + TRUNK_STEP;
     const next = moved[tr.from + 1];
     const base = next ? next.part.result.bounds.x0 + next.dx - gapBefore(tr.from + 1) / 2 : moved[tr.from]!.part.result.bounds.x1 + moved[tr.from]!.dx + AREA_GAP / 2;
     return base + TRUNK_STEP * tr.index;
@@ -1264,113 +1279,79 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const tops = tr.links.map(tyOf);
     const topY = Math.min(...tops);
 
-    // 送り出しの開閉器（幹の手前に、横向きに並べる）
+    // 送り出しの開閉器：母線から横に出た線を、90度曲げて、下向きに、ふつうの向きで、DS・VCB・ZCT・ケーブルの端末を並べる。そのあと、横へ
     const sends = sendoutsOf(tr.from);
-    let cableFrom = sx;
-    let lastSwitchCenterX = sx;
+    // 並びの下の端（ここから、横へケーブルを引く）。送り出しの開閉器が無いときは、分岐の高さ
+    let endY = sy;
     if (sends.length > 0) {
       const gr = groundOf(tr.from);
-      const runStart = gx - (tr.cable ? HEAD_MARGIN + getSymbol('cable-head').box.h + SENDOUT_GAP : 12) - zctRun(tr.from) - (runOf(tr.from) - SENDOUT_GAP);
-      if (runStart - sx > 0.5) {
-        wires.push({ x1: sx, y1: sy, x2: runStart, y2: sy });
-        ext(sx, sy, runStart, sy);
-      }
-      let cx = runStart;
+      const xs = stackX(tr);
       // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、IDに印を付ける
       const sfx = tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`;
-      for (const it of sends) {
-        const def = getSymbol(it.symbolId);
-        const inP = portOf(def, 'in') ?? def.ports[0]!;
-        const outP = portOf(def, 'out') ?? def.ports[def.ports.length - 1]!;
-        // 入口が左、出口が右になる向きに回す
-        const rotate = [-90, 90].find((r) => flip(def, inP.x, inP.y, r)[0] < flip(def, outP.x, outP.y, r)[0]) ?? -90;
-        const [ix, iy] = flip(def, inP.x, inP.y, rotate);
-        const [ox] = flip(def, outP.x, outP.y, rotate);
-        const rb = rotatedBox(def.box, rotate);
+      wires.push({ x1: sx, y1: sy, x2: xs, y2: sy });
+      ext(sx, sy, xs, sy);
+      let y = sy;
+      /** 縦の並びに、記号を1つ置く。入口を、いまの位置から SENDOUT_GAP 下に。出口の高さを返す */
+      const stackPut = (id: string, role: string, symbolId: string, label: string[]): PlacedSymbol => {
+        const d0 = getSymbol(symbolId);
+        const ip = portOf(d0, 'in') ?? d0.ports[0]!;
+        const op = portOf(d0, 'out') ?? d0.ports[d0.ports.length - 1]!;
+        const entryY = y + SENDOUT_GAP;
+        wires.push({ x1: xs, y1: y, x2: xs, y2: entryY });
         const sym: PlacedSymbol = {
-          id: `${it.id}${sfx}`,
-          role: `${it.role}${sfx}`,
-          symbolId: it.symbolId,
-          x: cx - ix,
-          y: sy - iy,
-          rotate,
-          label: it.label,
-          // 遮断の線（TC）を上から下ろすときは、文字を、記号の下に書く（線と重ならないように）
-          labelAt: gr
-            ? { x: cx - ix + def.box.w / 2, y: sy - iy + rb.dy + rb.h + 12, anchor: 'middle' }
-            : { x: cx - ix + def.box.w / 2, y: sy - iy + rb.dy - 6 - (it.label.length - 1) * LABEL_LINE, anchor: 'middle' },
+          id, role, symbolId, x: xs - ip.x, y: entryY - ip.y, rotate: 0, label,
+          labelAt: { x: xs - ip.x + d0.box.w + LABEL_GAP, y: entryY - ip.y + 10, anchor: 'start' },
         };
-        lastSwitchCenterX = sym.x + def.box.w / 2;
         symbols.push(sym);
-        ext(sym.x + rb.dx, sym.y + rb.dy, sym.x + rb.dx + rb.w, sym.y + rb.dy + rb.h);
-        const exitX = cx - ix + ox;
-        cx = exitX + SENDOUT_GAP;
-        if (it !== sends[sends.length - 1]) {
-          wires.push({ x1: exitX, y1: sy, x2: cx, y2: sy });
-        } else {
-          cableFrom = exitX;
-        }
-      }
-      // 送り出しの開閉器に付くDGR：ZCT（送り出しのケーブルに、横向きに）→ DGR（ZCTの上）。TC（遮断の線）は、開閉器の上に置いて、DGRとつなぐ
-      if (gr) {
+        ext(sym.x, sym.y, sym.x + d0.box.w, sym.y + d0.box.h);
+        y = sym.y + op.y;
+        ext(xs, entryY, xs, y);
+        return sym;
+      };
+      let breaker: PlacedSymbol | undefined;
+      for (const it of sends) breaker = stackPut(`${it.id}${sfx}`, `${it.role}${sfx}`, it.symbolId, it.label);
+      // 送り出しの開閉器に付くDGR：ZCTは、送り出しの高圧ケーブルに（開閉器の次）。DGRは、ZCTの横。TCは、開閉器の横
+      if (gr && breaker) {
+        const bdef = getSymbol(breaker.symbolId);
+        const bOut = portOf(bdef, 'out') ?? bdef.ports[bdef.ports.length - 1]!;
+        const linkY = breaker.y + bOut.y;
+        const zsym = stackPut(`${gr.zct.id}${sfx}`, `${gr.zct.role}${sfx}`, 'zct', []);
         const zdef = getSymbol('zct');
-        const zin = portOf(zdef, 'in')!;
-        const zout = portOf(zdef, 'out')!;
         const zsec = portOf(zdef, 'sec')!;
-        const zrot = [-90, 90].find((r) => flip(zdef, zin.x, zin.y, r)[0] < flip(zdef, zout.x, zout.y, r)[0]) ?? -90;
-        const [zix, ziy] = flip(zdef, zin.x, zin.y, zrot);
-        const [zox] = flip(zdef, zout.x, zout.y, zrot);
-        const [zsx, zsy] = flip(zdef, zsec.x, zsec.y, zrot);
-        const zrb = rotatedBox(zdef.box, zrot);
-        const zEntry = cableFrom + SENDOUT_GAP;
-        wires.push({ x1: cableFrom, y1: sy, x2: zEntry, y2: sy });
-        const zsym: PlacedSymbol = {
-          id: `${gr.zct.id}${sfx}`, role: `${gr.zct.role}${sfx}`, symbolId: 'zct',
-          x: zEntry - zix, y: sy - ziy, rotate: zrot, label: [],
-          labelAt: { x: zEntry - zix, y: sy - ziy, anchor: 'start' },
-        };
-        symbols.push(zsym);
-        ext(zsym.x + zrb.dx, zsym.y + zrb.dy, zsym.x + zrb.dx + zrb.w, zsym.y + zrb.dy + zrb.h);
-        cableFrom = zEntry - zix + zox;
-        const secX = zsym.x + zsx;
-        const secY = zsym.y + zsy;
-        // DGR：ZCTの二次側の端子（上）から、上へ、右へ
+        const secX = zsym.x + zsec.x;
+        const secY = zsym.y + zsec.y;
         const rdef = getSymbol('relay-dgr');
         const rl = portOf(rdef, 'l')!;
         const rtop = portOf(rdef, 'top')!;
-        const yD = sy - DGR_RISE;
         const rsym: PlacedSymbol = {
           id: `${gr.relay.id}${sfx}`, role: `${gr.relay.role}${sfx}`, symbolId: 'relay-dgr',
-          x: secX + 16 - rl.x, y: yD - rl.y, rotate: 0, label: [],
-          labelAt: { x: secX + 16 - rl.x, y: yD - rl.y, anchor: 'start' },
+          x: secX + DGR_OFFSET - rl.x, y: secY - rl.y, rotate: 0, label: [],
+          labelAt: { x: secX + DGR_OFFSET - rl.x, y: secY - rl.y, anchor: 'start' },
         };
         symbols.push(rsym);
         ext(rsym.x, rsym.y, rsym.x + rdef.box.w, rsym.y + rdef.box.h);
-        wires.push({ x1: secX, y1: secY, x2: secX, y2: yD });
-        wires.push({ x1: secX, y1: yD, x2: rsym.x + rl.x, y2: yD });
-        // TC：開閉器の上。左の端子（下向き）から点線で、開閉器の中心へ。右の端子から、DGRの上の端子へ
+        wires.push({ x1: secX, y1: secY, x2: rsym.x + rl.x, y2: secY });
+        // TC：開閉器の出口の高さに、左の端子を合わせる。コイルの下の端子から、真下のDGRの上の端子へ
         const tdef = getSymbol('trip-coil');
         const tl = portOf(tdef, 'l')!;
         const tb = portOf(tdef, 'b')!;
-        const trot = [-90, 90].find((r) => flip(tdef, tl.x, tl.y, r)[1] > flip(tdef, tb.x, tb.y, r)[1] - 99 && flip(tdef, tl.x, tl.y, r)[1] > 0 && flip(tdef, tb.x, tb.y, r)[0] > flip(tdef, tl.x, tl.y, r)[0]) ?? -90;
-        const [tlx, tly] = flip(tdef, tl.x, tl.y, trot);
-        const [tbx, tby] = flip(tdef, tb.x, tb.y, trot);
-        const trb = rotatedBox(tdef.box, trot);
-        const tcBy = rsym.y + rtop.y - 22;
+        const tcX = rsym.x + rtop.x;
         const tsym: PlacedSymbol = {
           id: `${gr.coil.id}${sfx}`, role: `${gr.coil.role}${sfx}`, symbolId: 'trip-coil',
-          x: lastSwitchCenterX - tlx, y: tcBy - tby, rotate: trot, label: [],
-          labelAt: { x: lastSwitchCenterX - tlx, y: tcBy - tby, anchor: 'start' },
+          x: tcX - tb.x, y: linkY - tl.y, rotate: 0, label: [],
+          labelAt: { x: tcX - tb.x, y: linkY - tl.y, anchor: 'start' },
         };
         symbols.push(tsym);
-        ext(tsym.x + trb.dx, tsym.y + trb.dy, tsym.x + trb.dx + trb.w, tsym.y + trb.dy + trb.h);
-        const tcLx = tsym.x + tlx;
-        const tcLy = tsym.y + tly;
-        const tcBx = tsym.x + tbx;
-        wires.push({ x1: tcLx, y1: tcLy, x2: tcLx, y2: sy, dashed: true });
-        wires.push({ x1: tcBx, y1: tcBy, x2: rsym.x + rtop.x, y2: tcBy });
-        wires.push({ x1: rsym.x + rtop.x, y1: tcBy, x2: rsym.x + rtop.x, y2: rsym.y + rtop.y });
+        ext(tsym.x, tsym.y, tsym.x + tdef.box.w, tsym.y + tdef.box.h);
+        wires.push({ x1: breaker.x + bOut.x, y1: linkY, x2: tsym.x + tl.x, y2: linkY, dashed: true });
+        wires.push({ x1: tcX, y1: tsym.y + tb.y, x2: tcX, y2: rsym.y + rtop.y });
       }
+      // 送り出し側のケーブルの端末：頂点が下（ケーブル側）を向く、ふつうの向き
+      if (tr.cable) {
+        const hid0 = `${tr.from === 0 ? '' : `a${tr.from + 1}:`}cable-head-send${sfx}`;
+        stackPut(hid0, hid0, 'cable-head', []);
+      }
+      endY = y;
     }
 
     const seg = (ax: number, ay: number, bx: number, by: number, dashed: boolean) => {
@@ -1378,39 +1359,45 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       wires.push({ x1: ax, y1: ay, x2: bx, y2: by, dashed });
       ext(Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by));
     };
-    // 送り出し側のケーブルの端末（頂点がケーブル側＝右を向く）。ここから先が、ケーブル。同じ幹から出る線は、1つを共有する
-    const head = getSymbol('cable-head');
-    const hin = portOf(head, 'in') ?? head.ports[0]!;
-    const hout = portOf(head, 'out') ?? head.ports[head.ports.length - 1]!;
-    const hrot = [-90, 90].find((r) => flip(head, hin.x, hin.y, r)[0] < flip(head, hout.x, hout.y, r)[0]) ?? -90;
-    const [hix, hiy] = flip(head, hin.x, hin.y, hrot);
-    const [hox] = flip(head, hout.x, hout.y, hrot);
-    const hrb = rotatedBox(head.box, hrot);
-    const hexit = gx - HEAD_MARGIN;
-    const hx = hexit - (hox - hix);
-    // IDは、1か所目の1本目は「cable-head-send」。2か所目以降のエリアから出る線は「a2:」などを前に、2本目以降の幹は何か所目への線かを後ろに付ける
-    const hid = `${tr.from === 0 ? '' : `a${tr.from + 1}:`}cable-head-send${tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`}`;
-    if (tr.cable) symbols.push({
-      id: hid,
-      role: hid,
-      symbolId: 'cable-head',
-      x: hx - hix,
-      y: sy - hiy,
-      rotate: hrot,
-      label: [],
-      labelAt: { x: hx - hix, y: sy - hiy, anchor: 'start' },
-    });
-    if (tr.cable) ext(hx - hix + hrb.dx, sy - hiy + hrb.dy, hx - hix + hrb.dx + hrb.w, sy - hiy + hrb.dy + hrb.h);
-    // 幹：分岐の位置（開閉器）から端末まで（ふつうの線）。端末から右へ、すきままで。そこから、いちばん高い横線の高さまで上へ（ケーブル）
     const dashedTrunk = tr.links.every((l) => l.dashed);
-    // ふつうの線でつなぐとき（ケーブルでないとき）は、端末も点線も無く、ふつうの線だけ
-    if (tr.cable) {
-      seg(cableFrom, sy, hx, sy, false);
-      seg(hexit, sy, gx, sy, dashedTrunk);
+    if (sends.length > 0) {
+      // 並びの下の端から、右へ（ケーブル。ケーブルでないときは、ふつうの線）、そこから、いちばん高い横線の高さまで上へ
+      seg(stackX(tr), endY, gx, endY, tr.cable && dashedTrunk);
+      seg(gx, endY, gx, topY, tr.cable && dashedTrunk);
     } else {
-      seg(cableFrom, sy, gx, sy, false);
+      // 送り出し側のケーブルの端末（頂点がケーブル側＝右を向く）。ここから先が、ケーブル。同じ幹から出る線は、1つを共有する
+      const head = getSymbol('cable-head');
+      const hin = portOf(head, 'in') ?? head.ports[0]!;
+      const hout = portOf(head, 'out') ?? head.ports[head.ports.length - 1]!;
+      const hrot = [-90, 90].find((r) => flip(head, hin.x, hin.y, r)[0] < flip(head, hout.x, hout.y, r)[0]) ?? -90;
+      const [hix, hiy] = flip(head, hin.x, hin.y, hrot);
+      const [hox] = flip(head, hout.x, hout.y, hrot);
+      const hrb = rotatedBox(head.box, hrot);
+      const hexit = gx - HEAD_MARGIN;
+      const hx = hexit - (hox - hix);
+      // IDは、1か所目の1本目は「cable-head-send」。2か所目以降のエリアから出る線は「a2:」などを前に、2本目以降の幹は何か所目への線かを後ろに付ける
+      const hid = `${tr.from === 0 ? '' : `a${tr.from + 1}:`}cable-head-send${tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`}`;
+      if (tr.cable) symbols.push({
+        id: hid,
+        role: hid,
+        symbolId: 'cable-head',
+        x: hx - hix,
+        y: sy - hiy,
+        rotate: hrot,
+        label: [],
+        labelAt: { x: hx - hix, y: sy - hiy, anchor: 'start' },
+      });
+      if (tr.cable) ext(hx - hix + hrb.dx, sy - hiy + hrb.dy, hx - hix + hrb.dx + hrb.w, sy - hiy + hrb.dy + hrb.h);
+      // 幹：分岐の位置から端末まで（ふつうの線）。端末から右へ、すきままで。そこから、いちばん高い横線の高さまで上へ（ケーブル）
+      // ふつうの線でつなぐとき（ケーブルでないとき）は、端末も点線も無く、ふつうの線だけ
+      if (tr.cable) {
+        seg(sx, sy, hx, sy, false);
+        seg(hexit, sy, gx, sy, dashedTrunk);
+      } else {
+        seg(sx, sy, gx, sy, false);
+      }
+      seg(gx, sy, gx, topY, dashedTrunk);
     }
-    seg(gx, sy, gx, topY, dashedTrunk);
     for (const l of tr.links) {
       const m = moved[l.n]!;
       const ex = m.dx; // このエリアの主回路の縦線は x=0

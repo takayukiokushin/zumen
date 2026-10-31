@@ -2157,15 +2157,16 @@ console.log('\n■ 送り出しの開閉器（1か所目 → 2か所目の線の
     const syms = ids.map((id) => d.symbols.find((s) => s.id === id));
     if (syms.some((s) => !s)) { fail(`${kind}：送り出しの開閉器が描かれていません`); continue; }
     const ss = syms as PlacedSymbolLike[];
-    // 横向きに並び、同じ高さの1本の線の上にある（入口と出口が、線でつながっている）
-    const level = ss.every((s) => Math.abs(portY(s, 'in') - portY(ss[0]!, 'in')) < 0.5 && Math.abs(portY(s, 'out') - portY(ss[0]!, 'in')) < 0.5);
-    const ordered = ss.every((s, i) => i === 0 || portX(ss[i - 1]!, 'out') < portX(s, 'in'));
+    // 縦向き（ふつうの向き）に、同じ縦線の上に、上から順に並ぶ（入口と出口が、線でつながっている）
+    const level = ss.every((s) => s.rotate === 0 && Math.abs(portX(s, 'in') - portX(ss[0]!, 'in')) < 0.5 && Math.abs(portX(s, 'out') - portX(ss[0]!, 'in')) < 0.5);
+    const ordered = ss.every((s, i) => i === 0 || portY(ss[i - 1]!, 'out') < portY(s, 'in'));
     const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
-    const joined = wireAt(portX(ss[0]!, 'in'), portY(ss[0]!, 'in')) && wireAt(portX(ss.at(-1)!, 'out'), portY(ss.at(-1)!, 'in')) && ss.every((s, i) => i === 0 || wireAt(portX(s, 'in'), portY(s, 'in')));
-    if (!level || !ordered) fail(`${kind}：送り出しの開閉器が、同じ高さに、順に並んでいません`);
+    // 最初の開閉器の入口は、母線から出て、90度曲がってきた線につながり、最後の出口は、ケーブルの端末につながる
+    const joined = wireAt(portX(ss[0]!, 'in'), portY(ss[0]!, 'in')) && wireAt(portX(ss.at(-1)!, 'out'), portY(ss.at(-1)!, 'out')) && ss.every((s, i) => i === 0 || wireAt(portX(s, 'in'), portY(s, 'in')));
+    if (!level || !ordered) fail(`${kind}：送り出しの開閉器が、縦に、上から順に並んでいません`);
     else if (!joined) fail(`${kind}：送り出しの開閉器の入口・出口に、線がつながっていません`);
     else if (findLabelCollisions(d).length > 0) fail(`${kind}：送り出しの開閉器を入れたら、文字が重なりました`);
-    else console.log(`  ${kind}：線の途中に、横向きに並び、前後が線でつながる。文字は重ならない`);
+    else console.log(`  ${kind}：母線から横に出て、90度曲がって、下向きに並び、前後が線でつながる。文字は重ならない`);
   }
   if (draw({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).symbols.find((s) => s.id === 'sendout-lbs')?.label.join('|') !== 'LBS|PF 30A') fail('LBSの文字が「LBS／PF 30A」になっていません');
   if (draw({}).symbols.some((s) => /^sendout/.test(s.id))) fail('「なし」のとき、送り出しの開閉器が描かれています');
@@ -2182,11 +2183,13 @@ console.log('\n■ 送り出し側のケーブルの端末');
     if (!head) { fail(`${name}：送り出し側に、ケーブルの端末が描かれていません`); continue; }
     const [inP, outP] = [portAbs(head, 'in'), portAbs(head, 'out')];
     const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
-    // 頂点（出口側）がケーブル側（右）を向き、入口・出口の両方に線がつながっている
-    if (!(inP.x < outP.x && Math.abs(inP.y - outP.y) < 0.5)) fail(`${name}：ケーブルの端末が、右（ケーブル側）に頂点を向けた横向きになっていません`);
+    // 頂点（出口側）がケーブル側を向き、入口・出口の両方に線がつながっている。送り出しの開閉器があるときは、下向き（縦）、無いときは、右向き（横）
+    const withSwitch = extra.sendoutSwitch !== undefined;
+    const oriented = withSwitch ? Math.abs(inP.x - outP.x) < 0.5 && inP.y < outP.y : inP.x < outP.x && Math.abs(inP.y - outP.y) < 0.5;
+    if (!oriented) fail(`${name}：ケーブルの端末の向きが違います（${withSwitch ? '下向き（縦）' : '右向き（横）'}のはず）`);
     else if (!wireAt(inP.x, inP.y) || !wireAt(outP.x, outP.y)) fail(`${name}：送り出し側のケーブルの端末に、線がつながっていません`);
     else if (findLabelCollisions(d).length > 0) fail(`${name}：文字が重なりました`);
-    else console.log(`  ${name}：ケーブルの端末が、送り出す線の途中（右向き）に入り、前後が線でつながる`);
+    else console.log(`  ${name}：ケーブルの端末が、送り出す線の途中（開閉器があるときは下向き、無いときは右向き）に入り、前後が線でつながる`);
   }
 }
 
@@ -2259,22 +2262,23 @@ console.log('\n■ DGRの遮断（TC）');
     const t = d.symbols.find((s) => s.id === 'sendout-trip-coil');
     const brk = d.symbols.find((s) => s.id === (sw === 'lbs' ? 'sendout-lbs' : 'sendout-vcb'));
     if (!z || !r || !t || !brk) { fail(`送り出し（${name}）：ZCT・DGR・TC・開閉器のどれかが描かれていません`); continue; }
-    const brkDef = getSymbolDef(brk.symbolId);
-    const brkCenter = { x: brk.x + brkDef.box.w / 2, y: brk.y + brkDef.box.h / 2 };
     const tcL = portAbs(t, 'l');
-    const dashed = d.wires.some((w) => w.dashed && w.x1 === w.x2 && Math.abs(w.x1 - brkCenter.x) < 1.5 && Math.abs(w.y1 - tcL.y) < 0.5 && Math.abs(w.y2 - brkCenter.y) < 1.5);
+    const brkOut = portAbs(brk, 'out');
+    // 開閉器の出口から、TCの左の端子へ、点線（同じ高さ）。TCの下の端子から、真下のDGRの上の端子へ
+    const dashed = d.wires.some((w) => w.dashed && w.y1 === w.y2 && Math.abs(w.y1 - tcL.y) < 0.5 && Math.abs(w.x1 - brkOut.x) < 0.5 && Math.abs(w.x2 - tcL.x) < 0.5);
     const zIn = portAbs(z, 'in');
     const zSec = portAbs(z, 'sec');
     const rl = (() => { const def = getSymbolDef(r.symbolId); const p = def.ports.find((q) => q.id === 'l')!; return { x: r.x + p.x, y: r.y + p.y }; })();
     const rt = portAbs(r, 'top');
     const tb = portAbs(t, 'b');
-    const above = r.y < brkCenter.y && t.y < brkCenter.y && zIn.y === brkCenter.y;
-    if (!above) fail(`送り出し（${name}）：ZCTが線の上、DGR・TCが上にありません`);
-    else if (!dashed) fail(`送り出し（${name}）：TCから開閉器の中心へ、点線が引かれていません`);
+    // 縦の並び：開閉器 → ZCT（開閉器の下）。DGRはZCTの横（右）、TCは開閉器の横（右）
+    const above = brkOut.y < zIn.y && Math.abs(zIn.x - brkOut.x) < 0.5 && r.x > zSec.x && t.x > brk.x + getSymbolDef(brk.symbolId).box.w && t.y < r.y;
+    if (!above) fail(`送り出し（${name}）：ZCTが開閉器の下、DGRがZCTの横、TCが開閉器の横になっていません`);
+    else if (!dashed) fail(`送り出し（${name}）：開閉器の出口からTCへ、点線が引かれていません`);
     else if (!wireAtP(d, zSec.x, zSec.y) || !wireAtP(d, rl.x, rl.y) || !wireAtP(d, rt.x, rt.y) || !wireAtP(d, tb.x, tb.y)) fail(`送り出し（${name}）：ZCT・DGR・TCの線がつながっていません`);
     else if (findLabelCollisions(d).length > 0) fail(`送り出し（${name}）：文字が重なっています`);
     else if (inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0) fail(`送り出し（${name}）：編集用に取り込むと、問題が出ます`);
-    else console.log(`  送り出し（${name}）：ZCT → DGR、TC → 開閉器の中心（点線）。線・文字が重ならない`);
+    else console.log(`  送り出し（${name}）：下向きに 開閉器 → ZCT、DGRはZCTの横、TCは開閉器の横（点線）。線・文字が重ならない`);
   }
 }
 
