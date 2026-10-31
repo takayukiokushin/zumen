@@ -295,7 +295,7 @@ const TRANSFORMER_CHOICES = [
 /** 継電器の個数（0個もありうる） */
 const RELAY_COUNT_OPTIONS: Choice[] = Array.from({ length: 9 }, (_, i) => ({ value: String(i), label: String(i) }));
 
-/** VCBの継電器として選べる種類（GR・DGRはPAS、OVGRはZPDの隣に入るので、ここには入れない） */
+/** VCBの継電器として選べる種類（GR・DGRはPAS、OVGRはZPDの有無の質問で答えるので、ここには入れない） */
 const RELAY_CHOICES: Choice[] = [
   ['OCR', '過電流継電器'],
   ['UVR', '不足電圧継電器'],
@@ -1060,7 +1060,7 @@ export const QUESTIONS: Question[] = [
     // VCBとCTがあるときは、OCRが1個入る。それ以外は0個から
     autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN] }, value: '1' }, { value: '0' }],
     ask: 'ai-uncertain',
-    help: 'OCR・UVR・OVRなど、VCBを動かす継電器の個数。OVGR（ZPDの隣）とGR・DGR（PAS）は、ここには入れない',
+    help: 'OCR・UVR・OVRなど、VCBを動かす継電器の個数。GR・DGR（PAS）は、ここには入れない',
   },
   {
     id: 'relayType',
@@ -1148,7 +1148,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'ct-bus',
     showIf: { key: 'hasZpd', eq: 'yes' },
     ask: 'always',
-    help: '主回路のどこにつなぐか。ふつうは、変圧器の手前（高圧母線の上）。OVGRは、ZPDの横につく',
+    help: '主回路のどこにつなぐか。ふつうは、変圧器の手前（高圧母線の上）',
   },
   {
     id: 'hasLa',

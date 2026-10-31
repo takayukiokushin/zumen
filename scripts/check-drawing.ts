@@ -1847,7 +1847,7 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
   const floating = (d: Doc) => inspectDrawing(d, 'A3', 'landscape').filter((i) => i.kind === 'floating').length;
   // 主回路の途中の機器（上と下に線がある）や、分岐の途中の機器を消しても、線が途切れたまま残らない
   // 行き止まりになる機器（枝の先・末端）を消したときは、その線も一緒に消える
-  for (const id of ['vct-indoor-1', 'ds', 'ds-vt-pf', 'ds-vt', 'main-breaker', 'ct', 'relay-tt', 'relay', 'trip-coil', 'zpd', 'ovgr', 'transformer', 'cable-head-site']) {
+  for (const id of ['vct-indoor-1', 'ds', 'ds-vt-pf', 'ds-vt', 'main-breaker', 'ct', 'relay-tt', 'relay', 'trip-coil', 'zpd', 'transformer', 'cable-head-site']) {
     const cut = removeItem(base, id);
     const broken = floating(cut);
     const r = tidyDrawing(cut, 'A3', 'landscape');

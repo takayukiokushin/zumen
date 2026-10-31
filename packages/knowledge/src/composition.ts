@@ -459,14 +459,6 @@ export const DOWNSTREAM: Placement[] = [
     labelTemplate: ['ZPD'],
   },
   {
-    role: 'ovgr',
-    symbolId: 'relay-ovgr',
-    kind: 'branch-left',
-    tapFrom: 'zpdTap',
-    when: { key: 'hasZpd', eq: 'yes' },
-    connectFrom: ['zpd'],
-  },
-  {
     role: 'site-la',
     symbolId: 'la',
     kind: 'branch-left',
@@ -560,7 +552,6 @@ export const AREA_CHAIN: Placement[] = [
   },
   ...INSTRUMENTS,
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
-  { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, connectFrom: ['zpd'] },
   { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', upright: true, when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
 ];
 

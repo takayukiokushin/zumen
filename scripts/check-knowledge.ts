@@ -999,7 +999,7 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   ok(role(a2, 'a2:main-breaker')?.symbolId === 'lbs-pf', '2か所目の受電側がLBS（PF付）になっていません');
   ok(role(a2, 'a2:main-breaker')?.label.join('|') === 'LBS|7200V|200A|PF×3', `2か所目のLBSの文字：${role(a2, 'a2:main-breaker')?.label.join('|')}`);
   ok(!role(a2, 'a2:ds') && !role(a2, 'a2:relay-tt'), '2か所目（LBS）に、DS・試験端子が入っています');
-  ok(role(a2, 'a2:site-vt')?.kind === 'branch-right' && Boolean(role(a2, 'a2:zpd')) && Boolean(role(a2, 'a2:ovgr')), '2か所目のVT・ZPD・OVGRが入っていません');
+  ok(role(a2, 'a2:site-vt')?.kind === 'branch-right' && Boolean(role(a2, 'a2:zpd')) && !role(a2, 'a2:ovgr'), '2か所目のVT・ZPDが入り、OVGRは自動では入らない、になっていません');
   ok(role(a2, 'a2:area-frame')?.label[0]?.startsWith('オープンフレーム式'), `2か所目の枠の文字：${role(a2, 'a2:area-frame')?.label[0]}`);
   const link2 = role(a2, 'a2:link');
   ok(link2?.kind === 'link' && link2.link?.from === 0 && link2.link.tap === 'bus' && link2.link.dashed === true, '2か所目のつなぎ方（1か所目の高圧母線から・埋設）が違います');
@@ -1102,21 +1102,22 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   const dropped = dropHiddenChoices({ mainBreakerForm: 'pfs', hasZpd: 'yes', zpdTap: 'ds-vcb' });
   ok(dropped.zpdTap === undefined, 'PFS形にしたのに、選べない「DSとVCBの間」が残っています');
   ok(dropHiddenChoices({ mainBreakerForm: 'cb', hasZpd: 'yes', zpdTap: 'ds-vcb' }).zpdTap === 'ds-vcb', 'CB形で選べる位置が、外れています');
-  // 並び：位置を選ぶと、ZPD・OVGR・LAがその位置に動く。LAとZPDは別々の記号
+  ok(!buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes' }).some((i) => i.role === 'ovgr' || i.symbolId === 'relay-ovgr'), 'ZPDを「ある」にしただけで、OVGRが自動で入っています');
+  // 並び：位置を選ぶと、ZPD・LAがその位置に動く（OVGRは、ZPDの有無だけでは入らない）。LAとZPDは別々の記号
   const order = (a: Answers) =>
     buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', ...a })
       .map((i) => i.role)
-      .filter((r) => ['ds', 'main-breaker', 'ct', 'relay', 'zpd', 'ovgr', 'site-la'].includes(r))
+      .filter((r) => ['ds', 'main-breaker', 'ct', 'relay', 'zpd', 'site-la'].includes(r))
       .join('>');
-  ok(order({}) === 'ds>main-breaker>ct>relay>zpd>ovgr>site-la', `位置を答えていないときは、これまでどおり、変圧器の手前のはずです（${order({})}）`);
-  ok(order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' }) === 'ds>zpd>ovgr>main-breaker>site-la>ct>relay', `ZPDをDSとVCBの間、LAをVCBとCTの間にしたときの並び：${order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' })}`);
-  ok(order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' }) === 'ds>site-la>main-breaker>zpd>ovgr>ct>relay', `ZPDをVCBとCTの間、LAをDSとVCBの間にしたときの並び：${order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' })}`);
+  ok(order({}) === 'ds>main-breaker>ct>relay>zpd>site-la', `位置を答えていないときは、これまでどおり、変圧器の手前のはずです（${order({})}）`);
+  ok(order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' }) === 'ds>zpd>main-breaker>site-la>ct>relay', `ZPDをDSとVCBの間、LAをVCBとCTの間にしたときの並び：${order({ zpdTap: 'ds-vcb', laTap: 'vcb-ct' })}`);
+  ok(order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' }) === 'ds>site-la>main-breaker>zpd>ct>relay', `ZPDをVCBとCTの間、LAをDSとVCBの間にしたときの並び：${order({ zpdTap: 'vcb-ct', laTap: 'ds-vcb' })}`);
   const items = buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes' });
   ok(items.filter((i) => ['zpd', 'site-la'].includes(i.role)).every((i) => i.separate === true), 'ZPDとLAが、別の記号として扱われていません');
   ok(items.find((i) => i.role === 'site-la')?.label.join('|') === 'LA' && items.find((i) => i.role === 'zpd')?.label.join('|') === 'ZPD', 'ZPD・LAの文字が、それぞれ別になっていません');
   // PFS形：主遮断装置（LBS）の次
-  const pfs = buildComposition({ ...answers, mainBreakerForm: 'pfs', hasZpd: 'yes', hasLa: 'yes', zpdTap: 'lbs-ct', laTap: 'lbs-ct' }).map((i) => i.role).filter((r) => ['main-breaker', 'ct', 'zpd', 'ovgr', 'site-la'].includes(r)).join('>');
-  ok(pfs.startsWith('main-breaker>zpd>ovgr>site-la'), `PFS形で「LBSの次」にしたときの並び：${pfs}`);
+  const pfs = buildComposition({ ...answers, mainBreakerForm: 'pfs', hasZpd: 'yes', hasLa: 'yes', zpdTap: 'lbs-ct', laTap: 'lbs-ct' }).map((i) => i.role).filter((r) => ['main-breaker', 'ct', 'zpd', 'site-la'].includes(r)).join('>');
+  ok(pfs.startsWith('main-breaker>zpd>site-la'), `PFS形で「LBSの次」にしたときの並び：${pfs}`);
   // 2か所目のエリアでも、同じ決まり
   const a2 = buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:zpdTap': 'ds-vcb' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => ['ds', 'zpd', 'main-breaker'].includes(r)).join('>');
   ok(a2 === 'ds>zpd>main-breaker', `2か所目でも、ZPDがDSとVCBの間に入るはずです（${a2}）`);
