@@ -16,7 +16,6 @@ import { layout, renderSvg } from '../packages/layout/src/index.ts';
 /** 実案件の回答（手書きメモから読み取った想定） */
 export const SAMPLE_ANSWERS: Answers = {
   siteName: 'カニエ竹原太陽光発電所',
-  receivingType: 'high',
   receivingVoltage: 6600,
 
   sourceType: 'pole',

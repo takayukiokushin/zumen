@@ -740,7 +740,7 @@ button.with-icon svg { flex: 0 0 auto; }
 }
 
 /* ---- 選んでいる状態は、色だけで知らせない：チェックマークと、太めの枠を付ける ---- */
-/* 対象：選ぶ形のボタン（あり／なし・受電方式・用紙と向き・言葉・明るさ・文字の大きさ・線を引くモード・印刷プレビュー） */
+/* 対象：選ぶ形のボタン（あり／なし・用紙と向き・言葉・明るさ・文字の大きさ・線を引くモード・印刷プレビュー） */
 .radio-row button[aria-pressed="true"]::before,
 .paper-pick button[aria-pressed="true"]::before,
 .tool-row button[aria-pressed="true"]::before,

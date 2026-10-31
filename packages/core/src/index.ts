@@ -13,9 +13,6 @@ export type ISODate = string;
 /* ヒアリング（共通項目）                                                */
 /* ------------------------------------------------------------------ */
 
-/** 受電方式 */
-export type ReceivingType = 'high-voltage' | 'extra-high-voltage';
-
 /** 主遮断装置の形式。以降の受電設備構成すべてに影響する最重要分岐 */
 export type MainBreakerForm =
   | 'pfs'       // PFS形（PF・S形）主遮断装置はLBS。設備容量300kVA以下で採用可能
@@ -39,8 +36,7 @@ export interface HearingAnswers {
   /** 表題欄への記載方法（略称を使う等の指定）。入力すると、図面のタイトルの頭が事業場名称の代わりにこれになる */
   customerNameForTitleBlock?: string;
   siteAddress?: string;
-  /** 3. 受電方式・契約電力・受電電圧 */
-  receivingType?: ReceivingType;
+  /** 3. 契約電力・受電電圧（高圧受電のみ。特別高圧は扱わない） */
   contractPower?: number;      // kW
   receivingVoltage?: '3300' | '6600' | number;   // V（一覧から選ぶ。古い案件は数値のことがある）
   /** 区分開閉器（PAS／PGS／なし）。なしのときは地上キャビネットの有無と種類 */

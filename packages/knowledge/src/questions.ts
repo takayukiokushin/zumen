@@ -330,19 +330,6 @@ export const QUESTIONS: Question[] = [
     help: '事業場名称と異なる書き方（略称など）をする場合に入力する',
   },
   {
-    id: 'receivingType',
-    group: 'customer',
-    label: '受電方式',
-    type: 'select',
-    options: [
-      { value: 'high', label: '高圧受電' },
-      { value: 'extra-high', label: '特別高圧受電' },
-    ],
-    defaultValue: 'high',
-    ask: 'always',
-    required: true,
-  },
-  {
     id: 'receivingVoltage',
     group: 'customer',
     label: '受電電圧',

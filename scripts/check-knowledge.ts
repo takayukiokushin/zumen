@@ -94,7 +94,6 @@ console.log('\n■ カニエ竹原太陽光発電所（PFS形・PAS VT/LA内蔵�
 
 const answers: Answers = {
   siteName: 'カニエ竹原太陽光発電所',
-  receivingType: 'high',
   receivingVoltage: 6600,
 
   sourceType: 'pole',
@@ -1155,6 +1154,10 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', hasSiteCt: 'yes' }).relayAt === undefined, 'VTの有無が未回答なのに、UVRの置き場所が決まっています');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
+  // 受電方式の質問は無い（高圧受電だけを扱う）。古い案件に残っている答えは、無視される
+  ok(!QUESTIONS.some((q) => q.id === 'receivingType'), '「受電方式」の質問が残っています');
+  ok(!missingRequired({ ...cbBase }).some((q) => q.id === 'receivingType'), '「受電方式」が必須項目として残っています');
+  ok(JSON.stringify(buildComposition({ ...cbBase, receivingType: 'extra-high' })) === JSON.stringify(buildComposition({ ...cbBase })), '古い案件の「受電方式」の答えが、図面に影響しています');
   // 図面を複製して新しい案件を作るとき：その現場だけの名前・番号・注記を空にし、設備の内容は残す
   {
     const src: Answers = {
