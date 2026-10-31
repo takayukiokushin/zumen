@@ -2,7 +2,7 @@ import type { Answers, Value } from './condition.ts';
 import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
-import { AREA_CHAIN, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from './composition.ts';
+import { AREA_CHAIN, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
 
 /* ------------------------------------------------------------------ */
@@ -258,6 +258,9 @@ export function withDerived(rawAnswers: Answers): Answers {
     answers.pasRatedVoltage ? `${answers.pasRatedVoltage}V` : '',
     answers.pasRatedCurrent ? `${answers.pasRatedCurrent}A` : '',
   ].join('');
+
+  // 送り出しのLBSのパワーヒューズ（例: PF 30A）。定格電流が分からないときは、書かない
+  d.sendoutFuseText = answers.sendoutFuseCurrent ? `PF ${answers.sendoutFuseCurrent}A` : '';
 
   // 2か所目以降のPAS・ASの定格（例: 7200V300A）。片方しか分からないときは分かる方だけ書く
   const rating = (v: unknown, a: unknown) => `${v ? `${v}V` : ''}${a ? `${a}A` : ''}`;
@@ -725,6 +728,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
     ...UPSTREAM,
     ...(CHAIN_BY_FORM[form] ?? []),
     ...DOWNSTREAM,
+    ...SENDOUT,
     ...TRANSFORMER,
     ...EXTRAS,
     ...FEEDERS,

@@ -26,6 +26,8 @@ export type PlacementKind =
   | 'coil'
   /** 2か所目以降のエリアを、前のエリアにつなぐケーブル（記号ではなく、つなぎ方を表す） */
   | 'link'
+  /** 1か所目のエリアから、ほかのエリアへ送り出す線の途中に入る開閉器（DS・VCB・LBS）。線の上に置く */
+  | 'sendout'
   /**
    * 高圧母線から下へ並列にぶら下がる（変圧器・高圧進相設備など）。
    * 1台だけのときは母線を描かず、主回路にそのまま直列で入る。
@@ -561,6 +563,36 @@ export const AREA_CHAIN: Placement[] = [
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
   { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, connectFrom: ['zpd'] },
   { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', upright: true, when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
+];
+
+/**
+ * 1か所目のエリアから、2か所目以降のエリアへ送り出す点の開閉器（送り出しの開閉器）。
+ * 母線から直接ではなく、開閉器が付いている場合がある。エリアが2か所以上のときだけ入る。
+ * 並び：DS → VCB（DS＋VCBのとき）。LBSは、パワーヒューズ付き（LBS＋PF）で描く。
+ */
+export const SENDOUT: Placement[] = [
+  {
+    role: 'sendout-ds',
+    symbolId: 'ds',
+    kind: 'sendout',
+    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', in: ['ds', 'ds-vcb'] }] },
+    labelTemplate: ['DS'],
+  },
+  {
+    role: 'sendout-vcb',
+    symbolId: 'vcb',
+    kind: 'sendout',
+    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', in: ['vcb', 'ds-vcb'] }] },
+    labelTemplate: ['VCB'],
+  },
+  {
+    role: 'sendout-lbs',
+    symbolId: 'lbs-pf',
+    kind: 'sendout',
+    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', eq: 'lbs' }] },
+    labelTemplate: ['LBS', '{sendoutFuseText}'],
+    note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く',
+  },
 ];
 
 /** 変圧器（台数分くり返す） */

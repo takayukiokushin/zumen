@@ -882,6 +882,20 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const both = withAreaSwitch({ 'a2:areaPas': 'yes', 'a2:areaAs': 'yes' }).map((i) => i.role);
   ok(both.indexOf('a2:area-pas') >= 0 && both.indexOf('a2:area-pas') < both.indexOf('a2:area-as') && both.indexOf('a2:area-as') < both.indexOf('a2:ds'), '両方「ある」のとき、PAS → AS → DS の順になっていません');
   ok(!buildComposition({ ...answers, areaCount: 1, 'a2:areaPas': 'yes' }).some((i) => /area-pas/.test(i.role)), '2か所目が無いのに、PASが入っています');
+  // 1か所目の最後：送り出しの開閉器（エリアが2か所以上のときだけ。1か所目の質問として出る）
+  const send = (extra: Answers) => buildComposition({ ...answers, areaCount: 2, ...extra }).filter((i) => i.kind === 'sendout').map((i) => `${i.role}:${i.symbolId}:${i.label.join('/')}`);
+  ok(a1.has('sendoutSwitch') && !a2.has('sendoutSwitch'), '送り出しの開閉器の質問が、1か所目だけに出ていません');
+  ok(!ids({ areaCount: 1 }).has('sendoutSwitch') && !ids({ areaCount: 1 }).has('sendoutFuseCurrent'), 'エリアが1か所のときに、送り出しの質問が出ています');
+  ok(ids(areaView({ areaCount: 2, sendoutSwitch: 'lbs' }, 0)).has('sendoutFuseCurrent') && !ids(areaView({ areaCount: 2, sendoutSwitch: 'ds' }, 0)).has('sendoutFuseCurrent'), 'LBSのときだけ、パワーヒューズの容量を聞く、になっていません');
+  const sendOpts = (QUESTIONS.find((q) => q.id === 'sendoutSwitch')?.options ?? []).map((o) => o.value).join(',');
+  ok(sendOpts === 'none,ds,vcb,lbs,ds-vcb', `送り出しの選択肢が違います（${sendOpts}）`);
+  ok(send({}).length === 0 && send({ sendoutSwitch: 'none' }).length === 0, '「なし」のとき、送り出しの開閉器が入っています');
+  ok(send({ sendoutSwitch: 'ds' }).join() === 'sendout-ds:ds:DS', `DSの送り出しが違います（${send({ sendoutSwitch: 'ds' }).join()}）`);
+  ok(send({ sendoutSwitch: 'vcb' }).join() === 'sendout-vcb:vcb:VCB', 'VCBの送り出しが違います');
+  ok(send({ sendoutSwitch: 'ds-vcb' }).join() === 'sendout-ds:ds:DS,sendout-vcb:vcb:VCB', 'DS＋VCBの送り出しが違います（DS → VCB の順）');
+  ok(send({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).join() === 'sendout-lbs:lbs-pf:LBS/PF 30A', `LBSの送り出し（PF 30A）が違います（${send({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).join()}）`);
+  ok(send({ sendoutSwitch: 'lbs' }).join() === 'sendout-lbs:lbs-pf:LBS', 'PFの容量が空のとき、LBSの文字だけになっていません');
+  ok(buildComposition({ ...answers, areaCount: 1, sendoutSwitch: 'vcb' }).every((i) => i.kind !== 'sendout'), 'エリアが1か所なのに、送り出しの開閉器が入っています');
   // 定格（電圧・電流）：「ある」のときだけ聞き、図面には 7200V200A のように書く
   const asked = (extra: Answers) => ids(areaView({ areaCount: 2, ...extra }, 1));
   ok(!asked({}).has('areaPasRatedVoltage') && !asked({}).has('areaAsRatedCurrent'), 'PAS・ASが「ない」のに、定格を聞いています');

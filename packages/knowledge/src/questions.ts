@@ -179,6 +179,13 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
   { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
+  {
+    id: 'sendout',
+    label: '他のエリアへの送り出し',
+    description: '1か所目から、2か所目以降のエリアへ送り出す点',
+    perArea: true,
+    showIf: { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }] },
+  },
   { id: 'title', label: '表題欄' },
 ];
 
@@ -1519,6 +1526,39 @@ export const QUESTIONS: Question[] = [
     help: '空欄のときは、受電設備の形態から自動で決まります（例：キュービクル式高圧受電設備単線結線図）。書いた場合は、それを優先します',
   },
 
+
+  /* ---------------- 他のエリアへの送り出し（1か所目のエリアの最後） ---------------- */
+  {
+    id: 'sendoutSwitch',
+    group: 'sendout',
+    label: '送り出しに開閉器はありますか？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし（母線から直接）' },
+      { value: 'ds', label: 'DS' },
+      { value: 'vcb', label: 'VCB' },
+      { value: 'lbs', label: 'LBS' },
+      { value: 'ds-vcb', label: 'DS＋VCB' },
+    ],
+    defaultValue: 'none',
+    dropdown: true,
+    showIf: { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }] },
+    ask: 'always',
+    help: '2か所目以降のエリアは、1か所目から分岐する。その送り出す点に、母線から直接ではなく、開閉器が付いている場合がある。図面では、1か所目から2か所目へ向かう線の途中に描く',
+  },
+  {
+    id: 'sendoutFuseCurrent',
+    group: 'sendout',
+    label: 'LBSのパワーヒューズの容量（定格電流）',
+    type: 'select',
+    options: [10, 15, 20, 30, 40, 50, 75, 100, 150, 200].map((v) => ({ value: String(v), label: `${v}A` })),
+    allowFreeInput: true,
+    dropdown: true,
+    unit: 'A',
+    showIf: { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', eq: 'lbs' }] },
+    ask: 'always',
+    help: '送り出しがLBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
+  },
 
   /* ---------------- エリア間の接続（2か所目以降のエリア） ---------------- */
   {

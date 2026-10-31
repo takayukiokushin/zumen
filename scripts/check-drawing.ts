@@ -25,6 +25,15 @@ import {
   docBounds,
   addText,
 } from '../apps/web/src/editor/doc.ts';
+type PlacedSymbolLike = ReturnType<typeof layout>['symbols'][number];
+const portAbs = (s: PlacedSymbolLike, id: string) => {
+  const def = getSymbolDef(s.symbolId);
+  const p = def.ports.find((q) => q.id === id)!;
+  const [rx, ry] = rotatedPort(def.box, p.x, p.y, s.rotate);
+  return { x: s.x + rx, y: s.y + ry };
+};
+const portX = (s: PlacedSymbolLike, id: string) => portAbs(s, id).x;
+const portY = (s: PlacedSymbolLike, id: string) => portAbs(s, id).y;
 import { rebuildWithOverrides } from '../apps/web/src/editor/overrides.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
@@ -2087,6 +2096,30 @@ console.log('\n■ 2か所目以降のPAS・AS（受電側）');
   else if (!dBoth.texts?.length && !pas.label.includes('PAS')) fail('PASの文字が書かれていません');
   else if (!asw.label.includes('AS')) fail('ASの文字が書かれていません');
   else console.log('  PAS → AS → DS が、同じ縦の線に並び、文字（PAS・AS）が書かれ、重ならない');
+}
+
+/* ---------- 1か所目から送り出す線の途中の開閉器 ---------- */
+console.log('\n■ 送り出しの開閉器（1か所目 → 2か所目の線の途中）');
+{
+  const base2: Answers = { ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried', 'a2:linkCableCrossSection': '38', 'a2:linkCableLength': 30 };
+  const draw = (extra: Answers) => layout(buildComposition({ ...base2, ...extra }), { ...base2, ...extra });
+  for (const [kind, ids] of [['ds', ['sendout-ds']], ['vcb', ['sendout-vcb']], ['ds-vcb', ['sendout-ds', 'sendout-vcb']], ['lbs', ['sendout-lbs']]] as const) {
+    const d = draw({ sendoutSwitch: kind, sendoutFuseCurrent: '30' });
+    const syms = ids.map((id) => d.symbols.find((s) => s.id === id));
+    if (syms.some((s) => !s)) { fail(`${kind}：送り出しの開閉器が描かれていません`); continue; }
+    const ss = syms as PlacedSymbolLike[];
+    // 横向きに並び、同じ高さの1本の線の上にある（入口と出口が、線でつながっている）
+    const level = ss.every((s) => Math.abs(portY(s, 'in') - portY(ss[0]!, 'in')) < 0.5 && Math.abs(portY(s, 'out') - portY(ss[0]!, 'in')) < 0.5);
+    const ordered = ss.every((s, i) => i === 0 || portX(ss[i - 1]!, 'out') < portX(s, 'in'));
+    const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+    const joined = wireAt(portX(ss[0]!, 'in'), portY(ss[0]!, 'in')) && wireAt(portX(ss.at(-1)!, 'out'), portY(ss.at(-1)!, 'in')) && ss.every((s, i) => i === 0 || wireAt(portX(s, 'in'), portY(s, 'in')));
+    if (!level || !ordered) fail(`${kind}：送り出しの開閉器が、同じ高さに、順に並んでいません`);
+    else if (!joined) fail(`${kind}：送り出しの開閉器の入口・出口に、線がつながっていません`);
+    else if (findLabelCollisions(d).length > 0) fail(`${kind}：送り出しの開閉器を入れたら、文字が重なりました`);
+    else console.log(`  ${kind}：線の途中に、横向きに並び、前後が線でつながる。文字は重ならない`);
+  }
+  if (draw({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).symbols.find((s) => s.id === 'sendout-lbs')?.label.join('|') !== 'LBS|PF 30A') fail('LBSの文字が「LBS／PF 30A」になっていません');
+  if (draw({}).symbols.some((s) => /^sendout/.test(s.id))) fail('「なし」のとき、送り出しの開閉器が描かれています');
 }
 
 /* ---------- 手で直した内容は、入力内容を変えても残る ---------- */
