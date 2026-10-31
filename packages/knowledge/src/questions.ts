@@ -653,7 +653,12 @@ export const QUESTIONS: Question[] = [
     id: 'areaCount',
     group: 'area',
     label: '電気設備（受電設備）は何箇所に分かれていますか？',
-    type: 'number',
+    type: 'select',
+    // 数字を打たなくても、押して選べる（11か所以上は「その他（手入力）」）
+    options: Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+    allowFreeInput: true,
+    dropdown: true,
+    unit: 'か所',
     defaultValue: 1,
     ask: 'ai-uncertain',
     help: '画像から1箇所と判別できる場合は聞かない。2箇所以上のときだけ各エリアを一点鎖線で囲う',
