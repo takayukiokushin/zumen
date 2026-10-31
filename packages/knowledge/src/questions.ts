@@ -1173,20 +1173,21 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     options: [
       { value: 'none', label: 'なし' },
-      { value: 'dgr', label: 'DGR（方向性）' },
+      { value: 'dgr', label: 'DGR（方向性）　※ZPDが「あり」のときだけ描く' },
+      { value: 'gr', label: 'GR（無方向性）' },
     ],
     defaultValue: 'none',
-    showIf: { all: [{ any: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'intakeLbs', eq: 'yes' }] }, { key: 'hasZpd', eq: 'yes' }] },
+    showIf: { any: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'intakeLbs', eq: 'yes' }] },
     ask: 'always',
     help:
-      'DGRは、同じエリアにZPDがあるときだけ選べる（零相電圧をZPDから得る）。DGRを選ぶと、ZCTを引込の高圧ケーブルに付け、DGRをZCTの横に描く（ZPDとDGRの間に、線は引かない）。' +
-      'ZPDを「なし」にすると、DGRも描かない（「あり」に戻すと、また描く）',
+      'DGRは、同じエリアにZPDがあるときだけ描く（零相電圧をZPDから得る）。ZPDを「なし」にしている間は、DGRを選んであっても描かない（「あり」に戻すと、また描く）。' +
+      'GRは、ZCTだけで動くので、ZPDは要らない（ZPDの質問は出ない）。どちらも、ZCTを引込の高圧ケーブルに付け、ZCTの横に描く（ZPDとの間に、線は引かない）。TCは、OCRなどと1つを共有する',
   },
   {
     // 主遮断装置のDGRのZCTを、どこに付けるか。ほとんどは、高圧ケーブル
     id: 'mainZctPos',
     group: 'receiving', section: 'ZPD・LA・接地',
-    label: 'DGRのZCTの取り付け位置は？',
+    label: 'ZCT（DGR・GR用）の取り付け位置は？',
     type: 'select',
     options: [
       { value: 'cable', label: '高圧ケーブル（引込の高圧ケーブル）' },
@@ -1195,7 +1196,7 @@ export const QUESTIONS: Question[] = [
     ],
     defaultValue: 'cable',
     dropdown: true,
-    showIf: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { any: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'intakeLbs', eq: 'yes' }] }] },
+    showIf: { all: [{ any: [{ key: 'mainGroundRelay', eq: 'gr' }, { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }] }, { any: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'intakeLbs', eq: 'yes' }] }] },
     ask: 'always',
     help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、主遮断装置の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
   },
@@ -1649,23 +1650,24 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     options: [
       { value: 'none', label: 'なし' },
-      { value: 'dgr', label: 'DGR（方向性）' },
+      { value: 'dgr', label: 'DGR（方向性）　※ZPDが「あり」のときだけ描く' },
+      { value: 'gr', label: 'GR（無方向性）' },
     ],
     defaultValue: 'none',
     showIf: {
-      all: [SENDOUT_SHOWN, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }, { key: 'hasZpd', eq: 'yes' }],
+      all: [SENDOUT_SHOWN, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }],
     },
     ask: 'always',
     help:
-      '送り出しの開閉器が、VCB・LBS・DS＋VCBのときだけ答える（DSだけでは遮断できない）。DGRは、このエリアにZPDがあるときだけ選べる。' +
-      'DGRを選ぶと、送り出しの高圧ケーブルにZCTを付け、DGRをZCTの横に描き、DGRから送り出しの開閉器まで、TC（遮断の線）を描く',
+      '送り出しの開閉器が、VCB・LBS・DS＋VCBのときだけ答える（DSだけでは遮断できない）。DGRは、このエリアにZPDがあるときだけ描く。GRは、ZCTだけで動くので、ZPDは要らない。' +
+      'DGR・GRを選ぶと、送り出しの高圧ケーブルにZCTを付け、継電器をZCTの横に描き、継電器から送り出しの開閉器まで、TC（遮断の線）を描く',
   },
 
   {
     // 送り出しの開閉器のDGRのZCTを、どこに付けるか。ほとんどは、高圧ケーブル（送り出しの高圧ケーブル）
     id: 'sendoutZctPos',
     group: 'sendout',
-    label: 'DGRのZCTの取り付け位置は？',
+    label: 'ZCT（DGR・GR用）の取り付け位置は？',
     type: 'select',
     options: [
       { value: 'cable', label: '高圧ケーブル（送り出しの高圧ケーブル）' },
@@ -1675,7 +1677,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'cable',
     dropdown: true,
     showIf: {
-      all: [SENDOUT_SHOWN, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }, { key: 'hasZpd', eq: 'yes' }],
+      all: [SENDOUT_SHOWN, { any: [{ key: 'sendoutGroundRelay', eq: 'gr' }, { all: [{ key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }] }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }],
     },
     ask: 'always',
     help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',

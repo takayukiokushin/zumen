@@ -1,5 +1,14 @@
 import type { Condition } from './condition.ts';
 
+/** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
+const MAIN_GROUND_ON: Condition = {
+  any: [{ all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }, { key: 'mainGroundRelay', eq: 'gr' }],
+};
+/** 送り出しの開閉器の地絡継電器が付くか（DGR・GRの考え方は、主遮断装置と同じ） */
+const SENDOUT_GROUND_ON: Condition = {
+  any: [{ all: [{ key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }, { key: 'sendoutGroundRelay', eq: 'gr' }],
+};
+
 /**
  * 構成テンプレート。上流（引込側）から下流へ、どの記号がどの条件で入るかをデータで定義する。
  *
@@ -261,7 +270,7 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'zct',
     kind: 'series',
     posFrom: 'mainZctPos',
-    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { not: { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] } }] },
+    when: { all: [MAIN_GROUND_ON, { not: { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] } }] },
     note: '主遮断装置のDGR用のZCT。引込の高圧ケーブルに付ける',
   },
   {
@@ -269,6 +278,13 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'relay-dgr',
     kind: 'branch-right',
     when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+    connectFrom: ['main-zct'],
+  },
+  {
+    role: 'main-ground-relay',
+    symbolId: 'relay-gr',
+    kind: 'branch-right',
+    when: { key: 'mainGroundRelay', eq: 'gr' },
     connectFrom: ['main-zct'],
   },
   {
@@ -474,7 +490,7 @@ export const DOWNSTREAM: Placement[] = [
     symbolId: 'zct',
     kind: 'series',
     posFrom: 'mainZctPos',
-    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] }] },
+    when: { all: [MAIN_GROUND_ON, { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] }] },
     note: '主遮断装置のDGR用のZCT。母線（主遮断装置の一次側または二次側）に付ける',
   },
   ...INSTRUMENTS,
@@ -532,13 +548,20 @@ export const AREA_CHAIN: Placement[] = [
     symbolId: 'zct',
     kind: 'series',
     posFrom: 'mainZctPos',
-    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { not: { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] } }] },
+    when: { all: [MAIN_GROUND_ON, { not: { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] } }] },
   },
   {
     role: 'main-ground-relay',
     symbolId: 'relay-dgr',
     kind: 'branch-right',
     when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+    connectFrom: ['main-zct'],
+  },
+  {
+    role: 'main-ground-relay',
+    symbolId: 'relay-gr',
+    kind: 'branch-right',
+    when: { key: 'mainGroundRelay', eq: 'gr' },
     connectFrom: ['main-zct'],
   },
   {
@@ -608,7 +631,7 @@ export const AREA_CHAIN: Placement[] = [
     symbolId: 'zct',
     kind: 'series',
     posFrom: 'mainZctPos',
-    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] }] },
+    when: { all: [MAIN_GROUND_ON, { key: 'mainZctPos', in: ['bus-primary', 'bus-secondary'] }] },
     note: '主遮断装置のDGR用のZCT。母線（主遮断装置の一次側または二次側）に付ける',
   },
   ...INSTRUMENTS,
@@ -651,7 +674,7 @@ export const SENDOUT: Placement[] = [
     symbolId: 'zct',
     kind: 'sendout',
     posFrom: 'sendoutZctPos',
-    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaCount', gt: 1 }, SENDOUT_GROUND_ON, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
   {
     role: 'sendout-ground-relay',
@@ -660,10 +683,16 @@ export const SENDOUT: Placement[] = [
     when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
   {
+    role: 'sendout-ground-relay',
+    symbolId: 'relay-gr',
+    kind: 'sendout',
+    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'gr' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+  },
+  {
     role: 'sendout-trip-coil',
     symbolId: 'trip-coil',
     kind: 'sendout',
-    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaCount', gt: 1 }, SENDOUT_GROUND_ON, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
 ];
 

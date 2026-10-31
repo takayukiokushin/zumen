@@ -2327,6 +2327,47 @@ console.log('\n■ DGRの遮断（TC）');
   }
 }
 
+/* ---------- GR（無方向性）：ZCTだけ。ZPDは無くてよい。位置の選択肢はDGRと同じ ---------- */
+{
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'no', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', mainGroundRelay: 'gr' };
+  const wireAtP = (d: ReturnType<typeof layout>, x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+  const problems = (d: ReturnType<typeof layout>) => findLabelCollisions(d).length > 0 ? '文字が重なっています' : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
+  for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
+    for (const [name, extra] of [['VCB', {}], ['LBS', { mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3 }]] as [string, Answers][]) {
+      const a: Answers = { ...base, mainZctPos: pos, ...extra };
+      const d = layout(buildComposition(a), a);
+      const z = d.symbols.find((s) => s.role === 'main-zct');
+      const r = d.symbols.find((s) => s.role === 'main-ground-relay');
+      const label = `主遮断装置・GR・ZCT=${pos}・${name}`;
+      if (!z || !r || r.symbolId !== 'relay-gr') { fail(`${label}：ZCTまたはGRが描かれていません`); continue; }
+      const zSec = portAbs(z, 'sec');
+      const rl = portAbs(r, 'l');
+      const bad = !wireAtP(d, zSec.x, zSec.y) || !wireAtP(d, rl.x, rl.y) ? 'ZCTとGRが、線でつながっていません' : d.symbols.some((s) => s.symbolId === 'zpd') ? 'ZPDが描かれています' : d.symbols.filter((s) => s.symbolId === 'trip-coil').length !== 1 ? 'TCが1つではありません' : problems(d);
+      if (bad) fail(`${label}：${bad}`);
+      else console.log(`  ${label}：ZCT＋GR（ZPDなし）、TCは1つ。線・文字が重ならない`);
+    }
+  }
+  for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
+    const a: Answers = { ...base, mainGroundRelay: 'none', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: 'ds-vcb', sendoutGroundRelay: 'gr', sendoutZctPos: pos };
+    const d = layout(buildComposition(a), a);
+    const z = d.symbols.find((s) => s.id === 'sendout-zct');
+    const r = d.symbols.find((s) => s.id === 'sendout-ground-relay');
+    const t = d.symbols.find((s) => s.id === 'sendout-trip-coil');
+    const label = `送り出し・GR・ZCT=${pos}`;
+    if (!z || !r || !t || r.symbolId !== 'relay-gr') { fail(`${label}：ZCT・GR・TCのどれかが描かれていません`); continue; }
+    const bad = !wireAtP(d, portAbs(z, 'sec').x, portAbs(z, 'sec').y) || !wireAtP(d, portAbs(r, 'l').x, portAbs(r, 'l').y) ? 'ZCTとGRが、線でつながっていません' : problems(d);
+    if (bad) fail(`${label}：${bad}`);
+    else console.log(`  ${label}：ZCT＋GR＋TC（ZPDなし）。線・文字が重ならない`);
+  }
+  // 主遮断装置にGR、送り出しの開閉器にDGR
+  const mix: Answers = { ...base, hasZpd: 'yes', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' };
+  const dm = layout(buildComposition(mix), mix);
+  const ids = dm.symbols.map((s) => s.symbolId);
+  const mbad = !ids.includes('relay-gr') || !ids.includes('relay-dgr') ? 'GRとDGRが両方描かれていません' : problems(dm);
+  if (mbad) fail(`GR（主遮断装置）＋DGR（送り出し）：${mbad}`);
+  else console.log('  GR（主遮断装置）＋DGR（送り出し）：両方が描かれる。線・文字が重ならない');
+}
+
 /* ---------- 主遮断装置がLBSのとき：OCR・DGRの保護継電器とTC ---------- */
 {
   const lbs: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', hasSiteCt: 'yes', hasSiteVt: 'no', relayCount: '1', relayType: 'OCR' };

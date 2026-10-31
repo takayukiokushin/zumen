@@ -1343,12 +1343,12 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         const zsec = portOf(zdef, 'sec')!;
         const secX = zsym.x + zsec.x;
         const secY = zsym.y + zsec.y;
-        const rdef = getSymbol('relay-dgr');
+        const rdef = getSymbol(gr.relay.symbolId);
         const rl = portOf(rdef, 'l')!;
         const rtop = portOf(rdef, 'top')!;
         const rr = portOf(rdef, 'r')!;
         const rsym: PlacedSymbol = {
-          id: `${gr.relay.id}${sfx}`, role: `${gr.relay.role}${sfx}`, symbolId: 'relay-dgr',
+          id: `${gr.relay.id}${sfx}`, role: `${gr.relay.role}${sfx}`, symbolId: gr.relay.symbolId,
           x: secX + DGR_OFFSET - rl.x, y: secY - rl.y, rotate: 0, label: [],
           labelAt: { x: secX + DGR_OFFSET - rl.x, y: secY - rl.y, anchor: 'start' },
         };
