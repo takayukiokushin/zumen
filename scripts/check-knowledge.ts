@@ -612,7 +612,7 @@ console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／�
   const conn = QUESTIONS.find((q) => q.id === 'trConnection')!;
   const offered = (a: Answers) => (conn.options ?? []).filter((o) => evaluate(o.showIf, a)).map((o) => o.value);
   const single = ['tr-1p', 'tr-1p-2w', 'tr-1p-parallel'];
-  const three = ['tr-3p-dy', 'tr-3p-yd', 'tr-3p-dd', 'tr-3p-yy'];
+  const three = ['tr-3p-dy', 'tr-3p-yd', 'tr-3p-dd', 'tr-3p-dd-1p3', 'tr-3p-yy'];
   const sameSet = (x: string[], y: string[]) => JSON.stringify([...x].sort()) === JSON.stringify([...y].sort());
   const rows: [string, Answers, string[]][] = [
     ['電灯', { trUsage: '電灯' }, [...single, 'tr-vv']],
@@ -635,6 +635,17 @@ console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／�
   else if (a3.trConnection !== 'tr-vv' || a4.trConnection !== 'tr-3p-dy') fail('合う結線方式まで空に戻っています');
   else if (a5.trConnection !== 'tr-3p-dy' || a5.trConnection__2 !== undefined || a5.trConnection__3 !== 'tr-3p-dd') fail('2台目以降の結線方式の扱いが違います');
   else console.log('  用途を変えて、選んでいた結線方式が出なくなったとき：空に戻す（V結線と、合うものは残す。2台目以降はその台の用途で見る）');
+  const ok = (cond: boolean, msg: string) => (cond ? undefined : fail(msg));
+  // 三相 Δ-Δ結線（単相変圧器×3）：動力変圧器1台として、三相 Δ-Δ結線の記号で描き、文字に「単相変圧器×3」と入る。容量は3台の合計
+  const dd3 = buildComposition({ ...answers, transformerCount: 1, trUsage: '動力', trConnection: 'tr-3p-dd-1p3', trCapacity: 300 }).filter((i) => i.role === 'transformer');
+  ok(conn.options?.find((o) => o.value === 'tr-3p-dd-1p3')?.label === '三相 Δ-Δ結線（単相変圧器×3）', '「三相 Δ-Δ結線（単相変圧器×3）」の選択肢の名前が違います');
+  ok(dd3.length === 1 && dd3[0]!.symbolId === 'tr-3p-dd', `単相変圧器×3のΔ-Δ結線が、1台の三相 Δ-Δ結線の記号になっていません（${dd3.length}台／${dd3[0]?.symbolId}）`);
+  ok(dd3[0]?.label.join('|').includes('単相変圧器×3') === true && dd3[0]?.label.join('|').includes('3φ300kVA') === true, `単相変圧器×3のΔ-Δ結線の文字が違います（${dd3[0]?.label.join('|')}）`);
+  const ddOwn = buildComposition({ ...answers, transformerCount: 1, trUsage: '動力', trConnection: 'tr-3p-dd-1p3', trCapacity: 300, trComposition: '単相100kVA×3' }).find((i) => i.role === 'transformer');
+  ok(ddOwn?.label.join('|').includes('単相100kVA×3') === true && !ddOwn.label.join('|').includes('単相変圧器×3'), '手で書いた構成が優先されていません');
+  const ddPlain = buildComposition({ ...answers, transformerCount: 1, trUsage: '動力', trConnection: 'tr-3p-dd', trCapacity: 300 }).find((i) => i.role === 'transformer');
+  ok(ddPlain?.label.join('|').includes('単相変圧器×3') !== true, '通常のΔ-Δ結線に、「単相変圧器×3」が入っています');
+  ok(!offered({ trUsage: '電灯' }).includes('tr-3p-dd-1p3'), '用途が電灯なのに、単相変圧器×3のΔ-Δ結線が出ています');
   // 容量の聞き方
   const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
   const mixedV = shown({ trUsage: '電灯・動力', trConnection: 'tr-vv' });

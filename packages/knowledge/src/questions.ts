@@ -1219,6 +1219,8 @@ export const QUESTIONS: Question[] = [
       { value: 'tr-3p-dy', label: '三相 Δ-Y結線', showIf: NOT_LIGHT_ONLY },
       { value: 'tr-3p-yd', label: '三相 Y-Δ結線', showIf: NOT_LIGHT_ONLY },
       { value: 'tr-3p-dd', label: '三相 Δ-Δ結線', showIf: NOT_LIGHT_ONLY },
+      // 単相変圧器3台を組み合わせたΔ-Δ結線の動力変圧器。3台で1台の動力変圧器と考え、図面では1台として描く（文字に「単相変圧器×3」と入る）
+      { value: 'tr-3p-dd-1p3', label: '三相 Δ-Δ結線（単相変圧器×3）', showIf: NOT_LIGHT_ONLY },
       { value: 'tr-3p-yy', label: '三相 Y-Y結線', showIf: NOT_LIGHT_ONLY },
       { value: 'tr-vv', label: 'V結線（単相変圧器2台）' },
       { value: 'tr-1p-parallel', label: '単相変圧器 並行運転（倍容量）', showIf: NOT_POWER_ONLY },

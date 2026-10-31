@@ -321,7 +321,10 @@ export function withDerived(rawAnswers: Answers): Answers {
    * 変圧器の記号。結線方式がまだ入っていないときは、円の中が空のものを使う。
    * 決まっていないのに勝手にΔやYを描くと、間違った図面がそのまま使われてしまう。
    */
-  d.trSymbol = answers.trConnection ? String(answers.trConnection) : 'tr-blank';
+  // 単相変圧器3台のΔ-Δ結線（tr-3p-dd-1p3）は、3台で1台の動力変圧器として、三相 Δ-Δ結線の記号で、1台として描く
+  d.trSymbol = answers.trConnection ? (answers.trConnection === 'tr-3p-dd-1p3' ? 'tr-3p-dd' : String(answers.trConnection)) : 'tr-blank';
+  // 構成の文字（変圧器の文字の最後の行）。単相変圧器3台のΔ-Δ結線は、「単相変圧器×3」と入る（手で書いた構成があれば、そちらを使う）
+  if (answers.trConnection === 'tr-3p-dd-1p3' && !String(answers.trComposition ?? '').trim()) d.trComposition = '単相変圧器×3';
 
   /** PCSをどこかの変圧器につないだか（つないでいなければ太陽光は結線せずに置く） */
   d.pcsAssigned = answers.hasPv === 'yes' && perTransformer.some((v) => v.length > 0) ? 'yes' : 'no';
