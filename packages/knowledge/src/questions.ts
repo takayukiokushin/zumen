@@ -997,7 +997,6 @@ export const QUESTIONS: Question[] = [
     // VTの変圧比は 6600/110V のほかには無い。最初から入れておき、違うときだけ手で直す
     defaultValue: '6600/110V',
     autoValue: [{ value: '6600/110V' }],
-    help: '6600/110V に決まっているので、最初から入っている。違うときだけ手で直す',
     ask: 'ai-uncertain',
   },
   // ---- CT（組ごと）。1組目は、これまでの答え（ctCount・ctRatio）をそのまま使う ----
