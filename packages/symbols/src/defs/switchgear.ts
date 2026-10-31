@@ -31,7 +31,7 @@ const RATED_VOLTAGE: FieldDef = {
   defaultValue: '7200',
 };
 
-/** PAS（PGSも同じ図記号）の定格電圧。3300V・22000Vの現場もあるので、ほかの開閉器より選択肢が多い */
+/** PAS（PGSも同じ図記号）の定格電圧。3300Vの現場もあるので、ほかの開閉器より選択肢が多い */
 const PAS_RATED_VOLTAGE: FieldDef = {
   key: 'ratedVoltage',
   label: '定格電圧',
@@ -40,7 +40,6 @@ const PAS_RATED_VOLTAGE: FieldDef = {
     { value: '3300', label: '3300V' },
     { value: '6600', label: '6600V（旧）' },
     { value: '7200', label: '7200V（新）' },
-    { value: '22000', label: '22000V' },
   ],
   unit: 'V',
   defaultValue: '7200',

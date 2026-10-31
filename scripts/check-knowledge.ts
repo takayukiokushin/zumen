@@ -739,15 +739,15 @@ console.log('\n■ 区分開閉器の定格電圧');
 {
   const q = QUESTIONS.find((x) => x.id === 'pasRatedVoltage');
   const vals = q?.options?.map((o) => o.value) ?? [];
-  if (q?.type !== 'select' || !q.dropdown || JSON.stringify(vals) !== JSON.stringify(['3300', '6600', '7200', '22000'])) {
-    fail(`区分開閉器の定格電圧が、3300・6600・7200・22000のドロップダウンになっていません（${q?.type}／${vals.join('・')}）`);
-  } else console.log('  ドロップダウン（3300V／6600V／7200V／22000V）');
-  // 選んだ値が、図面の「PAS 22000V200A」のように書かれる
-  for (const v of ['3300', '6600', '7200', '22000']) {
+  if (q?.type !== 'select' || !q.dropdown || JSON.stringify(vals) !== JSON.stringify(['3300', '6600', '7200'])) {
+    fail(`区分開閉器の定格電圧が、3300・6600・7200のドロップダウンになっていません（${q?.type}／${vals.join('・')}）`);
+  } else console.log('  ドロップダウン（3300V／6600V／7200V）');
+  // 選んだ値が、図面の「PAS 3300V200A」のように書かれる
+  for (const v of ['3300', '6600', '7200']) {
     const t = String(withDerived({ sectionalizer: 'pas', pasRatedVoltage: v, pasRatedCurrent: '200' }).pasRatingText);
     if (t !== `${v}V${200}A`) fail(`定格 ${v}V の書き方が違います（${t}）`);
   }
-  console.log('  図面の書き方：7200V200A／22000V200A のように、選んだ電圧が書かれる');
+  console.log('  図面の書き方：7200V200A／3300V200A のように、選んだ電圧が書かれる');
 }
 
 console.log('\n■ 引込ケーブル（埋設・架空・なし）と定格電圧');
@@ -770,18 +770,18 @@ console.log('\n■ 引込ケーブル（埋設・架空・なし）と定格電�
   if (JSON.stringify(opts) !== JSON.stringify(['buried', 'overhead', 'none'])) fail(`付設方法の選択肢が違います（${opts.join('・')}）`);
   const volt = QUESTIONS.find((q) => q.id === 'cableVoltage');
   const vOpts = volt?.options?.map((o) => o.value) ?? [];
-  if (volt?.type !== 'select' || !volt.dropdown || JSON.stringify(vOpts) !== JSON.stringify(['3300', '6600', '22000'])) {
-    fail(`定格電圧が、3300・6600・22000のドロップダウンになっていません（${volt?.type}／${vOpts.join('・')}）`);
-  } else console.log('  定格電圧：ドロップダウン（3300V／6600V／22000V）。初期値は6600V');
+  if (volt?.type !== 'select' || !volt.dropdown || JSON.stringify(vOpts) !== JSON.stringify(['3300', '6600'])) {
+    fail(`定格電圧が、3300・6600のドロップダウンになっていません（${volt?.type}／${vOpts.join('・')}）`);
+  } else console.log('  定格電圧：ドロップダウン（3300V／6600V）。初期値は6600V');
   const rv = QUESTIONS.find((q) => q.id === 'receivingVoltage');
   const rvOpts = rv?.options?.map((o) => o.value) ?? [];
   if (rv?.type !== 'select' || !rv.dropdown || JSON.stringify(rvOpts) !== JSON.stringify(['3300', '6600']) || rv.defaultValue !== '6600') {
     fail(`受電電圧が、3300・6600のドロップダウン（初期値6600）になっていません（${rv?.type}／${rvOpts.join('・')}／${String(rv?.defaultValue)}）`);
-  } else console.log('  受電電圧：ドロップダウン（3300V／6600V）。22000Vは無い。初期値は6600V');
+  } else console.log('  受電電圧：ドロップダウン（3300V／6600V）。初期値は6600V');
   // 古い案件の数値（6600）も、ケーブルの注記にそのまま出る
   const spec = String(withDerived({ cableVoltage: 6600, cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
-  const spec2 = String(withDerived({ cableVoltage: '22000', cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
-  if (spec !== '6600V 38mm2 14m' || spec2 !== '22000V 38mm2 14m') fail(`注記が違います（${spec} ／ ${spec2}）`);
+  const spec2 = String(withDerived({ cableVoltage: '3300', cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
+  if (spec !== '6600V 38mm2 14m' || spec2 !== '3300V 38mm2 14m') fail(`注記が違います（${spec} ／ ${spec2}）`);
   else console.log(`  ケーブルの注記：${spec}（数値でも文字でも同じ）／ ${spec2}`);
 }
 
@@ -1255,7 +1255,7 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     ['用途が未入力でも、電圧は「6600/」が入る', {}, { trVoltage: '6600/' }],
     ['自分で書いた電圧は、そのまま', { trUsage: '電灯', trVoltage: '6600V/210-105V' }, { trVoltage: '6600V/210-105V' }],
     ['電圧を空にしたら、空のまま（また自動で入らない）', { trUsage: '電灯', trVoltage: '' }, { trVoltage: '' }],
-    ['受電電圧が6600V以外のときは、電圧を自動で入れない', { receivingVoltage: '22000', trUsage: '電灯' }, { trVoltage: undefined, trConnection: 'tr-1p' }],
+    ['受電電圧が6600V以外のときは、電圧を自動で入れない', { receivingVoltage: '3300', trUsage: '電灯' }, { trVoltage: undefined, trConnection: 'tr-1p' }],
     ['受電電圧が数（6600）で入っていても同じ', { receivingVoltage: 6600, trUsage: '動力' }, { trVoltage: '6600/210V' }],
     [
       '2台目以降は、その台の用途で決まる',
