@@ -389,10 +389,11 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const ocrY = ocr && top ? ocr.sym.y + top.y : 0;
       // コイルの中心は、OCRの真上の線に合わせる（OCRが無ければ、主回路から離した位置）。VCBの文字と重ならないよう、主回路から離す
       const cx = Math.max(ocr ? ocrX : 0, SPINE + COIL_MIN_X);
-      // VCBの下の端子（VCBの文字より下）から、右へ点線で連動を引く
-      const bOut = portOf(breaker.def, 'out', 'sec');
-      const linkY = breaker.sym.y + (bOut ? bOut.y : breaker.def.box.h);
-      const linkX = breaker.sym.x + (bOut ? bOut.x : breaker.def.box.w / 2);
+      // 開閉器（VCB・LBS）の図記号の真ん中（主回路の縦線の上、記号の高さの中央）から、右へ点線で連動を引く
+      const bIn = portOf(breaker.def, 'in');
+      const linkY = breaker.sym.y + breaker.def.box.h / 2;
+      const linkX = breaker.sym.x + (bIn ? bIn.x : breaker.def.box.w / 2);
+      keepLabelAbove(breaker.sym, linkY);
       const sym = add(item, def, cx - cb.x, linkY - cl.y, 0, 'right');
       // VCBとコイルの連動（点線）
       wires.push({ x1: linkX, y1: linkY, x2: sym.x + cl.x, y2: linkY, dashed: true });
@@ -861,6 +862,13 @@ const NUDGE_STEP = 4;
 const NUDGE_MAX = 96;
 
 /** 文字の並びが占める範囲。y は1行目のベースライン */
+/** 点線（トリップコイルとの連動）が、開閉器の文字にかからないよう、文字を点線の上へ動かす */
+function keepLabelAbove(sym: PlacedSymbol, lineY: number): void {
+  if (sym.label.length === 0) return;
+  const r = labelRect(sym.labelAt, sym.label);
+  if (r.y0 < lineY + 4 && r.y1 > lineY - 4) sym.labelAt = { ...sym.labelAt, y: sym.labelAt.y - (r.y1 - (lineY - 6)) };
+}
+
 export function labelRect(at: { x: number; y: number; anchor: 'start' | 'middle' | 'end' }, lines: string[]): Rect {
   const w = labelWidth(lines);
   const x0 = at.anchor === 'start' ? at.x : at.anchor === 'end' ? at.x - w : at.x - w / 2;
@@ -1355,8 +1363,9 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       // 送り出しの開閉器に付くDGR：DGRは、ZCTの横。TCは、開閉器の横
       if (gr && breaker && zsym) {
         const bdef = getSymbol(breaker.symbolId);
-        const bOut = portOf(bdef, 'out') ?? bdef.ports[bdef.ports.length - 1]!;
-        const linkY = breaker.y + bOut.y;
+        // 点線は、開閉器の図記号の真ん中から引く
+        const linkY = breaker.y + bdef.box.h / 2;
+        keepLabelAbove(breaker, linkY);
         const zdef = getSymbol('zct');
         const zsec = portOf(zdef, 'sec')!;
         const secX = zsym.x + zsec.x;
@@ -1387,7 +1396,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         };
         symbols.push(tsym);
         ext(tsym.x, tsym.y, tsym.x + tdef.box.w, tsym.y + tdef.box.h);
-        wires.push({ x1: breaker.x + bOut.x, y1: linkY, x2: tsym.x + tl.x, y2: linkY, dashed: true });
+        wires.push({ x1: breaker.x + (portOf(bdef, 'in')?.x ?? bdef.box.w / 2), y1: linkY, x2: tsym.x + tl.x, y2: linkY, dashed: true });
         if (below) {
           // DGRがTCより下：TCの下の端子から、真下のDGRの上の端子へ
           wires.push({ x1: tcX, y1: tsym.y + tb.y, x2: tcX, y2: rsym.y + rtop.y });

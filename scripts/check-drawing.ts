@@ -2327,6 +2327,41 @@ console.log('\n■ DGRの遮断（TC）');
   }
 }
 
+/* ---------- TCの点線は、開閉器（VCB・LBS）の図記号の真ん中につながる ---------- */
+{
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  const centerOf = (s: { x: number; y: number; symbolId: string }) => {
+    const def = getSymbolDef(s.symbolId);
+    const inp = def.ports.find((q) => q.id === 'in');
+    return { x: s.x + (inp ? inp.x : def.box.w / 2), y: s.y + def.box.h / 2 };
+  };
+  const check = (label: string, a: Answers, breakerId: (d: ReturnType<typeof layout>) => string, tcId: string) => {
+    const d = layout(buildComposition(a), a);
+    const brk = d.symbols.find((s) => s.id === breakerId(d));
+    const tc = d.symbols.find((s) => s.id === tcId || s.role === tcId);
+    if (!brk || !tc) { fail(`${label}：開閉器またはTCがありません`); return; }
+    const c = centerOf(brk);
+    const tl = portAbs(tc, 'l');
+    const ok = d.wires.some((w) => w.dashed && Math.abs(w.x1 - c.x) < 0.5 && Math.abs(w.y1 - c.y) < 0.5 && Math.abs(w.x2 - tl.x) < 0.5 && Math.abs(w.y2 - tl.y) < 0.5);
+    const found = inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind));
+    const bad = !ok ? 'TCの点線が、開閉器の図記号の真ん中につながっていません' : findLabelCollisions(d).length > 0 ? '文字が重なっています' : found.length > 0 ? `編集用に取り込むと、問題が出ます（${JSON.stringify(found.slice(0, 2))}）` : '';
+    if (bad) fail(`${label}：${bad}`);
+    else console.log(`  ${label}：点線は開閉器の真ん中につながる。線・文字が重ならない`);
+  };
+  const rated: Answers = { vcbRatedVoltage: '7200', vcbRatedCurrent: 600 };
+  for (const [name, extra] of [['OCRだけ', {}], ['DGR', { mainGroundRelay: 'dgr' }], ['GR', { mainGroundRelay: 'gr' }], ['DGR（母線の一次側）', { mainGroundRelay: 'dgr', mainZctPos: 'bus-primary' }], ['DGR（母線の二次側）', { mainGroundRelay: 'dgr', mainZctPos: 'bus-secondary' }]] as [string, Answers][]) {
+    check(`主遮断装置VCB（${name}）`, { ...base, ...rated, ...extra }, () => 'main-breaker', 'trip-coil');
+  }
+  for (const [name, extra] of [['OCR', {}], ['OCR＋DGR', { mainGroundRelay: 'dgr' }]] as [string, Answers][]) {
+    check(`主遮断装置LBS（${name}）`, { ...base, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasSiteCt: 'yes', hasSiteVt: 'no', relayCount: '1', relayType: 'OCR', ...extra }, () => 'main-breaker', 'trip-coil');
+  }
+  for (const [name, sw] of [['VCB', 'vcb'], ['DS＋VCB', 'ds-vcb'], ['LBS', 'lbs']] as const) {
+    for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
+      check(`送り出し${name}（ZCT=${pos}）`, { ...base, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: sw, sendoutGroundRelay: 'dgr', sendoutZctPos: pos }, () => (sw === 'lbs' ? 'sendout-lbs' : 'sendout-vcb'), 'sendout-trip-coil');
+    }
+  }
+}
+
 /* ---------- LAの上位（上側）の開閉器：開閉器の真下にLA。縦につながる ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
