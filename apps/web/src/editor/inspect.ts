@@ -510,6 +510,18 @@ function closeVacatedBands(doc: Doc): { doc: Doc; closed: number } {
   return { doc: applyAnchors(cur), closed };
 }
 
+/**
+ * 連動の点線（TCから開閉器へ）は、開閉器の図記号の中へ入って、真ん中で止まる。
+ * 点線の端が、記号の箱の中にあるときは、「つながっていない端」でも、「記号を突き抜けた線」でもない（連動の線）。
+ */
+function dashedEndsInside(doc: Doc, w: { dashed?: boolean }, x: number, y: number): boolean {
+  if (!w.dashed) return false;
+  return symbolsOf(doc).some((s) => {
+    const b = symbolBox(s);
+    return x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1;
+  });
+}
+
 /** 2 宙に浮いた端を、近くの接続点につなぐ */
 function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
   const issues: Issue[] = [];
@@ -527,6 +539,8 @@ function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
       if (end === 1 ? w.at1 : w.at2) continue;
       const x = end === 1 ? w.x1 : w.x2;
       const y = end === 1 ? w.y1 : w.y2;
+      // 連動の点線が、開閉器の中で止まっているのは、そのままにする
+      if (dashedEndsInside(doc, w, x, y)) continue;
       // すでに接続点の上、または他の線とつながっているなら、浮いていない
       if (nearestPort(doc, x, y, TOUCH)) continue;
       if (touchesOtherWire(it, x, y)) continue;
@@ -574,6 +588,8 @@ function trimThroughSymbols(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
       const inside = (x: number, y: number) => x > box.x0 && x < box.x1 && y > box.y0 && y < box.y1;
       const end1In = inside(w.x1, w.y1);
       const end2In = inside(w.x2, w.y2);
+      // 連動の点線が、開閉器の中で止まっているのは、そのままにする
+      if (w.dashed && (end1In !== end2In)) continue;
 
       if (end1In !== end2In) {
         // 片側だけ中に入っている → 記号のふちまで引っ込める。
@@ -915,6 +931,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
       if (end === 1 ? w.at1 : w.at2) continue;
       const x = end === 1 ? w.x1 : w.x2;
       const y = end === 1 ? w.y1 : w.y2;
+      if (dashedEndsInside(doc, w, x, y)) continue;
       if (nearestPort(doc, x, y, TOUCH)) continue;
       if (wires.some((o) => o.id !== w.id && distToSegment(x, y, o.x1, o.y1, o.x2, o.y2) <= TOUCH)) continue;
       if (branchesInsideParent(doc, w, x, y)) continue;
@@ -929,6 +946,12 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
       if (related.has(s.id) || getSymbol(s.symbolId).overlay) continue;
       const box = symbolBox(s);
       if (!segmentEntersBox(w, box)) continue;
+      // 連動の点線が、開閉器の中で止まっているのは、突き抜けていない
+      if (w.dashed) {
+        const in1 = w.x1 > box.x0 && w.x1 < box.x1 && w.y1 > box.y0 && w.y1 < box.y1;
+        const in2 = w.x2 > box.x0 && w.x2 < box.x1 && w.y2 > box.y0 && w.y2 < box.y1;
+        if (in1 !== in2) continue;
+      }
       issues.push({
         kind: 'through',
         message: `線が記号（${getSymbol(s.symbolId).abbr}）を突き抜けています`,

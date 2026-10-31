@@ -2228,6 +2228,56 @@ console.log('\n■ OVGR・DGRの記号');
   else console.log('  「なし」のとき：ZPDだけが描かれる');
 }
 
+/* ---------- DGRの遮断：TCは、開閉器ごとに1つ。主遮断装置にも、送り出しの開閉器にも ---------- */
+console.log('\n■ DGRの遮断（TC）');
+{
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  const wireAtP = (d: ReturnType<typeof layout>, x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+  // 主遮断装置（VCB・LBS）：DGRの右の端子から、TCの上の端子へ。TCは1つ（OCRとも共有）
+  for (const [name, extra] of [['VCB（OCRとTCを共有）', {}], ['VCB（DGRだけ）', { relayCount: '0' }], ['LBS', { mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3 }]] as [string, Answers][]) {
+    const a: Answers = { ...base, mainGroundRelay: 'dgr', ...extra };
+    const d = layout(buildComposition(a), a);
+    const coils = d.symbols.filter((s) => s.symbolId === 'trip-coil');
+    const dgrS = d.symbols.find((s) => s.role === 'main-ground-relay');
+    if (coils.length !== 1 || !dgrS) { fail(`${name}：TCが ${coils.length}個、またはDGRがありません（TCは1つのはず）`); continue; }
+    const tc = coils[0]!;
+    const tcTop = portAbs(tc, 't');
+    const dgrR = portAbs(dgrS, 'r');
+    const dashedToBreaker = d.wires.some((w) => w.dashed && Math.abs(w.x2 - portAbs(tc, 'l').x) < 0.5 && Math.abs(w.y2 - portAbs(tc, 'l').y) < 0.5);
+    if (!wireAtP(d, tcTop.x, tcTop.y) || !wireAtP(d, dgrR.x, dgrR.y)) fail(`${name}：DGRとTCが、線でつながっていません`);
+    else if (!dashedToBreaker) fail(`${name}：TCと開閉器が、点線でつながっていません`);
+    else if (findLabelCollisions(d).length > 0) fail(`${name}：文字が重なっています`);
+    else if (inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0) fail(`${name}：編集用に取り込むと、問題が出ます`);
+    else console.log(`  ${name}：DGR → TC（1つ）→ 開閉器（点線）。線・文字が重ならない`);
+  }
+  // 送り出しの開閉器：ZCT（ケーブルに横向き）→ DGR（上）、TCは開閉器の上。TCから開閉器へ点線
+  for (const [name, sw] of [['VCB', 'vcb'], ['DS＋VCB', 'ds-vcb'], ['LBS', 'lbs']] as const) {
+    const a: Answers = { ...base, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: sw, sendoutGroundRelay: 'dgr' };
+    const d = layout(buildComposition(a), a);
+    const z = d.symbols.find((s) => s.id === 'sendout-zct');
+    const r = d.symbols.find((s) => s.id === 'sendout-ground-relay');
+    const t = d.symbols.find((s) => s.id === 'sendout-trip-coil');
+    const brk = d.symbols.find((s) => s.id === (sw === 'lbs' ? 'sendout-lbs' : 'sendout-vcb'));
+    if (!z || !r || !t || !brk) { fail(`送り出し（${name}）：ZCT・DGR・TC・開閉器のどれかが描かれていません`); continue; }
+    const brkDef = getSymbolDef(brk.symbolId);
+    const brkCenter = { x: brk.x + brkDef.box.w / 2, y: brk.y + brkDef.box.h / 2 };
+    const tcL = portAbs(t, 'l');
+    const dashed = d.wires.some((w) => w.dashed && w.x1 === w.x2 && Math.abs(w.x1 - brkCenter.x) < 1.5 && Math.abs(w.y1 - tcL.y) < 0.5 && Math.abs(w.y2 - brkCenter.y) < 1.5);
+    const zIn = portAbs(z, 'in');
+    const zSec = portAbs(z, 'sec');
+    const rl = (() => { const def = getSymbolDef(r.symbolId); const p = def.ports.find((q) => q.id === 'l')!; return { x: r.x + p.x, y: r.y + p.y }; })();
+    const rt = portAbs(r, 'top');
+    const tb = portAbs(t, 'b');
+    const above = r.y < brkCenter.y && t.y < brkCenter.y && zIn.y === brkCenter.y;
+    if (!above) fail(`送り出し（${name}）：ZCTが線の上、DGR・TCが上にありません`);
+    else if (!dashed) fail(`送り出し（${name}）：TCから開閉器の中心へ、点線が引かれていません`);
+    else if (!wireAtP(d, zSec.x, zSec.y) || !wireAtP(d, rl.x, rl.y) || !wireAtP(d, rt.x, rt.y) || !wireAtP(d, tb.x, tb.y)) fail(`送り出し（${name}）：ZCT・DGR・TCの線がつながっていません`);
+    else if (findLabelCollisions(d).length > 0) fail(`送り出し（${name}）：文字が重なっています`);
+    else if (inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0) fail(`送り出し（${name}）：編集用に取り込むと、問題が出ます`);
+    else console.log(`  送り出し（${name}）：ZCT → DGR、TC → 開閉器の中心（点線）。線・文字が重ならない`);
+  }
+}
+
 /* ---------- 3か所以上のエリア：どのエリアから分岐するか、エリアごとに違ってよい ---------- */
 console.log('\n■ 3か所以上のエリアのつなぎ方（1→2→3、1→2と1→3、4か所など）');
 {

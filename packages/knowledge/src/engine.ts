@@ -964,11 +964,14 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
     out.push(target ? { ...n, attachTo: target.id } : { ...n, kind: 'free', attachTo: undefined });
   }
 
-  // トリップコイル：VCBとOCRの両方があるときだけ
+  // トリップコイル：主遮断装置（VCB・LBS）ごとに1つ。OCR（VCBのとき）・主遮断装置のDGR・GRのうち、付いているものを、すべて、このコイルにつなぐ
   const coil = inst.find((i) => i.role === 'trip-coil');
-  if (coil && ocr && rest.some((i) => i.role === 'main-breaker' && i.symbolId === 'vcb')) {
+  const mainBreaker = rest.find((i) => i.role === 'main-breaker');
+  const grounds = rest.filter((i) => i.role === 'main-ground-relay').map((i) => i.id);
+  const ocrTrips = ocr && mainBreaker?.symbolId === 'vcb' ? [ocr.id] : [];
+  if (coil && mainBreaker && (mainBreaker.symbolId === 'vcb' || mainBreaker.symbolId === 'lbs-pf' || mainBreaker.symbolId === 'lbs') && (ocrTrips.length > 0 || grounds.length > 0)) {
     keyOf.set(coil, [9, 0, 0, 0]);
-    out.push({ ...coil, connectFrom: [ocr.id] });
+    out.push({ ...coil, connectFrom: [...ocrTrips, ...grounds] });
   }
 
   const cmp = (a: PlacedItem, b: PlacedItem) => {

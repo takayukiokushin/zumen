@@ -78,6 +78,8 @@ export const protectionSymbols: SymbolDef[] = [
     ports: [
       { id: 'l', x: 0, y: 11, dir: 'left', role: 'secondary' },
       { id: 'b', x: 15, y: 22, dir: 'down', role: 'secondary' },
+      // 上から入る線（DGR・GRの出力）
+      { id: 't', x: 15, y: 0, dir: 'up', role: 'secondary' },
     ],
     status: 'confirmed',
     statusNote: 'VCBを引き外すコイル。どのOCRがどのVCBに対応しているかを、はっきりさせるために描く。長方形の中に「TC」と書く形（自前の図。表記は確認済み）。',

@@ -623,6 +623,25 @@ export const SENDOUT: Placement[] = [
     labelTemplate: ['LBS', '{sendoutFuseText}'],
     note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く',
   },
+  // 送り出しの開閉器に付くDGR：ZCTは送り出しの高圧ケーブルに、DGRはその横（上）に、TCは開閉器の上に描く（layout が置く）
+  {
+    role: 'sendout-zct',
+    symbolId: 'zct',
+    kind: 'sendout',
+    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+  },
+  {
+    role: 'sendout-ground-relay',
+    symbolId: 'relay-dgr',
+    kind: 'sendout',
+    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+  },
+  {
+    role: 'sendout-trip-coil',
+    symbolId: 'trip-coil',
+    kind: 'sendout',
+    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+  },
 ];
 
 /** 変圧器（台数分くり返す） */

@@ -1620,6 +1620,26 @@ export const QUESTIONS: Question[] = [
     help: '送り出しがLBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
   },
 
+  {
+    // 送り出しの開閉器（VCB・LBS）に付く地絡継電器。DGRは、同じエリアにZPDがあるときだけ選べる（GRは、後の項目で追加する）
+    id: 'sendoutGroundRelay',
+    group: 'sendout',
+    label: '送り出しの開閉器の地絡継電器は？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし' },
+      { value: 'dgr', label: 'DGR（方向性）' },
+    ],
+    defaultValue: 'none',
+    showIf: {
+      all: [SENDOUT_SHOWN, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }, { key: 'hasZpd', eq: 'yes' }],
+    },
+    ask: 'always',
+    help:
+      '送り出しの開閉器が、VCB・LBS・DS＋VCBのときだけ答える（DSだけでは遮断できない）。DGRは、このエリアにZPDがあるときだけ選べる。' +
+      'DGRを選ぶと、送り出しの高圧ケーブルにZCTを付け、DGRをZCTの横に描き、DGRから送り出しの開閉器まで、TC（遮断の線）を描く',
+  },
+
   /* ---------------- エリア間の接続（2か所目以降のエリア） ---------------- */
   {
     id: 'linkCable',

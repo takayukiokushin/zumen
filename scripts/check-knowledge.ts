@@ -1119,6 +1119,27 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(dgrItem?.symbolId === 'relay-dgr' && dgrItem.connectFrom?.join() === 'main-zct', 'DGRが、ZCTだけにつながる（ZPDにはつながない）形になっていません');
   ok(relayRoles({ ...cbBase, hasZpd: 'no', hasOvgr: 'yes', mainGroundRelay: 'dgr' }).length === 0, 'ZPDが「ない」のとき、答えが残っていても、OVGR・DGRを描いています');
   ok(buildComposition({ ...cbBase, mainBreakerForm: 'pfs', mainGroundRelay: 'dgr' }).some((i) => i.role === 'main-ground-relay'), 'PFS形（LBS）でも、DGRが入るはずです');
+  // TC（遮断の線）：開閉器ごとに1つ。OCR・DGRのうち付いているものを、すべて、この1つにつなぐ
+  const coilOf = (a: Answers) => buildComposition(a).find((i) => i.role === 'trip-coil');
+  const ocrId = buildComposition({ ...cbBase }).find((i) => i.symbolId === 'relay-ocr' && i.role === 'relay')?.id;
+  ok(coilOf(cbBase)?.connectFrom?.join() === ocrId, 'OCRだけのとき、TCがOCRにつながっていません');
+  ok(coilOf({ ...cbBase, mainGroundRelay: 'dgr' })?.connectFrom?.join() === `${ocrId},main-ground-relay`, `OCRとDGRが同じVCBを遮断するとき、TCが共有されていません（${coilOf({ ...cbBase, mainGroundRelay: 'dgr' })?.connectFrom?.join()}）`);
+  ok(buildComposition({ ...cbBase, mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'TCが、1つに共有されていません');
+  ok(coilOf({ ...cbBase, relayCount: '0', mainGroundRelay: 'dgr' })?.connectFrom?.join() === 'main-ground-relay', 'OCRが無くて、DGRだけのとき、TCがDGRにつながっていません');
+  ok(!coilOf({ ...cbBase, relayCount: '0' }), '継電器が何も無いのに、TCがあります');
+  const pfsDgr = coilOf({ ...cbBase, mainBreakerForm: 'pfs', mainGroundRelay: 'dgr' });
+  ok(pfsDgr?.connectFrom?.join() === 'main-ground-relay' && pfsDgr.attachTo === 'main-breaker', '主遮断装置がLBSのとき、DGRのTCが、LBSにつながっていません');
+  // 送り出しの開閉器の地絡継電器（VCB・LBS・DS＋VCBのときだけ。ZPDが「ある」ときだけ）
+  const sq = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const two = { ...cbBase, areaCount: 2 };
+  ok(sq({ ...two, sendoutSwitch: 'vcb' }).has('sendoutGroundRelay') && sq({ ...two, sendoutSwitch: 'lbs' }).has('sendoutGroundRelay') && sq({ ...two, sendoutSwitch: 'ds-vcb' }).has('sendoutGroundRelay'), 'VCB・LBS・DS＋VCBのとき、送り出しの地絡継電器の質問が出ていません');
+  ok(!sq({ ...two, sendoutSwitch: 'ds' }).has('sendoutGroundRelay') && !sq({ ...two, sendoutSwitch: 'none' }).has('sendoutGroundRelay'), 'DSだけ・なしのとき、送り出しの地絡継電器の質問が出ています');
+  ok(!sq({ ...two, sendoutSwitch: 'vcb', hasZpd: 'no' }).has('sendoutGroundRelay'), 'ZPDが「ない」のとき、送り出しのDGRの質問が出ています');
+  const sendRoles = (a: Answers) => buildComposition({ ...two, ...a }).filter((i) => i.kind === 'sendout').map((i) => i.role).join();
+  ok(sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' }) === 'sendout-vcb,sendout-zct,sendout-ground-relay,sendout-trip-coil', `送り出しのDGR（VCB）の構成：${sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' })}`);
+  ok(sendRoles({ sendoutSwitch: 'ds-vcb', sendoutGroundRelay: 'dgr' }) === 'sendout-ds,sendout-vcb,sendout-zct,sendout-ground-relay,sendout-trip-coil', 'DS＋VCBのときの送り出しのDGRの構成が違います');
+  ok(sendRoles({ sendoutSwitch: 'ds', sendoutGroundRelay: 'dgr' }) === 'sendout-ds', 'DSだけのとき、DGRの答えが残っていても、描いています');
+  ok(sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr', hasZpd: 'no' }) === 'sendout-vcb', 'ZPDが「ない」のとき、送り出しのDGRを描いています');
   ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:hasOvgr': 'yes', 'a2:mainGroundRelay': 'dgr' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => /ovgr|zct|ground/.test(r)).join() === 'main-zct,main-ground-relay,ovgr', '2か所目のOVGR・DGRが入っていません');
   // 並び：位置を選ぶと、ZPD・LAがその位置に動く（OVGRは、ZPDの有無だけでは入らない）。LAとZPDは別々の記号
   const order = (a: Answers) =>
