@@ -1154,6 +1154,23 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', hasSiteCt: 'yes' }).relayAt === undefined, 'VTの有無が未回答なのに、UVRの置き場所が決まっています');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
+  // LAの上位（上側）の開閉器：LAが「ある」ときだけ聞く。なし・DS・PC・LBSの順。選ぶと、LAの上に入る
+  const laBase: Answers = { ...cbBase, hasLa: 'yes' };
+  ok(gq(laBase).has('laSwitch') && !gq({ ...cbBase, hasLa: 'no' }).has('laSwitch'), 'LAの上位の開閉器の質問が、LAが「ある」ときだけ出るはずです');
+  const laOpts = (QUESTIONS.find((q) => q.id === 'laSwitch')?.options ?? []).map((o) => o.value).join(',');
+  ok(laOpts === 'none,ds,pc,lbs', `LAの上位の開閉器の選択肢は、なし・DS・PC・LBSの順のはずです（${laOpts}）`);
+  const laRoles = (a: Answers) => buildComposition({ ...laBase, ...a }).map((i) => i.role).filter((r) => r === 'la-switch' || r === 'site-la').join();
+  ok(laRoles({}) === 'site-la', `既定（なし）では、LAだけのはずです（${laRoles({})}）`);
+  for (const v of ['ds', 'pc', 'lbs']) {
+    const items = buildComposition({ ...laBase, laSwitch: v }).filter((i) => i.role === 'la-switch' || i.role === 'site-la');
+    ok(items.map((i) => i.role).join() === 'la-switch,site-la' && items[0]!.symbolId === v && items[1]!.hang === true, `LAの上位に ${v} を選ぶと、開閉器→LA（縦につなぐ）の順になるはずです`);
+  }
+  ok(laRoles({ hasLa: 'no', laSwitch: 'ds' }) === '', 'LAが「ない」のとき、開閉器の答えが残っていても、描いています');
+  for (const tap of ['ds-vcb', 'vcb-ct', 'ct-bus']) {
+    const order = buildComposition({ ...laBase, laSwitch: 'pc', laTap: tap }).map((i) => i.role).filter((r) => ['main-breaker', 'la-switch', 'site-la'].includes(r)).join('>');
+    ok(order === (tap === 'ds-vcb' ? 'la-switch>site-la>main-breaker' : 'main-breaker>la-switch>site-la'), `LAの位置 ${tap} のとき、開閉器とLAの位置が違います（${order}）`);
+  }
+  ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasLa': 'yes', 'a2:laSwitch': 'lbs' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => r === 'la-switch' || r === 'site-la').join() === 'la-switch,site-la', '2か所目のLAの上位の開閉器が入っていません');
   // GR（無方向性）：ZCTだけ。ZPDは要らない。DGRと同じ位置の選択肢
   const noZpd: Answers = { ...cbBase, hasZpd: 'no' };
   const grRoles = (a: Answers) => buildComposition(a).filter((i) => !i.role.startsWith('pas-')).filter((i) => ['main-zct', 'main-ground-relay'].includes(i.role)).map((i) => `${i.role}:${i.symbolId}`).join();

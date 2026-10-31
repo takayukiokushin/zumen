@@ -4,6 +4,40 @@ import type { Condition } from './condition.ts';
 const MAIN_GROUND_ON: Condition = {
   any: [{ all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }, { key: 'mainGroundRelay', eq: 'gr' }],
 };
+/** LAの上側に付く開閉器（DS・PC・LBS）。付くときは、LAを、この開閉器の真下に縦につなげて置く */
+const LA_SWITCHES = ['ds', 'pc', 'lbs'];
+const LA_ITEMS: Placement[] = [
+  ...(['ds', 'pc', 'lbs'] as const).map((v): Placement => ({
+    role: 'la-switch',
+    symbolId: v,
+    kind: 'branch-left',
+    tapFrom: 'laTap',
+    upright: true,
+    when: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', eq: v }] },
+    labelTemplate: [v.toUpperCase()],
+    note: 'LAの上側（主回路の側）に付く開閉器。LAは、この開閉器の真下につなぐ',
+  })),
+  {
+    role: 'site-la',
+    symbolId: 'la',
+    kind: 'branch-left',
+    tapFrom: 'laTap',
+    upright: true,
+    hang: true,
+    when: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', in: LA_SWITCHES }] },
+    labelTemplate: ['LA'],
+  },
+  {
+    role: 'site-la',
+    symbolId: 'la',
+    kind: 'branch-left',
+    tapFrom: 'laTap',
+    upright: true,
+    when: { all: [{ key: 'hasLa', eq: 'yes' }, { not: { key: 'laSwitch', in: LA_SWITCHES } }] },
+    labelTemplate: ['LA'],
+  },
+];
+
 /** 送り出しの開閉器の地絡継電器が付くか（DGR・GRの考え方は、主遮断装置と同じ） */
 const SENDOUT_GROUND_ON: Condition = {
   any: [{ all: [{ key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }, { key: 'sendoutGroundRelay', eq: 'gr' }],
@@ -86,6 +120,8 @@ export interface Placement {
   upright?: boolean;
   /** 直前の同じ向きの分岐と、横につなげず、別の分岐として出す */
   separate?: boolean;
+  /** 直前の分岐（開閉器）の真下に、縦につなげて置く（LAの上に開閉器が付くとき：開閉器の下にLA） */
+  hang?: boolean;
   /** 件数が0のときは、1件も出さない（継電器：0個もありうる）。ふつうは、最低1件出す */
   zeroOk?: boolean;
   /** 位置を答える質問のID（CT：主遮断装置の一次側・二次側など）。答えを PlacedItem.pos に入れ、並びに使う */
@@ -511,15 +547,7 @@ export const DOWNSTREAM: Placement[] = [
     when: { all: [{ key: 'hasZpd', eq: 'yes' }, { key: 'hasOvgr', eq: 'yes' }] },
     connectFrom: ['zpd'],
   },
-  {
-    role: 'site-la',
-    symbolId: 'la',
-    kind: 'branch-left',
-    tapFrom: 'laTap',
-    upright: true,
-    when: { key: 'hasLa', eq: 'yes' },
-    labelTemplate: ['LA'],
-  },
+  ...LA_ITEMS,
 ];
 
 /**
@@ -637,7 +665,7 @@ export const AREA_CHAIN: Placement[] = [
   ...INSTRUMENTS,
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
   { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { all: [{ key: 'hasZpd', eq: 'yes' }, { key: 'hasOvgr', eq: 'yes' }] }, connectFrom: ['zpd'] },
-  { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', upright: true, when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
+  ...LA_ITEMS,
 ];
 
 /**

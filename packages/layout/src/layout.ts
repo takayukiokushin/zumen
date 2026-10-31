@@ -619,6 +619,22 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       continue;
     }
 
+    // 直前の分岐（LAの上の開閉器）の真下に、縦につなげて置く
+    if (item.hang && lastBranch && lastBranch.dir === dir) {
+      const up = lastBranch;
+      const upOut = portOf(up.def, 'out', 'sec') ?? up.def.ports[up.def.ports.length - 1]!;
+      const hx = up.sym.x + upOut.x;
+      const hy = up.sym.y + upOut.y;
+      const hin = portOf(def, 'in') ?? def.ports[0]!;
+      const hsym = add(item, def, hx - hin.x, hy + HANG_GAP - hin.y, 0, dir > 0 ? 'right' : 'left');
+      wires.push({ x1: hx, y1: hy, x2: hx, y2: hy + HANG_GAP });
+      const hLabelBottom = hsym.label.length ? hsym.labelAt.y + (hsym.label.length - 1) * LABEL_LINE + 4 : -Infinity;
+      branchBottom = Math.max(branchBottom, hsym.y + def.box.h, hLabelBottom);
+      pendingGap = Math.max(GAP, branchBottom - spineY + 10);
+      lastBranch = { role: item.role, dir, sym: hsym, def, unit: item.unit };
+      continue;
+    }
+
     const entry = portOf(def, 'in', dir > 0 ? 'l' : 'r') ?? def.ports[0]!;
     // 縦長の記号（PFなど）は、横に出す分岐では、上を主回路の側へ向けて横に回す
     // （右へ分岐するときは上を左へ、左へ分岐するときは上を右へ）。
@@ -1093,6 +1109,8 @@ const STACK_W = 96;
 const STACK_W_GROUND = 164;
 const STACK_STEP = 40;
 const DGR_OFFSET = 40;
+/** LAの上に開閉器が付くとき、開閉器の下端からLAの上端までの線の長さ */
+const HANG_GAP = 14;
 /** ケーブルの端末から、幹の縦線までの距離 */
 const HEAD_MARGIN = 10;
 /** 送り出しの開閉器の前後・あいだの線の長さ */

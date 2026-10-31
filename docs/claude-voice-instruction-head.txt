@@ -54,7 +54,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v12beh3q",
+  "version": "v1d0asxv",
   "answers": { "項目ID": 値, "項目ID": 値 },
   "uncertain": ["自信がない項目のID"],
   "evidence": { "自信がない項目のID": "話された言葉（短く）" },

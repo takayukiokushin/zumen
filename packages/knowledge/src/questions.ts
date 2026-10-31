@@ -1226,6 +1226,23 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     help: '主回路のどこにつなぐか。ZPDとは別々に選べる（同じ位置を選んでも、別の記号として描く）',
   },
+  {
+    // LAの上側（主回路の側）に付く開閉器。選んだ開閉器の真下にLAを描く
+    id: 'laSwitch',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'LAの上位（上側）に開閉器はありますか？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし' },
+      { value: 'ds', label: 'DS（断路器）' },
+      { value: 'pc', label: 'PC（高圧カットアウト）' },
+      { value: 'lbs', label: 'LBS（高圧交流負荷開閉器）' },
+    ],
+    defaultValue: 'none',
+    showIf: { key: 'hasLa', eq: 'yes' },
+    ask: 'always',
+    help: '主回路からLAへ向かう線の途中（LAの上側）に付く開閉器。選ぶと、主回路から横に出た線が真下に折れて、開閉器、LA、アースの順に縦に並ぶ',
+  },
   { id: 'earthingNotes', group: 'receiving', section: 'ZPD・LA・接地', label: '接地方式・接地抵抗値等の特記事項', type: 'text', ask: 'always' },
 
   /* ---------------- 変圧器 ---------------- */

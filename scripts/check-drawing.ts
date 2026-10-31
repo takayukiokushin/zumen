@@ -2327,6 +2327,36 @@ console.log('\n■ DGRの遮断（TC）');
   }
 }
 
+/* ---------- LAの上位（上側）の開閉器：開閉器の真下にLA。縦につながる ---------- */
+{
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  const problems = (d: ReturnType<typeof layout>) => findLabelCollisions(d).length > 0 ? '文字が重なっています' : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
+  for (const sw of ['ds', 'pc', 'lbs']) {
+    for (const tap of ['ds-vcb', 'vcb-ct', 'ct-bus']) {
+      for (const zpd of ['yes', 'no']) {
+        const a: Answers = { ...base, laSwitch: sw, laTap: tap, hasZpd: zpd };
+        const d = layout(buildComposition(a), a);
+        const s1 = d.symbols.find((s) => s.role === 'la-switch');
+        const la = d.symbols.find((s) => s.role === 'site-la');
+        const label = `LAの上位=${sw}・LAの位置=${tap}・ZPD=${zpd}`;
+        if (!s1 || !la) { fail(`${label}：開閉器またはLAが描かれていません`); continue; }
+        const o = portAbs(s1, 'out');
+        const i = portAbs(la, 'in');
+        const vertical = Math.abs(o.x - i.x) < 0.5 && o.y < i.y && d.wires.some((w) => Math.abs(w.x1 - o.x) < 0.5 && Math.abs(w.x2 - o.x) < 0.5 && Math.abs(w.y1 - o.y) < 0.5 && Math.abs(w.y2 - i.y) < 0.5);
+        const bad = !vertical ? '開閉器の真下に、LAが縦につながっていません' : problems(d);
+        if (bad) fail(`${label}：${bad}`);
+        else console.log(`  ${label}：開閉器 → LA（縦）。線・文字が重ならない`);
+      }
+    }
+  }
+  // 2か所目のLA
+  const a2: Answers = { ...answers, mainBreakerForm: 'cb', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:hasLa': 'yes', 'a2:laSwitch': 'pc' };
+  const d2 = layout(buildComposition(a2), a2);
+  const bad2 = !d2.symbols.some((s) => s.role === 'a2:la-switch') ? '2か所目の開閉器がありません' : problems(d2);
+  if (bad2) fail(`2か所目のLAの上位の開閉器：${bad2}`);
+  else console.log('  2か所目のLAの上位の開閉器：描かれる。線・文字が重ならない');
+}
+
 /* ---------- GR（無方向性）：ZCTだけ。ZPDは無くてよい。位置の選択肢はDGRと同じ ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'no', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', mainGroundRelay: 'gr' };
