@@ -1205,7 +1205,6 @@ export const QUESTIONS: Question[] = [
     ],
     allowFreeInput: true,
     ask: 'ai-uncertain',
-    help: '用途によって、選べる結線方式が変わる（電灯＝単相系とV結線、動力＝三相とV結線、電灯および動力＝すべて）',
   },
   {
     id: 'trConnection',
