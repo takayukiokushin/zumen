@@ -2265,7 +2265,8 @@ console.log('\n■ DGRの遮断（TC）');
     const tcL = portAbs(t, 'l');
     const brkOut = portAbs(brk, 'out');
     // 開閉器の出口から、TCの左の端子へ、点線（同じ高さ）。TCの下の端子から、真下のDGRの上の端子へ
-    const dashed = d.wires.some((w) => w.dashed && w.y1 === w.y2 && Math.abs(w.y1 - tcL.y) < 0.5 && Math.abs(w.x1 - brkOut.x) < 0.5 && Math.abs(w.x2 - tcL.x) < 0.5);
+    // 点線は、開閉器の真ん中の高さ。左の端は、主回路の縦線か、可動刃に触れた点（縦線より右）
+    const dashed = d.wires.some((w) => w.dashed && w.y1 === w.y2 && Math.abs(w.y1 - tcL.y) < 0.5 && w.x1 >= brkOut.x - 0.5 && w.x1 < tcL.x && Math.abs(w.x2 - tcL.x) < 0.5);
     const zIn = portAbs(z, 'in');
     const zSec = portAbs(z, 'sec');
     const rl = (() => { const def = getSymbolDef(r.symbolId); const p = def.ports.find((q) => q.id === 'l')!; return { x: r.x + p.x, y: r.y + p.y }; })();
@@ -2330,10 +2331,20 @@ console.log('\n■ DGRの遮断（TC）');
 /* ---------- TCの点線は、開閉器（VCB・LBS）の図記号の真ん中につながる ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  // 点線の引き始め：高さは図記号の真ん中。横は、主回路の縦線。ただし、可動刃（斜めの線）が縦線より右にあるとき（VCB）は、刃に触れた点（刃を突き抜けない）
   const centerOf = (s: { x: number; y: number; symbolId: string }) => {
     const def = getSymbolDef(s.symbolId);
     const inp = def.ports.find((q) => q.id === 'in');
-    return { x: s.x + (inp ? inp.x : def.box.w / 2), y: s.y + def.box.h / 2 };
+    const axis = inp ? inp.x : def.box.w / 2;
+    const cy = def.box.h / 2;
+    let x = axis;
+    for (const sh of def.shapes) {
+      if (sh.k !== 'line' || sh.x1 === sh.x2 || sh.y1 === sh.y2) continue;
+      if (cy < Math.min(sh.y1, sh.y2) || cy > Math.max(sh.y1, sh.y2)) continue;
+      const xi = sh.x1 + ((sh.x2 - sh.x1) * (cy - sh.y1)) / (sh.y2 - sh.y1);
+      if (xi > axis + 0.5) x = xi;
+    }
+    return { x: s.x + x, y: s.y + cy, vcb: s.symbolId === 'vcb' };
   };
   const check = (label: string, a: Answers, breakerId: (d: ReturnType<typeof layout>) => string, tcId: string) => {
     const d = layout(buildComposition(a), a);
@@ -2342,11 +2353,14 @@ console.log('\n■ DGRの遮断（TC）');
     if (!brk || !tc) { fail(`${label}：開閉器またはTCがありません`); return; }
     const c = centerOf(brk);
     const tl = portAbs(tc, 'l');
+    // VCBは、刃に触れた点（記号の左端から 約34.3）。LBSは、縦線（24）
+    const expectX = brk.x + (c.vcb ? 24 + (20 * 17) / 33 : 24);
+    if (Math.abs(c.x - expectX) > 0.5) { fail(`${label}：点線の引き始めの位置が、想定と違います`); return; }
     const ok = d.wires.some((w) => w.dashed && Math.abs(w.x1 - c.x) < 0.5 && Math.abs(w.y1 - c.y) < 0.5 && Math.abs(w.x2 - tl.x) < 0.5 && Math.abs(w.y2 - tl.y) < 0.5);
     const found = inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind));
     const bad = !ok ? 'TCの点線が、開閉器の図記号の真ん中につながっていません' : findLabelCollisions(d).length > 0 ? '文字が重なっています' : found.length > 0 ? `編集用に取り込むと、問題が出ます（${JSON.stringify(found.slice(0, 2))}）` : '';
     if (bad) fail(`${label}：${bad}`);
-    else console.log(`  ${label}：点線は開閉器の真ん中につながる。線・文字が重ならない`);
+    else console.log(`  ${label}：点線は開閉器の真ん中の高さ、刃に触れたところ（LBSは縦線）から引く。線・文字が重ならない`);
   };
   const rated: Answers = { vcbRatedVoltage: '7200', vcbRatedCurrent: 600 };
   for (const [name, extra] of [['OCRだけ', {}], ['DGR', { mainGroundRelay: 'dgr' }], ['GR', { mainGroundRelay: 'gr' }], ['DGR（母線の一次側）', { mainGroundRelay: 'dgr', mainZctPos: 'bus-primary' }], ['DGR（母線の二次側）', { mainGroundRelay: 'dgr', mainZctPos: 'bus-secondary' }]] as [string, Answers][]) {

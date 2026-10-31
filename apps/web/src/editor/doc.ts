@@ -767,7 +767,18 @@ export const removeItem = (doc: Doc, id: string): Doc => {
         if (it.kind !== 'wire') return it;
         const a1 = it.at1 && gone.has(it.at1.item);
         const a2 = it.at2 && gone.has(it.at2.item);
-        if (!a1 && !a2) return it;
+        // 連動の点線（TC→開閉器）は、開閉器の図記号の中（刃に触れた点）で止まっていて、記号の接続点にはつながっていない。
+        // 消した記号の中で止まっていた点線も、つなぎ先を失った線として扱う
+        const inGone = (x: number, y: number) =>
+          !!it.dashed &&
+          doc.items.some((o) => {
+            if (o.kind !== 'symbol' || !gone.has(o.id)) return false;
+            const rb = rotatedBox(getSymbol(o.symbolId).box, o.rotate);
+            return x > o.x + rb.dx && x < o.x + rb.dx + rb.w && y > o.y + rb.dy && y < o.y + rb.dy + rb.h;
+          });
+        const e1 = !it.at1 && inGone(it.x1, it.y1);
+        const e2 = !it.at2 && inGone(it.x2, it.y2);
+        if (!a1 && !a2 && !e1 && !e2) return it;
         return { ...it, at1: a1 ? undefined : it.at1, at2: a2 ? undefined : it.at2, orphan: true };
       }),
   };

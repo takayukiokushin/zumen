@@ -392,7 +392,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       // 開閉器（VCB・LBS）の図記号の真ん中（主回路の縦線の上、記号の高さの中央）から、右へ点線で連動を引く
       const bIn = portOf(breaker.def, 'in');
       const linkY = breaker.sym.y + breaker.def.box.h / 2;
-      const linkX = breaker.sym.x + (bIn ? bIn.x : breaker.def.box.w / 2);
+      // 点線は、主回路の縦線から出るが、可動刃（斜めの線）が右にあるときは、刃に触れたところから出す（刃を突き抜けない）
+      const linkX = breaker.sym.x + dashedStartX(breaker.def, bIn ? bIn.x : breaker.def.box.w / 2, breaker.def.box.h / 2);
       keepLabelAbove(breaker.sym, linkY);
       const sym = add(item, def, cx - cb.x, linkY - cl.y, 0, 'right');
       // VCBとコイルの連動（点線）
@@ -862,6 +863,26 @@ const NUDGE_STEP = 4;
 const NUDGE_MAX = 96;
 
 /** 文字の並びが占める範囲。y は1行目のベースライン */
+/**
+ * トリップコイルへの点線を引き始める x（記号の左端から）。
+ * 開閉器の真ん中の高さで、可動刃（斜めの線）が主回路の縦線より右にあるとき（VCB）は、刃に触れた点から引く。
+ * 刃が左にある開閉器（LBS）は、主回路の縦線から引く。
+ */
+function dashedStartX(def: SymbolDef, axisX: number, centerY: number): number {
+  let x = axisX;
+  let hit = Infinity;
+  for (const sh of def.shapes) {
+    if (sh.k !== 'line' || sh.x1 === sh.x2 || sh.y1 === sh.y2) continue;
+    const lo = Math.min(sh.y1, sh.y2);
+    const hi = Math.max(sh.y1, sh.y2);
+    if (centerY < lo || centerY > hi) continue;
+    const xi = sh.x1 + ((sh.x2 - sh.x1) * (centerY - sh.y1)) / (sh.y2 - sh.y1);
+    if (xi > axisX + 0.5 && xi < hit) hit = xi;
+  }
+  if (hit !== Infinity) x = hit;
+  return x;
+}
+
 /** 点線（トリップコイルとの連動）が、開閉器の文字にかからないよう、文字を点線の上へ動かす */
 function keepLabelAbove(sym: PlacedSymbol, lineY: number): void {
   if (sym.label.length === 0) return;
@@ -1396,7 +1417,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         };
         symbols.push(tsym);
         ext(tsym.x, tsym.y, tsym.x + tdef.box.w, tsym.y + tdef.box.h);
-        wires.push({ x1: breaker.x + (portOf(bdef, 'in')?.x ?? bdef.box.w / 2), y1: linkY, x2: tsym.x + tl.x, y2: linkY, dashed: true });
+        wires.push({ x1: breaker.x + dashedStartX(bdef, portOf(bdef, 'in')?.x ?? bdef.box.w / 2, bdef.box.h / 2), y1: linkY, x2: tsym.x + tl.x, y2: linkY, dashed: true });
         if (below) {
           // DGRがTCより下：TCの下の端子から、真下のDGRの上の端子へ
           wires.push({ x1: tcX, y1: tsym.y + tb.y, x2: tcX, y2: rsym.y + rtop.y });
