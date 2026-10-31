@@ -1126,7 +1126,7 @@ export const QUESTIONS: Question[] = [
   {
     id: 'hasZpd',
     group: 'receiving', section: 'ZPD・LA・接地',
-    label: 'ZPD（OVGR用）はありますか？',
+    label: 'ZPDはありますか？',
     type: 'select',
     options: YES_NO,
     defaultValue: 'no',
