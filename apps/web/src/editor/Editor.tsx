@@ -8,7 +8,6 @@ import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
-import { ConfirmDialog } from '../ConfirmDialog.tsx';
 import { UndoIcon, ZoomIcon } from '../icons.tsx';
 import { ISSUE_LABEL, chooseSheet, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
@@ -81,8 +80,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   /** 「結線を整える」で直しきれなかったところ */
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
-  /** 「入力した内容を反映させる」の確認の窓を出しているか */
-  const [askRegenerate, setAskRegenerate] = useState(false);
+  /** 入力内容が変わって、手で直した図面を作り直したときの知らせ（「操作を戻す」で元に戻せる） */
+  const [rebuiltNote, setRebuiltNote] = useState(false);
   /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
   const lastArrow = useRef<{ id: string; at: number } | null>(null);
 
@@ -149,8 +148,19 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     setSelectedId(null);
   };
 
-  /** 手で直したあとに回答が変わっている。勝手に作り直さず、案内だけ出す */
-  const stale = doc.edited === true && doc.basis !== undefined && doc.basis !== basis;
+  /**
+   * 入力内容が変わったら、ボタンを押さなくても、自動で図面に反映する。
+   * （どの回答から作った図面かは、Doc.basis に覚えてある。違っていたら、いまの回答で作り直す）
+   * 手で直した図面のときは、作り直したことを知らせる（「操作を戻す」で、元の図面に戻せる）。
+   * 動くのは、この画面を開いたときと、回答が変わったときだけ。「操作を戻す」で古い図面に戻したときは、
+   * 戻した図面をそのまま見せる（すぐに作り直さない）。
+   */
+  useEffect(() => {
+    if (doc.basis === undefined || doc.basis === basis) return;
+    if (doc.edited === true) setRebuiltNote(true);
+    regenerate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basis]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -315,15 +325,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           </div>
 
           <div className="tool-group sec">
-            <span className="cap">{t('editor.group.rebuild')}</span>
-            <div className="tool-row">
-              <button type="button" disabled={sheetView} onClick={() => setAskRegenerate(true)}>
-                {t('editor.regenerate')}
-              </button>
-            </div>
-          </div>
-
-          <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
             <div className="tool-row">
               <span className="paper-pick" role="group" title={t('editor.orientation.help')}>
@@ -374,14 +375,13 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         </div>
       </div>
 
-      {stale && (
-        <p className="stale-note">
-          <b>ヒアリングの回答が、この図面を作ったときから変わっています。</b>
-          いまの図面は手で直したものなので、そのままにしてあります。
-          <button type="button" className="btn" disabled={sheetView} onClick={() => setAskRegenerate(true)}>
-            {t('editor.regenerate')}
+      {rebuiltNote && (
+        <p className="stale-note" role="status">
+          <b>入力内容が変わったので、図面を作り直しました。</b>
+          <span className="hint">手で直していた内容は、「操作を戻す」で、元に戻せます。</span>
+          <button type="button" className="btn" onClick={() => setRebuiltNote(false)}>
+            閉じる
           </button>
-          <span className="hint">（押しても「操作を戻す」で元に戻せます）</span>
         </p>
       )}
 
@@ -428,27 +428,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             印刷プレビューを閉じる
           </button>
         </p>
-      )}
-
-      {askRegenerate && (
-        <ConfirmDialog
-          title={t('editor.regenerate')}
-          message={[
-            '入力済みの内容で上書きされます。入力した内容に基づいて、図面が再作成されます。',
-            ...(doc.edited
-              ? ['この図面は手で直してあります。記号の移動・追加・削除、線やメモの変更など、手で直した内容は、この図面から失われます。']
-              : []),
-            '実行したあとでも、「操作を戻す」で、元の図面に戻せます。',
-            'よろしいですか？',
-          ]}
-          confirmLabel="実行"
-          cancelLabel="キャンセル"
-          onConfirm={() => {
-            setAskRegenerate(false);
-            regenerate();
-          }}
-          onCancel={() => setAskRegenerate(false)}
-        />
       )}
 
       {/* 印刷の向きだけを指定する。用紙の大きさは、印刷の設定画面（プリンター）で決まり、図面は、その用紙いっぱいに収まる */}
