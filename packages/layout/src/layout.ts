@@ -134,6 +134,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   let lastBranch: { role: string; dir: number; sym: PlacedSymbol; def: SymbolDef; unit?: number } | null = null;
   /** 直前までの分岐が占めている下端（文字を含む）。次の分岐をここより下に出す */
   let branchBottom = -Infinity;
+  /** 直前に置いたケーブルの端末の、文字が記号の下へ出る長さ */
+  let cableHeadOverhang = 0;
   /** 同じ機器（VT）の二次側につなぐ継電器の積み上げ：1つ目の位置と、いまの下端 */
   const stacks = new Map<string, { railX: number; x: number; bottom: number }>();
   /** 名前だけの継電器を、置き先ごとに何個重ねたか */
@@ -441,9 +443,13 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
           wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: yy, dashed: pendingDashed });
         }
         const [ex, ey] = flip(def, entryPort.x, entryPort.y, rotate);
-        add(item, def, SPINE - ex, yy - ey, rotate, 'right');
+        const placedSym = add(item, def, SPINE - ex, yy - ey, rotate, 'right');
         const [, oy] = exitPort ? flip(def, exitPort.x, exitPort.y, rotate) : [0, def.box.h];
         spineY = yy - ey + oy;
+        // ケーブルの端末は小さい（文字が何行か並ぶと、記号の下より文字のほうが下に出る）ので、文字の下端から、次の機器まで空ける
+        if (item.symbolId === 'cable-head' && item.label.length > 0) {
+          cableHeadOverhang = Math.max(0, placedSym.labelAt.y + (item.label.length - 1) * LABEL_LINE + 4 - spineY);
+        }
       } else if (outPort) {
         // 電柱のように上流側の端が無い記号
         const yy = started ? spineY + pendingGap : spineY;
@@ -452,7 +458,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       }
       started = true;
       pendingDashed = item.dashedAfter ?? false;
-      pendingGap = item.gapAfter ?? GAP;
+      pendingGap = Math.max(item.gapAfter ?? GAP, cableHeadOverhang > 0 ? cableHeadOverhang + 12 : 0);
+      cableHeadOverhang = 0;
       lastBranch = null;
       continue;
     }

@@ -441,7 +441,7 @@ function balanceBands(doc: Doc): { doc: Doc; fixed: number } {
 }
 
 /** 図面に描かれているもの（記号・文字・枠・横の線）の範囲。縦の線は、動かすと伸び縮みするので数えない */
-function contentBoxes(doc: Doc, joinLabels = false): Box[] {
+function contentBoxes(doc: Doc, joinLabels = false, skipCables = false): Box[] {
   const boxes: Box[] = [];
   for (const it of doc.items) {
     if (it.kind === 'symbol') {
@@ -458,7 +458,7 @@ function contentBoxes(doc: Doc, joinLabels = false): Box[] {
       boxes.push(textBox(it.x, it.y, it.lines, it.anchor));
     } else if (it.kind === 'frame') {
       boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
-    } else if (it.y1 === it.y2 && it.x1 !== it.x2) {
+    } else if (it.y1 === it.y2 && it.x1 !== it.x2 && !(skipCables && it.dashed)) {
       boxes.push({ x0: Math.min(it.x1, it.x2), y0: it.y1 - 0.5, x1: Math.max(it.x1, it.x2), y1: it.y1 + 0.5 });
     }
   }
@@ -467,7 +467,8 @@ function contentBoxes(doc: Doc, joinLabels = false): Box[] {
 
 /** 横幅いっぱいに、何も描かれていない横の帯（上端・下端）。上から順 */
 export function emptyBands(doc: Doc): { y0: number; y1: number }[] {
-  const spans = contentBoxes(doc, true).map((b) => [b.y0, b.y1] as const).sort((a, b) => a[0] - b[0]);
+  // エリアをつなぐケーブルの横線（点線）は、機器どうしの間隔には数えない（別の列の文字と、たまたま同じ高さになることがあるため）
+  const spans = contentBoxes(doc, true, true).map((b) => [b.y0, b.y1] as const).sort((a, b) => a[0] - b[0]);
   const bands: { y0: number; y1: number }[] = [];
   let reach = -Infinity;
   for (const [a, b] of spans) {

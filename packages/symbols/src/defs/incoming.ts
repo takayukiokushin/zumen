@@ -106,18 +106,19 @@ export const incomingSymbols: SymbolDef[] = [
     nameFormal: 'ケーブル終端接続部',
     category: 'incoming',
     tags: ['受電点', 'ケーブルヘッド', '端末処理'],
-    box: { w: 40, h: 40 },
+    // 大きさは、もとの 40×40 の 60%（24×24）。線の太さは変えない
+    box: { w: 24, h: 24 },
     shapes: [
-      vline(20, 0, 6),
-      poly([6, 6, 34, 6, 20, 30], { close: true, fill: 'none' }),
-      vline(20, 30, 40),
+      vline(12, 0, 3.6),
+      poly([3.6, 3.6, 20.4, 3.6, 12, 18], { close: true, fill: 'none' }),
+      vline(12, 18, 24),
     ],
     ports: [
-      { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 20, y: 40, dir: 'down', role: 'line' },
+      { id: 'in', x: 12, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 12, y: 24, dir: 'down', role: 'line' },
     ],
     status: 'confirmed',
-    statusNote: '見本図面のとおり三角形にしました。頂点がケーブル側を向きます。',
+    statusNote: '見本図面のとおり三角形にしました。頂点がケーブル側を向きます。大きさは、もとの60%にしました。',
     note: '受電側の端末は同じ記号を180°回転して使う（頂点が常にケーブル側を向く）。電気設備側の引込点は、図面上まずこの高圧ケーブル端末が該当する。',
   },
 ];
