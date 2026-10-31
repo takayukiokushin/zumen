@@ -42,7 +42,7 @@ export interface HearingAnswers {
   /** 3. 受電方式・契約電力・受電電圧 */
   receivingType?: ReceivingType;
   contractPower?: number;      // kW
-  receivingVoltage?: '3300' | '6600' | '22000' | number;   // V（一覧から選ぶ。古い案件は数値のことがある）
+  receivingVoltage?: '3300' | '6600' | number;   // V（一覧から選ぶ。古い案件は数値のことがある）
   /** 区分開閉器（PAS／PGS／なし）。なしのときは地上キャビネットの有無と種類 */
   sectionalizer?: Sectionalizer;
   groundCabinet?: 'yes' | 'no';

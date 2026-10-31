@@ -349,7 +349,8 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     unit: 'V',
-    options: [3300, 6600, 22000].map((v) => ({ value: String(v), label: `${v}V` })),
+    // 高圧受電だけを扱う（22000Vは扱わない）
+    options: [3300, 6600].map((v) => ({ value: String(v), label: `${v}V` })),
     defaultValue: '6600',
     ask: 'always',
   },
