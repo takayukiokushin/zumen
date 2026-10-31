@@ -1061,7 +1061,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
    * 間にほかのエリアがあっても、その上を通るので、エリアの中を横切らない。
    * 同じ位置から出る線は、1本の縦線（幹）を共有し、高さごとに横へ分かれる。
    */
-  type LinkInfo = { n: number; from: number; sx: number; sy: number; label: string[]; dashed: boolean };
+  type LinkInfo = { n: number; from: number; sx: number; sy: number; label: string[]; dashed: boolean; cable: boolean };
   const linkInfos: LinkInfo[] = [];
   for (const part of parts) {
     const link = part.link?.link;
@@ -1081,15 +1081,16 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     // 位置が決まらないときは、高圧母線の右端（母線が無ければ、主回路の末端）から出る
     const sy = (y ?? (t.bus ? t.bus.y : t.end)) + dys[link.from]!;
     const sx = y !== undefined ? 0 : t.bus ? t.bus.x : 0;
-    linkInfos.push({ n: part.n, from: link.from, sx, sy, label: part.link?.label ?? [], dashed: link.dashed });
+    linkInfos.push({ n: part.n, from: link.from, sx, sy, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false });
   }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
-  type Trunk = { from: number; sy: number; links: LinkInfo[]; index: number };
+  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number };
   const trunks: Trunk[] = [];
   for (const li of linkInfos) {
-    let tr = trunks.find((x) => x.from === li.from && Math.abs(x.sy - li.sy) < 0.5);
+    // ケーブルでつなぐ線と、ふつうの線でつなぐ線は、別の幹にする（ケーブルの端末を共有しないため）
+    let tr = trunks.find((x) => x.from === li.from && x.cable === li.cable && Math.abs(x.sy - li.sy) < 0.5);
     if (!tr) {
-      tr = { from: li.from, sy: li.sy, links: [], index: trunks.filter((x) => x.from === li.from).length };
+      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length };
       trunks.push(tr);
     }
     tr.links.push(li);
@@ -1183,7 +1184,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const sends = sendoutsOf(tr.from);
     let cableFrom = sx;
     if (sends.length > 0) {
-      const runStart = gx - HEAD_MARGIN - getSymbol('cable-head').box.h - SENDOUT_GAP - (runOf(tr.from) - SENDOUT_GAP);
+      const runStart = gx - (tr.cable ? HEAD_MARGIN + getSymbol('cable-head').box.h + SENDOUT_GAP : 12) - (runOf(tr.from) - SENDOUT_GAP);
       if (runStart - sx > 0.5) {
         wires.push({ x1: sx, y1: sy, x2: runStart, y2: sy });
         ext(sx, sy, runStart, sy);
@@ -1239,7 +1240,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const hx = hexit - (hox - hix);
     // IDは、1か所目の1本目は「cable-head-send」。2か所目以降のエリアから出る線は「a2:」などを前に、2本目以降の幹は何か所目への線かを後ろに付ける
     const hid = `${tr.from === 0 ? '' : `a${tr.from + 1}:`}cable-head-send${tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`}`;
-    symbols.push({
+    if (tr.cable) symbols.push({
       id: hid,
       role: hid,
       symbolId: 'cable-head',
@@ -1249,11 +1250,16 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       label: [],
       labelAt: { x: hx - hix, y: sy - hiy, anchor: 'start' },
     });
-    ext(hx - hix + hrb.dx, sy - hiy + hrb.dy, hx - hix + hrb.dx + hrb.w, sy - hiy + hrb.dy + hrb.h);
+    if (tr.cable) ext(hx - hix + hrb.dx, sy - hiy + hrb.dy, hx - hix + hrb.dx + hrb.w, sy - hiy + hrb.dy + hrb.h);
     // 幹：分岐の位置（開閉器）から端末まで（ふつうの線）。端末から右へ、すきままで。そこから、いちばん高い横線の高さまで上へ（ケーブル）
     const dashedTrunk = tr.links.every((l) => l.dashed);
-    seg(cableFrom, sy, hx, sy, false);
-    seg(hexit, sy, gx, sy, dashedTrunk);
+    // ふつうの線でつなぐとき（ケーブルでないとき）は、端末も点線も無く、ふつうの線だけ
+    if (tr.cable) {
+      seg(cableFrom, sy, hx, sy, false);
+      seg(hexit, sy, gx, sy, dashedTrunk);
+    } else {
+      seg(cableFrom, sy, gx, sy, false);
+    }
     seg(gx, sy, gx, topY, dashedTrunk);
     for (const l of tr.links) {
       const m = moved[l.n]!;

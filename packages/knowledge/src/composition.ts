@@ -487,9 +487,8 @@ export const AREA_CHAIN: Placement[] = [
     role: 'link',
     symbolId: 'cable-head',
     kind: 'link',
-    when: { key: 'linkCable', ne: 'no' },
     labelTemplate: ['{linkCableInstallationLabel}', '{linkCableStructure}', '{linkCableSpecLine}'],
-    note: '前のエリアから分岐してくるケーブル。つなぎ方（どこから・どこへ）は、図面の配置で使う',
+    note: '前のエリアから分岐してくる線。つなぎ方（どこから・どこへ）は、図面の配置で使う。ケーブルのとき（linkCable が「いいえ」以外）は、ケーブルの図記号（端末・点線・文字）を描き、そうでないときは、ふつうの線',
   },
   {
     role: 'area-frame',

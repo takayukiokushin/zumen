@@ -739,11 +739,22 @@ console.log('\n■ 受電設備エリアが2か所以上のときの配置');
     const old1b = basisOf({ ...base, areaCount: 1, 'a2:trCapacity': 150, 'a2:areaIntake': 'vcb' });
     if (old1 !== old1b) fail('1か所の案件に、2か所目の答えが残っていても、回答の印が変わってしまいます');
   }
-  // 「つながない」ときは、ケーブルを描かず、エリアだけ並べる
+  // 「いいえ」（ケーブルでつながない）ときも、単独にせず、ふつうの線でつなぐ。回路の構成は同じで、違いは、ケーブルの図記号（端末・点線・文字）だけ
   const alone: Answers = { ...base, 'a2:linkCable': 'no' };
   const dAlone = layout(buildComposition(alone), alone);
-  if (dAlone.wires.some((w) => w.dashed && w.x1 > right1)) fail('「つながない」なのに、ケーブルが描かれています');
-  else console.log('  「つながない」とき：ケーブルは描かず、エリアだけ並べる');
+  const frameTop2 = dAlone.frames[1]!.y;
+  const reachesTop = dAlone.wires.some((w) => w.x1 === w.x2 && (w.y1 === frameTop2 || w.y2 === frameTop2) && !w.dashed);
+  const noCableSymbols = !dAlone.symbols.some((s) => /cable-head-send|a2:cable-head-site/.test(s.id));
+  const noDash = !dAlone.wires.some((w) => w.dashed && w.x1 > right1);
+  const noText = !(dAlone.texts ?? []).some((t) => t.lines.join('|').includes('埋ケ'));
+  const sameSymbols = (d: typeof two) => d.symbols.map((s) => s.id).filter((id) => !/cable-head/.test(id)).join(',');
+  if (!reachesTop) fail('「いいえ」なのに、2か所目に線がつながっていません（単独で描かれています）');
+  else if (!noCableSymbols || !noDash || !noText) fail('「いいえ」なのに、ケーブルの図記号（端末・点線・文字）が描かれています');
+  else if (sameSymbols(dAlone) !== sameSymbols(two)) fail('「いいえ」のときと、ケーブルのときで、回路の構成（記号）が違います');
+  else if (findLabelCollisions(dAlone).length > 0) fail('「いいえ」のとき、文字が重なっています');
+  else console.log('  「いいえ」のとき：単独にせず、ふつうの線でつなぐ。記号の構成はケーブルのときと同じで、ケーブルの端末・点線・文字だけ無い');
+  const aloneDoc = fromLayout(dAlone);
+  if (inspectDrawing(aloneDoc, 'A3', 'landscape').length > 0) fail('「いいえ」の図面を取り込むと、問題が出ます');
 }
 
 /* ---------- 9. 主回路の記号の大きさ ---------- */

@@ -931,7 +931,11 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(fromOpts(3) === '1,2' && fromOpts(2) === '1', `分岐元の選択肢が違います（3か所目：${fromOpts(3)}）`);
   const tap = QUESTIONS.find((q) => q.id === 'linkTap')?.options?.map((o) => o.value).join(',');
   ok(tap === 'ds-source,ds-vcb,vcb-load,bus', `分岐の位置の選択肢が違います（${tap}）`);
-  ok(!ids(areaView({ areaCount: 2, 'a2:linkCable': 'no' }, 1)).has('linkTap'), '「つながない」なのに、分岐の位置を聞いています');
+  // ケーブルでつなぐ・つながないで、聞くことは同じ（分岐の位置は、どちらでも聞く。ケーブルの種類・断面積・長さだけ、ケーブルのとき）
+  const noCableQs = ids(areaView({ areaCount: 3, 'a2:linkCable': 'no' }, 1));
+  ok(noCableQs.has('linkTap') && noCableQs.has('linkCable') && !noCableQs.has('linkCableInstallation') && !noCableQs.has('linkCableCrossSection') && !noCableQs.has('linkCableLength'), '「いいえ」のとき、分岐の位置は聞き、ケーブルの種類・断面積・長さは聞かない、になっていません');
+  ok(ids(areaView({ areaCount: 3, 'a3:linkCable': 'no' }, 2)).has('linkFrom'), '3か所目：「いいえ」でも、どのエリアから分岐するかを聞くはずです');
+  ok(ids(areaView({ areaCount: 2 }, 1)).has('linkCableInstallation') && ids(areaView({ areaCount: 2 }, 1)).has('linkCableLength'), 'ケーブルのとき、ケーブルの種類・長さを聞いていません');
   // 自動入力・選択肢の整理は、エリアごと
   const auto = withAutoValues({ receivingVoltage: '6600', ...two });
   ok(auto['a2:trConnection'] === 'tr-1p' && auto['a2:trVoltage'] === '6600/210-105V', '2か所目の変圧器の初期値が、2か所目の用途で決まっていません');
@@ -1011,8 +1015,14 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   const none = intake('none');
   ok(!none.includes('ds') && !none.includes('main-breaker') && none.includes('area-frame') && none.includes('link'), `開閉器なし：${none.join(',')}`);
   // つながないとき
-  const noLink = buildComposition({ ...answers, areaCount: 2, 'a2:linkCable': 'no' }).find((i) => i.role === 'a2:link');
-  ok(!noLink, '「つながない」のに、ケーブルが入っています');
+  // ケーブルでつなぐ場合も、そうでない場合も、回路の構成は同じ。違いは、ケーブルの図記号（端末）と文字だけ
+  const cableOn = buildComposition({ ...answers, areaCount: 2, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried', 'a2:linkCableCrossSection': '38' });
+  const cableOff = buildComposition({ ...answers, areaCount: 2, 'a2:linkTap': 'bus', 'a2:linkCable': 'no', 'a2:linkCableInstallation': 'buried', 'a2:linkCableCrossSection': '38' });
+  const noLink = cableOff.find((i) => i.role === 'a2:link');
+  ok(noLink?.link?.cable === false && noLink.link.dashed === false && noLink.link.from === 0 && noLink.link.tap === 'bus' && noLink.label.length === 0, '「いいえ」のとき、つなぎ方（どこから・どこへ）はそのままで、ケーブルの図記号と文字だけ無い、になっていません');
+  ok(cableOn.find((i) => i.role === 'a2:link')?.link?.cable === true && cableOn.find((i) => i.role === 'a2:link')?.link?.dashed === true, 'ケーブルのとき、ケーブル（点線）として扱われていません');
+  const roles = (list: typeof cableOn) => list.map((i) => i.role).filter((r) => r !== 'a2:cable-head-site').join(',');
+  ok(roles(cableOn) === roles(cableOff) && cableOn.some((i) => i.role === 'a2:cable-head-site') && !cableOff.some((i) => i.role === 'a2:cable-head-site'), '回路の構成が、ケーブルのときと同じで、受け側のケーブルの端末だけ無い、になっていません');
   // 以前の案件（エリア1か所・キーに a2: なし）は、機器の数も同じ
   ok(baseline.every((i) => i.area === undefined), '1か所の案件に、エリアの印が付いています');
   // 未回答の必須項目は、「2か所目：」を付けて知らせる

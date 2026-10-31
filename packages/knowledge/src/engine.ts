@@ -567,6 +567,8 @@ export interface PlacedItem {
     from: number;
     /** 分岐の位置：ds-source（DSの電源側）／ds-vcb（DSとVCBの間）／vcb-load（VCBの負荷側）／bus（高圧母線） */
     tap: string;
+    /** ケーブルでつなぐか（false のときは、ケーブルの図記号を描かず、ふつうの線でつなぐ） */
+    cable: boolean;
     /** ケーブルの線を点線（埋設）で描くか */
     dashed: boolean;
   };
@@ -753,10 +755,13 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
         area: n,
         ...(item.kind === 'link'
           ? {
+              // ケーブルでつなぐときも、ふつうの線でつなぐときも、つなぎ方（どこから・どこへ）は同じ。違いは、ケーブルの図記号を描くか
+              label: view.linkCable === 'no' ? [] : item.label,
               link: {
                 from: Math.max(0, Math.min(n - 1, (Number(view.linkFrom ?? 1) || 1) - 1)),
                 tap: String(view.linkTap ?? 'bus'),
-                dashed: view.linkCableInstallation === 'buried',
+                cable: view.linkCable !== 'no',
+                dashed: view.linkCable !== 'no' && view.linkCableInstallation === 'buried',
               },
             }
           : {}),

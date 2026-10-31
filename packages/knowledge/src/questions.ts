@@ -1592,7 +1592,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'yes',
     showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
-    help: 'エリアの間をつなぐケーブルがあるかどうか。「いいえ」のときは、このエリアは、どこにもつながない（単独で描く）',
+    help: 'エリアの間を、ケーブル（高圧ケーブル）でつなぐかどうか。「いいえ」のときも、ほかのエリアにつなぐ点は同じ（どこから分岐するか・分岐の位置は答える）。違いは、ケーブルの図記号（端末の三角・点線・ケーブルの文字）を描かず、ふつうの線でつなぐこと',
   },
   {
     id: 'linkFrom',
@@ -1602,7 +1602,7 @@ export const QUESTIONS: Question[] = [
     // このエリアより前のエリアだけ選べる
     options: Array.from({ length: 9 }, (_, i) => ({ value: String(i + 1), label: `${i + 1}か所目`, showIf: { key: 'areaNo', gt: i + 1 } as Condition })),
     defaultValue: '1',
-    showIf: { all: [{ key: 'areaNo', gt: 2 }, { key: 'linkCable', ne: 'no' }] },
+    showIf: { key: 'areaNo', gt: 2 },
     ask: 'always',
     help: '3か所目以降は、1か所目からも、2か所目からも分岐できる',
   },
@@ -1618,7 +1618,7 @@ export const QUESTIONS: Question[] = [
       { value: 'vcb-load', label: 'VCBの負荷側（CTの下）' },
       { value: 'bus', label: '高圧母線（変圧器の手前）' },
     ],
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
     required: true,
     help: '前のエリアの、どこからケーブルを出すか。変圧器の手前は、高圧母線として扱う',
