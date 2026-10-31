@@ -1103,6 +1103,23 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(dropped.zpdTap === undefined, 'PFS形にしたのに、選べない「DSとVCBの間」が残っています');
   ok(dropHiddenChoices({ mainBreakerForm: 'cb', hasZpd: 'yes', zpdTap: 'ds-vcb' }).zpdTap === 'ds-vcb', 'CB形で選べる位置が、外れています');
   ok(!buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes' }).some((i) => i.role === 'ovgr' || i.symbolId === 'relay-ovgr'), 'ZPDを「ある」にしただけで、OVGRが自動で入っています');
+  // OVGR・DGRの有無（ZPDが「ある」ときだけ聞く）。OVGRはZPDの左側、DGRはZCTの横（ZPDとは線でつながない）
+  const gq = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const cbBase: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes' };
+  ok(gq(cbBase).has('hasOvgr') && gq(cbBase).has('mainGroundRelay'), 'ZPDが「ある」のとき、OVGR・DGRの質問が出ていません');
+  ok(!gq({ ...cbBase, hasZpd: 'no' }).has('hasOvgr') && !gq({ ...cbBase, hasZpd: 'no' }).has('mainGroundRelay'), 'ZPDが「ない」のとき、OVGR・DGRの質問が出ています');
+  const gopts = (QUESTIONS.find((q) => q.id === 'mainGroundRelay')?.options ?? []).map((o) => o.value).join(',');
+  ok(gopts === 'none,dgr', `主遮断装置の地絡継電器の選択肢が違います（${gopts}）`);
+  const relayRoles = (a: Answers) => buildComposition(a).map((i) => i.role).filter((r) => !r.startsWith('pas-') && /ovgr|zct|ground|^zpd$/.test(r));
+  ok(relayRoles(cbBase).join() === 'zpd', `ZPDだけのとき、OVGR・DGRは入らないはずです（${relayRoles(cbBase).join()}）`);
+  ok(relayRoles({ ...cbBase, hasOvgr: 'yes' }).join() === 'zpd,ovgr', `OVGRが「ある」のとき（${relayRoles({ ...cbBase, hasOvgr: 'yes' }).join()}）`);
+  ok(relayRoles({ ...cbBase, mainGroundRelay: 'dgr' }).join() === 'main-zct,main-ground-relay,zpd', `DGRが「ある」のとき（ZCT→DGR→…ZPD）の並び：${relayRoles({ ...cbBase, mainGroundRelay: 'dgr' }).join()}`);
+  ok(relayRoles({ ...cbBase, hasOvgr: 'yes', mainGroundRelay: 'dgr' }).join() === 'main-zct,main-ground-relay,zpd,ovgr', 'DGRとOVGRの両方が付くパターンの並びが違います');
+  const dgrItem = buildComposition({ ...cbBase, mainGroundRelay: 'dgr' }).find((i) => i.role === 'main-ground-relay');
+  ok(dgrItem?.symbolId === 'relay-dgr' && dgrItem.connectFrom?.join() === 'main-zct', 'DGRが、ZCTだけにつながる（ZPDにはつながない）形になっていません');
+  ok(relayRoles({ ...cbBase, hasZpd: 'no', hasOvgr: 'yes', mainGroundRelay: 'dgr' }).length === 0, 'ZPDが「ない」のとき、答えが残っていても、OVGR・DGRを描いています');
+  ok(buildComposition({ ...cbBase, mainBreakerForm: 'pfs', mainGroundRelay: 'dgr' }).some((i) => i.role === 'main-ground-relay'), 'PFS形（LBS）でも、DGRが入るはずです');
+  ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:hasOvgr': 'yes', 'a2:mainGroundRelay': 'dgr' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => /ovgr|zct|ground/.test(r)).join() === 'main-zct,main-ground-relay,ovgr', '2か所目のOVGR・DGRが入っていません');
   // 並び：位置を選ぶと、ZPD・LAがその位置に動く（OVGRは、ZPDの有無だけでは入らない）。LAとZPDは別々の記号
   const order = (a: Answers) =>
     buildComposition({ ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', ...a })
@@ -1238,7 +1255,7 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const noVt = withAutoValues(normalizeAnswers({ ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no', relayCount: '3' }));
   ok(noVt.relayAt__3 !== 'vt-1', 'VTが無いのに、OVRがVTにつく初期値になっています');
   // 継電器の記号が、すべての種類にある
-  for (const c of ['OCR', 'UVR', 'OVR', 'OCGR', 'OVGR', 'UFR', 'OFR', 'RPR', 'UPR', 'DSR', '2E', '3E']) {
+  for (const c of ['OCR', 'UVR', 'OVR', 'OCGR', 'UFR', 'OFR', 'RPR', 'UPR', 'DSR', '2E', '3E']) {
     ok(Boolean(getSymbolForCheck(`relay-${c.toLowerCase()}`)), `継電器 ${c} の記号がありません`);
   }
   ok(Boolean(getSymbolForCheck('trip-coil')), 'トリップコイルの記号がありません');

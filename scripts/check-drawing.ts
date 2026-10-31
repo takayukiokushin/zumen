@@ -2190,6 +2190,44 @@ console.log('\n■ 送り出し側のケーブルの端末');
   }
 }
 
+/* ---------- OVGR（ZPDの左）・DGR（ZCTの横） ---------- */
+console.log('\n■ OVGR・DGRの記号');
+{
+  const a: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasOvgr: 'yes', mainGroundRelay: 'dgr', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  const d = layout(buildComposition(a), a);
+  const sym = (role: string) => d.symbols.find((s) => s.role === role);
+  const zct = sym('main-zct');
+  const dgr = sym('main-ground-relay');
+  const zpd = sym('zpd');
+  const ovgr = sym('ovgr');
+  if (!zct || !dgr || !zpd || !ovgr) fail('ZCT・DGR・ZPD・OVGRのどれかが描かれていません');
+  else {
+    const zctSec = portAbs(zct, 'sec');
+    const dgrEntry = (() => {
+      const def = getSymbolDef(dgr.symbolId);
+      const p = def.ports.find((q) => q.id === 'in' || q.dir === 'left') ?? def.ports[0]!;
+      return { x: dgr.x + p.x, y: dgr.y + p.y };
+    })();
+    const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+    const beside = dgr.x > zct.x && Math.abs((dgr.y + getSymbolDef(dgr.symbolId).box.h / 2) - zctSec.y) < 14;
+    const zpdAbs = zpd.x + getSymbolDef('zpd').box.w;
+    // ZPDとDGRの間に、線を引かない：ZPD（左）からDGR（右）へ届く横線が無い
+    const crossLink = d.wires.some((w) => w.y1 === w.y2 && Math.min(w.x1, w.x2) <= zpd.x + getSymbolDef('zpd').box.w && Math.max(w.x1, w.x2) >= dgr.x && Math.abs(w.y1 - zctSec.y) < 14);
+    if (!beside) fail('DGRが、ZCTの横（右）に描かれていません');
+    else if (!wireAt(zctSec.x, zctSec.y) || !wireAt(dgrEntry.x, dgrEntry.y)) fail('ZCTとDGRが、線でつながっていません');
+    else if (crossLink) fail('ZPDとDGRの間に、線が引かれています');
+    else if (!(ovgr.x + getSymbolDef('relay-ovgr').box.w <= zpd.x + 2)) fail(`OVGRが、ZPDの左側にありません（OVGR ${ovgr.x}／ZPD ${zpd.x}）`);
+    else if (findLabelCollisions(d).length > 0) fail('OVGR・DGRを入れたら、文字が重なりました');
+    else if (inspectDrawing(fromLayout(d), 'A3', 'landscape').length > 0) fail('編集用に取り込むと、問題が出ます');
+    else console.log(`  ZCT（ケーブルに付く）の横にDGR、ZPDの左にOVGR。ZPDとDGRは線でつながない。文字の重なりなし`);
+    void zpdAbs;
+  }
+  // DGRなし・OVGRなしのときは、ZPDだけ
+  const plain = layout(buildComposition({ ...a, hasOvgr: 'no', mainGroundRelay: 'none' }), { ...a, hasOvgr: 'no', mainGroundRelay: 'none' });
+  if (plain.symbols.some((s) => /ovgr|main-zct|main-ground-relay/.test(s.id))) fail('「なし」のとき、OVGR・DGR・ZCTが描かれています');
+  else console.log('  「なし」のとき：ZPDだけが描かれる');
+}
+
 /* ---------- 3か所以上のエリア：どのエリアから分岐するか、エリアごとに違ってよい ---------- */
 console.log('\n■ 3か所以上のエリアのつなぎ方（1→2→3、1→2と1→3、4か所など）');
 {

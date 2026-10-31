@@ -261,6 +261,22 @@ export const UPSTREAM: Placement[] = [
     note: '受電側の端末。同じ記号を180°回転して使う',
   },
   {
+    // 主遮断装置に付くDGR：ZCTは、引込の高圧ケーブルに付ける（受電側の端末のすぐ下）。DGRは、ZCTの横。
+    // DGRは、ZPDが「ある」ときだけ（ZPDとDGRの間に、線は引かない）
+    role: 'main-zct',
+    symbolId: 'zct',
+    kind: 'series',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+    note: '主遮断装置のDGR用のZCT。引込の高圧ケーブルに付ける',
+  },
+  {
+    role: 'main-ground-relay',
+    symbolId: 'relay-dgr',
+    kind: 'branch-right',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+    connectFrom: ['main-zct'],
+  },
+  {
     role: 'vct-indoor',
     symbolId: 'vct',
     kind: 'series',
@@ -459,6 +475,15 @@ export const DOWNSTREAM: Placement[] = [
     labelTemplate: ['ZPD'],
   },
   {
+    // OVGR：ZPDの左側。「OVGRはありますか？」に「ある」と答えたときだけ
+    role: 'ovgr',
+    symbolId: 'relay-ovgr',
+    kind: 'branch-left',
+    tapFrom: 'zpdTap',
+    when: { all: [{ key: 'hasZpd', eq: 'yes' }, { key: 'hasOvgr', eq: 'yes' }] },
+    connectFrom: ['zpd'],
+  },
+  {
     role: 'site-la',
     symbolId: 'la',
     kind: 'branch-left',
@@ -496,6 +521,20 @@ export const AREA_CHAIN: Placement[] = [
     kind: 'series',
     when: { all: [{ key: 'linkCable', ne: 'no' }, { not: { key: 'areaForm', eq: 'apartment-pole' } }] },
     note: 'エリアの枠の中の、ケーブルを受ける端末',
+  },
+  {
+    // 主遮断装置に付くDGR（1か所目と同じ）：ZCTは、このエリアの引込の高圧ケーブルに付け、DGRは、ZCTの横。ZPDが「ある」ときだけ
+    role: 'main-zct',
+    symbolId: 'zct',
+    kind: 'series',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+  },
+  {
+    role: 'main-ground-relay',
+    symbolId: 'relay-dgr',
+    kind: 'branch-right',
+    when: { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] },
+    connectFrom: ['main-zct'],
   },
   {
     // このエリアの受電側にも電柱があって、PAS（区分開閉器）が付いている場合（2か所目以降だけ）。ASとは別の機器
@@ -552,6 +591,7 @@ export const AREA_CHAIN: Placement[] = [
   },
   ...INSTRUMENTS,
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
+  { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { all: [{ key: 'hasZpd', eq: 'yes' }, { key: 'hasOvgr', eq: 'yes' }] }, connectFrom: ['zpd'] },
   { role: 'site-la', symbolId: 'la', kind: 'branch-left', tapFrom: 'laTap', upright: true, when: { key: 'hasLa', eq: 'yes' }, labelTemplate: ['LA'] },
 ];
 

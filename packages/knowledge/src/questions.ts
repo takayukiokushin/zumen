@@ -301,7 +301,6 @@ const RELAY_CHOICES: Choice[] = [
   ['UVR', '不足電圧継電器'],
   ['OVR', '過電圧継電器'],
   ['OCGR', '地絡過電流継電器'],
-  ['OVGR', '地絡過電圧継電器'],
   ['UFR', '不足周波数継電器'],
   ['OFR', '過周波数継電器'],
   ['RPR', '逆電力継電器'],
@@ -1149,6 +1148,35 @@ export const QUESTIONS: Question[] = [
     showIf: { key: 'hasZpd', eq: 'yes' },
     ask: 'always',
     help: '主回路のどこにつなぐか。ふつうは、変圧器の手前（高圧母線の上）',
+  },
+  {
+    // ZPDがあるときだけ。OVGRの記号は、ZPDの左側に描く（ZPDを「ある」にしただけでは、描かない）
+    id: 'hasOvgr',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'OVGRはありますか？',
+    type: 'select',
+    options: YES_NO,
+    defaultValue: 'no',
+    showIf: { key: 'hasZpd', eq: 'yes' },
+    ask: 'always',
+    help: 'OVGR（地絡過電圧継電器）。図面では、ZPDの左側に描く。ZPDを「なし」にすると、OVGRも描かない（「あり」に戻すと、また描く）',
+  },
+  {
+    // 主遮断装置（VCB・LBS）に付く地絡継電器。DGRは、同じエリアにZPDがあるときだけ選べる（GRは、後の項目で追加する）
+    id: 'mainGroundRelay',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: '主遮断装置の地絡継電器は？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし' },
+      { value: 'dgr', label: 'DGR（方向性）' },
+    ],
+    defaultValue: 'none',
+    showIf: { all: [{ any: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'intakeLbs', eq: 'yes' }] }, { key: 'hasZpd', eq: 'yes' }] },
+    ask: 'always',
+    help:
+      'DGRは、同じエリアにZPDがあるときだけ選べる（零相電圧をZPDから得る）。DGRを選ぶと、ZCTを引込の高圧ケーブルに付け、DGRをZCTの横に描く（ZPDとDGRの間に、線は引かない）。' +
+      'ZPDを「なし」にすると、DGRも描かない（「あり」に戻すと、また描く）',
   },
   {
     id: 'hasLa',
