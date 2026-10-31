@@ -1003,6 +1003,8 @@ const AREA_GAP = 140;
 const TAP_OFFSET = 8;
 /** 同じエリアから出る、高さの違う線の幹どうしの間隔 */
 const TRUNK_STEP = 10;
+/** ケーブルの端末から、幹の縦線までの距離 */
+const HEAD_MARGIN = 10;
 /** 送り出しの開閉器の前後・あいだの線の長さ */
 const SENDOUT_GAP = 16;
 /** ケーブルが、エリアの枠の上端より上を通る高さ */
@@ -1101,7 +1103,8 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   const gapBefore = (p: number): number => {
     const mine = trunks.filter((x) => x.from === p - 1);
     if (mine.length === 0) return AREA_GAP;
-    const run = sendoutsOf(p - 1).length > 0 ? runOf(p - 1) + 12 : 0;
+    // 送り出しの開閉器と、ケーブルの端末（40）が、すきまの中に入る広さ
+    const run = (sendoutsOf(p - 1).length > 0 ? runOf(p - 1) - SENDOUT_GAP : 0) + getSymbol('cable-head').box.h + HEAD_MARGIN + SENDOUT_GAP + 12;
     return Math.max(AREA_GAP, 2 * run, 2 * (TRUNK_STEP * mine.length + 20));
   };
 
@@ -1173,7 +1176,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const sends = sendoutsOf(tr.from);
     let cableFrom = sx;
     if (sends.length > 0) {
-      const runStart = gx - 12 - (runOf(tr.from) - SENDOUT_GAP);
+      const runStart = gx - HEAD_MARGIN - getSymbol('cable-head').box.h - SENDOUT_GAP - (runOf(tr.from) - SENDOUT_GAP);
       if (runStart - sx > 0.5) {
         wires.push({ x1: sx, y1: sy, x2: runStart, y2: sy });
         ext(sx, sy, runStart, sy);
@@ -1217,9 +1220,33 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       wires.push({ x1: ax, y1: ay, x2: bx, y2: by, dashed });
       ext(Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by));
     };
-    // 幹：分岐の位置から右へ、すきままで。そこから、いちばん高い横線の高さまで上へ
+    // 送り出し側のケーブルの端末（頂点がケーブル側＝右を向く）。ここから先が、ケーブル。同じ幹から出る線は、1つを共有する
+    const head = getSymbol('cable-head');
+    const hin = portOf(head, 'in') ?? head.ports[0]!;
+    const hout = portOf(head, 'out') ?? head.ports[head.ports.length - 1]!;
+    const hrot = [-90, 90].find((r) => flip(head, hin.x, hin.y, r)[0] < flip(head, hout.x, hout.y, r)[0]) ?? -90;
+    const [hix, hiy] = flip(head, hin.x, hin.y, hrot);
+    const [hox] = flip(head, hout.x, hout.y, hrot);
+    const hrb = rotatedBox(head.box, hrot);
+    const hexit = gx - HEAD_MARGIN;
+    const hx = hexit - (hox - hix);
+    // IDは、1か所目の1本目は「cable-head-send」。2か所目以降のエリアから出る線は「a2:」などを前に、2本目以降の幹は何か所目への線かを後ろに付ける
+    const hid = `${tr.from === 0 ? '' : `a${tr.from + 1}:`}cable-head-send${tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`}`;
+    symbols.push({
+      id: hid,
+      role: hid,
+      symbolId: 'cable-head',
+      x: hx - hix,
+      y: sy - hiy,
+      rotate: hrot,
+      label: [],
+      labelAt: { x: hx - hix, y: sy - hiy, anchor: 'start' },
+    });
+    ext(hx - hix + hrb.dx, sy - hiy + hrb.dy, hx - hix + hrb.dx + hrb.w, sy - hiy + hrb.dy + hrb.h);
+    // 幹：分岐の位置（開閉器）から端末まで（ふつうの線）。端末から右へ、すきままで。そこから、いちばん高い横線の高さまで上へ（ケーブル）
     const dashedTrunk = tr.links.every((l) => l.dashed);
-    seg(cableFrom, sy, gx, sy, dashedTrunk);
+    seg(cableFrom, sy, hx, sy, false);
+    seg(hexit, sy, gx, sy, dashedTrunk);
     seg(gx, sy, gx, topY, dashedTrunk);
     for (const l of tr.links) {
       const m = moved[l.n]!;
@@ -1233,7 +1260,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       if (lines.length === 0) continue;
       const alone = tr.links.length === 1 && sends.length === 0 && !lanes.has(l);
       const tx = alone ? gx - 8 : ex - 8;
-      const tyText = (alone ? sy - 6 : ty - 6) - (lines.length - 1) * LABEL_LINE;
+      const tyText = (alone ? sy - 24 : ty - 6) - (lines.length - 1) * LABEL_LINE;
       texts.push({ x: tx, y: tyText, lines, anchor: 'end' });
       const r = labelRect({ x: tx, y: tyText, anchor: 'end' }, lines);
       ext(r.x0, r.y0, r.x1, r.y1);

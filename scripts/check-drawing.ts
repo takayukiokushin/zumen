@@ -672,7 +672,8 @@ console.log('\n■ 受電設備エリアが2か所以上のときの配置');
   };
   const one = layout(buildComposition({ ...base, areaCount: 1 }), { ...base, areaCount: 1 });
   const two = layout(buildComposition(base), base);
-  const first = two.symbols.filter((s) => !s.role.startsWith('a2:'));
+  // 1か所目の記号（エリアをつなぐ線の途中に足す、ケーブルの端末・送り出しの開閉器は、数えない）
+  const first = two.symbols.filter((s) => !s.role.startsWith('a2:') && !/^(cable-head-send|sendout)/.test(s.role));
   const second = two.symbols.filter((s) => s.role.startsWith('a2:'));
   if (first.length !== one.symbols.length) fail(`1か所目の記号の数が、1か所だけのときと違います（${first.length} / ${one.symbols.length}）`);
   const same = first.every((s, i) => s.symbolId === one.symbols[i]!.symbolId && s.x === one.symbols[i]!.x && s.y === one.symbols[i]!.y);
@@ -712,8 +713,9 @@ console.log('\n■ 受電設備エリアが2か所以上のときの配置');
   const tapY = (tap: string) => {
     const a: Answers = { ...base, relayCount: '0', 'a2:linkTap': tap };
     const d = layout(buildComposition(a), a);
-    const w = d.wires.find((x) => x.dashed && x.y1 === x.y2 && x.x1 < right1 + 1);
-    return w?.y1;
+    // 分岐の高さ＝送り出し側のケーブルの端末（横向き）の高さ
+    const h = d.symbols.find((x) => x.id === 'cable-head-send');
+    return h ? portY(h, 'in') : undefined;
   };
   const ys = ['ds-source', 'ds-vcb', 'vcb-load', 'bus'].map(tapY);
   if (ys.some((y) => y === undefined) || !(ys[0]! < ys[1]! && ys[1]! < ys[2]! && ys[2]! < ys[3]!)) fail(`分岐の位置の高さが、上から順になっていません（${ys.join(' / ')}）`);
@@ -2120,6 +2122,25 @@ console.log('\n■ 送り出しの開閉器（1か所目 → 2か所目の線の
   }
   if (draw({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).symbols.find((s) => s.id === 'sendout-lbs')?.label.join('|') !== 'LBS|PF 30A') fail('LBSの文字が「LBS／PF 30A」になっていません');
   if (draw({}).symbols.some((s) => /^sendout/.test(s.id))) fail('「なし」のとき、送り出しの開閉器が描かれています');
+}
+
+/* ---------- ケーブルでつなぐとき：送り出し側にも、ケーブルの端末 ---------- */
+console.log('\n■ 送り出し側のケーブルの端末');
+{
+  const base2: Answers = { ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried' };
+  for (const [name, extra] of [['送り出しの開閉器なし', {}], ['DS＋VCBあり', { sendoutSwitch: 'ds-vcb' }], ['VCBの負荷側から', { 'a2:linkTap': 'vcb-load' }]] as [string, Answers][]) {
+    const a = { ...base2, ...extra };
+    const d = layout(buildComposition(a), a);
+    const head = d.symbols.find((s) => s.id === 'cable-head-send');
+    if (!head) { fail(`${name}：送り出し側に、ケーブルの端末が描かれていません`); continue; }
+    const [inP, outP] = [portAbs(head, 'in'), portAbs(head, 'out')];
+    const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+    // 頂点（出口側）がケーブル側（右）を向き、入口・出口の両方に線がつながっている
+    if (!(inP.x < outP.x && Math.abs(inP.y - outP.y) < 0.5)) fail(`${name}：ケーブルの端末が、右（ケーブル側）に頂点を向けた横向きになっていません`);
+    else if (!wireAt(inP.x, inP.y) || !wireAt(outP.x, outP.y)) fail(`${name}：送り出し側のケーブルの端末に、線がつながっていません`);
+    else if (findLabelCollisions(d).length > 0) fail(`${name}：文字が重なりました`);
+    else console.log(`  ${name}：ケーブルの端末が、送り出す線の途中（右向き）に入り、前後が線でつながる`);
+  }
 }
 
 /* ---------- 3か所以上のエリア：どのエリアから分岐するか、エリアごとに違ってよい ---------- */
