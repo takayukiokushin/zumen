@@ -17,7 +17,20 @@ export interface AnalyzeResponse {
   review: ReviewItem[];
 }
 
-const SUPPORTED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const SUPPORTED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'];
+
+/** PDFは、ページ数が多いと、料金と時間が、ページ数のぶんだけ増える。1つのPDFは、このページ数まで */
+export const MAX_PDF_PAGES = 10;
+
+/** PDFのページ数（目安）。PDFの中の「ページ」の印を数える。数えられなければ 0 */
+export function pdfPageCount(base64: string): number {
+  try {
+    const text = Buffer.from(base64, 'base64').toString('latin1');
+    return (text.match(/\/Type\s*\/Page(?![A-Za-z])/g) ?? []).length;
+  } catch {
+    return 0;
+  }
+}
 
 /** claude-opus-5 の単価（100万トークンあたりの米ドル）。改定されたら直す。 */
 const PRICE_PER_MTOK = { input: 5, cacheWrite: 6.25, cacheRead: 0.5, output: 25 };
@@ -50,15 +63,24 @@ function logUsage(usage: Anthropic.Usage, imageCount: number): void {
 export async function analyze(images: SketchImage[], answers: Answers): Promise<AnalyzeResponse> {
   const unsupported = images.find((i) => !SUPPORTED.includes(i.mediaType));
   if (unsupported) {
-    throw new Error(`対応していない画像形式です（${unsupported.mediaType}）。JPEG・PNG・GIF・WebP のいずれかの画像にしてください。`);
+    throw new Error(`対応していない形式です（${unsupported.mediaType}）。JPEG・PNG・GIF・WebP の画像、または PDF にしてください。`);
+  }
+  // 1回に AI へ送れる大きさには上限がある（base64 の文字数で、おおよそ 30MB）
+  if (images.reduce((n, i) => n + i.data.length, 0) > 30 * 1024 * 1024) {
+    throw new Error('選んだファイルの合計が大きすぎます。枚数を減らすか、小さくしてから、もう一度お試しください。');
+  }
+  for (const img of images) {
+    if (img.mediaType === 'application/pdf' && pdfPageCount(img.data) > MAX_PDF_PAGES) {
+      throw new Error(`PDF のページ数が多すぎます（1つの PDF は ${MAX_PDF_PAGES} ページまで）。読み取りたいページだけの PDF にしてから、もう一度お試しください。`);
+    }
   }
 
   const content: Anthropic.ContentBlockParam[] = [
     ...images.map(
-      (img): Anthropic.ContentBlockParam => ({
-        type: 'image',
-        source: { type: 'base64', media_type: img.mediaType as 'image/png', data: img.data },
-      }),
+      (img): Anthropic.ContentBlockParam =>
+        img.mediaType === 'application/pdf'
+          ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: img.data } }
+          : { type: 'image', source: { type: 'base64', media_type: img.mediaType as 'image/png', data: img.data } },
     ),
     { type: 'text', text: buildUserPrompt(answers) },
   ];

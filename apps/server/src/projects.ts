@@ -11,6 +11,8 @@ import { clearForDuplicate } from '@zumen/knowledge';
 
 /** 現地写真の上限（1枚あたり） */
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
+/** PDF（スキャンした図面など）は、写真より大きくなりやすいので、上限を広げる */
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 /**
  * 編集中の印がこの時間更新されなければ、その人はもう見ていないとみなして解除する。
@@ -452,12 +454,13 @@ projects.post('/:id/files', async (c) => {
     | null;
   if (!body?.data || !body.mediaType) return c.json({ error: '画像が選ばれていません。画像を選んでから、もう一度お試しください。' }, 400);
   if (!isPhotoType(body.mediaType)) {
-    return c.json({ error: `この種類のファイルは追加できません（${String(body.mediaType).slice(0, 40)}）。JPEG・PNG などの写真を選んでください。` }, 400);
+    return c.json({ error: `この種類のファイルは追加できません（${String(body.mediaType).slice(0, 40)}）。JPEG・PNG などの写真、または PDF を選んでください。` }, 400);
   }
 
   const buf = Buffer.from(body.data, 'base64');
-  if (buf.byteLength > MAX_FILE_BYTES) {
-    return c.json({ error: `画像が大きすぎます（1枚${MAX_FILE_BYTES / 1024 / 1024}MBまで）。画像を小さくするか、別の画像でお試しください。` }, 413);
+  const maxBytes = body.mediaType === 'application/pdf' ? MAX_PDF_BYTES : MAX_FILE_BYTES;
+  if (buf.byteLength > maxBytes) {
+    return c.json({ error: `ファイルが大きすぎます（1つ${maxBytes / 1024 / 1024}MBまで）。小さくするか、別のファイルでお試しください。` }, 413);
   }
   const id = newId();
   writeFileSync(resolve(FILES_DIR, id), buf);

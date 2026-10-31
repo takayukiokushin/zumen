@@ -179,7 +179,7 @@ export function App() {
       setProjectName(p.name);
       setAnswers(p.answers ?? {});
       setDrawing(p.drawing);
-      setSketchRead(p.files.some((f) => f.media_type.startsWith('image/')));
+      setSketchRead(p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf'));
       setDirty(false);
       setSavedAt(null);
       setError(null);

@@ -37,11 +37,11 @@ export const securityHeaders: MiddlewareHandler = async (c, next) => {
 /** アップロードされたファイルを返すときの決まり。中のスクリプトが動かないようにする */
 export const FILE_CSP = "default-src 'none'; sandbox";
 
-/** 現地写真として受け付ける種類（SVGは、中にスクリプトを書けるので受け付けない） */
+/** 案件に残せるファイルの種類：写真と、PDF（手書きメモのスキャン・既存の図面・仕様書）。SVGは、中にスクリプトを書けるので受け付けない */
 const PHOTO_TYPES = /^image\/(jpeg|png|gif|webp|heic|heif|avif|bmp|tiff)$/;
 
 export function isPhotoType(mediaType: string): boolean {
-  return PHOTO_TYPES.test(mediaType);
+  return PHOTO_TYPES.test(mediaType) || mediaType === 'application/pdf';
 }
 
 const MB = 1024 * 1024;

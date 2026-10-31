@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { pdfPageCount } from '../apps/server/src/analyze.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const WEB_DIST = resolve(ROOT, 'apps/web/dist');
@@ -562,6 +563,30 @@ try {
     const got = (await (await call(a, `/api/projects/${made.id}`)).json()) as { answers: Record<string, unknown> };
     check('2か所目以降の答え（a2:〜）が、そのまま保存・読み出しできる', JSON.stringify(got.answers) === JSON.stringify(multi), JSON.stringify(got.answers));
     await call(a, `/api/projects/${made.id}`, { method: 'DELETE' });
+  }
+
+  // PDF（手書きメモのスキャン・既存の図面・仕様書）：案件に残せる。ページ数を数える。写真以外の種類は、これまでどおり断る
+  {
+    const fakePdf = '%PDF-1.4\n1 0 obj<</Type /Pages /Count 3>>endobj\n2 0 obj<</Type /Page>>endobj\n3 0 obj<</Type/Page>>endobj\n4 0 obj<< /Type /Page >>endobj\n%%EOF';
+    check('PDFのページ数を数えられる（「Pages」は数えない）', pdfPageCount(Buffer.from(fakePdf).toString('base64')) === 3, String(pdfPageCount(Buffer.from(fakePdf).toString('base64'))));
+    const up = await call(a, `/api/projects/${created.id}/files`, {
+      method: 'POST',
+      body: JSON.stringify({ fileName: '既存の図面.pdf', mediaType: 'application/pdf', data: Buffer.from(fakePdf).toString('base64') }),
+    });
+    check('PDFを案件に残せる', up.status === 201, `${up.status}`);
+    const got = (await (await call(a, `/api/projects/${created.id}`)).json()) as { files: { id: string; media_type: string }[] };
+    const pdf = got.files.find((f) => f.media_type === 'application/pdf');
+    check('案件に、PDFとして保存されている', !!pdf);
+    if (pdf) {
+      const r = await call(a, `/api/projects/${created.id}/files/${pdf.id}`);
+      check('PDFを開ける（PDFとして返る）', r.ok && r.headers.get('content-type') === 'application/pdf');
+      await call(a, `/api/projects/${created.id}/files/${pdf.id}`, { method: 'DELETE' });
+    }
+    const exe = await call(a, `/api/projects/${created.id}/files`, {
+      method: 'POST',
+      body: JSON.stringify({ fileName: 'x.exe', mediaType: 'application/x-msdownload', data: Buffer.from('MZ').toString('base64') }),
+    });
+    check('写真・PDF以外の種類は、これまでどおり断る', exe.status === 400, `${exe.status}`);
   }
 
   // 図面を複製して新しい案件を作る（本番のアカウント）：設備の内容と手直しは残し、名前・番号・メモは空にする

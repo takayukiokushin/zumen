@@ -21,12 +21,12 @@ interface Picked {
   data: string;
 }
 
-/** 画像をbase64にする（データURLの接頭辞は外す） */
+/** 画像・PDFをbase64にする（データURLの接頭辞は外す） */
 function toBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-    r.onerror = () => reject(new Error('画像を読み込めませんでした'));
+    r.onerror = () => reject(new Error('ファイルを読み込めませんでした'));
     r.readAsDataURL(file);
   });
 }
@@ -59,7 +59,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
     if (!files) return;
     const next: Picked[] = [];
     for (const file of Array.from(files).slice(0, 10)) {
-      if (!file.type.startsWith('image/')) continue;
+      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') continue;
       next.push({ file, url: URL.createObjectURL(file), mediaType: file.type, data: await toBase64(file) });
     }
     setImages((prev) => [...prev, ...next].slice(0, 10));
@@ -94,7 +94,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
   return (
     <div className="analyze">
       <section className="panel">
-        <h2>現地の手書きメモを読み取る</h2>
+        <h2>手書きメモ・既存の図面・仕様書を読み取る</h2>
 
         {ready === false && (
           <div className="notready">
@@ -117,19 +117,19 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
         )}
 
         <p className="hint">
-          写真やスキャンした画像を選んでください（10枚まで）。読み取った内容は<b>そのまま図面には入りません</b>。
+          手書きメモの写真やスキャン、過去の図面の PDF、メーカーの仕様書の PDF を選んでください（10件まで。PDF は1件10ページまで）。読み取った内容は<b>そのまま図面には入りません</b>。
           この画面で確認して、採用するものだけを反映します。
         </p>
 
         <p className="privacy-note">
           <b>個人情報（お客様の名前・住所・電話番号など）は、書かないでください。</b>
-          個人情報が写っている画像は、選ばないでください。
-          選んだ画像は、読み取りのため、外部の AI に送られます。
+          個人情報が写っている画像・PDF は、選ばないでください。
+          選んだものは、読み取りのため、外部の AI に送られます。
         </p>
 
         <label className="drop">
-          <input type="file" accept="image/*" multiple onChange={(e) => void pick(e.target.files)} />
-          <span>画像を選ぶ / ここにドラッグ</span>
+          <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => void pick(e.target.files)} />
+          <span>画像・PDF を選ぶ / ここにドラッグ</span>
         </label>
 
         {images.length > 0 && (
@@ -137,7 +137,13 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
             <div className="thumbs">
               {images.map((img, i) => (
                 <figure key={img.url}>
-                  <img src={img.url} alt={img.file.name} />
+                  {img.mediaType === 'application/pdf' ? (
+                    <div className="pdf-thumb" role="img" aria-label={`PDF：${img.file.name}`}>
+                      PDF
+                    </div>
+                  ) : (
+                    <img src={img.url} alt={img.file.name} />
+                  )}
                   <figcaption>{img.file.name}</figcaption>
                   <button type="button" onClick={() => setImages((p) => p.filter((_, j) => j !== i))}>
                     外す
@@ -146,7 +152,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
               ))}
             </div>
             <button type="button" className="primary" disabled={busy} onClick={() => void run()}>
-              {busy ? '読み取り中…' : `${images.length}枚を読み取る`}
+              {busy ? '読み取り中…' : `${images.length}件を読み取る`}
             </button>
           </>
         )}
