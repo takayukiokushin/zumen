@@ -136,7 +136,8 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
         const view = views[n]!;
         // 受電設備エリアの質問（形態・設置場所…）は、「か所目」ごとの答え
         const areaGroup = QUESTION_GROUPS.find((g) => g.id === 'area')!;
-        const areaRows: Row[] = visibleByArea[0]!
+        // （2か所目以降だけに出す質問があるので、2か所目以降は、1か所目で出ている質問からではなく、全部の質問から選ぶ）
+        const areaRows: Row[] = (n === 0 ? visibleByArea[0]! : QUESTIONS)
           .filter((q) => q.group === 'area' && q.id !== areaGroup.repeatCountKey)
           .filter((q) => n === 0 || evaluate(q.showIf, viewAt(effective, n)))
           .map((q) => ({ key: indexedKey(q.id, n), question: q, unit: n, area: 0 }));

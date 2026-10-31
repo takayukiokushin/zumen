@@ -489,7 +489,10 @@ export function areaLabel(answers: Answers): string {
   ]
     .filter((v) => v !== undefined && v !== null && v !== '')
     .join('、');
-  return inner ? `${head}（${inner}）` : head;
+  const body = inner ? `${head}（${inner}）` : head;
+  // エリアの名前（2か所目以降）を、いちばん前に書く
+  const name = Number(answers.areaNo) > 1 ? String(answers.areaName ?? '').trim() : '';
+  return name ? `${name}　${body}` : body;
 }
 
 /**
@@ -737,7 +740,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
   for (let n = 1; n < areaCountOf(rawAnswers); n++) {
     const view = areaView(rawAnswers, n);
     const prefix = `a${n + 1}:`;
-    const items = composeChain(view, [...AREA_CHAIN, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
+    const items = composeChain(view, [...AREA_CHAIN, ...SENDOUT, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
     const asPlaced = (r: string) => `${prefix}${r}`;
     for (const item of items) {
       out.push({

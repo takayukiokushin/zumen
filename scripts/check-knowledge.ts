@@ -884,7 +884,9 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(!buildComposition({ ...answers, areaCount: 1, 'a2:areaPas': 'yes' }).some((i) => /area-pas/.test(i.role)), '2か所目が無いのに、PASが入っています');
   // 1か所目の最後：送り出しの開閉器（エリアが2か所以上のときだけ。1か所目の質問として出る）
   const send = (extra: Answers) => buildComposition({ ...answers, areaCount: 2, ...extra }).filter((i) => i.kind === 'sendout').map((i) => `${i.role}:${i.symbolId}:${i.label.join('/')}`);
-  ok(a1.has('sendoutSwitch') && !a2.has('sendoutSwitch'), '送り出しの開閉器の質問が、1か所目だけに出ていません');
+  ok(a1.has('sendoutSwitch') && !a2.has('sendoutSwitch'), '送り出しの開閉器の質問が、最後のエリア以外に出ていません（2か所のとき、1か所目だけ）');
+  const three = { areaCount: 3 };
+  ok(ids(areaView(three, 1)).has('sendoutSwitch') && !ids(areaView(three, 2)).has('sendoutSwitch') && ids(areaView(three, 0)).has('sendoutSwitch'), '3か所のとき、1か所目・2か所目だけに、送り出しの質問が出ていません');
   ok(!ids({ areaCount: 1 }).has('sendoutSwitch') && !ids({ areaCount: 1 }).has('sendoutFuseCurrent'), 'エリアが1か所のときに、送り出しの質問が出ています');
   ok(ids(areaView({ areaCount: 2, sendoutSwitch: 'lbs' }, 0)).has('sendoutFuseCurrent') && !ids(areaView({ areaCount: 2, sendoutSwitch: 'ds' }, 0)).has('sendoutFuseCurrent'), 'LBSのときだけ、パワーヒューズの容量を聞く、になっていません');
   const sendOpts = (QUESTIONS.find((q) => q.id === 'sendoutSwitch')?.options ?? []).map((o) => o.value).join(',');
@@ -896,7 +898,15 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(send({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).join() === 'sendout-lbs:lbs-pf:LBS/PF 30A', `LBSの送り出し（PF 30A）が違います（${send({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).join()}）`);
   ok(send({ sendoutSwitch: 'lbs' }).join() === 'sendout-lbs:lbs-pf:LBS', 'PFの容量が空のとき、LBSの文字だけになっていません');
   ok(buildComposition({ ...answers, areaCount: 1, sendoutSwitch: 'vcb' }).every((i) => i.kind !== 'sendout'), 'エリアが1か所なのに、送り出しの開閉器が入っています');
-  // 定格（電圧・電流）：「ある」のときだけ聞き、図面には 7200V200A のように書く
+  // 2か所目以降のエリアの名前（任意）：エリアの枠の文字の、いちばん前に書く。1か所目には付かない
+  const frameLabel = (extra: Answers, role: string) => buildComposition({ ...answers, areaCount: 3, ...extra }).find((i) => i.role === role)?.label.join('|');
+  ok(frameLabel({ areaName__2: '第2電気室' }, 'a2:area-frame')?.startsWith('第2電気室　') === true, '2か所目のエリアの名前が、枠の文字の前に書かれていません');
+  ok(frameLabel({ areaName__3: '第3キュービクル' }, 'a3:area-frame')?.startsWith('第3キュービクル　') === true, '3か所目のエリアの名前が、枠の文字の前に書かれていません');
+  ok(frameLabel({ areaName: '1か所目の名前' }, 'area-frame')?.includes('1か所目の名前') === false, '1か所目には、エリアの名前を付けないはずが、付いています');
+  ok(frameLabel({}, 'a2:area-frame')?.startsWith('第') !== true, '名前が空のとき、枠の文字に名前が入っています');
+  const nameQ = QUESTIONS.find((q) => q.id === 'areaName');
+  ok(nameQ?.group === 'area' && evaluate(nameQ.showIf, { unitNo: 2 }) && evaluate(nameQ.showIf, { unitNo: 3 }) && !evaluate(nameQ.showIf, { unitNo: 1 }), 'エリアの名前の質問が、2か所目以降だけに出る形になっていません');
+    // 定格（電圧・電流）：「ある」のときだけ聞き、図面には 7200V200A のように書く
   const asked = (extra: Answers) => ids(areaView({ areaCount: 2, ...extra }, 1));
   ok(!asked({}).has('areaPasRatedVoltage') && !asked({}).has('areaAsRatedCurrent'), 'PAS・ASが「ない」のに、定格を聞いています');
   ok(asked({ 'a2:areaPas': 'yes' }).has('areaPasRatedVoltage') && asked({ 'a2:areaPas': 'yes' }).has('areaPasRatedCurrent') && !asked({ 'a2:areaPas': 'yes' }).has('areaAsRatedVoltage'), 'PASが「ある」とき、PASの定格だけを聞いていません');

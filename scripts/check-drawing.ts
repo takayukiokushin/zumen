@@ -2122,6 +2122,39 @@ console.log('\n■ 送り出しの開閉器（1か所目 → 2か所目の線の
   if (draw({}).symbols.some((s) => /^sendout/.test(s.id))) fail('「なし」のとき、送り出しの開閉器が描かれています');
 }
 
+/* ---------- 3か所以上のエリア：どのエリアから分岐するか、エリアごとに違ってよい ---------- */
+console.log('\n■ 3か所以上のエリアのつなぎ方（1→2→3、1→2と1→3、4か所など）');
+{
+  const base3: Answers = { ...answers, mainBreakerForm: 'cb', transformerCount: 1 };
+  const area = (n: number, from: number, tap = 'bus'): Answers => ({ [`a${n}:areaIntake`]: 'ds-vcb', [`a${n}:trCapacity`]: 100, [`a${n}:linkTap`]: tap, [`a${n}:linkFrom`]: String(from), [`a${n}:linkCableInstallation`]: 'buried', [`a${n}:linkCableCrossSection`]: '38' });
+  const cases: [string, Answers][] = [
+    ['1→2→3（数珠つなぎ）', { ...base3, areaCount: 3, ...area(2, 1), ...area(3, 2) }],
+    ['1→2、1→3（1か所目から2本）', { ...base3, areaCount: 3, ...area(2, 1), ...area(3, 1) }],
+    ['1→2、2→3、1→4（遠くへ渡す線を含む）', { ...base3, areaCount: 4, ...area(2, 1), ...area(3, 2, 'ds-vcb'), ...area(4, 1, 'vcb-load') }],
+    ['1→2、1→3、1→4（同じ高さから3本）', { ...base3, areaCount: 4, ...area(2, 1), ...area(3, 1), ...area(4, 1) }],
+    ['1→2、2→3、2→4、3→5（5か所）', { ...base3, areaCount: 5, ...area(2, 1), ...area(3, 2), ...area(4, 2, 'vcb-load'), ...area(5, 3) }],
+    ['2か所目からの送り出しがDS＋VCB（1→2→3）', { ...base3, areaCount: 3, ...area(2, 1), ...area(3, 2), 'a2:sendoutSwitch': 'ds-vcb' }],
+  ];
+  for (const [name, a] of cases) {
+    const d = layout(buildComposition(a), a);
+    const doc = fromLayout(d);
+    const bad = inspectDrawing(doc, 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind));
+    const idsList = d.symbols.map((s) => s.id);
+    const dup = idsList.filter((id, i) => idsList.indexOf(id) !== i);
+    // つなぐ先のエリアごとに、ケーブルの縦線が、そのエリアの枠の上端まで来ている
+    const frameTops = d.frames.length;
+    if (dup.length) fail(`${name}：記号のIDが重なっています（${dup.join(',')}）`);
+    else if (bad.length) fail(`${name}：線が記号を突き抜ける・浮く・文字が重なる問題があります（${bad.map((i) => i.message).slice(0, 2).join(' / ')}）`);
+    else if (findLabelCollisions(d).length > 0) fail(`${name}：文字が重なっています`);
+    else if (frameTops !== (a.areaCount as number)) fail(`${name}：エリアの枠の数が違います（${frameTops}）`);
+    else console.log(`  ${name}：エリアの中を横切らず、線・文字が重ならない`);
+  }
+  const two = cases[5]![1];
+  const dTwo = layout(buildComposition(two), two);
+  if (!dTwo.symbols.some((s) => s.id === 'a2:sendout-ds') || !dTwo.symbols.some((s) => s.id === 'a2:sendout-vcb')) fail('2か所目からの送り出しの開閉器が描かれていません');
+  else console.log('  2か所目から3か所目への送り出しの開閉器（DS＋VCB）も、描かれる');
+}
+
 /* ---------- 手で直した内容は、入力内容を変えても残る ---------- */
 console.log('\n■ 手で直した内容を残す（入力内容を変えて作り直しても）');
 {

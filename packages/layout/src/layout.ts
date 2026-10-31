@@ -960,10 +960,49 @@ export function straighten(x1: number, y1: number, x2: number, y2: number): [num
 }
 
 
+/**
+ * 主回路の縦線（x=0）から右へ出るケーブルの線の高さを決める。
+ * 指定の高さ y で、右にある記号・文字・横の線にぶつかる（または、主回路の縦線の上にある記号の中になる）ときは、
+ * 近くの、ぶつからない高さ（上下 60 まで、2刻み）に変える。見つからなければ、指定の高さのまま。
+ * lowest は、これより下にはずらさない高さ（高圧母線の少し上）。
+ */
+function clearRunY(area: AreaLayout, y: number, lowest: number): number {
+  const hits: Rect[] = [];
+  const spine: Rect[] = [];
+  for (const s of area.symbols) {
+    const def = findSymbol(s.symbolId);
+    if (!def) continue;
+    const rb = rotatedBox(def.box, s.rotate);
+    const r = { x0: s.x + rb.dx, y0: s.y + rb.dy, x1: s.x + rb.dx + rb.w, y1: s.y + rb.dy + rb.h };
+    if (r.x0 < 0 && r.x1 > 0) spine.push(r);
+    else hits.push(r);
+    if (s.label.length > 0) hits.push(labelRect(s.labelAt, s.label));
+  }
+  for (const w of area.wires) {
+    if (Math.abs(w.y1 - w.y2) < 0.01 && Math.abs(w.x1 - w.x2) > 0.5) {
+      hits.push({ x0: Math.min(w.x1, w.x2), y0: w.y1 - 3, x1: Math.max(w.x1, w.x2), y1: w.y1 + 3 });
+    }
+  }
+  const ok = (yy: number): boolean => {
+    if (yy > lowest) return false;
+    if (spine.some((r) => yy > r.y0 - 2 && yy < r.y1 + 2)) return false;
+    const band = { y0: yy - 4, y1: yy + 4 };
+    return !hits.some((r) => r.x1 > 4 && r.y0 < band.y1 && r.y1 > band.y0);
+  };
+  if (ok(y)) return y;
+  for (let d = 2; d <= 60; d += 2) {
+    if (ok(y + d)) return y + d;
+    if (ok(y - d)) return y - d;
+  }
+  return y;
+}
+
 /** エリアどうしの横の間隔（枠と枠のあいだ。エリアをつなぐケーブルを引くところ） */
 const AREA_GAP = 140;
 /** 分岐の位置から、主回路の端子の前後に空ける距離 */
 const TAP_OFFSET = 8;
+/** 同じエリアから出る、高さの違う線の幹どうしの間隔 */
+const TRUNK_STEP = 10;
 /** 送り出しの開閉器の前後・あいだの線の長さ */
 const SENDOUT_GAP = 16;
 /** ケーブルが、エリアの枠の上端より上を通る高さ */
@@ -1003,18 +1042,67 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   const topOf = (r: AreaLayout): number => r.frames[0]?.y ?? Math.min(0, ...r.symbols.map((s) => s.y));
   const baseTop = topOf(parts[0]!.result);
 
-  /**
-   * 1か所目から送り出す線の途中に入る開閉器（DS・VCB・LBS）。エリアどうしのすきまに、線の上に横向きに置くので、
-   * そのぶん、1か所目から分岐するエリアの手前のすきまを広げる（文字を、線の右に書くので、その幅も見込む）
+  /** エリアごとの、上下のずれ（枠の上端をそろえる） */
+  const dys = parts.map((part) => baseTop - topOf(part.result));
+
+  /*
+   * エリアをつなぐケーブルの経路。
+   * 分岐する位置（元のエリアの主回路の脇）から右へ出て、元のエリアの右のすきまで上へ上がり、
+   * 枠の上端より上を横へ通って、つなぐ先のエリアの真上から、枠の上端まで下りる。
+   * 間にほかのエリアがあっても、その上を通るので、エリアの中を横切らない。
+   * 同じ位置から出る線は、1本の縦線（幹）を共有し、高さごとに横へ分かれる。
    */
-  const sendouts = allItems.filter((i) => i.kind === 'sendout' && findSymbol(i.symbolId));
-  const sendoutRun = sendouts.reduce((w, i) => w + getSymbol(i.symbolId).box.h + SENDOUT_GAP, SENDOUT_GAP);
-  /** 1か所目から分岐するエリアのうち、いちばん前のもの（その線の開閉器だけ、IDに印を付けない） */
-  const firstFromZero = parts.find((p) => p.link?.link?.from === 0)?.n;
-  const gapOf = (part: (typeof parts)[number]): number => {
-    if (sendouts.length === 0 || part.link?.link?.from !== 0) return AREA_GAP;
-    const textW = labelWidth(part.link.label ?? []);
-    return Math.max(AREA_GAP, 2 * (sendoutRun + 12), 2 * (textW + 16));
+  type LinkInfo = { n: number; from: number; sx: number; sy: number; label: string[]; dashed: boolean };
+  const linkInfos: LinkInfo[] = [];
+  for (const part of parts) {
+    const link = part.link?.link;
+    if (!link || link.from >= part.n || !parts[link.from]) continue;
+    const src = parts[link.from]!;
+    const t = src.result.taps;
+    const dsTop = t.dsEntry ?? t.breakerEntry;
+    const breakerTop = t.breakerEntry ?? t.dsExit;
+    const breakerBottom = t.breakerExit ?? t.dsExit;
+    // 位置の指定が使えないとき（その機器が無いとき）は、近い位置に寄せる
+    let y: number | undefined;
+    if (link.tap === 'ds-source' && dsTop !== undefined) y = dsTop - TAP_OFFSET;
+    else if (link.tap === 'ds-vcb' && breakerTop !== undefined) y = t.breakerEntry !== undefined ? t.breakerEntry - 5 : breakerTop + TAP_OFFSET;
+    else if (link.tap === 'vcb-load' && breakerBottom !== undefined) y = breakerBottom + TAP_OFFSET;
+    // 主回路の縦線から右へ出る線が、右にある機器（トリップコイルなど）や文字を突き抜けるときは、近くの空いた高さへずらす
+    if (y !== undefined) y = clearRunY(src.result, y, t.bus ? t.bus.y - 8 : t.end);
+    // 位置が決まらないときは、高圧母線の右端（母線が無ければ、主回路の末端）から出る
+    const sy = (y ?? (t.bus ? t.bus.y : t.end)) + dys[link.from]!;
+    const sx = y !== undefined ? 0 : t.bus ? t.bus.x : 0;
+    linkInfos.push({ n: part.n, from: link.from, sx, sy, label: part.link?.label ?? [], dashed: link.dashed });
+  }
+  /** 同じエリアの、同じ高さから出る線の組（幹） */
+  type Trunk = { from: number; sy: number; links: LinkInfo[]; index: number };
+  const trunks: Trunk[] = [];
+  for (const li of linkInfos) {
+    let tr = trunks.find((x) => x.from === li.from && Math.abs(x.sy - li.sy) < 0.5);
+    if (!tr) {
+      tr = { from: li.from, sy: li.sy, links: [], index: trunks.filter((x) => x.from === li.from).length };
+      trunks.push(tr);
+    }
+    tr.links.push(li);
+  }
+  // 同じエリアから出る幹は、上から出る線ほど、左に置く（線が交わらないように）
+  for (const f of new Set(trunks.map((x) => x.from))) {
+    trunks.filter((x) => x.from === f).sort((a, b) => a.sy - b.sy).forEach((x, i) => { x.index = i; });
+  }
+
+  /**
+   * 送り出しの開閉器（DS・VCB・LBS）。元のエリアごとに答える。エリアどうしのすきまに、線の上に横向きに置く。
+   * 同じ幹には、1組だけ描く。
+   */
+  const sendoutsOf = (area: number) => allItems.filter((i) => i.kind === 'sendout' && (i.area ?? 0) === area && findSymbol(i.symbolId));
+  const runOf = (area: number) => sendoutsOf(area).reduce((w, i) => w + getSymbol(i.symbolId).box.h + SENDOUT_GAP, SENDOUT_GAP);
+
+  /** エリアの手前（左）のすきまの広さ。そのエリアの左のエリアから出る線の幹と、送り出しの開閉器が入る広さ */
+  const gapBefore = (p: number): number => {
+    const mine = trunks.filter((x) => x.from === p - 1);
+    if (mine.length === 0) return AREA_GAP;
+    const run = sendoutsOf(p - 1).length > 0 ? runOf(p - 1) + 12 : 0;
+    return Math.max(AREA_GAP, 2 * run, 2 * (TRUNK_STEP * mine.length + 20));
   };
 
   type Moved = { dx: number; dy: number; part: (typeof parts)[number] };
@@ -1022,8 +1110,8 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   let right = -Infinity;
   for (const part of parts) {
     const b = part.result.bounds;
-    const dy = baseTop - topOf(part.result);
-    const dx = moved.length === 0 ? 0 : right + gapOf(part) - b.x0;
+    const dy = dys[part.n]!;
+    const dx = moved.length === 0 ? 0 : right + gapBefore(part.n) - b.x0;
     moved.push({ dx, dy, part });
     right = Math.max(right, b.x1 + dx);
   }
@@ -1053,60 +1141,47 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   }
 
   // 前のエリアの指定の位置から、このエリアの上へ、ケーブルの線を引く
-  for (const m of moved) {
-    const link = m.part.link?.link;
-    if (!link || link.from >= m.part.n) continue;
-    const from = moved[link.from];
-    if (!from) continue;
-    const t = from.part.result.taps;
-    const spine = from.part.result;
-    // 位置の指定が使えないとき（その機器が無いとき）は、近い位置に寄せる
-    const pos = ((): { x: number; y: number } => {
-      const dsTop = t.dsEntry ?? t.breakerEntry;
-      const breakerTop = t.breakerEntry ?? t.dsExit;
-      const breakerBottom = t.breakerExit ?? t.dsExit;
-      switch (link.tap) {
-        case 'ds-source':
-          if (dsTop !== undefined) return { x: 0, y: dsTop - TAP_OFFSET };
-          break;
-        case 'ds-vcb':
-          if (breakerTop !== undefined) return { x: 0, y: t.breakerEntry !== undefined ? t.breakerEntry - 5 : breakerTop + TAP_OFFSET };
-          break;
-        case 'vcb-load':
-          if (breakerBottom !== undefined) return { x: 0, y: breakerBottom + TAP_OFFSET };
-          break;
-        default:
-          break;
-      }
-      if (t.bus) return { x: t.bus.x, y: t.bus.y };
-      return { x: 0, y: t.end };
-    })();
-    void spine;
-    const sx = pos.x + from.dx;
-    const sy = pos.y + from.dy;
-    const ex = m.dx; // このエリアの主回路の縦線は x=0
-    const ey = baseTop;
-    const dashed = link.dashed;
-    /*
-     * 線の通り道：分岐の位置から右へ → エリアのすきま（このエリアの左）で上へ →
-     * 枠の上端より少し上で、このエリアの真上まで右へ → 枠の上端まで下へ。
-     * このエリアの中を、縦に通り抜けないようにするため、すきまを通って上から入る。
-     */
-    const gx = m.part.result.bounds.x0 + m.dx - gapOf(m.part) / 2;
-    const ty = ey - LINK_RISE;
-    // 送り出しの開閉器：1か所目から分岐するときだけ。すきまの中の、横線の上に、横向きに並べる
-    const withSwitches = sendouts.length > 0 && link.from === 0;
+  const maxLines = Math.max(1, ...linkInfos.map((l) => l.label.length));
+  /** 遠くのエリアへ渡す線が通る高さの間隔（文字が入る分、広げる） */
+  const laneStep = 12 + maxLines * LABEL_LINE;
+  // 間にほかのエリアをはさむ線は、枠の上端から離れた高さを、1本ずつ通る（短い線ほど、低い）
+  const lanes = new Map<LinkInfo, number>();
+  [...linkInfos]
+    .filter((l) => l.n - l.from > 1)
+    .sort((a, b) => a.n - a.from - (b.n - b.from) || a.from - b.from)
+    .forEach((l, i) => lanes.set(l, i + 1));
+  const ey = baseTop;
+  const tyOf = (l: LinkInfo) => ey - LINK_RISE - (lanes.get(l) ?? 0) * laneStep;
+  /** 幹の、縦の線の位置（元のエリアの右のすきまの真ん中から、幹ごとに少しずつ右へ） */
+  const trunkX = (tr: Trunk): number => {
+    const next = moved[tr.from + 1];
+    const base = next ? next.part.result.bounds.x0 + next.dx - gapBefore(tr.from + 1) / 2 : moved[tr.from]!.part.result.bounds.x1 + moved[tr.from]!.dx + AREA_GAP / 2;
+    return base + TRUNK_STEP * tr.index;
+  };
+  const flip = (def: SymbolDef, x: number, y: number, r: number): [number, number] => rotatedPort(def.box, x, y, r);
+
+  for (const tr of trunks) {
+    const from = moved[tr.from]!;
+    // 分岐する位置のx：高圧母線のときは母線の右端、それ以外は主回路の縦線
+    const sx = tr.links[0]!.sx + from.dx;
+    const sy = tr.sy;
+    const gx = trunkX(tr);
+    const tops = tr.links.map(tyOf);
+    const topY = Math.min(...tops);
+
+    // 送り出しの開閉器（幹の手前に、横向きに並べる）
+    const sends = sendoutsOf(tr.from);
     let cableFrom = sx;
-    if (withSwitches) {
-      const runStart = gx - 12 - (sendoutRun - SENDOUT_GAP);
-      // 開閉器までは母線から直接（実線）。そこから先が、ケーブル
+    if (sends.length > 0) {
+      const runStart = gx - 12 - (runOf(tr.from) - SENDOUT_GAP);
       if (runStart - sx > 0.5) {
         wires.push({ x1: sx, y1: sy, x2: runStart, y2: sy });
         ext(sx, sy, runStart, sy);
       }
       let cx = runStart;
-      const flip = (def: SymbolDef, x: number, y: number, r: number): [number, number] => rotatedPort(def.box, x, y, r);
-      for (const it of sendouts) {
+      // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、IDに印を付ける
+      const sfx = tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`;
+      for (const it of sends) {
         const def = getSymbol(it.symbolId);
         const inP = portOf(def, 'in') ?? def.ports[0]!;
         const outP = portOf(def, 'out') ?? def.ports[def.ports.length - 1]!;
@@ -1114,8 +1189,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         const rotate = [-90, 90].find((r) => flip(def, inP.x, inP.y, r)[0] < flip(def, outP.x, outP.y, r)[0]) ?? -90;
         const [ix, iy] = flip(def, inP.x, inP.y, rotate);
         const [ox] = flip(def, outP.x, outP.y, rotate);
-        // 1か所目から分岐するエリアが複数あるときは、線ごとに開閉器を描く（2本目からは、IDに何か所目への線かを付ける）
-        const sfx = m.part.n === firstFromZero ? '' : `-${m.part.n + 1}`;
+        const rb = rotatedBox(def.box, rotate);
         const sym: PlacedSymbol = {
           id: `${it.id}${sfx}`,
           role: `${it.role}${sfx}`,
@@ -1124,39 +1198,44 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
           y: sy - iy,
           rotate,
           label: it.label,
-          labelAt: { x: 0, y: 0, anchor: 'middle' },
+          labelAt: { x: cx - ix + def.box.w / 2, y: sy - iy + rb.dy - 6 - (it.label.length - 1) * LABEL_LINE, anchor: 'middle' },
         };
-        // 記号を回しているので、見えている外形の上端の少し上に、文字を書く
-        const rb = rotatedBox(def.box, rotate);
-        sym.labelAt = { x: sym.x + def.box.w / 2, y: sym.y + rb.dy - 6 - (it.label.length - 1) * LABEL_LINE, anchor: 'middle' };
         symbols.push(sym);
         ext(sym.x + rb.dx, sym.y + rb.dy, sym.x + rb.dx + rb.w, sym.y + rb.dy + rb.h);
         const exitX = cx - ix + ox;
         cx = exitX + SENDOUT_GAP;
-        // 記号と記号のあいだの線
-        if (it !== sendouts[sendouts.length - 1]) {
+        if (it !== sends[sends.length - 1]) {
           wires.push({ x1: exitX, y1: sy, x2: cx, y2: sy });
         } else {
           cableFrom = exitX;
         }
       }
     }
-    const path: [number, number][] = [[cableFrom, sy], [gx, sy], [gx, ty], [ex, ty], [ex, ey]];
-    for (let i = 0; i + 1 < path.length; i++) {
-      const [ax, ay] = path[i]!;
-      const [bx, by] = path[i + 1]!;
-      if (Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5) continue;
+
+    const seg = (ax: number, ay: number, bx: number, by: number, dashed: boolean) => {
+      if (Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5) return;
       wires.push({ x1: ax, y1: ay, x2: bx, y2: by, dashed });
       ext(Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by));
-    }
-    // ケーブルの文字は、横線の上に書く（開閉器があるときは、開閉器の文字と重ならないよう、縦の線の右に書く）
-    const lines = m.part.link?.label ?? [];
-    if (lines.length > 0) {
-      const tx = withSwitches ? gx + 8 : gx - 8;
-      const ty = sy - (withSwitches ? 14 : 6) - (lines.length - 1) * LABEL_LINE;
-      const anchor = withSwitches ? 'start' : 'end';
-      texts.push({ x: tx, y: ty, lines, anchor });
-      const r = labelRect({ x: tx, y: ty, anchor }, lines);
+    };
+    // 幹：分岐の位置から右へ、すきままで。そこから、いちばん高い横線の高さまで上へ
+    const dashedTrunk = tr.links.every((l) => l.dashed);
+    seg(cableFrom, sy, gx, sy, dashedTrunk);
+    seg(gx, sy, gx, topY, dashedTrunk);
+    for (const l of tr.links) {
+      const m = moved[l.n]!;
+      const ex = m.dx; // このエリアの主回路の縦線は x=0
+      const ty = tyOf(l);
+      // 線ごとの横線と、つなぐ先のエリアへの縦線
+      seg(gx, ty, ex, ty, l.dashed);
+      seg(ex, ty, ex, ey, l.dashed);
+      // ケーブルの文字：幹が1本の線だけで、開閉器も無いときは、横線（分岐の位置の手前）の上。それ以外は、横線の上、つなぐ先の近く
+      const lines = l.label;
+      if (lines.length === 0) continue;
+      const alone = tr.links.length === 1 && sends.length === 0 && !lanes.has(l);
+      const tx = alone ? gx - 8 : ex - 8;
+      const tyText = (alone ? sy - 6 : ty - 6) - (lines.length - 1) * LABEL_LINE;
+      texts.push({ x: tx, y: tyText, lines, anchor: 'end' });
+      const r = labelRect({ x: tx, y: tyText, anchor: 'end' }, lines);
       ext(r.x0, r.y0, r.x1, r.y1);
     }
   }

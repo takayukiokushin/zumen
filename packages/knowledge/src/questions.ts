@@ -120,6 +120,17 @@ const MIXED_V: Condition = {
 /** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
 const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
 
+/**
+ * 送り出しの開閉器を聞くエリア：エリアが2か所以上のとき、最後のエリア以外（最後のエリアから送り出すことは無い）。
+ * 1か所目は、areaNo が入っていない（2か所目以降は、areaNo が入っている）
+ */
+const SENDOUT_SHOWN: Condition = {
+  any: [
+    { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }] },
+    ...Array.from({ length: 8 }, (_, i) => ({ all: [{ key: 'areaNo', eq: i + 2 }, { key: 'areaCount', gt: i + 2 }] }) as Condition),
+  ],
+};
+
 export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'customer', label: 'お客様・現場', description: '表題欄と図面の基本情報' },
   { id: 'source', label: '引込元', description: '電力会社所有の電柱' },
@@ -182,9 +193,9 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   {
     id: 'sendout',
     label: '他のエリアへの送り出し',
-    description: '1か所目から、2か所目以降のエリアへ送り出す点',
+    description: 'このエリアから、ほかのエリアへ送り出す点',
     perArea: true,
-    showIf: { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }] },
+    showIf: SENDOUT_SHOWN,
   },
   { id: 'title', label: '表題欄' },
 ];
@@ -669,6 +680,17 @@ export const QUESTIONS: Question[] = [
     defaultValue: 1,
     ask: 'ai-uncertain',
     help: '画像から1箇所と判別できる場合は聞かない。2箇所以上のときだけ各エリアを一点鎖線で囲う',
+  },
+  {
+    // 2か所目以降のエリアだけ。エリアの名前を、自由に入れられる（例：第2変電所、第2電気室、第3キュービクル）
+    id: 'areaName',
+    group: 'area',
+    label: 'このエリアの名前（任意）',
+    type: 'text',
+    placeholder: '第2変電所 / 第2電気室 / 第3キュービクル',
+    showIf: { key: 'unitNo', gt: 1 },
+    ask: 'always',
+    help: '2か所目以降のエリアに付ける名前。図面のエリアの枠の名前に、いちばん前に書く（例：「第2電気室　キュービクル式（1階、屋内）」）。空欄なら、形態・階・場所だけを書く',
   },
   {
     id: 'areaForm',
@@ -1542,9 +1564,9 @@ export const QUESTIONS: Question[] = [
     ],
     defaultValue: 'none',
     dropdown: true,
-    showIf: { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }] },
+    showIf: SENDOUT_SHOWN,
     ask: 'always',
-    help: '2か所目以降のエリアは、1か所目から分岐する。その送り出す点に、母線から直接ではなく、開閉器が付いている場合がある。図面では、1か所目から2か所目へ向かう線の途中に描く',
+    help: 'ほかのエリアは、このエリアから分岐することがある。その送り出す点に、母線から直接ではなく、開閉器が付いている場合がある。図面では、このエリアから、ほかのエリアへ向かう線の途中に描く。このエリアから送り出さないときは、「なし」のままでよい',
   },
   {
     id: 'sendoutFuseCurrent',
@@ -1555,7 +1577,7 @@ export const QUESTIONS: Question[] = [
     allowFreeInput: true,
     dropdown: true,
     unit: 'A',
-    showIf: { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', eq: 'lbs' }] },
+    showIf: { all: [SENDOUT_SHOWN, { key: 'sendoutSwitch', eq: 'lbs' }] },
     ask: 'always',
     help: '送り出しがLBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
   },
