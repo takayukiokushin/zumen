@@ -185,6 +185,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ sourceId }),
     }),
+  /** 過去の図面を複製して、新しい案件を作る（事業場名称などは空。設備の内容と手直しはそのまま） */
+  duplicateProject: (id: string) =>
+    call<{ id: string; name: string; updatedAt: string }>(`/api/projects/${id}/duplicate`, { method: 'POST' }),
   listTrash: () => call<{ retainDays: number; projects: TrashItem[] }>('/api/projects/trash'),
   restoreProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}/restore`, { method: 'POST' }),
 

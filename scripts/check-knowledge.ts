@@ -27,6 +27,7 @@ import {
   visibleQuestions,
   VIEW_KEYS,
   withAutoValues,
+  clearForDuplicate,
   withDerived,
 } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
@@ -1154,6 +1155,19 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', hasSiteCt: 'yes' }).relayAt === undefined, 'VTの有無が未回答なのに、UVRの置き場所が決まっています');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
+  // 図面を複製して新しい案件を作るとき：その現場だけの名前・番号・注記を空にし、設備の内容は残す
+  {
+    const src: Answers = {
+      siteName: 'A工場', customerNameForTitleBlock: 'A工場（略称）', drawingName: 'A工場 単線結線図', poleName: '中電柱：猪子山（分）81', cabinetName: 'キャビネット番号：12',
+      earthingNotes: 'A種 10Ω', 'a2:poleName': 'x', areaCount: 2, mainBreakerForm: 'cb', trCapacity: 100, hasZpd: 'yes', mainGroundRelay: 'dgr', 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity__2': 50,
+    };
+    const dup = clearForDuplicate(src);
+    for (const k of ['siteName', 'customerNameForTitleBlock', 'drawingName', 'poleName', 'cabinetName', 'earthingNotes', 'a2:poleName']) {
+      ok(!(k in dup), `複製のとき、${k} が空になっていません`);
+    }
+    ok(dup.mainBreakerForm === 'cb' && dup.trCapacity === 100 && dup.hasZpd === 'yes' && dup.mainGroundRelay === 'dgr' && dup.areaCount === 2 && dup['a2:areaIntake'] === 'ds-vcb' && dup['a2:trCapacity__2'] === 50, '複製のとき、設備の内容が残っていません');
+    ok(src.siteName === 'A工場', '複製の処理が、もとの回答を書き換えています');
+  }
   // LAの上位（上側）の開閉器：LAが「ある」ときだけ聞く。なし・DS・PC・LBSの順。選ぶと、LAの上に入る
   const laBase: Answers = { ...cbBase, hasLa: 'yes' };
   ok(gq(laBase).has('laSwitch') && !gq({ ...cbBase, hasLa: 'no' }).has('laSwitch'), 'LAの上位の開閉器の質問が、LAが「ある」ときだけ出るはずです');

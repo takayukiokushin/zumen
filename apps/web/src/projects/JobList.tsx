@@ -106,6 +106,19 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     }
   };
 
+  /** 過去の図面を複製して、新しい案件として開く。もとの案件は変わらない */
+  const duplicate = async (src: { id: string; name: string }) => {
+    if (!(await ask({ message: [`「${src.name}」${t('project.duplicate.confirm')}`] }))) return;
+    if (!(await canLeave())) return;
+    try {
+      setError(null);
+      const r = await api.duplicateProject(src.id);
+      onOpen(r.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '複製できませんでした。');
+    }
+  };
+
   const restore = async (id: string, name: string) => {
     try {
       setError(null);
@@ -166,6 +179,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                 <th className="c-act" />
                 <th>{t('project.name')}</th>
                 <th>{t('project.updated')}</th>
+                <th className="c-dup" />
                 <th className="c-del" />
               </tr>
             </thead>
@@ -199,6 +213,17 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     {p.file_count > 0 && <span className="when">　写真{p.file_count}枚</span>}
                   </td>
                   <td className="when c-info">{new Date(p.updated_at).toLocaleString(lang)}</td>
+                  <td className="c-dup">
+                    <button
+                      type="button"
+                      className="btn job-duplicate"
+                      title={t('project.duplicate.title')}
+                      aria-label={`${p.name}：${t('project.duplicate.title')}`}
+                      onClick={() => void duplicate(p)}
+                    >
+                      {t('project.duplicate')}
+                    </button>
+                  </td>
                   <td className="c-del">
                     <button
                       type="button"

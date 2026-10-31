@@ -637,6 +637,8 @@ button.with-icon svg { flex: 0 0 auto; }
 /* 一覧：左から「開く」・名前・更新日時・（「消す」は右端）。「開く」は、名前のすぐ左に小さく置き、「消す」と離す */
 .joblist .jobs .c-act { width: calc(84px * var(--text-scale)); white-space: nowrap; }
 .joblist .jobs .c-act .btn { min-width: 0; width: 100%; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
+.joblist .jobs .c-dup { width: calc(150px * var(--text-scale)); text-align: right; white-space: nowrap; }
+.joblist .jobs .c-dup .btn { min-width: 0; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
 .joblist .jobs .c-del { width: calc(76px * var(--text-scale)); text-align: right; white-space: nowrap; }
 .joblist .jobs .c-del .btn { min-width: 0; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
 /* 狭い画面（スマートフォン）では、表をやめて、1つの案件を1枚のカードにする（名前・日時・ボタンを縦に並べる） */
@@ -663,6 +665,7 @@ button.with-icon svg { flex: 0 0 auto; }
   .joblist .jobs .c-act { grid-column: 1 / -1; order: 3; width: auto; margin-top: calc(6px * var(--text-scale)); }
   .joblist .jobs tr.has-del .c-act { grid-column: 1; }
   .joblist .jobs .c-del { order: 4; grid-column: 2; width: auto; margin-top: calc(6px * var(--text-scale)); }
+  .joblist .jobs .c-dup { order: 5; grid-column: 1 / -1; width: auto; text-align: left; margin-top: calc(6px * var(--text-scale)); }
   /* 「開く」は左に、「消す」は右端に。間を広くあけて、押し間違いを防ぐ */
   .joblist .jobs .c-act { justify-self: start; }
   .joblist .jobs .c-act .btn { width: auto; min-width: calc(128px * var(--text-scale)); }

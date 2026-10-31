@@ -5,6 +5,7 @@ import { FILES_DIR, db, now } from './db.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
+import { clearForDuplicate } from '@zumen/knowledge';
 
 /** 案件（プロジェクト）の保存・呼び出し。ヒアリング回答・図面・現地写真を一式で扱う */
 
@@ -219,6 +220,59 @@ projects.post('/practice/copy', async (c) => {
       // もとの写真のデータが無いものは、コピーしない
     }
   }
+  takeLock(id, user.id);
+  return c.json({ id, name, updatedAt: t }, 201);
+});
+
+/**
+ * 図面に手で足した文字（メモ）を外す。自動で作った文字（ケーブルの説明など）と、記号・線の手直しは、そのまま残す。
+ * どれが手で足したものかは、図面の控え（base.textIds）で分かる。控えが無い古い図面は、そのまま。
+ */
+function withoutHandwrittenMemos(drawing: string | null): string | null {
+  if (!drawing) return drawing;
+  try {
+    const doc = JSON.parse(drawing) as {
+      items?: { kind?: string; id?: string }[];
+      base?: { textIds?: string[] };
+      overrides?: { added?: { kind?: string }[] };
+    };
+    const auto = doc.base?.textIds;
+    if (!Array.isArray(auto) || !Array.isArray(doc.items)) return drawing;
+    doc.items = doc.items.filter((it) => it.kind !== 'text' || auto.includes(String(it.id)));
+    if (doc.overrides && Array.isArray(doc.overrides.added)) doc.overrides.added = doc.overrides.added.filter((a) => a.kind !== 'text');
+    return JSON.stringify(doc);
+  } catch {
+    return drawing;
+  }
+}
+
+/**
+ * 過去の図面を複製して、新しい案件を作る（本番のアカウントも使える。練習用の「本番の案件をコピー」とは別）。
+ * 設備の内容と、手で直した図面は、そのまま使う。
+ * その現場だけの、事業場名称・電柱名称・図面の名称・特記事項などの答えと、図面に手で足したメモは、空にする。
+ * 現地写真は、その現場のものなので、コピーしない。もとの案件は何も変わらない。
+ */
+projects.post('/:id/duplicate', (c) => {
+  const user = c.get('user');
+  const src = db.prepare('SELECT * FROM projects WHERE id = ? AND deleted_at IS NULL').get(c.req.param('id')) as
+    | (ProjectRow & { answers: string; drawing: string | null })
+    | undefined;
+  if (!src || !canTouch(user, src.id)) {
+    return c.json({ error: '複製する案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」を開き直して、選び直してください。' }, 404);
+  }
+  let answers: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(src.answers);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) answers = parsed;
+  } catch {
+    // 壊れた回答は、空として扱う
+  }
+  const id = newId();
+  const t = now();
+  const name = '無題の案件';
+  db.prepare(
+    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, t, t, user.id, JSON.stringify(clearForDuplicate(answers as never)), withoutHandwrittenMemos(src.drawing), user.id);
   takeLock(id, user.id);
   return c.json({ id, name, updatedAt: t }, 201);
 });

@@ -76,6 +76,11 @@ export interface Question {
    * AIが作った文章に入っていても、取り込まない。
    */
   manualOnly?: boolean;
+  /**
+   * 図面を複製して新しい案件を作るとき、空にする（その現場だけの名前・番号・注記）。
+   * 設備の内容は、そのまま残す
+   */
+  clearOnDuplicate?: boolean;
   ask: AskWhen;
   required?: boolean;
   /**
@@ -313,13 +318,14 @@ const RELAY_CHOICES: Choice[] = [
 
 export const QUESTIONS: Question[] = [
   /* ---------------- お客様・現場 ---------------- */
-  { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true, manualOnly: true },
+  { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true, manualOnly: true, clearOnDuplicate: true },
   {
     id: 'customerNameForTitleBlock',
     group: 'customer',
     label: '表題欄への記載名',
     type: 'text',
     manualOnly: true,
+    clearOnDuplicate: true,
     ask: 'always',
     help: '事業場名称と異なる書き方（略称など）をする場合に入力する',
   },
@@ -369,6 +375,7 @@ export const QUESTIONS: Question[] = [
     group: 'source',
     label: '電柱名称',
     type: 'text',
+    clearOnDuplicate: true,
     // 「中電柱：」を最初から入れておき、その後ろに電柱の名称を入力する
     defaultValue: '中電柱：',
     showIf: { key: 'sourceType', ne: 'cabinet' },
@@ -397,6 +404,7 @@ export const QUESTIONS: Question[] = [
     group: 'source',
     label: 'キャビネット名称',
     type: 'text',
+    clearOnDuplicate: true,
     // 「キャビネット番号：」を最初から入れておき、その後ろにキャビネットの名称を入力する
     defaultValue: 'キャビネット番号：',
     showIf: { key: 'sourceType', eq: 'cabinet' },
@@ -1243,7 +1251,7 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     help: '主回路からLAへ向かう線の途中（LAの上側）に付く開閉器。選ぶと、主回路から横に出た線が真下に折れて、開閉器、LA、アースの順に縦に並ぶ',
   },
-  { id: 'earthingNotes', group: 'receiving', section: 'ZPD・LA・接地', label: '接地方式・接地抵抗値等の特記事項', type: 'text', ask: 'always' },
+  { id: 'earthingNotes', group: 'receiving', section: 'ZPD・LA・接地', label: '接地方式・接地抵抗値等の特記事項', type: 'text', ask: 'always', clearOnDuplicate: true },
 
   /* ---------------- 変圧器 ---------------- */
   {
@@ -1621,6 +1629,7 @@ export const QUESTIONS: Question[] = [
     label: '図面名称',
     type: 'text',
     manualOnly: true,
+    clearOnDuplicate: true,
     ask: 'always',
     help: '空欄のときは、受電設備の形態から自動で決まります（例：キュービクル式高圧受電設備単線結線図）。書いた場合は、それを優先します',
   },

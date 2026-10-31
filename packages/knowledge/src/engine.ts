@@ -1053,3 +1053,19 @@ function placeByTap(items: PlacedItem[]): PlacedItem[] {
   return [...rest.slice(0, at), ...before, rest[at]!, ...after, ...rest.slice(at + 1)];
 }
 
+
+/**
+ * 図面を複製して新しい案件を作るときの回答。
+ * 「複製のとき空にする」印の付いた質問（事業場名称・電柱名称・図面名称・特記事項など）の答えを外し、設備の内容は、そのまま残す。
+ * 2か所目以降（a2:〜）・2件目以降（__2）の答えも対象。外した質問は、既定値（電柱名称なら「中電柱：」）に戻る。
+ */
+export function clearForDuplicate(answers: Answers): Answers {
+  const clear = new Set(QUESTIONS.filter((q) => q.clearOnDuplicate).map((q) => q.id));
+  const out: Answers = {};
+  for (const [key, value] of Object.entries(answers)) {
+    const id = /^(?:a\d+:)?([A-Za-z0-9]+)(?:__\d+)?$/.exec(key)?.[1];
+    if (id && clear.has(id)) continue;
+    out[key] = value;
+  }
+  return out;
+}

@@ -564,6 +564,47 @@ try {
     await call(a, `/api/projects/${made.id}`, { method: 'DELETE' });
   }
 
+  // 図面を複製して新しい案件を作る（本番のアカウント）：設備の内容と手直しは残し、名前・番号・メモは空にする
+  {
+    const J = (r: Response) => r.json() as Promise<any>;
+    const drawing = {
+      items: [
+        { kind: 'text', id: 'auto-t', x: 0, y: 0, lines: ['埋設ケーブル'], anchor: 'start' },
+        { kind: 'text', id: 'memo-t', x: 10, y: 10, lines: ['手書きの注記'], anchor: 'start' },
+        { kind: 'symbol', id: 'vcb', symbolId: 'vcb', x: 100, y: 200, rotate: 0, label: ['VCB（手で直した）'], labelDx: 0, labelDy: 0 },
+      ],
+      edited: true,
+      base: { symbols: {}, wires: [], wireIds: [], textIds: ['auto-t'] },
+      overrides: { moved: { vcb: { dx: 5, dy: 6 } }, removed: [], wiresRemoved: [], added: [{ kind: 'text', item: { kind: 'text', id: 'memo-t' }, at: { ndx: 0, ndy: 0 } }] },
+    };
+    const srcAnswers = { siteName: '複製元の現場', drawingName: '複製元の図面', poleName: '中電柱：元の電柱', earthingNotes: 'A種10Ω', mainBreakerForm: 'cb', trCapacity: 100 };
+    await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ answers: srcAnswers, drawing }) });
+    const up = await call(a, `/api/projects/${created.id}/files`, {
+      method: 'POST',
+      body: JSON.stringify({ fileName: '現地.png', mediaType: 'image/png', data: Buffer.from('dummy-image').toString('base64') }),
+    });
+    const before = await J(await call(a, `/api/projects/${created.id}`));
+    const r = await call(a, `/api/projects/${created.id}/duplicate`, { method: 'POST' });
+    check('標準のアカウントも、図面を複製して新しく作れる', r.status === 201, `${r.status}`);
+    const dup = await J(r);
+    const d = await J(await call(a, `/api/projects/${dup.id}`));
+    check('複製：事業場名称・図面名称・電柱名称・特記事項が空になる', d.answers.siteName === undefined && d.answers.drawingName === undefined && d.answers.poleName === undefined && d.answers.earthingNotes === undefined, JSON.stringify(d.answers));
+    check('複製：設備の内容は、そのまま残る', d.answers.mainBreakerForm === 'cb' && d.answers.trCapacity === 100);
+    check('複製：案件の名前は「無題の案件」になる', d.name === '無題の案件', String(d.name));
+    check('複製：手で足したメモは消え、自動の文字は残る', d.drawing.items.some((x: { id: string }) => x.id === 'auto-t') && !d.drawing.items.some((x: { id: string }) => x.id === 'memo-t') && d.drawing.overrides.added.length === 0);
+    check('複製：手で直した記号は、そのまま使う', d.drawing.items.find((x: { id: string }) => x.id === 'vcb')?.label?.[0] === 'VCB（手で直した）' && d.drawing.overrides.moved.vcb.dx === 5 && d.drawing.edited === true);
+    check('複製：写真はコピーしない', d.files.length === 0 && before.files.length === 1);
+    const after = await J(await call(a, `/api/projects/${created.id}`));
+    check('複製しても、もとの案件は変わらない', JSON.stringify(after.answers) === JSON.stringify(before.answers) && JSON.stringify(after.drawing) === JSON.stringify(before.drawing));
+    check('複製は、一覧に並ぶ', ((await J(await call(a, '/api/projects'))).projects as { id: string }[]).some((x) => x.id === dup.id));
+    check('存在しない案件は、複製できない', (await call(a, '/api/projects/nai/duplicate', { method: 'POST' })).status === 404);
+    check('練習用の案件は、標準が複製できない', (await call(a, `/api/projects/${renshuMade.id}/duplicate`, { method: 'POST' })).status === 404);
+    await call(a, `/api/projects/${dup.id}`, { method: 'DELETE' });
+    await call(a, `/api/projects/${created.id}/files/${before.files[0].id}`, { method: 'DELETE' });
+    await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ answers: before.answers, drawing: before.drawing }) });
+    void up;
+  }
+
   // 練習環境：本番の案件をコピーして練習する（もとの案件は変わらない）
   {
     const J = (r: Response) => r.json() as Promise<any>;
