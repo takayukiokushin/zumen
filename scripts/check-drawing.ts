@@ -1321,6 +1321,41 @@ console.log('\n■ 3点不一致：保安上の責任分界点（主遮断装置
   }
 }
 
+/* 励磁突入電流抑制開閉器が付くVCBの、3点不一致：横線では並列の開閉器にかかるので、斜めの矢印で指す */
+console.log('\n■ 責任分界点（励磁突入電流抑制開閉器つきのVCB）：矢印で指す');
+{
+  const a: Answers = {
+    siteName: 'x', receivingType: 'high', receivingVoltage: 6600, sourceType: 'pole', hasPas: 'yes', pasControl: 'dgr',
+    vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy',
+    mainBreakerForm: 'cb', boundaryPattern: 'split', hasInrush: 'yes', inrushRatedVoltage: '7200', inrushFuseCount: 3,
+  };
+  const d = layout(buildComposition(a), a);
+  const arrow = d.symbols.find((s) => s.symbolId === 'boundary-safety-arrow');
+  const vcb = d.symbols.find((s) => s.role === 'main-breaker');
+  if (!arrow || !vcb) fail('矢印または主遮断装置が描かれていません');
+  else if (d.symbols.some((s) => s.symbolId === 'boundary-safety')) fail('横線と矢印の両方が描かれています');
+  else {
+    const def = getSymbolDef('boundary-safety-arrow');
+    const tipX = arrow.x + def.box.w;
+    const tipY = arrow.y + def.box.h;
+    const vcbDef = getSymbolDef(vcb.symbolId);
+    const centerY = vcb.y + vcbDef.box.h / 2;
+    const others = d.symbols.filter((s) => s !== arrow && s !== vcb);
+    const overlaps = others.filter((s) => {
+      const b = getSymbolDef(s.symbolId).box;
+      const rb = rotatedBox(b, s.rotate);
+      const r = { x0: s.x + rb.dx, y0: s.y + rb.dy, x1: s.x + rb.dx + rb.w, y1: s.y + rb.dy + rb.h };
+      return arrow.x < r.x1 && tipX > r.x0 && arrow.y < r.y1 && tipY > r.y0;
+    });
+    if (Math.abs(tipY - centerY) > 1 || !(tipX <= vcb.x && tipX >= vcb.x - 8)) fail(`矢印の先が、VCBの左の端（中央の高さ）を指していません（先 ${tipX},${tipY}／VCB ${vcb.x},${centerY}）`);
+    else if (!(arrow.x < tipX && arrow.y < tipY)) fail('矢印が、左上から右下へ向かう斜めになっていません');
+    else if (overlaps.length > 0) fail(`矢印が、ほかの記号にかかっています（${overlaps.map((s) => s.id).join(',')}）`);
+    else if (arrow.label.join('') !== '責任分界点') fail('矢印に、「責任分界点」の文字がありません');
+    else if (findLabelCollisions(d).length > 0) fail('矢印の文字が、ほかの文字と重なっています');
+    else console.log('  VCBの左へ、左上から斜めの矢印で指し、「責任分界点」の文字は矢印の上。ほかの記号・文字にかからない');
+  }
+}
+
 /* ---------- 19. 表題の枠：幅の自動調整と2行化 ---------- */
 console.log('\n■ 表題の枠（文字量に合わせた幅・長いときだけ2行・はみ出さない）');
 {

@@ -408,6 +408,40 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const inPort = portOf(target.def, 'in');
       const axisX = target.sym.x + (inPort ? inPort.x : target.def.box.w / 2);
       const centerY = target.sym.y + target.def.box.h / 2;
+      // 主遮断装置の左に、並列の開閉器（励磁突入電流抑制開閉器）があるときは、横線がかかるので、斜めの矢印で指す
+      const hasBypass = items.some((i) => i.kind === 'bypass' && i.attachTo === item.attachTo);
+      if (hasBypass) {
+        const arrowItem: PlacedItem = { ...item, symbolId: 'boundary-safety-arrow' };
+        const adef = getSymbol('boundary-safety-arrow');
+        // 矢印の先を、図記号の左の端（中央の高さ）の少し手前に。ほかの記号・文字にかからない位置を、上のほうへ探す
+        const tipX = target.sym.x - 3;
+        const tipY = centerY;
+        const taken: Rect[] = [];
+        for (const p of placed.values()) {
+          if (p.sym.id === target.sym.id) continue;
+          const rb = rotatedBox(p.def.box, p.sym.rotate);
+          taken.push({ x0: p.sym.x + rb.dx, y0: p.sym.y + rb.dy, x1: p.sym.x + rb.dx + rb.w, y1: p.sym.y + rb.dy + rb.h });
+          if (p.sym.label.length > 0) taken.push(labelRect(p.sym.labelAt, p.sym.label));
+        }
+        const hits = (r: Rect) => taken.some((t) => r.x0 < t.x1 && r.x1 > t.x0 && r.y0 < t.y1 && r.y1 > t.y0);
+        let up = 0;
+        // 文言（矢印の始まりの上）の幅
+        const labelW = labelWidth(item.label);
+        for (const lift of [0, 14, 28, 42, 56, 70]) {
+          const sx = tipX - adef.box.w;
+          const sy = tipY - adef.box.h - lift;
+          const arrow = { x0: sx, y0: sy, x1: tipX, y1: tipY };
+          const lab = { x0: sx + 2 - labelW / 2, y0: sy - 6 - LABEL_FONT, x1: sx + 2 + labelW / 2, y1: sy - 2 };
+          if (!hits(arrow) && !hits(lab)) {
+            up = lift;
+            break;
+          }
+        }
+        const sym = add(arrowItem, adef, tipX - adef.box.w, tipY - adef.box.h - up, 0, 'left');
+        // 文言は、矢印の始まり（左上）の上に、中央にそろえて書く
+        sym.labelAt = { x: sym.x + 2, y: sym.y - 6, anchor: 'middle' };
+        continue;
+      }
       const sym = add(item, def, axisX - BOUNDARY_SAFETY_LEFT, centerY - def.box.h / 2, 0, 'left');
       // 文言は線の左上（線の上、左端にそろえる）
       sym.labelAt = { x: sym.x + 2, y: sym.y - 6, anchor: 'start' };

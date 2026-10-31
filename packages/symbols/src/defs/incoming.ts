@@ -155,6 +155,23 @@ export const BOUNDARY_SAFETY_LEFT = 130;
  */
 export const BOUNDARY_SAFETY_RIGHT = -30;
 
+/** 責任分界点の矢印（斜め）。始まり（左上）から、先（箱の右下）へ。矢じりは、先から戻る2本の線 */
+const ARROW_W = 44;
+const ARROW_H = 56;
+const ARROW_SHAPES: Shape[] = (() => {
+  const [x0, y0, x1, y1] = [2, 0, ARROW_W, ARROW_H];
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  const [ux, uy] = [(x1 - x0) / len, (y1 - y0) / len];
+  const head = (deg: number): Shape => {
+    const a = (deg * Math.PI) / 180;
+    // 先から、向きと逆へ 10 戻って、±25°に開いた点
+    const bx = -ux * Math.cos(a) + uy * Math.sin(a);
+    const by = -ux * Math.sin(a) - uy * Math.cos(a);
+    return line(x1, y1, x1 + bx * 10, y1 + by * 10);
+  };
+  return [line(x0, y0, x1, y1), head(25), head(-25)];
+})();
+
 incomingSymbols.push(
   {
     id: 'boundary-safety',
@@ -170,6 +187,23 @@ incomingSymbols.push(
     status: 'confirmed',
     statusNote: '主遮断装置（VCBまたはLBS）の図記号の中央の高さに引く横線。図記号には重ならず、手前（左）で止まります。その左上に「責任分界点」と記載します。',
     note: '3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。CB形ならVCB、PFS形ならLBS。',
+  },
+  {
+    // 励磁突入電流抑制開閉器がVCBの左に並列に入る構成では、VCBの左に横線を引くと、その開閉器にかかる。
+    // 代わりに、文言の下から、VCBの図記号へ向かう斜めの矢印で、責任分界点の位置を示す（矢印の先が、箱の右下）
+    id: 'boundary-safety-arrow',
+    abbr: '責任分界点',
+    nameJa: '責任分界点（3点不一致のとき・矢印）',
+    category: 'boundary',
+    tags: ['分界点', '責任分界点', '矢印'],
+    box: { w: ARROW_W, h: ARROW_H },
+    shapes: ARROW_SHAPES,
+    ports: [],
+    overlay: true,
+    defaultLabel: '責任分界点',
+    status: 'confirmed',
+    statusNote: '斜めの矢印の先が、主遮断装置（VCB）の図記号の左の端を指します。矢印の上に「責任分界点」と記載します。',
+    note: '励磁突入電流抑制開閉器が付いているVCBで、3点不一致のとき。横線では、並列の開閉器にかかるため、矢印で示す。',
   },
   boundary(
     'boundary-both',

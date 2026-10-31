@@ -559,7 +559,8 @@ function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
 function trimThroughSymbols(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
   const issues: Issue[] = [];
   let fixed = 0;
-  const symbols = symbolsOf(doc);
+  // 責任分界点の横線・矢印のように、回路の上に重ねて描く印（overlay）は、線が通ってよい
+  const symbols = symbolsOf(doc).filter((s) => !getSymbol(s.symbolId).overlay);
 
   const items = doc.items.map((it) => {
     if (it.kind !== 'wire') return it;
@@ -921,11 +922,11 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
     }
   }
 
-  // 記号を突き抜けている線
+  // 記号を突き抜けている線（回路の上に重ねて描く印は、線が通ってよいので、数えない）
   for (const w of wires) {
     const related = relatedSymbols(doc, w);
     for (const s of symbols) {
-      if (related.has(s.id)) continue;
+      if (related.has(s.id) || getSymbol(s.symbolId).overlay) continue;
       const box = symbolBox(s);
       if (!segmentEntersBox(w, box)) continue;
       issues.push({
