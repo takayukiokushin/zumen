@@ -1312,9 +1312,10 @@ console.log('\n■ 3点不一致：保安上の責任分界点（主遮断装置
     const x0 = m.x;
     const x1 = m.x + markDef.box.w;
     if (Math.abs(lineY - centerY) > 1) fail(`${c.name}：横線の高さが図記号の中央から ${(lineY - centerY).toFixed(1)} ずれています`);
-    else if (!(x0 < axisX - 100 && x1 > axisX + 10)) fail(`${c.name}：横線が主回路の縦線をまたいでいません（${x0}〜${x1}、縦線 ${axisX}）`);
+    // 横線は、主遮断装置の図記号（箱）に重ならず、左の端のすぐ手前（2〜12）で止まる。左へは、文言の幅ぶん伸びている
+    else if (!(x0 < axisX - 100 && x1 <= main.x - 2 && x1 >= main.x - 12)) fail(`${c.name}：横線が、図記号に重なっているか、手前で止まっていません（${x0}〜${x1}、図記号の左端 ${main.x}）`);
     else if (m.label.join('') !== '責任分界点') fail(`${c.name}：文言が「${m.label.join('')}」です`);
-    else console.log(`  ${c.name}：${main.symbolId} の中央（y=${centerY}）に横線、「${m.label.join('')}」`);
+    else console.log(`  ${c.name}：${main.symbolId} の中央の高さ（y=${centerY}）で、図記号の手前（左）で止まる横線、「${m.label.join('')}」`);
     // 文言が横線の上・左端にあること（主回路の縦線から離れていて、重ならない）
     if (!(m.labelAt.y < lineY && m.labelAt.x <= axisX - 100 && m.labelAt.anchor === 'start')) fail(`${c.name}：文言の位置が線の左上ではありません`);
   }

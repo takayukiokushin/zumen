@@ -144,12 +144,16 @@ const boundary = (id: string, nameJa: string, label: string, note: string): Symb
 
 /**
  * 保安上の責任分界点（3点不一致のとき）。
- * 主遮断装置（VCBまたはLBS）の図記号の**中央に重ねる横線**で、縦線は持たない（縦線は主遮断装置自身のもの）。
- * 横線は主回路の左へ長く伸ばし（文言の幅ぶん）、右へは図記号の外まで少しだけ出す。文言はその線の左上に書く。
+ * 主遮断装置（VCBまたはLBS）の図記号の**中央の高さに引く横線**で、縦線は持たない（縦線は主遮断装置自身のもの）。
+ * 横線は主回路の左へ長く伸ばし（文言の幅ぶん）、右の端は、図記号の手前（左）で止める（図記号に重ねない）。文言はその線の左上に書く。
  * 箱の高さを2にしてあるのは、線の太さを持たせるため。置き場所は layout が決める（主遮断装置の中央）。
  */
 export const BOUNDARY_SAFETY_LEFT = 130;
-export const BOUNDARY_SAFETY_RIGHT = 24;
+/**
+ * 横線の右の端（主回路の縦線から、右へ何px）。マイナスは、縦線より左で止まること。
+ * 主遮断装置の図記号（箱の幅 48＝縦線から左右に24）に、横線がかからないよう、箱の左の端（縦線から左へ24）の、さらに6手前で止める。
+ */
+export const BOUNDARY_SAFETY_RIGHT = -30;
 
 incomingSymbols.push(
   {
@@ -164,7 +168,7 @@ incomingSymbols.push(
     overlay: true,
     defaultLabel: '責任分界点',
     status: 'confirmed',
-    statusNote: '主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「責任分界点」と記載します。',
+    statusNote: '主遮断装置（VCBまたはLBS）の図記号の中央の高さに引く横線。図記号には重ならず、手前（左）で止まります。その左上に「責任分界点」と記載します。',
     note: '3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。CB形ならVCB、PFS形ならLBS。',
   },
   boundary(
