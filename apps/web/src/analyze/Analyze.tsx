@@ -47,12 +47,27 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
   const [runId, setRunId] = useState(0);
   /** 読み取りが使える状態か（サーバーに利用券が置いてあるか）。未確認のあいだは undefined */
   const [ready, setReady] = useState<boolean | undefined>(undefined);
+  /** ファイルを枠の上に持ってきているあいだ、枠を目立たせる */
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     api
       .health()
       .then((h) => setReady(h.hasApiKey))
       .catch(() => setReady(undefined));
+  }, []);
+
+  // ブラウザの初期の動き（ドロップしたファイルを、新しいタブで開く）を止める。枠から少し外れても、タブが開かないように
+  useEffect(() => {
+    const stop = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+    };
+    window.addEventListener('dragover', stop);
+    window.addEventListener('drop', stop);
+    return () => {
+      window.removeEventListener('dragover', stop);
+      window.removeEventListener('drop', stop);
+    };
   }, []);
 
   const pick = async (files: FileList | null) => {
@@ -127,7 +142,19 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
           選んだものは、読み取りのため、外部の AI に送られます。
         </p>
 
-        <label className="drop">
+        <label
+          className={`drop${dragOver ? ' over' : ''}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            void pick(e.dataTransfer.files);
+          }}
+        >
           <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => void pick(e.target.files)} />
           <span>画像・PDF を選ぶ / ここにドラッグ</span>
         </label>

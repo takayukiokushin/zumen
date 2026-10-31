@@ -68,6 +68,11 @@ const cases: [string, unknown][] = [
   ['利用上限・混雑（429）', mk(429, 'rate limit')],
   ['サービスが混み合っている（529）', mk(529, 'overloaded')],
   ['画像が受け付けられない（400）', mk(400, 'image too large')],
+  ['読み取りの仕組みの設定（400）', mk(400, 'Schema is too complex for compilation.')],
+  ['PDFにパスワード（400）', mk(400, 'The PDF specified is password protected.')],
+  ['PDFのページが多い（400）', mk(400, 'A maximum of 100 PDF pages may be provided.')],
+  ['PDFが壊れている（400）', mk(400, 'Could not process PDF document')],
+  ['原因が分からない（400）', mk(400, 'invalid request')],
   ['つながらない', new Anthropic.APIConnectionError({ message: 'Connection error.' })],
   ['想定外の英語のエラー', new Error('Unexpected token < in JSON')],
 ];

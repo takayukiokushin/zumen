@@ -307,7 +307,7 @@ interface KeyParts {
 }
 
 /** 項目IDの書き方（a2:項目ID__2）を分ける */
-function splitKey(key: string): KeyParts {
+export function splitKey(key: string): KeyParts {
   let rest = key;
   let area: number | undefined;
   const am = /^a(\d+):/.exec(rest);
@@ -325,7 +325,7 @@ function splitKey(key: string): KeyParts {
 }
 
 /** 項目IDの書き方が、アプリの決まりに合っているか。合っていなければ理由を返す */
-function checkKey(key: string): { q?: Question; reason?: string } {
+export function checkKey(key: string): { q?: Question; reason?: string } {
   const { area, id, unit } = splitKey(key);
   const q = QUESTION_BY_ID.get(id);
   if (!q) return { reason: 'アプリにない項目です（指示文が古い可能性があります）' };
@@ -341,7 +341,7 @@ function checkKey(key: string): { q?: Question; reason?: string } {
 }
 
 /** 値が、項目の形に合っているか。合えば、アプリに入れる形に直して返す */
-function checkValue(q: Question, v: unknown): { value?: string | number; reason?: string } {
+export function checkValue(q: Question, v: unknown): { value?: string | number; reason?: string } {
   if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) return { reason: '値が空です' };
   if (typeof v === 'object') return { reason: '値が文字や数字ではありません' };
   if (q.type === 'number') {

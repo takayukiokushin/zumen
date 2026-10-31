@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { buildAnalysisSchema, buildReview, buildSystemPrompt, buildUserPrompt } from '@zumen/ai';
+import { buildAnalysisSchema, buildReview, buildSystemPrompt, buildUserPrompt, parseAnalysisOutput } from '@zumen/ai';
 import type { AnalysisResult, ReviewItem } from '@zumen/ai';
 import type { Answers } from '@zumen/knowledge';
 
@@ -107,7 +107,10 @@ export async function analyze(images: SketchImage[], answers: Answers): Promise<
 
   let result: AnalysisResult;
   try {
-    result = JSON.parse(text.text) as AnalysisResult;
+    // AIは「項目ID＋値」の並びで答える。アプリの質問に合っているかを確かめて、確認画面の形に直す
+    const parsed = parseAnalysisOutput(JSON.parse(text.text));
+    result = parsed.result;
+    if (parsed.rejected.length > 0) console.warn('解析：取り込まなかった項目', JSON.stringify(parsed.rejected));
   } catch {
     throw new Error('解析結果を読み取れませんでした。もう一度お試しください。');
   }

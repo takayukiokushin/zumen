@@ -13,6 +13,8 @@ import {
   buildVoiceInstruction,
   buildVoiceItemList,
   parseVoiceResult,
+  buildAnalysisSchema,
+  parseAnalysisOutput,
 } from '../packages/ai/src/index.ts';
 
 let failed = 0;
@@ -186,6 +188,65 @@ console.log('\n■ Claude（指示文だけを読んだもの）が実際に出�
     ok(items.some((i) => i.role === 'transformer'), `例${n}：取り込んだ答えから、構成が作れません`);
     if (p.ok && p.rejected.length === 0) console.log(`  例${n}：${Object.keys(p.result!.answers).length}項目を、そのまま取り込めた。お客様名称は入っていない。構成は ${items.length}件`);
   }
+}
+
+/* ---------- スケッチ読み取り：AIに答えてもらう形（JSONスキーマ）の複雑さ ---------- */
+console.log('\n■ スケッチ読み取りの、AIに答えてもらう形（スキーマ）');
+{
+  // AIの「決まった形で答える」機能の上限：省略できる項目は、全体で24個まで／「または」型は、16個まで／
+  // すべての入れ物は additionalProperties: false。これを超えると、読み取りが必ず失敗する（400）
+  let optional = 0;
+  let unions = 0;
+  const badObjects: string[] = [];
+  const walk = (node: unknown, path: string): void => {
+    if (!node || typeof node !== 'object') return;
+    const n = node as Record<string, unknown>;
+    if (n.type === 'object' || n.properties) {
+      if (n.additionalProperties !== false) badObjects.push(path || '(最上位)');
+      const props = Object.keys((n.properties as object) ?? {});
+      const req = new Set((n.required as string[]) ?? []);
+      optional += props.filter((k) => !req.has(k)).length;
+    }
+    if ('anyOf' in n || Array.isArray(n.type)) unions++;
+    for (const [k, v] of Object.entries(n)) walk(v, `${path}/${k}`);
+  };
+  const schema = buildAnalysisSchema();
+  walk(schema, '');
+  ok(optional <= 24, `省略できる項目が ${optional}個あります（上限24個。超えると、読み取りが必ず失敗します）`);
+  ok(unions <= 16, `「または」型が ${unions}個あります（上限16個）`);
+  ok(badObjects.length === 0, `additionalProperties が false でない入れ物があります：${badObjects.join('、')}`);
+  ok(JSON.stringify(schema).length < 6000, `スキーマが大きすぎます（${JSON.stringify(schema).length}文字）。質問ごとの欄を作っていないか確かめてください`);
+  if (optional <= 24 && unions <= 16 && badObjects.length === 0) console.log(`  省略できる項目 ${optional}個（上限24）・「または」型 ${unions}個（上限16）・スキーマ ${JSON.stringify(schema).length}文字`);
+
+  // AIの答え（項目ID＋値の並び）を、確認画面の形にできる。合わない項目は、取り込まずに、理由を出す
+  const wire = {
+    answers: [
+      { key: 'transformerCount', value: '2' },
+      { key: 'trCapacity', value: '100' },
+      { key: 'vtCount__2', value: '2' },
+      { key: 'a2:trCapacity', value: '50' },
+      { key: 'mainBreakerForm', value: 'cb' },
+      { key: 'siteName', value: '試験の現場' },
+      { key: 'mainBreakerForm__x', value: 'cb' },
+      { key: 'hasZpd', value: 'たぶん' },
+      { key: 'noSuchQuestion', value: '1' },
+    ],
+    uncertain: ['trCapacity', 'noSuchQuestion'],
+    evidence: [{ key: 'trCapacity', text: '「100kVA」と書いてある' }, { key: 'noSuchQuestion', text: 'x' }],
+    notes: ['注意書き'],
+    questions: [{ questionId: '', ask: '2か所目は？', why: 'メモに無い' }],
+  };
+  const r = parseAnalysisOutput(wire);
+  ok(r.result.answers.transformerCount === '2' && r.result.answers.trCapacity === 100, '答えを、項目の形（数字は数）に直せていません');
+  ok(r.result.answers.mainBreakerForm === 'cb' && r.result.answers['a2:trCapacity'] === 50 && r.result.answers.vtCount__2 !== undefined, '2か所目（a2:）・2件目（__2）の答えを取り込めていません');
+  ok(r.result.answers.siteName === '試験の現場', 'スケッチ読み取りでは、事業場名称も取り込めるはずです');
+  ok(r.rejected.length === 3 && r.rejected.some((x) => x.key === 'hasZpd') && r.rejected.some((x) => x.key === 'noSuchQuestion'), `合わない項目の扱いが違います（${JSON.stringify(r.rejected.map((x) => x.key))}）`);
+  ok(r.result.notes.length === 2 && r.result.notes[1]!.includes('取り込んでいません'), '取り込まなかった項目の説明が、特記事項に入っていません');
+  ok(r.result.uncertain.join() === 'trCapacity' && r.result.evidence.trCapacity !== undefined && !('noSuchQuestion' in r.result.evidence), '自信がない項目・根拠が、取り込んだ項目だけになっていません');
+  ok(r.result.questions.length === 1, 'AIからの質問が取り込めていません');
+  const empty = parseAnalysisOutput({});
+  ok(Object.keys(empty.result.answers).length === 0 && empty.result.notes.length === 0, '空の答えを、空として扱えていません');
+  console.log('  AIの答え（項目ID＋値）を確認画面の形に直せる。合わない項目は、取り込まずに理由を出す');
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
