@@ -1002,8 +1002,36 @@ function arrangeInstruments(items: PlacedItem[]): PlacedItem[] {
 
   // 一次側のものは、主遮断装置の手前。主遮断装置が無いときは、そのままの位置に置く
   const main = rest.findIndex((i) => i.role === 'main-breaker');
-  if (main < 0 || main >= blockAt) return [...rest.slice(0, blockAt), ...primary, ...after, ...rest.slice(blockAt)];
-  return [...rest.slice(0, main), ...primary, ...rest.slice(main, blockAt), ...after, ...rest.slice(blockAt)];
+  const result =
+    main < 0 || main >= blockAt
+      ? [...rest.slice(0, blockAt), ...primary, ...after, ...rest.slice(blockAt)]
+      : [...rest.slice(0, main), ...primary, ...rest.slice(main, blockAt), ...after, ...rest.slice(blockAt)];
+  return moveVtLeftWhenCrowded(result);
+}
+
+/**
+ * 主回路から右へ出る継電器（OCR・試験端子・DGRなど）のすぐあとに、VTが続き、番号（組・個の番号）が同じだと、
+ * 図面を作るとき、VTが継電器の右に横並びでつながって、重なる。 * そのときは、VT（と、VTにつく試験端子・UVR・OVR）を、主回路から見て左へ出す。OCRなどは、右のまま。
+ */
+function moveVtLeftWhenCrowded(list: PlacedItem[]): PlacedItem[] {
+  const leftUnits = new Set<number>();
+  let prev: PlacedItem | undefined;
+  for (const i of list) {
+    const isVt = i.role === 'site-vt-pf' || i.role === 'site-vt' || i.role === 'ds-vt-pf' || i.role === 'ds-vt';
+    if (isVt) {
+      const u = i.unit ?? 0;
+      // VT（PFがあればPF）が、右へ出る機器のすぐあとに続くとき（横につながってしまうとき）だけ、左へ出す
+      if (!leftUnits.has(u) && i.kind === 'branch-right' && !i.separate && (i.role.endsWith('-pf') || !list.some((o) => o.role === `${i.role}-pf` && (o.unit ?? 0) === u)) && prev?.kind === 'branch-right' && prev.unit === i.unit) {
+        leftUnits.add(u);
+      }
+      if (leftUnits.has(u)) i.kind = 'branch-left';
+    } else if (i.role === 'relay' || i.role === 'relay-tt') {
+      const m = /^vt-(\d+)$/.exec(i.ref ?? '');
+      if (m && leftUnits.has(Number(m[1]) - 1)) i.kind = 'branch-left';
+    }
+    prev = i;
+  }
+  return list;
 }
 
 /**

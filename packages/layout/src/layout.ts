@@ -565,14 +565,21 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       .filter((v): v is { sym: PlacedSymbol; def: SymbolDef } => v !== undefined)
       .map((f) => {
         const q = portOf(f.def, 'sec', 'out', 'r') ?? f.def.ports[f.def.ports.length - 1]!;
-        return { x: f.sym.x + q.x, y: f.sym.y + q.y, from: f };
+        // 左へ分岐するために、180°回した記号は、回したあとの接続点の位置で見る
+        const [qx, qy] = rotatedPort(f.def.box, q.x, q.y, f.sym.rotate);
+        return { x: f.sym.x + qx, y: f.sym.y + qy, from: f };
       });
 
     // 二次側から結線してくる機器（継電器など）
     if (sources.length > 0) {
       const railX = Math.max(...sources.map((v) => v.x * dir)) * dir + 18 * dir;
       const midY = sources.reduce((a, v) => a + v.y, 0) / sources.length;
-      const entry = portOf(def, dir > 0 ? 'l' : 'r', 'in') ?? def.ports[0]!;
+      const entry0 = portOf(def, dir > 0 ? 'l' : 'r', 'in') ?? def.ports[0]!;
+      // 左へ分岐するのに、入口が左にある記号（試験端子など。右へ分岐する向きに作ってある）は、180°回す
+      const flip = dir < 0 && entry0.dir === 'left' && entry0.x < def.box.w / 2;
+      const rot = flip ? 180 : 0;
+      const [fx, fy] = rotatedPort(def.box, entry0.x, entry0.y, rot);
+      const entry = { ...entry0, x: fx, y: fy };
       let x = dir > 0 ? railX + BRANCH_OFFSET : railX - BRANCH_OFFSET - def.box.w;
       // トリップコイルがつながるOCRは、コイルの真下に来る位置（主回路から COIL_MIN_X 以上）まで右へ寄せる
       const coilTop = dir > 0 && coilTargets.has(item.id) ? portOf(def, 'top') : undefined;
@@ -585,7 +592,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
         x = stack.x;
         atY = stack.bottom + 14 + entry.y;
       }
-      const sym = add(item, def, x, atY - entry.y, 0, dir > 0 ? 'right' : 'left');
+      const sym = add(item, def, x, atY - entry.y, rot, dir > 0 ? 'right' : 'left');
       const target = sym.x + entry.x;
       if (stackKey && !stack) stacks.set(stackKey, { railX, x, bottom: sym.y + def.box.h });
       else if (stack) stack.bottom = Math.max(stack.bottom, sym.y + def.box.h);
@@ -642,7 +649,13 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     // （右へ分岐するときは上を左へ、左へ分岐するときは上を右へ）。
     // ただし、縦のまま置くと指定された記号（LA）は、回さない。
     // 主回路から真横に線が出て、真下に折れてから、記号（四角の矢印・アース）が縦に並ぶ
-    const rotate = !item.upright && entry.dir === 'up' && def.box.h > def.box.w ? (dir > 0 ? -90 : 90) : 0;
+    // 左へ分岐するのに、入口が左にある記号（VTなど。右へ分岐する向きに作ってある）は、180°回す
+    const rotate =
+      !item.upright && entry.dir === 'up' && def.box.h > def.box.w
+        ? (dir > 0 ? -90 : 90)
+        : dir < 0 && entry.dir === 'left' && entry.x < def.box.w / 2
+          ? 180
+          : 0;
     const rb = rotatedBox(def.box, rotate);
     const [erx, ery] = rotatedPort(def.box, entry.x, entry.y, rotate);
 

@@ -2328,6 +2328,42 @@ console.log('\n■ DGRの遮断（TC）');
   }
 }
 
+/* ---------- VTと継電器が重なるとき：VT（とUVR・OVR）を左へ。OCRは右のまま ---------- */
+{
+  const lbs: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasLa: 'no', hasZpd: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', hasSiteCt: 'yes', hasSiteVt: 'yes', relayCount: '1', relayType: 'OCR' };
+  const cases: [string, Answers][] = [
+    ['LBS：VT＋OCR', {}],
+    ['LBS：VT＋OCR＋UVR・OVR', { relayCount: '3', relayType__2: 'UVR', relayAt__2: 'vt-1', relayType__3: 'OVR', relayAt__3: 'vt-1', relayTest__3: 'no' }],
+    ['LBS：VT＋OCR＋DGR', { hasZpd: 'yes', mainGroundRelay: 'dgr' }],
+    ['CB形（VTを二次側）：VT＋OCR', { mainBreakerForm: 'cb', vtPosition: 'secondary' }],
+    ['CB形（VTを二次側）：VT＋OCR＋UVR', { mainBreakerForm: 'cb', vtPosition: 'secondary', relayCount: '2', relayType__2: 'UVR', relayAt__2: 'vt-1' }],
+  ];
+  for (const [name, extra] of cases) {
+    const a: Answers = { ...lbs, ...extra };
+    const d = layout(buildComposition(a), a);
+    const spine = d.symbols.find((s) => s.role === 'main-breaker')!.x + 24;
+    const mid = (s: typeof d.symbols[number]) => s.x + getSymbolDef(s.symbolId).box.w / 2;
+    const ocr = d.symbols.find((s) => s.symbolId === 'relay-ocr');
+    const vt = d.symbols.find((s) => s.role === 'site-vt');
+    const uv = d.symbols.filter((s) => ['relay-uvr', 'relay-ovr'].includes(s.symbolId));
+    const bad = !ocr || !vt ? 'OCRまたはVTがありません'
+      : mid(ocr) <= spine ? 'OCRが右にありません'
+      : mid(vt) >= spine ? 'VTが主回路の左にありません'
+      : uv.some((r) => mid(r) >= spine) ? 'UVR・OVRが、VTと一緒に左にありません'
+      : findLabelCollisions(d).length > 0 ? '文字が重なっています'
+      : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
+    if (bad) fail(`${name}：${bad}`);
+    else console.log(`  ${name}：OCRは右、VT${uv.length ? '・UVR・OVR' : ''}は左。重ならない`);
+  }
+  // 重ならない構成（CB形のVT一次側）は、これまでどおり、VTは右
+  const cb: Answers = { ...lbs, mainBreakerForm: 'cb' };
+  const dcb = layout(buildComposition(cb), cb);
+  const vtcb = dcb.symbols.find((s) => s.role === 'ds-vt');
+  const spcb = dcb.symbols.find((s) => s.role === 'main-breaker')!.x + 24;
+  if (!vtcb || vtcb.x + getSymbolDef('vt').box.w / 2 <= spcb) fail('重ならない構成（CB形・VTが一次側）で、VTが左に動いています');
+  else console.log('  CB形（VTが一次側）：重ならないので、VTは右のまま');
+}
+
 /* ---------- TCの点線は、開閉器（VCB・LBS）の図記号の真ん中につながる ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
