@@ -12,6 +12,7 @@ import { UndoIcon, ZoomIcon } from '../icons.tsx';
 import { ISSUE_LABEL, chooseSheet, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
+import { rebuildWithOverrides } from './overrides.ts';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
@@ -61,12 +62,14 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
   const [history, setHistory] = useState<History>(() => {
     // 手で直していない図面は、いつでも回答から作り直してよい。
-    // 手で直したものは、勝手に作り直さずそのまま開く（案内だけ出す）
+    // 手で直したものは、手で直した内容を残したまま、回答が変わっていれば、作り直す（下の useEffect）
     if (!initialDoc || initialDoc.edited !== true) {
       return { past: [], present: generated, future: [] };
     }
-    // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく
-    return { past: [], present: tidyDoc(initialDoc), future: [] };
+    // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく。
+    // 自動で作った図面の控えが無い古い図面は、いまの回答から作った図面を控えにする（回答が同じなら、ほぼ同じ図面）
+    const tidy = tidyDoc(initialDoc);
+    return { past: [], present: tidy.base ? tidy : { ...tidy, base: generated.base }, future: [] };
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -81,7 +84,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
   /** 入力内容が変わって、手で直した図面を作り直したときの知らせ（「操作を戻す」で元に戻せる） */
-  const [rebuiltNote, setRebuiltNote] = useState(false);
+  const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; lost: boolean } | null>(null);
   /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
   const lastArrow = useRef<{ id: string; at: number } | null>(null);
 
@@ -140,12 +143,19 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     [onDocChange, doc.edited, doc.basis],
   );
 
-  /** ヒアリングの回答から作り直す（編集内容は履歴に残るので元に戻せる） */
+  /**
+   * ヒアリングの回答から作り直す。手で直した内容は、自動で作った図面の上に重ねて、残す
+   * （直前の図面は履歴に残るので、「操作を戻す」で戻せる）。
+   * 手で直した内容を取り出せない古い図面（自動で作った図面の控えが無いもの）は、残せない。
+   */
   const regenerate = () => {
-    const fresh: Doc = doc.orientation ? { ...generated, orientation: doc.orientation } : generated;
-    setHistory((h) => commit(h, fresh));
-    onDocChange?.(fresh);
+    const legacy = doc.edited === true && !doc.base;
+    const { doc: fresh, report } = legacy ? { doc: generated, report: { kept: false, dormant: 0, overlaps: 0 } } : rebuildWithOverrides(generated, doc);
+    const withOrientation: Doc = doc.orientation && !fresh.orientation ? { ...fresh, orientation: doc.orientation } : fresh;
+    setHistory((h) => commit(h, withOrientation));
+    onDocChange?.(withOrientation);
     setSelectedId(null);
+    return { ...report, lost: legacy };
   };
 
   /**
@@ -157,8 +167,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
    */
   useEffect(() => {
     if (doc.basis === undefined || doc.basis === basis) return;
-    if (doc.edited === true) setRebuiltNote(true);
-    regenerate();
+    const edited = doc.edited === true;
+    const r = regenerate();
+    if (edited) setRebuiltNote(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basis]);
 
@@ -378,8 +389,19 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
       {rebuiltNote && (
         <p className="stale-note" role="status">
           <b>入力内容が変わったので、図面を作り直しました。</b>
-          <span className="hint">手で直していた内容は、「操作を戻す」で、元に戻せます。</span>
-          <button type="button" className="btn" onClick={() => setRebuiltNote(false)}>
+          {rebuiltNote.lost ? (
+            <span className="hint">この図面は、手で直した内容を取り出せない古い形式なので、手で直した内容は残せませんでした。「操作を戻す」で、元に戻せます。</span>
+          ) : rebuiltNote.kept ? (
+            <span className="hint">
+              手で直した内容は、そのまま残しています。
+              {rebuiltNote.dormant > 0 && `いまの入力に無い機器の分（${rebuiltNote.dormant}件）は、取ってあります（その機器が戻ると、また重なります）。`}
+              {rebuiltNote.overlaps > 0 && `手で動かした記号のうち ${rebuiltNote.overlaps}個が、ほかの記号と重なっています。位置を確かめてください。`}
+              「操作を戻す」で、元に戻せます。
+            </span>
+          ) : (
+            <span className="hint">「操作を戻す」で、元の図面に戻せます。</span>
+          )}
+          <button type="button" className="btn" onClick={() => setRebuiltNote(null)}>
             閉じる
           </button>
         </p>

@@ -85,6 +85,110 @@ export interface DocText {
 
 export type DocItem = DocSymbol | DocWire | DocFrame | DocText;
 
+/**
+ * 自動で作った図面の控え（手で直す前の姿）。
+ * 手で直した内容を、あとで取り出すための基準にする（手で直した内容 ＝ いまの図面と、この控えとの違い）。
+ */
+export interface Baseline {
+  symbols: Record<
+    string,
+    { symbolId: string; x: number; y: number; rotate: number; label: string[]; labelDx: number; labelDy: number; values?: Record<string, string> }
+  >;
+  /** つなぎ先が両端にある線の印（wireKey） */
+  wires: string[];
+  /** 自動で作った線・文字の id。これに無いものは、手で足したもの */
+  wireIds: string[];
+  textIds: string[];
+}
+
+/** 手で直した記号の、自動の位置・状態からの違い */
+export interface SymbolEdit {
+  /** 自動の位置からのずれ */
+  dx: number;
+  dy: number;
+  rotate?: number;
+  /** 文字の位置のずれ */
+  dLabelDx?: number;
+  dLabelDy?: number;
+  label?: string[];
+  values?: Record<string, string>;
+  symbolId?: string;
+}
+
+/** 手で足したものを置く場所。近くの機器（near）からのずれで覚えるので、機器が動いても、ついていく */
+export interface Placement {
+  near?: string;
+  ndx: number;
+  ndy: number;
+}
+
+export type AddedItem =
+  | { kind: 'symbol'; item: DocSymbol; at: Placement }
+  | { kind: 'text'; item: DocText; at: Placement }
+  | { kind: 'wire'; item: DocWire; at: Placement };
+
+/**
+ * 手で直した内容の記録。入力内容が変わって図面を作り直すとき、自動の図面の上に、これを重ねる。
+ * 対象の機器がいまの入力に無いもの（「LAなし」にしたときのLAの移動など）は、捨てずに取っておく。
+ */
+export interface Overrides {
+  moved: Record<string, SymbolEdit>;
+  /** 手で消した記号の id */
+  removed: string[];
+  /** 手で消した線（wireKey） */
+  wiresRemoved: string[];
+  added: AddedItem[];
+}
+
+/**
+ * 機器の id の「同じ機器」としての名前。台数が1台のときは変圧器が `transformer`、2台以上のときは
+ * `transformer-1`・`transformer-2` になる（自動で作る図面の id の付け方）。入力で台数が変わっても、
+ * 1台目を「同じ機器」と見なすため、末尾の `-1` を外した名前で比べる。
+ */
+export const sameName = (id: string): string => id.replace(/-1$/, '');
+
+/** 線の両端のつなぎ先から作る印（向きは問わない）。片方でも欠けていれば、null */
+export function wireKey(w: { at1?: Anchor; at2?: Anchor }): string | null {
+  if (!w.at1 || !w.at2) return null;
+  return [`${sameName(w.at1.item)}.${w.at1.port}`, `${sameName(w.at2.item)}.${w.at2.port}`].sort().join('>');
+}
+
+/** いまの図面を、自動で作った図面の控えにする */
+export function baselineOf(doc: Doc): Baseline {
+  const symbols: Baseline['symbols'] = {};
+  const wires: string[] = [];
+  const wireIds: string[] = [];
+  const textIds: string[] = [];
+  for (const it of doc.items) {
+    if (it.kind === 'symbol') {
+      symbols[sameName(it.id)] = {
+        symbolId: it.symbolId,
+        x: it.x,
+        y: it.y,
+        rotate: it.rotate,
+        label: [...it.label],
+        labelDx: it.labelDx,
+        labelDy: it.labelDy,
+        ...(it.values ? { values: { ...it.values } } : {}),
+      };
+    } else if (it.kind === 'wire') {
+      wireIds.push(it.id);
+      const k = wireKey(it);
+      if (k) wires.push(k);
+    } else if (it.kind === 'text') {
+      textIds.push(it.id);
+    }
+  }
+  return { symbols, wires, wireIds, textIds };
+}
+
+/** 新しい要素の id（保存してある id とぶつからないように、読み込んだ図面の分は避ける） */
+export function freshId(prefix: string, taken?: Set<string>): string {
+  let id = nextId(prefix);
+  while (taken?.has(id)) id = nextId(prefix);
+  return id;
+}
+
 export interface Doc {
   items: DocItem[];
   /**
@@ -102,6 +206,10 @@ export interface Doc {
    * 「結線を整える」で、ここに残った余白を詰めるのに使う（詰めたら、ここから外す）
    */
   vacated?: { y0: number; y1: number }[];
+  /** 自動で作った図面の控え。手で直した内容を取り出す基準になる */
+  base?: Baseline;
+  /** 手で直した内容の記録（作り直すたびに更新する）。対象の機器がいまの入力に無いものも、ここに残る */
+  overrides?: Overrides;
   /** 印刷する向き。利用者が選んだとき（縦・横のボタン）だけ入る。無ければ、図面の形に合わせて自動で決まる */
   orientation?: Orientation;
 }
@@ -153,7 +261,8 @@ export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
     items.push({ kind: 'text', id: nextId('text'), x: t.x, y: t.y, lines: t.lines, anchor: t.anchor });
   }
   // 作りたてなので edited は false。回答が変われば作り直してよい印
-  return tidyDoc({ items, basis, edited: false });
+  const doc = tidyDoc({ items, basis, edited: false });
+  return { ...doc, base: baselineOf(doc) };
 }
 
 /* ------------------------------------------------------------------ */

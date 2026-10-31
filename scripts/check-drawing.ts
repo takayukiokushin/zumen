@@ -23,7 +23,9 @@ import {
   replaceSymbol,
   tidyDoc,
   docBounds,
+  addText,
 } from '../apps/web/src/editor/doc.ts';
+import { rebuildWithOverrides } from '../apps/web/src/editor/overrides.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
@@ -2065,6 +2067,69 @@ console.log('\n■ 外枠（キュービクルの枠）を動かす');
     else console.log('  外枠は、動かした分だけ動き、大きさ・ほかの記号・線は変わらない');
     // 動かしたあとも、結線に問題は出ない
     if (worstGap(moved) !== 0) fail('外枠を動かしたあと、線にずれが出ました');
+  }
+}
+
+/* ---------- 手で直した内容は、入力内容を変えても残る ---------- */
+console.log('\n■ 手で直した内容を残す（入力内容を変えて作り直しても）');
+{
+  const a0: Answers = { ...answers, hasLa: 'yes', hasZpd: 'yes', transformerCount: 1, feederCount: 0 };
+  const gen = (a: Answers, tag: string) => fromLayout(layout(buildComposition(a), a), `${tag}`);
+  const sym = (d: Doc, id: string) => d.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === id);
+  const g1 = gen(a0, 'a0');
+  const la0 = sym(g1, 'site-la');
+  if (!la0) fail('LAのある図面が作れません');
+  else {
+    // LAだけを、右へ 200 動かして、別の機器を増やす
+    const edited: Doc = { ...moveItem(g1, 'site-la', 200, 0), edited: true };
+    const a1: Answers = { ...a0, transformerCount: 2, trConnection__2: 'tr-3p-dy' };
+    const g2 = gen(a1, 'a1');
+    const r = rebuildWithOverrides(g2, edited);
+    const laNew = sym(r.doc, 'site-la');
+    const laAuto = sym(g2, 'site-la');
+    if (!laNew || !laAuto) fail('作り直した図面に、LAがありません');
+    else if (Math.abs(laNew.x - (laAuto.x + 200)) > 0.01 || Math.abs(laNew.y - laAuto.y) > 0.01) fail(`LAが、動かした位置のままではありません（自動 ${laAuto.x} → ${laNew.x}、動かした量 200）`);
+    else if (!sym(r.doc, 'transformer-2')) fail('入力で増やした変圧器が、図面にありません');
+    else if (inspectDrawing(r.doc, 'A3', 'landscape').some((i) => i.kind === 'floating')) fail('作り直したあと、LAにつながる線が浮いています');
+    else console.log('  LAを右へ動かして、変圧器を増やしても、LAは動かした位置のまま（変圧器も増える）');
+    if (!r.report.kept || r.doc.edited !== true) fail('手で直した印が残っていません');
+
+    // 作り直しを重ねても、位置は変わらない
+    const r2 = rebuildWithOverrides(g2, r.doc);
+    if (JSON.stringify(r2.doc.items.filter((i) => i.kind === 'symbol').map((i) => [i.id, (i as DocSymbol).x, (i as DocSymbol).y])) !== JSON.stringify(r.doc.items.filter((i) => i.kind === 'symbol').map((i) => [i.id, (i as DocSymbol).x, (i as DocSymbol).y]))) fail('作り直しを重ねたら、位置が変わりました');
+    else console.log('  作り直しを重ねても、位置は変わらない');
+
+    // 入力でLAを「なし」にしたら、LAは消え、手直しの記録は取っておく。「あり」に戻すと、動かした位置で戻る
+    const aNone: Answers = { ...a1, hasLa: 'no' };
+    const gNone = gen(aNone, 'none');
+    const rNone = rebuildWithOverrides(gNone, r.doc);
+    if (sym(rNone.doc, 'site-la')) fail('LAを「なし」にしたのに、LAが残っています');
+    else if (!rNone.doc.overrides?.moved['site-la'] || rNone.report.dormant < 1) fail('LAの手直しの記録が、取ってありません');
+    else {
+      const rBack = rebuildWithOverrides(gen(a1, 'a1'), rNone.doc);
+      const laBack = sym(rBack.doc, 'site-la');
+      const auto = sym(g2, 'site-la');
+      if (!laBack || !auto || Math.abs(laBack.x - (auto.x + 200)) > 0.01) fail('LAを「あり」に戻したら、動かした位置で戻るはずが、違います');
+      else console.log('  LAを「なし」にするとLAは消え、「あり」に戻すと、動かした位置で戻る');
+    }
+
+    // 手で消した機器は、入力が変わっても消えたまま。手で足したメモは、近くの機器についていく
+    const noZpd = removeItem(g1, 'zpd');
+    const memo = addText(noZpd, (sym(g1, 'transformer')?.x ?? 0) + 20, (sym(g1, 'transformer')?.y ?? 0) + 20, 'メモ');
+    const edited2: Doc = { ...memo.doc, edited: true };
+    const r3 = rebuildWithOverrides(g2, edited2);
+    const t = r3.doc.items.find((it) => it.kind === 'text' && it.lines[0] === 'メモ');
+    const tr1 = sym(r3.doc, 'transformer-1');
+    const tr1g = sym(g1, 'transformer');
+    if (sym(r3.doc, 'zpd')) fail('手で消したZPDが、作り直しで戻ってしまいました');
+    else if (!t || t.kind !== 'text' || !tr1 || !tr1g) fail('手で足したメモが、作り直したあとにありません');
+    else if (Math.abs(t.x - (tr1.x + 20)) > 0.5 || Math.abs(t.y - (tr1.y + 20)) > 0.5) fail('メモが、近くの機器についていっていません');
+    else console.log('  手で消したZPDは消えたまま、手で足したメモは、近くの変圧器についていく');
+
+    // 手で直していない図面は、これまでどおり、作り直すだけ
+    const r4 = rebuildWithOverrides(g2, g1);
+    if (r4.report.kept || r4.doc.edited) fail('手で直していない図面に、手で直した印がつきました');
+    else console.log('  手で直していない図面は、そのまま作り直すだけ');
   }
 }
 
