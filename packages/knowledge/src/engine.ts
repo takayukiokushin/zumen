@@ -259,6 +259,11 @@ export function withDerived(rawAnswers: Answers): Answers {
     answers.pasRatedCurrent ? `${answers.pasRatedCurrent}A` : '',
   ].join('');
 
+  // 2か所目以降のPAS・ASの定格（例: 7200V300A）。片方しか分からないときは分かる方だけ書く
+  const rating = (v: unknown, a: unknown) => `${v ? `${v}V` : ''}${a ? `${a}A` : ''}`;
+  d.areaPasRatingText = rating(answers.areaPasRatedVoltage, answers.areaPasRatedCurrent);
+  d.areaAsRatingText = rating(answers.areaAsRatedVoltage, answers.areaAsRatedCurrent);
+
   // 発電機の注記（例: 非常用 500kVA 軽油）。分かっているものだけ並べる
   d.generatorText = [
     GENERATOR_USAGE_LABEL[String(answers.generatorUsage)] ?? '',

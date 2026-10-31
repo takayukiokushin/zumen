@@ -510,7 +510,7 @@ export const AREA_CHAIN: Placement[] = [
     symbolId: 'pas',
     kind: 'series',
     when: { key: 'areaPas', eq: 'yes' },
-    labelTemplate: ['PAS'],
+    labelTemplate: ['PAS', '{areaPasRatingText}'],
   },
   {
     // 電気室などにAS（気中開閉器）が付いていて、そこから設備につながっている場合（2か所目以降だけ）
@@ -518,7 +518,7 @@ export const AREA_CHAIN: Placement[] = [
     symbolId: 'as',
     kind: 'series',
     when: { key: 'areaAs', eq: 'yes' },
-    labelTemplate: ['AS'],
+    labelTemplate: ['AS', '{areaAsRatingText}'],
   },
   { role: 'ds', symbolId: 'ds', kind: 'series', when: { key: 'intakeDs', eq: 'yes' }, labelTemplate: ['DS', '{dsRating}'] },
   {

@@ -882,6 +882,15 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const both = withAreaSwitch({ 'a2:areaPas': 'yes', 'a2:areaAs': 'yes' }).map((i) => i.role);
   ok(both.indexOf('a2:area-pas') >= 0 && both.indexOf('a2:area-pas') < both.indexOf('a2:area-as') && both.indexOf('a2:area-as') < both.indexOf('a2:ds'), '両方「ある」のとき、PAS → AS → DS の順になっていません');
   ok(!buildComposition({ ...answers, areaCount: 1, 'a2:areaPas': 'yes' }).some((i) => /area-pas/.test(i.role)), '2か所目が無いのに、PASが入っています');
+  // 定格（電圧・電流）：「ある」のときだけ聞き、図面には 7200V200A のように書く
+  const asked = (extra: Answers) => ids(areaView({ areaCount: 2, ...extra }, 1));
+  ok(!asked({}).has('areaPasRatedVoltage') && !asked({}).has('areaAsRatedCurrent'), 'PAS・ASが「ない」のに、定格を聞いています');
+  ok(asked({ 'a2:areaPas': 'yes' }).has('areaPasRatedVoltage') && asked({ 'a2:areaPas': 'yes' }).has('areaPasRatedCurrent') && !asked({ 'a2:areaPas': 'yes' }).has('areaAsRatedVoltage'), 'PASが「ある」とき、PASの定格だけを聞いていません');
+  ok(asked({ 'a2:areaAs': 'yes' }).has('areaAsRatedVoltage') && asked({ 'a2:areaAs': 'yes' }).has('areaAsRatedCurrent') && !asked({ 'a2:areaAs': 'yes' }).has('areaPasRatedCurrent'), 'ASが「ある」とき、ASの定格だけを聞いていません');
+  const rated = withAreaSwitch({ 'a2:areaPas': 'yes', 'a2:areaPasRatedVoltage': '7200', 'a2:areaPasRatedCurrent': '200', 'a2:areaAs': 'yes', 'a2:areaAsRatedVoltage': '6600' });
+  ok(rated.find((i) => i.role === 'a2:area-pas')?.label.join('|') === 'PAS|7200V200A', `PASの文字が違います（${rated.find((i) => i.role === 'a2:area-pas')?.label.join('|')}）`);
+  ok(rated.find((i) => i.role === 'a2:area-as')?.label.join('|') === 'AS|6600V', `ASの文字（片方だけ分かるとき）が違います（${rated.find((i) => i.role === 'a2:area-as')?.label.join('|')}）`);
+  ok(withAreaSwitch({ 'a2:areaPas': 'yes' }).find((i) => i.role === 'a2:area-pas')?.label.join('|') === 'PAS', '定格が未入力のとき、PASの文字が「PAS」だけになっていません');
   // 受電側の開閉器で、聞くことが変わる
   const intakeQs = (kind: string) => ids(areaView({ areaCount: 2, 'a2:areaIntake': kind }, 1));
   ok(intakeQs('lbs-pf').has('lbsRatedCurrent') && intakeQs('lbs-pf').has('lbsFuseCount') && !intakeQs('lbs-pf').has('dsRating'), 'LBS（PF付）のとき、LBSの定格だけを聞いていません');
