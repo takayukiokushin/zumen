@@ -1797,3 +1797,36 @@ export const QUESTIONS: Question[] = [
 export const QUESTION_DEFAULTS: Record<string, Value> = Object.fromEntries(
   QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]),
 );
+
+/**
+ * 新しい案件を作ったときに、最初から入れておく答え（初期設定）。
+ * 質問の既定値と違うものだけを書く（同じものは、質問の既定値のまま）。
+ * 質問の既定値そのものは変えない：すでに保存してある案件は、答えていない質問を既定値で見るので、
+ * ここに書いたことで、保存済みの案件の内容が変わることはない。
+ * 2件目以降の答えは、「__2」のように書く（変圧器の2台目など）。
+ */
+export const NEW_PROJECT_ANSWERS: Record<string, Value> = {
+  // 区分開閉器
+  pasRatedVoltage: '7200',
+  pasRatedCurrent: '200',
+  // VCT
+  vctLocation: 'indoor',
+  // 引込ケーブル
+  cableInstallation: 'buried',
+  cableCrossSection: '38',
+  // 受電設備エリア
+  areaForm: 'cubicle',
+  areaPlacement: 'outdoor',
+  // 受電設備の構成
+  mainBreakerForm: 'pfs',
+  lbsRatedVoltage: '7200',
+  hasSiteVt: 'no',
+  hasSiteCt: 'no',
+  // 変圧器：2台（1台目は電灯、2台目は動力）。結線方式と電圧は、用途から自動で入る
+  transformerCount: '2',
+  trUsage: '電灯',
+  trUsage__2: '動力',
+  // 進相設備：高圧コンデンサ1台、リアクトルなし
+  hasCapacitor: 'yes',
+  hasReactor: 'no',
+};

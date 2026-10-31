@@ -21,7 +21,7 @@ import { useDialogs } from './Dialogs.tsx';
 import { useLang, useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
-import { QUESTIONS, normalizeAnswers, withAutoValues } from '@zumen/knowledge';
+import { NEW_PROJECT_ANSWERS, QUESTIONS, normalizeAnswers, withAutoValues } from '@zumen/knowledge';
 
 /** 質問定義の既定値。回答そのものとは分けて持ち、「まだ触っていない」が分かるようにする */
 export const DEFAULTS: Answers = Object.fromEntries(
@@ -205,7 +205,8 @@ export function App() {
   const newProject = async (name: string, useAsSite = false) => {
     try {
       await leaveCurrent();
-      const initial: Answers = useAsSite && name.trim() ? { siteName: name.trim() } : {};
+      // 新しい案件は、初期設定（NEW_PROJECT_ANSWERS）の答えを入れた状態で始める。保存済みの案件は変わらない
+      const initial: Answers = { ...NEW_PROJECT_ANSWERS, ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}) };
       const { id, updatedAt } = await api.createProject(name, initial);
       setProjectId(id);
       setProjectName(name || '無題の案件');

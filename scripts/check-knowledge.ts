@@ -28,6 +28,8 @@ import {
   VIEW_KEYS,
   withAutoValues,
   clearForDuplicate,
+  NEW_PROJECT_ANSWERS,
+  QUESTION_DEFAULTS,
   withDerived,
 } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
@@ -1154,6 +1156,43 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', hasSiteCt: 'yes' }).relayAt === undefined, 'VTの有無が未回答なのに、UVRの置き場所が決まっています');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
+  // 新しい案件の初期設定（第7弾 項目3）：初期値の一覧どおりになる。質問の既定値は変えない（保存済みの案件は変わらない）
+  {
+    const eff = withAutoValues({ ...QUESTION_DEFAULTS, ...NEW_PROJECT_ANSWERS });
+    const valueOf = (id: string, unit = 0) => {
+      const key = unit === 0 ? id : `${id}__${unit + 1}`;
+      const v = eff[key] ?? (unit === 0 ? undefined : eff[id] === undefined ? undefined : QUESTION_DEFAULTS[id]) ?? QUESTION_DEFAULTS[id];
+      return v === undefined ? undefined : String(v);
+    };
+    const table: [string, string, string, number?][] = [
+      ['受電電圧', 'receivingVoltage', '6600'], ['引込元', 'sourceType', 'pole'], ['AS', 'hasAs', 'no'], ['3点一致', 'boundaryPattern', 'coincident'],
+      ['区分開閉器', 'sectionalizer', 'pas'], ['制御装置', 'pasControl', 'dgr'], ['内蔵VT', 'pasBuiltinVt', 'yes'], ['内蔵LA', 'pasBuiltinLa', 'yes'],
+      ['区分開閉器の定格電圧', 'pasRatedVoltage', '7200'], ['区分開閉器の定格電流', 'pasRatedCurrent', '200'],
+      ['VCTの位置', 'vctLocation', 'indoor'], ['VCTの台数', 'vctCount', '1'],
+      ['付設方法', 'cableInstallation', 'buried'], ['ケーブルの構造', 'cableStructure', 'CVT'], ['ケーブルの定格電圧', 'cableVoltage', '6600'], ['断面積', 'cableCrossSection', '38'],
+      ['エリアの数', 'areaCount', '1'], ['形態', 'areaForm', 'cubicle'], ['設置場所', 'areaPlacement', 'outdoor'],
+      ['主遮断装置の形式', 'mainBreakerForm', 'pfs'], ['LBSの定格電圧', 'lbsRatedVoltage', '7200'], ['パワーヒューズ', 'lbsFuseCount', '3'],
+      ['VT', 'hasSiteVt', 'no'], ['CT', 'hasSiteCt', 'no'], ['ZPD', 'hasZpd', 'no'], ['LA', 'hasLa', 'no'],
+      ['変圧器の台数', 'transformerCount', '2'],
+      ['1台目の用途', 'trUsage', '電灯', 0], ['1台目の結線方式', 'trConnection', 'tr-1p', 0], ['1台目の電圧', 'trVoltage', '6600/210-105V', 0], ['1台目の上位PC', 'trHasPc', 'no', 0], ['1台目の上位LBS', 'trHasLbs', 'no', 0],
+      ['2台目の用途', 'trUsage', '動力', 1], ['2台目の結線方式', 'trConnection', 'tr-3p-yd', 1], ['2台目の電圧', 'trVoltage', '6600/210V', 1], ['2台目の上位PC', 'trHasPc', 'no', 1], ['2台目の上位LBS', 'trHasLbs', 'no', 1],
+      ['高圧進相設備', 'hasCapacitor', 'yes'], ['高圧コンデンサの台数', 'capacitorCount', '1'], ['コンデンサ手前のPC', 'capHasPc', 'no'], ['コンデンサ手前のLBS', 'capHasLbs', 'no'], ['コンデンサ手前のVCS', 'capHasVcs', 'no'], ['リアクトル', 'hasReactor', 'no'],
+      ['発電機', 'hasGenerator', 'no'], ['太陽光発電設備', 'hasPv', 'no'], ['系統用蓄電所', 'hasBattery', 'no'],
+    ];
+    for (const [name, id, want, unit] of table) {
+      const got = valueOf(id, unit ?? 0);
+      ok(got === want, `初期設定：${name}（${id}${unit ? `・${unit + 1}台目` : ''}）が「${want}」になっていません（${got}）`);
+    }
+    // 初期設定に書いた答えは、実在する質問の、選べる値だけ
+    for (const [key, v] of Object.entries(NEW_PROJECT_ANSWERS)) {
+      const q = QUESTIONS.find((x) => x.id === key.replace(/__\d+$/, ''));
+      ok(!!q, `初期設定に、存在しない質問があります：${key}`);
+      if (q?.options && !q.allowFreeInput) ok(q.options.some((o) => o.value === String(v)), `初期設定の ${key}＝${String(v)} は、選べる値にありません`);
+    }
+    // 質問の既定値は変えていない：保存済みの案件（答えを持たない質問は既定値）の見え方は、これまでどおり
+    const old = withAutoValues({ ...QUESTION_DEFAULTS });
+    ok(String(old.transformerCount) === '1' && String(old.hasCapacitor) === 'no' && old.vctLocation === 'pole' && old.mainBreakerForm === undefined, '質問の既定値が変わっています（保存済みの案件の内容が変わってしまいます）');
+  }
   // 受電方式の質問は無い（高圧受電だけを扱う）。古い案件に残っている答えは、無視される
   ok(!QUESTIONS.some((q) => q.id === 'receivingType'), '「受電方式」の質問が残っています');
   ok(!missingRequired({ ...cbBase }).some((q) => q.id === 'receivingType'), '「受電方式」が必須項目として残っています');
