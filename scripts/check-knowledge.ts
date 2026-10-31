@@ -867,6 +867,21 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const a2 = ids(v2);
   ok(a1.has('mainBreakerForm') && !a1.has('areaIntake') && !a1.has('linkTap'), '1か所目に、主遮断装置の形式だけが出ていません');
   ok(!a2.has('mainBreakerForm') && a2.has('areaIntake') && a2.has('linkCable') && a2.has('linkTap'), '2か所目に、受電側の開閉器とエリア間の接続が出ていません');
+  // 2か所目以降の受電側：PASの有無・ASの有無（別々に「ある」「ない」を選ぶ。1か所目には出ない）
+  ok(a2.has('areaPas') && a2.has('areaAs') && !a1.has('areaPas') && !a1.has('areaAs'), '2か所目だけに、PASの有無・ASの有無が出ていません');
+  const optsOf = (id: string) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).map((o) => `${o.value}:${o.label}`).join(',');
+  ok(optsOf('areaPas') === 'yes:ある,no:ない' && optsOf('areaAs') === 'yes:ある,no:ない', 'PAS・ASの選択肢が「ある／ない」になっていません');
+  const withAreaSwitch = (extra: Answers) =>
+    buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', ...extra }).filter((i) => i.area === 1);
+  const none2 = withAreaSwitch({}).map((i) => i.role);
+  ok(!none2.includes('a2:area-pas') && !none2.includes('a2:area-as'), '初期値（ない）なのに、2か所目にPAS・ASが入っています');
+  const pasOnly = withAreaSwitch({ 'a2:areaPas': 'yes' });
+  ok(pasOnly.find((i) => i.role === 'a2:area-pas')?.symbolId === 'pas' && !pasOnly.some((i) => i.role === 'a2:area-as'), 'PASだけ「ある」のとき、PAS（ASは無し）になっていません');
+  const asOnly = withAreaSwitch({ 'a2:areaAs': 'yes' });
+  ok(asOnly.find((i) => i.role === 'a2:area-as')?.symbolId === 'as' && !asOnly.some((i) => i.role === 'a2:area-pas'), 'ASだけ「ある」のとき、AS（PASは無し）になっていません');
+  const both = withAreaSwitch({ 'a2:areaPas': 'yes', 'a2:areaAs': 'yes' }).map((i) => i.role);
+  ok(both.indexOf('a2:area-pas') >= 0 && both.indexOf('a2:area-pas') < both.indexOf('a2:area-as') && both.indexOf('a2:area-as') < both.indexOf('a2:ds'), '両方「ある」のとき、PAS → AS → DS の順になっていません');
+  ok(!buildComposition({ ...answers, areaCount: 1, 'a2:areaPas': 'yes' }).some((i) => /area-pas/.test(i.role)), '2か所目が無いのに、PASが入っています');
   // 受電側の開閉器で、聞くことが変わる
   const intakeQs = (kind: string) => ids(areaView({ areaCount: 2, 'a2:areaIntake': kind }, 1));
   ok(intakeQs('lbs-pf').has('lbsRatedCurrent') && intakeQs('lbs-pf').has('lbsFuseCount') && !intakeQs('lbs-pf').has('dsRating'), 'LBS（PF付）のとき、LBSの定格だけを聞いていません');

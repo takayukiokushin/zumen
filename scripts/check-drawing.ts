@@ -2070,6 +2070,25 @@ console.log('\n■ 外枠（キュービクルの枠）を動かす');
   }
 }
 
+/* ---------- 2か所目のPAS・AS ---------- */
+console.log('\n■ 2か所目以降のPAS・AS（受電側）');
+{
+  const base2: Answers = { ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus' };
+  const draw = (extra: Answers) => layout(buildComposition({ ...base2, ...extra }), { ...base2, ...extra });
+  const dPlain = draw({});
+  const dBoth = draw({ 'a2:areaPas': 'yes', 'a2:areaAs': 'yes' });
+  const pas = dBoth.symbols.find((s) => s.id === 'a2:area-pas');
+  const asw = dBoth.symbols.find((s) => s.id === 'a2:area-as');
+  const ds = dBoth.symbols.find((s) => s.id === 'a2:ds');
+  if (dPlain.symbols.some((s) => /area-(pas|as)/.test(s.id))) fail('「ない」のときに、PAS・ASが描かれています');
+  else if (!pas || !asw || !ds) fail('2か所目のPAS・ASが描かれていません');
+  else if (!(pas.y < asw.y && asw.y < ds.y && Math.abs(pas.x + getSymbolDef('pas').ports[0]!.x - (asw.x + getSymbolDef('as').ports[0]!.x)) < 1)) fail('PAS → AS → DS が、同じ縦の線に、この順で並んでいません');
+  else if (findLabelCollisions(dBoth).length > 0) fail('PAS・ASを入れたら、文字が重なりました');
+  else if (!dBoth.texts?.length && !pas.label.includes('PAS')) fail('PASの文字が書かれていません');
+  else if (!asw.label.includes('AS')) fail('ASの文字が書かれていません');
+  else console.log('  PAS → AS → DS が、同じ縦の線に並び、文字（PAS・AS）が書かれ、重ならない');
+}
+
 /* ---------- 手で直した内容は、入力内容を変えても残る ---------- */
 console.log('\n■ 手で直した内容を残す（入力内容を変えて作り直しても）');
 {

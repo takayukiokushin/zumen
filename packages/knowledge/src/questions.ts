@@ -738,6 +738,36 @@ export const QUESTIONS: Question[] = [
     help: '2か所目以降は、標準構成（DS・VT・CTなど）でなくてもよい。このエリアの入口にある開閉器を選ぶ。VT・CT・ZPD・LAなどは、下で、あるかないかを答える',
   },
   {
+    // 2か所目以降のエリアだけ。2か所目の受電側にも電柱があって、PAS（区分開閉器）が付いている場合がある
+    id: 'areaPas',
+    group: 'receiving', section: '受電側の開閉器（このエリア）',
+    label: 'PAS（区分開閉器）の有無',
+    type: 'select',
+    options: [
+      { value: 'yes', label: 'ある' },
+      { value: 'no', label: 'ない' },
+    ],
+    defaultValue: 'no',
+    showIf: { key: 'areaNo', gt: 1 },
+    ask: 'always',
+    help: 'PAS＝電柱上に設置する区分開閉器。このエリアの受電側にも電柱があって、PASが付いているときは「ある」。ASとは別のもの',
+  },
+  {
+    // 2か所目以降のエリアだけ。電気室などにAS（気中開閉器）が付いていて、そこから設備につながっている場合がある
+    id: 'areaAs',
+    group: 'receiving', section: '受電側の開閉器（このエリア）',
+    label: 'AS（気中開閉器）の有無',
+    type: 'select',
+    options: [
+      { value: 'yes', label: 'ある' },
+      { value: 'no', label: 'ない' },
+    ],
+    defaultValue: 'no',
+    showIf: { key: 'areaNo', gt: 1 },
+    ask: 'always',
+    help: 'AS＝気中開閉器。電気室などに付いていて、そこから設備につながっているときは「ある」。PASとは別のもの',
+  },
+  {
     id: 'lbsRatedVoltage',
     group: 'receiving', section: 'LBS',
     label: 'LBSの定格電圧',

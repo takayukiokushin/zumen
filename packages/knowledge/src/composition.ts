@@ -504,6 +504,22 @@ export const AREA_CHAIN: Placement[] = [
     when: { all: [{ key: 'linkCable', ne: 'no' }, { not: { key: 'areaForm', eq: 'apartment-pole' } }] },
     note: 'エリアの枠の中の、ケーブルを受ける端末',
   },
+  {
+    // このエリアの受電側にも電柱があって、PAS（区分開閉器）が付いている場合（2か所目以降だけ）。ASとは別の機器
+    role: 'area-pas',
+    symbolId: 'pas',
+    kind: 'series',
+    when: { key: 'areaPas', eq: 'yes' },
+    labelTemplate: ['PAS'],
+  },
+  {
+    // 電気室などにAS（気中開閉器）が付いていて、そこから設備につながっている場合（2か所目以降だけ）
+    role: 'area-as',
+    symbolId: 'as',
+    kind: 'series',
+    when: { key: 'areaAs', eq: 'yes' },
+    labelTemplate: ['AS'],
+  },
   { role: 'ds', symbolId: 'ds', kind: 'series', when: { key: 'intakeDs', eq: 'yes' }, labelTemplate: ['DS', '{dsRating}'] },
   {
     role: 'main-breaker',
