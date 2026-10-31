@@ -167,7 +167,8 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     repeatCountKey: 'relayCount',
     repeatUnit: '個',
     perArea: true,
-    showIf: { any: [VT_SHOWN, CT_SHOWN] },
+    // PFS形（LBS）は、CT・VTが無くても、保護継電器があるかどうかを聞く（CT・VTの有無が決まっていないときは、置き場所を聞き返す）
+    showIf: { any: [VT_SHOWN, CT_SHOWN, { key: 'intakeLbs', eq: 'yes' }] },
   },
   { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台', perArea: true },
   {
@@ -927,7 +928,7 @@ export const QUESTIONS: Question[] = [
     options: YES_NO,
     showIf: { key: 'intakeOptional', eq: 'yes' },
     ask: 'ai-uncertain',
-    help: 'PFS形はCTが入る現場と入らない現場がある。CB形はVCBのすぐ下に必ず入る',
+    help: 'PFS形はCTが入る現場と入らない現場がある。OCRなどをCTにつなぐなら「あり」。CB形はVCBのすぐ下に必ず入る',
   },
   // ---- VT（組ごと）。1組目は、これまでの答え（vtCount・vtRatio）をそのまま使う ----
   {
@@ -1059,7 +1060,7 @@ export const QUESTIONS: Question[] = [
     // VCBとCTがあるときは、OCRが1個入る。それ以外は0個から
     autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN] }, value: '1' }, { value: '0' }],
     ask: 'ai-uncertain',
-    help: 'OCR・UVR・OVRなど、VCBを動かす継電器の個数。GR・DGR（PAS）は、ここには入れない',
+    help: 'OCR・UVR・OVRなど、VCB・LBSを動かす継電器の個数。なければ0個（LBSの初期値）。GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）',
   },
   {
     id: 'relayType',
@@ -1101,12 +1102,15 @@ export const QUESTIONS: Question[] = [
     autoValue: [
       { when: { all: [{ key: 'relayType', eq: 'OCR' }, CT_SHOWN] }, value: 'ct-1' },
       { when: { all: [{ key: 'relayType', in: ['UVR', 'OVR'] }, VT_SHOWN] }, value: 'vt-1' },
-      { when: { all: [{ key: 'unitNo', eq: 1 }, CT_SHOWN] }, value: 'ct-1' },
+      { when: { all: [{ key: 'unitNo', eq: 1 }, CT_SHOWN, { not: { key: 'relayType', in: ['UVR', 'OVR'] } }] }, value: 'ct-1' },
       { when: { all: [{ key: 'unitNo', gt: 1 }, VT_SHOWN] }, value: 'vt-1' },
-      { value: 'none' },
+      // CT・VTが「ない」と答えてあるときだけ、置き場所は「決まっていない」にする。
+      // CT・VTの有無を答えていないときは、推測で決めず、置き場所を聞き返す（答えるまで、その継電器は描かない）
+      { when: { any: [{ all: [{ key: 'relayType', in: ['UVR', 'OVR'] }, { key: 'hasSiteVt', eq: 'no' }] }, { all: [{ not: { key: 'relayType', in: ['UVR', 'OVR'] } }, { key: 'hasSiteCt', eq: 'no' }] }] }, value: 'none' },
+      { when: { key: 'intakeStandard', eq: 'yes' }, value: 'none' },
     ],
     ask: 'always',
-    help: 'CTにつく継電器は、CTの二次側（試験端子の先）に置く。VTにつく継電器（UVR・OVR）は、VTの二次側（右の端）につなぐ。UVRとOVRが両方あるときは、上下に並べる。決まっていないときは、OCRの上に名前だけ書く',
+    help: 'CTやVTの有無が決まっていないとき（LBSなど）は、ここが空欄になる。「受電設備内にCTはありますか？」「…VTはありますか？」に答えるか、「置き場所は決まっていない」を選ぶ。CTにつく継電器は、CTの二次側（試験端子の先）に置く。VTにつく継電器（UVR・OVR）は、VTの二次側（右の端）につなぐ。UVRとOVRが両方あるときは、上下に並べる。決まっていないときは、OCRの上に名前だけ書く',
   },
   {
     id: 'relayTest',

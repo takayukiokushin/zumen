@@ -2327,6 +2327,21 @@ console.log('\n■ DGRの遮断（TC）');
   }
 }
 
+/* ---------- 主遮断装置がLBSのとき：OCR・DGRの保護継電器とTC ---------- */
+{
+  const lbs: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', hasSiteCt: 'yes', hasSiteVt: 'no', relayCount: '1', relayType: 'OCR' };
+  for (const [name, extra] of [['OCRだけ', {}], ['OCR＋DGR', { hasZpd: 'yes', mainGroundRelay: 'dgr' }], ['DGRだけ', { relayCount: '0', hasZpd: 'yes', mainGroundRelay: 'dgr' }]] as [string, Answers][]) {
+    const a: Answers = { ...lbs, ...extra };
+    const d = layout(buildComposition(a), a);
+    const tcs = d.symbols.filter((s) => s.symbolId === 'trip-coil');
+    const ocr = d.symbols.find((s) => s.symbolId === 'relay-ocr');
+    const dashed = d.wires.some((w) => w.dashed);
+    const bad = tcs.length !== 1 ? `TCが ${tcs.length}個です（1つのはず）` : !dashed ? 'TCからLBSへ点線がありません' : (name !== 'DGRだけ' && !ocr) ? 'OCRがありません' : findLabelCollisions(d).length > 0 ? '文字が重なっています' : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
+    if (bad) fail(`LBS（${name}）：${bad}`);
+    else console.log(`  LBS（${name}）：継電器 → TC（1つ）→ LBS（点線）。線・文字が重ならない`);
+  }
+}
+
 /* ---------- 3か所以上のエリア：どのエリアから分岐するか、エリアごとに違ってよい ---------- */
 console.log('\n■ 3か所以上のエリアのつなぎ方（1→2→3、1→2と1→3、4か所など）');
 {

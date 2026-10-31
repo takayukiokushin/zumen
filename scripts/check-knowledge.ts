@@ -1141,6 +1141,19 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(sendRoles({ sendoutSwitch: 'ds', sendoutGroundRelay: 'dgr' }) === 'sendout-ds', 'DSだけのとき、DGRの答えが残っていても、描いています');
   ok(sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr', hasZpd: 'no' }) === 'sendout-vcb', 'ZPDが「ない」のとき、送り出しのDGRを描いています');
   ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:hasOvgr': 'yes', 'a2:mainGroundRelay': 'dgr' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => /ovgr|zct|ground/.test(r)).join() === 'main-zct,main-ground-relay,ovgr', '2か所目のOVGR・DGRが入っていません');
+  // 主遮断装置がLBSのとき：保護継電器の有無・種類を聞く。CT・VTの有無が決まっていなければ、置き場所は推測しない
+  const lbsBase: Answers = { ...answers, mainBreakerForm: 'pfs', hasSiteCt: undefined, hasSiteVt: undefined };
+  ok(gq(lbsBase).has('relayCount') && gq(lbsBase).has('relayType'), 'LBSのとき、継電器の個数の質問が出ていません（CT・VTが無くても出るはず）');
+  ok(buildComposition(lbsBase).every((i) => i.role !== 'relay' && i.role !== 'relay-note'), 'LBSで継電器0個のとき、継電器を描いています');
+  const lbsRelay = (a: Answers) => buildComposition({ ...lbsBase, relayCount: '1', relayType: 'OCR', ...a }).map((i) => i.role).filter((r) => ['relay', 'relay-tt', 'relay-note', 'trip-coil', 'ct'].includes(r)).join();
+  ok(lbsRelay({}) === '', `LBSでOCRを選んだのに、CTの有無が未回答のまま、描いています（${lbsRelay({})}）`);
+  ok(lbsRelay({ hasSiteCt: 'no' }) === 'relay-note', `CTが「なし」のとき、OCRは名前だけのはずです（${lbsRelay({ hasSiteCt: 'no' })}）`);
+  ok(lbsRelay({ hasSiteCt: 'yes' }) === 'ct,relay-tt,relay,trip-coil', `CTが「あり」のとき、CT→試験端子→OCR、OCRからTCのはずです（${lbsRelay({ hasSiteCt: 'yes' })}）`);
+  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR' }).relayAt === undefined, 'CTの有無が未回答のとき、置き場所が自動で入っています');
+  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR', hasSiteCt: 'yes' }).relayAt === 'ct-1', 'CTが「あり」のとき、OCRの置き場所がCT1組目になっていません');
+  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', hasSiteCt: 'yes' }).relayAt === undefined, 'VTの有無が未回答なのに、UVRの置き場所が決まっています');
+  ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
+  ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
   // ZCTの取り付け位置（DGRを選んだときだけ聞く）
   ok(!gq(cbBase).has('mainZctPos') && gq({ ...cbBase, mainGroundRelay: 'dgr' }).has('mainZctPos'), 'ZCTの位置の質問が、DGRを選んだときだけ出るはずです');
   const zOpts = (QUESTIONS.find((q) => q.id === 'mainZctPos')?.options ?? []).map((o) => o.value).join(',');

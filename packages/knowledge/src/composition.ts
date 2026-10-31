@@ -420,7 +420,8 @@ export const INSTRUMENTS: Placement[] = [
     repeatCountKey: 'relayCount',
     zeroOk: true,
     refFrom: 'relayAt',
-    when: { all: [{ not: RELAY_ON_SET }, { key: 'relayType', answered: true }] },
+    // 置き場所を「決まっていない」と答えたものだけ（まだ答えていないものは、推測で描かない）
+    when: { all: [{ key: 'relayAt', eq: 'none' }, { key: 'relayType', answered: true }] },
     note: '置き場所が決まっていない継電器。OCRの真上に、隙間を空けて、名前だけ書く',
   },
   // トリップコイル：VCBの横に置き、OCRとつなぐ（どのOCRがどのVCBに対応しているかを、はっきりさせる）。
