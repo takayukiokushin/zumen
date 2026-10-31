@@ -1263,7 +1263,6 @@ export const QUESTIONS: Question[] = [
       { when: RECEIVING_6600, value: '6600/' },
     ],
     keepEmpty: true,
-    help: '受電電圧が6600Vのとき、結線方式に合わせて最初から入る。違うときは、消すか書き換える',
     ask: 'ai-uncertain',
   },
   { id: 'trComposition', group: 'transformer', label: '構成', type: 'text', placeholder: '単相変圧器×3', showIf: { key: 'trConnection', in: ['tr-3p-dd', 'tr-vv'] }, ask: 'always' },
