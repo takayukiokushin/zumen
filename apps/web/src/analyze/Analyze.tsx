@@ -11,6 +11,8 @@ interface Props {
   onApply: (patch: Answers) => void;
   /** 読み取りを実行して、結果が出たときに知らせる（ヒアリング画面の表示を切り替えるため） */
   onAnalyzed?: () => void;
+  /** 読み取りの状態を、外（タブの表示）に知らせる。別のタブを見ているあいだも、読み取りは続く */
+  onStatus?: (s: 'idle' | 'busy' | 'done') => void;
   onGoToHearing: () => void;
 }
 
@@ -37,7 +39,7 @@ function toBase64(file: File): Promise<string> {
  * 読み取り結果はそのまま採用せず、必ずこの画面で人が選んでから反映する
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
-export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing }: Props) {
+export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onGoToHearing }: Props) {
   const [images, setImages] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +85,8 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
   const run = async () => {
     setBusy(true);
     setError(null);
+    onStatus?.('busy');
+    let ok = false;
     try {
       const json = await api.analyze({
         images: images.map((i) => ({ mediaType: i.mediaType, data: i.data })),
@@ -90,6 +94,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
       });
       setResult(json.result as AnalysisResult);
       setReview(json.review as ReviewItem[]);
+      ok = true;
       onAnalyzed?.();
       setRunId((n) => n + 1);
       // 読み取りに使った写真は案件に残しておく（後から見返せるように）
@@ -102,6 +107,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onGoToHearing
       setError(e instanceof Error ? e.message : '解析に失敗しました。');
     } finally {
       setBusy(false);
+      onStatus?.(ok ? 'done' : 'idle');
     }
   };
 

@@ -36,6 +36,15 @@ export function App() {
   const [tab, setTab] = useState<Tab>('hearing');
   /** 「設備を入力して作成」のスクロール位置。別のタブへ移って戻ったときに、同じ位置へ戻すため */
   const hearingScroll = useRef(newScrollStore());
+  /**
+   * スケッチ読み取りの状態。読み取りの画面は、別のタブを見ているあいだも、作ったまま（見えないだけ）にしてあるので、
+   * 読み取りも、選んだ画像も、読み取った結果も、タブを切り替えても消えない。
+   */
+  const [analyzeStatus, setAnalyzeStatus] = useState<'idle' | 'busy' | 'done'>('idle');
+  useEffect(() => {
+    // 読み取りの画面を開いたら、「結果あり」の印は消す
+    if (tab === 'analyze') setAnalyzeStatus((s) => (s === 'done' ? 'idle' : s));
+  }, [tab, analyzeStatus]);
   /** 案件の一覧を出しているか（㉚）。案件を開いていないときは必ず一覧 */
   const [showList, setShowList] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -58,6 +67,8 @@ export function App() {
   const [showPreview, setShowPreview] = useState(() => !window.matchMedia?.('(max-width: 700px)').matches);
 
   const [projectId, setProjectId] = useState<string | null>(null);
+  // 別の案件を開いたら、読み取りの状態の印は、消す
+  useEffect(() => setAnalyzeStatus('idle'), [projectId]);
   const [projectName, setProjectName] = useState('');
   const [answers, setAnswers] = useState<Answers>({});
   const [drawing, setDrawing] = useState<Doc | null>(null);
@@ -287,6 +298,7 @@ export function App() {
         // 一覧を開いているときも、タブは押せる（押すと一覧を閉じて、そのタブの画面に戻る）
         enabled={projectId !== null}
         dirty={dirty}
+        analyzeStatus={analyzeStatus}
         onSettings={() => setSettingsOpen(true)}
         onHelp={() => {
           setHelpOpen(true);
@@ -436,15 +448,7 @@ export function App() {
               onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
               onGoToHearing={() => setTab('hearing')}
             />
-          ) : tab === 'analyze' ? (
-            <Analyze
-              answers={effective}
-              projectId={projectId!}
-              onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
-              onAnalyzed={() => setSketchRead(true)}
-              onGoToHearing={() => setTab('hearing')}
-            />
-          ) : (
+          ) : tab === 'analyze' ? null : (
             <KeepScroll store={hearingScroll.current} projectId={projectId} className="hearing-pane">
               <div className="panel-bar">
                 <button type="button" className="panel-toggle" aria-pressed={!showNav} onClick={() => setShowNav((v) => !v)}>
@@ -464,6 +468,20 @@ export function App() {
                 {showPreview && <CompositionPreview answers={effective} />}
               </div>
             </KeepScroll>
+          )}
+          {/* スケッチ読み取り：別のタブ・図面一覧を見ているあいだは、見えないだけで、作ったまま（読み取りも、画像も、結果も、消えない） */}
+          {projectId && (
+            <div className="analyze-keep" hidden={listing || tab !== 'analyze'}>
+              <Analyze
+                key={projectId}
+                answers={effective}
+                projectId={projectId}
+                onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
+                onAnalyzed={() => setSketchRead(true)}
+                onStatus={setAnalyzeStatus}
+                onGoToHearing={() => setTab('hearing')}
+              />
+            </div>
           )}
         </Shield>
       </div>

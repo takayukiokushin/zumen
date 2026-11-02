@@ -51,16 +51,24 @@ interface Props {
   onLogout: () => void;
   /** 開いている案件に、保存していない変更があるか（ログアウトの確認に使う） */
   dirty?: boolean;
+  /** 別のタブを見ているあいだの、スケッチ読み取りの状態（タブの名前の横に出す） */
+  analyzeStatus?: 'idle' | 'busy' | 'done';
 }
 
-export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers, onLogout, dirty = false }: Props) {
+export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers, onLogout, dirty = false, analyzeStatus = 'idle' }: Props) {
   const t = useT();
   const { ask } = useDialogs();
   return (
     <div className="tabbar">
       {TABS.map(([id, label, help]) =>
         enabled ? (
-          <Tab key={id} label={t(label)} help={t(help)} pressed={tab === id} onClick={() => onTab(id)} />
+          <Tab
+            key={id}
+            label={id === 'analyze' && tab !== 'analyze' && analyzeStatus !== 'idle' ? `${t(label)}${t(analyzeStatus === 'busy' ? 'tab.analyze.busy' : 'tab.analyze.done')}` : t(label)}
+            help={t(help)}
+            pressed={tab === id}
+            onClick={() => onTab(id)}
+          />
         ) : (
           <button key={id} type="button" disabled>
             {t(label)}

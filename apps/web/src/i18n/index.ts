@@ -22,6 +22,8 @@ const ja = {
   'app.name': '単線結線図作成',
 
   'tab.analyze': 'スケッチ読み取り',
+  'tab.analyze.busy': '（読み取り中…）',
+  'tab.analyze.done': '（結果あり）',
   'tab.hearing': '設備を入力して作成',
   'tab.drawing': '図面',
   'tab.analyze.help': 'すでにある図面や手書きのスケッチから、図面を作成します',
@@ -238,6 +240,8 @@ const en: Dict = {
   'app.name': 'Single-Line Diagram',
 
   'tab.analyze': 'Read sketch',
+  'tab.analyze.busy': ' (reading…)',
+  'tab.analyze.done': ' (result ready)',
   'tab.hearing': 'Enter equipment',
   'tab.drawing': 'Diagram',
   'tab.analyze.help': 'Builds a diagram from an existing drawing or a hand-drawn sketch',
@@ -451,6 +455,8 @@ const fr: Dict = {
   'app.name': 'Schéma unifilaire',
 
   'tab.analyze': 'Lire un croquis',
+  'tab.analyze.busy': ' (lecture…)',
+  'tab.analyze.done': ' (résultat prêt)',
   'tab.hearing': 'Saisir les équipements',
   'tab.drawing': 'Schéma',
   'tab.analyze.help': 'Crée un schéma à partir d’un plan existant ou d’un croquis à la main',
@@ -665,6 +671,8 @@ const zh: Dict = {
   'app.name': '单线接线图',
 
   'tab.analyze': '读取草图',
+  'tab.analyze.busy': '（读取中…）',
+  'tab.analyze.done': '（有结果）',
   'tab.hearing': '输入设备并生成',
   'tab.drawing': '图纸',
   'tab.analyze.help': '根据已有图纸或手绘草图生成图纸',
@@ -875,6 +883,8 @@ const ko: Dict = {
   'app.name': '단선결선도 작성',
 
   'tab.analyze': '스케치 읽기',
+  'tab.analyze.busy': ' (읽는 중…)',
+  'tab.analyze.done': ' (결과 있음)',
   'tab.hearing': '설비를 입력해 만들기',
   'tab.drawing': '도면',
   'tab.analyze.help': '기존 도면이나 손으로 그린 스케치에서 도면을 만듭니다',

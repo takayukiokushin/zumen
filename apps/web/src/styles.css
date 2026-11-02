@@ -198,6 +198,8 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 }
 
 /* ---- スケッチ読み取り ---- */
+.analyze-keep { display: contents; }
+.analyze-keep[hidden] { display: none; }
 .analyze { overflow-y: auto; height: 100%; padding: 24px 28px 80px; }
 .analyze .panel { background: var(--panel); border: 1px solid var(--rule); padding: 20px 22px; margin: 0 auto 18px; max-width: 900px; }
 .analyze h2 { margin: 0 0 6px; font-size: calc(16px * var(--text-scale)); }
