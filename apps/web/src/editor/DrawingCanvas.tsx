@@ -3,15 +3,16 @@ import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
-import { assistMove, assistPoint, assistWireEnd, assistWireNew, docBounds, groupOf, groupRootOf, itemBounds, moveItem, moveWireEnd } from './doc.ts';
+import { assistMove, assistPoint, assistWireEnd, assistWireNew, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd } from './doc.ts';
 import type { Issue } from './inspect.ts';
 
 interface Props {
   doc: Doc;
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  /** ドラッグが終わったときに一度だけ呼ぶ（元に戻すの単位をドラッグ1回にするため） */
-  onMoveEnd: (id: string, dx: number, dy: number) => void;
+  /** 選んでいる要素（複数のこともある。1つも無ければ空） */
+  selectedIds: string[];
+  onSelect: (ids: string[]) => void;
+  /** ドラッグが終わったときに一度だけ呼ぶ（元に戻すの単位をドラッグ1回にするため）。複数選んでいるときは、まとめて動かす */
+  onMoveEnd: (ids: string[], dx: number, dy: number) => void;
   /** 線の端を動かして伸縮したとき */
   onWireEnd: (id: string, end: 1 | 2, dx: number, dy: number) => void;
   /** 線を引き終えたとき */
@@ -41,6 +42,8 @@ interface Pinch {
 /** 動かしている最中の状態。dx・dy は吸い寄せたあとの値 */
 interface Drag {
   id: string;
+  /** いっしょに動かすもの（複数選んでいるとき）。1つだけのときは [id] */
+  ids: string[];
   end?: 1 | 2;
   dx: number;
   dy: number;
@@ -50,10 +53,16 @@ interface Drag {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom, onZoom, issues = [] }: Props) {
+  const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
+  /** 何も無いところからドラッグして、範囲で選んでいる最中。表示用の枠（図面の座標）と、動いたか・追加選択か */
+  const [band, setBand] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const bandRef = useRef<{ x: number; y: number; cx: number; cy: number; additive: boolean; moved: boolean; base: string[] } | null>(null);
+  /** 複数選んでいるうちの1つを、動かさずにクリックして離したとき、その1つだけの選択にする */
+  const collapseTo = useRef<string | null>(null);
   /** 線を引いている途中の始点と、いまのカーソル位置 */
   const [wireStart, setWireStart] = useState<{ x: number; y: number } | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
@@ -173,7 +182,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
       const p = pan.current;
       if (p && p.id === e.pointerId) {
         pan.current = null;
-        if (!p.moved && latest.current.mode === 'select') latest.current.onSelect(null);
+        if (!p.moved && latest.current.mode === 'select') latest.current.onSelect([]);
       }
       if (ignored.current.delete(e.pointerId)) stop(e);
       if (wasPinching) {
@@ -202,7 +211,9 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
     ? doc
     : drag.end
       ? moveWireEnd(doc, drag.id, drag.end, drag.dx, drag.dy)
-      : moveItem(doc, drag.id, drag.dx, drag.dy);
+      : drag.ids.length > 1
+        ? moveItems(doc, drag.ids, drag.dx, drag.dy)
+        : moveItem(doc, drag.id, drag.dx, drag.dy);
 
   // 見える範囲は動かす前の図面から決める。動かすたびに画面が揺れないように
   const b = docBounds(doc);
@@ -231,18 +242,38 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
     e.stopPropagation();
 
     // PASのように中に部品を抱えている記号は、かたまりごと選ぶ。
-    // すでにそのかたまりを選んでいるときだけ、もう一度押すと中の部品を選べる
+    // すでにそのかたまりだけを選んでいるときだけ、もう一度押すと中の部品を選べる
     const root = groupRootOf(doc, it.id);
     const insideSelected = selectedId !== null && groupOf(doc, root).includes(selectedId);
     const pick = insideSelected ? it.id : root;
 
-    onSelect(pick);
+    // Shift・Ctrl・Command のどれかを押しながらクリック：選んでいなければ、選びに加える。すでに選んでいれば、選びから外す
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      const has = selectedIds.includes(pick) || selectedIds.includes(root);
+      onSelect(has ? selectedIds.filter((s) => s !== pick && s !== root) : [...selectedIds, pick]);
+      return;
+    }
+
+    // 複数選んでいるうちの1つを押したときは、選びはそのまま、まとめて動かす（動かさずに離したら、その1つだけの選びにする）
+    const keepMulti = selectedIds.length > 1 && (selectedIds.includes(pick) || selectedIds.includes(root));
+    collapseTo.current = keepMulti ? (selectedIds.includes(pick) ? pick : root) : null;
+    if (!keepMulti) onSelect([pick]);
     (e.target as Element).setPointerCapture?.(e.pointerId);
     start.current = toDrawing(e);
-    setDrag({ id: pick, dx: 0, dy: 0 });
+    setDrag({ id: keepMulti ? (selectedIds.includes(pick) ? pick : root) : pick, ids: keepMulti ? selectedIds : [pick], dx: 0, dy: 0 });
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    // 範囲で選んでいる最中：少し動いたら、枠を出す
+    const bd = bandRef.current;
+    if (bd) {
+      if (!bd.moved && Math.hypot(e.clientX - bd.cx, e.clientY - bd.cy) > 4) bd.moved = true;
+      if (bd.moved) {
+        const q = toDrawing(e);
+        setBand({ x0: Math.min(bd.x, q.x), y0: Math.min(bd.y, q.y), x1: Math.max(bd.x, q.x), y1: Math.max(bd.y, q.y) });
+      }
+      return;
+    }
     if (mode === 'wire') {
       const p = toDrawing(e);
       if (wireStart) setCursor(p);
@@ -253,17 +284,39 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
     const p = toDrawing(e);
     const rawDx = p.x - start.current.x;
     const rawDy = p.y - start.current.y;
+    // 複数をまとめて動かすときは、格子に合わせるだけ（ほかの記号への吸い付きは、1つを動かすときだけ）
+    if (!drag.end && drag.ids.length > 1) {
+      setDrag({ ...drag, dx: snap(rawDx), dy: snap(rawDy), guideX: undefined, guideY: undefined });
+      return;
+    }
     const a = drag.end
       ? assistWireEnd(doc, drag.id, drag.end, rawDx, rawDy, snapRange())
       : assistMove(doc, drag.id, rawDx, rawDy, snapRange());
-    setDrag({ id: drag.id, end: drag.end, dx: a.dx, dy: a.dy, guideX: a.guideX, guideY: a.guideY });
+    setDrag({ id: drag.id, ids: drag.ids, end: drag.end, dx: a.dx, dy: a.dy, guideX: a.guideX, guideY: a.guideY });
   };
 
   const onPointerUp = () => {
+    // 範囲で選び終わった：囲んだ範囲にまるごと入っている要素を選ぶ（追加のときは、いまの選びに加える）。動かしていなければ、選びを外す
+    const bd = bandRef.current;
+    if (bd) {
+      bandRef.current = null;
+      const rect = band;
+      setBand(null);
+      if (bd.moved && rect) {
+        const found = itemsInRange(doc, rect);
+        onSelect(bd.additive ? [...new Set([...bd.base, ...found])] : found);
+      } else if (!bd.additive) {
+        onSelect([]);
+      }
+      return;
+    }
     if (drag && (Math.abs(drag.dx) > 0.01 || Math.abs(drag.dy) > 0.01)) {
       if (drag.end) onWireEnd(drag.id, drag.end, drag.dx, drag.dy);
-      else onMoveEnd(drag.id, drag.dx, drag.dy);
+      else onMoveEnd(drag.ids, drag.dx, drag.dy);
+    } else if (drag && collapseTo.current) {
+      onSelect([collapseTo.current]);
     }
+    collapseTo.current = null;
     setDrag(null);
     start.current = null;
   };
@@ -271,8 +324,14 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
     if (mode !== 'wire') {
-      // 指のときは、なぞれば画面が動くので、「選択を外す」のは、離したときに上の処理で行う
-      if (e.pointerType !== 'touch') onSelect(null);
+      // 指のときは、なぞれば画面が動くので、「選択を外す」のは、離したときに上の処理で行う。
+      // マウス・ペンは、何も無いところからドラッグすると、範囲で選べる（離したとき、動かしていなければ、選びを外す）
+      if (e.pointerType !== 'touch') {
+        const q = toDrawing(e);
+        const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+        svgRef.current?.setPointerCapture?.(e.pointerId);
+        bandRef.current = { x: q.x, y: q.y, cx: e.clientX, cy: e.clientY, additive, moved: false, base: additive ? selectedIds : [] };
+      }
       return;
     }
     const p = toDrawing(e);
@@ -303,12 +362,16 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      // Mac の Control＋クリックは、ふつう、右クリックのメニューが出る。追加選択に使うので、出さない
+      onContextMenu={(e) => {
+        if (e.ctrlKey && mode === 'select') e.preventDefault();
+      }}
       role="application"
       aria-label="図面"
     >
       <g stroke="#000" fill="none" strokeLinecap="round" strokeLinejoin="round" color="#000">
         {view.items.map((it) => {
-          const selected = it.id === selectedId;
+          const selected = selectedIds.includes(it.id);
           const common = {
             key: it.id,
             onPointerDown: (e: React.PointerEvent) => onPointerDown(e, it),
@@ -399,7 +462,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
           <line className="guide" x1={vb.x} y1={drag.guideY} x2={vb.x + vb.w} y2={drag.guideY} pointerEvents="none" />
         )}
 
-        {selectedWire && selectedWire.kind === 'wire' && mode === 'select' && (
+        {selectedWire && selectedWire.kind === 'wire' && selectedIds.length === 1 && mode === 'select' && (
           <>
             {([1, 2] as const).map((end) => (
               <circle
@@ -412,7 +475,7 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
                   e.stopPropagation();
                   (e.target as Element).setPointerCapture?.(e.pointerId);
                   start.current = toDrawing(e);
-                  setDrag({ id: selectedWire.id, end, dx: 0, dy: 0 });
+                  setDrag({ id: selectedWire.id, ids: [selectedWire.id], end, dx: 0, dy: 0 });
                 }}
               />
             ))}
@@ -449,30 +512,33 @@ export function DrawingCanvas({ doc, selectedId, onSelect, onMoveEnd, onWireEnd,
           </g>
         ))}
 
-        {selectedId &&
-          (() => {
-            // かたまりを選んでいるときは、中の部品まで含めて囲う
-            const ids = groupOf(view, selectedId);
-            const boxes = view.items.filter((i) => ids.includes(i.id)).map(itemBounds);
-            if (boxes.length === 0) return null;
-            const bb = {
-              x0: Math.min(...boxes.map((b) => b.x0)),
-              y0: Math.min(...boxes.map((b) => b.y0)),
-              x1: Math.max(...boxes.map((b) => b.x1)),
-              y1: Math.max(...boxes.map((b) => b.y1)),
-            };
-            return (
-              <rect
-                className="selection"
-                x={bb.x0 - 4}
-                y={bb.y0 - 4}
-                width={bb.x1 - bb.x0 + 8}
-                height={bb.y1 - bb.y0 + 8}
-                fill="none"
-                pointerEvents="none"
-              />
-            );
-          })()}
+        {selectedIds.map((sid) => {
+          // かたまりを選んでいるときは、中の部品まで含めて囲う
+          const ids = groupOf(view, sid);
+          const boxes = view.items.filter((i) => ids.includes(i.id)).map(itemBounds);
+          if (boxes.length === 0) return null;
+          const bb = {
+            x0: Math.min(...boxes.map((b) => b.x0)),
+            y0: Math.min(...boxes.map((b) => b.y0)),
+            x1: Math.max(...boxes.map((b) => b.x1)),
+            y1: Math.max(...boxes.map((b) => b.y1)),
+          };
+          return (
+            <rect
+              key={`sel-${sid}`}
+              className="selection"
+              x={bb.x0 - 4}
+              y={bb.y0 - 4}
+              width={bb.x1 - bb.x0 + 8}
+              height={bb.y1 - bb.y0 + 8}
+              fill="none"
+              pointerEvents="none"
+            />
+          );
+        })}
+
+        {/* 範囲で選んでいる最中の枠 */}
+        {band && <rect className="band" x={band.x0} y={band.y0} width={band.x1 - band.x0} height={band.y1 - band.y0} pointerEvents="none" />}
       </g>
     </svg>
   );

@@ -24,6 +24,10 @@ import {
   tidyDoc,
   docBounds,
   addText,
+  moveItems,
+  removeItems,
+  itemsInRange,
+  itemBounds,
 } from '../apps/web/src/editor/doc.ts';
 type PlacedSymbolLike = ReturnType<typeof layout>['symbols'][number];
 const portAbs = (s: PlacedSymbolLike, id: string) => {
@@ -2361,6 +2365,76 @@ console.log('\n■ DGRの遮断（TC）');
   const spcb = dcb.symbols.find((s) => s.role === 'main-breaker')!.x + 24;
   if (!vtcb || vtcb.x + getSymbolDef('vt').box.w / 2 <= spcb) fail('重ならない構成（CB形・VTが一次側）で、VTが左に動いています');
   else console.log('  CB形（VTが一次側）：重ならないので、VTは右のまま');
+}
+
+/* ---------- 図面の確認画面：範囲選択・複数選択・まとめて移動・まとめて削除 ---------- */
+console.log('\n■ 範囲選択・複数選択');
+{
+  const a: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'no', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  const doc0 = fromLayout(layout(buildComposition(a), a));
+  const sym = (d: Doc, id: string) => d.items.find((i) => i.id === id && i.kind === 'symbol') as DocSymbol | undefined;
+  const ids = ['ds', 'main-breaker', 'ct'];
+  if (ids.some((i) => !sym(doc0, i))) fail('試験用の図面に、DS・VCB・CTがありません');
+  else {
+    // まとめて移動：選んだ3つが同じだけ動く。選んでいないもの（変圧器）は動かない。つないである線は、ついていく
+    const moved = moveItems(doc0, ids, 20, 10);
+    const same = ids.every((i) => sym(moved, i)!.x === sym(doc0, i)!.x + 20 && sym(moved, i)!.y === sym(doc0, i)!.y + 10);
+    const still = sym(moved, 'transformer')!.x === sym(doc0, 'transformer')!.x && sym(moved, 'transformer')!.y === sym(doc0, 'transformer')!.y;
+    if (!same) fail('まとめて移動：選んだ記号が、同じだけ動いていません');
+    else if (!still) fail('まとめて移動：選んでいない記号まで動いています');
+    else console.log('  まとめて移動：選んだ3つが同じだけ動き、選んでいない変圧器は動かない');
+    // 図面全体を囲んで、まとめて動かしても、つないである線は、ついていく（宙に浮かない）
+    const everything = itemsInRange(doc0, { x0: -1e6, y0: -1e6, x1: 1e6, y1: 1e6 });
+    const movedAll = moveItems(doc0, everything, 20, 10);
+    const floatingAfter = inspectDrawing(movedAll, 'A3', 'landscape').filter((i) => i.kind === 'floating').length;
+    const floatingBefore = inspectDrawing(doc0, 'A3', 'landscape').filter((i) => i.kind === 'floating').length;
+    const allSame = doc0.items.filter((i) => i.kind === 'symbol').every((i) => {
+      const m = sym(movedAll, i.id)!;
+      return m.x === (i as DocSymbol).x + 20 && m.y === (i as DocSymbol).y + 10;
+    });
+    if (!allSame) fail('図面全体のまとめて移動：すべての記号が、同じだけ動いていません');
+    else if (floatingAfter > floatingBefore) fail(`図面全体をまとめて動かしたあと、つながっていない線が増えました（${floatingAfter - floatingBefore}本）`);
+    else console.log(`  図面全体（${everything.length}件）をまとめて動かしても、線は、つながったまま`);
+    // 動かさない（0）ときは、そのまま
+    if (moveItems(doc0, ids, 0, 0) !== doc0) fail('動かす量が0のとき、図面が作り直されています');
+    // まとめて削除
+    const removed = removeItems(doc0, ['ds', 'main-breaker']);
+    if (sym(removed, 'ds') || sym(removed, 'main-breaker') || !sym(removed, 'ct')) fail('まとめて削除：選んだものだけが消えていません');
+    else console.log('  まとめて削除：選んだ2つだけが消える');
+    // 1つの案件にない id が混ざっていても、止まらない
+    if (removeItems(doc0, ['ds', 'nai']).items.some((i) => i.id === 'ds')) fail('存在しない id が混ざると、削除が止まります');
+    // 範囲選択：まるごと入っているものだけ選ぶ
+    const bb = (idList: string[]) => {
+      const bs = idList.map((i) => itemBounds(doc0.items.find((x) => x.id === i)!));
+      return { x0: Math.min(...bs.map((b) => b.x0)) - 1, y0: Math.min(...bs.map((b) => b.y0)) - 1, x1: Math.max(...bs.map((b) => b.x1)) + 1, y1: Math.max(...bs.map((b) => b.y1)) + 1 };
+    };
+    const found = itemsInRange(doc0, bb(['ds', 'main-breaker']));
+    if (!found.includes('ds') || !found.includes('main-breaker')) fail('範囲選択：範囲に入っている記号が選ばれていません');
+    else if (found.includes('transformer') || found.includes('ct') && !itemsInRange(doc0, bb(['ct'])).includes('ct')) fail('範囲選択：範囲の外の記号まで選ばれています');
+    else console.log(`  範囲選択：範囲に入っている記号だけが選ばれる（${found.length}件）`);
+    const half = itemBounds(doc0.items.find((x) => x.id === 'main-breaker')!);
+    const partial = itemsInRange(doc0, { x0: half.x0, y0: half.y0, x1: (half.x0 + half.x1) / 2, y1: half.y1 });
+    if (partial.includes('main-breaker')) fail('範囲選択：半分しか入っていない記号まで選ばれています');
+    else console.log('  範囲選択：半分しか入っていない記号は、選ばれない');
+    const all = itemsInRange(doc0, { x0: -1e6, y0: -1e6, x1: 1e6, y1: 1e6 });
+    const children = doc0.items.filter((i) => i.kind === 'symbol' && (i as DocSymbol).parent).map((i) => i.id);
+    if (all.length === 0 || children.some((c) => all.includes(c))) fail('範囲選択：内蔵品が、親とは別に選ばれています');
+    else console.log(`  範囲選択：図面全体を囲むと ${all.length}件。内蔵品は、親のかたまりの中に含まれる`);
+  }
+  // 内蔵品のある記号（PAS）：かたまり全体が入っているときだけ、かたまりごと選ばれる
+  const withPas = fromLayout(layout(buildComposition({ ...a, sectionalizer: 'pas', hasPas: 'yes', pasControl: 'dgr' }), { ...a, sectionalizer: 'pas', hasPas: 'yes', pasControl: 'dgr' }));
+  const pas = withPas.items.find((i) => i.id === 'pas');
+  const inner = withPas.items.filter((i) => i.kind === 'symbol' && (i as DocSymbol).parent === 'pas');
+  if (!pas || inner.length === 0) fail('試験用の図面に、PASとその内蔵品がありません');
+  else {
+    const pb = itemBounds(pas);
+    const whole = itemsInRange(withPas, { x0: pb.x0 - 1, y0: pb.y0 - 1, x1: pb.x1 + 1, y1: pb.y1 + 1 });
+    const ib = itemBounds(inner[0]!);
+    const onlyInner = itemsInRange(withPas, { x0: ib.x0 - 1, y0: ib.y0 - 1, x1: ib.x1 + 1, y1: ib.y1 + 1 });
+    if (!whole.includes('pas') || whole.includes(inner[0]!.id)) fail('範囲選択：PASを囲んだとき、PASがかたまりで選ばれていません');
+    else if (onlyInner.includes(inner[0]!.id) || onlyInner.includes('pas')) fail('範囲選択：PASの内蔵品だけを囲んだとき、内蔵品やPASが選ばれています');
+    else console.log('  範囲選択：PASを囲むとかたまりで選ばれ、内蔵品だけを囲んでも選ばれない');
+  }
 }
 
 /* ---------- TCの点線は、開閉器（VCB・LBS）の図記号の真ん中につながる ---------- */

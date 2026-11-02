@@ -615,10 +615,13 @@ function followersOf(doc: Doc, parentId: string): { wires: Set<string>; symbols:
  * dx・dy は呼ぶ側で決めた値をそのまま使う（assistMove が格子合わせと
  * 吸い寄せを済ませている）。ここで丸め直すと、せっかく揃えた位置がずれる。
  */
-export const moveItem = (doc: Doc, id: string, dx: number, dy: number): Doc => {
-  if (dx === 0 && dy === 0) return doc;
+/**
+ * 要素を動かす（つないである線の結び直しは、しない）。moveItem と moveItems が使う。
+ * 動かしたあとに、結線を、つなぎ先の記号に合わせる処理が必要
+ */
+function shiftItem(doc: Doc, id: string, dx: number, dy: number): { doc: Doc; wire: boolean; covered: Set<string>; wires: Set<string> } {
   const target = doc.items.find((it) => it.id === id);
-  if (!target) return doc;
+  if (!target) return { doc, wire: false, covered: new Set(), wires: new Set() };
 
   // 記号を動かすときは、内蔵しているもの（PASのZCT・VT・LAなど）も一緒に動かす
   const moving = new Set(target.kind === 'symbol' ? groupOf(doc, id) : [id]);
@@ -652,9 +655,83 @@ export const moveItem = (doc: Doc, id: string, dx: number, dy: number): Doc => {
     }),
   };
 
+  return { doc: moved, wire: target.kind === 'wire', covered: moving, wires: follow.wires };
+}
+
+export const moveItem = (doc: Doc, id: string, dx: number, dy: number): Doc => {
+  if (dx === 0 && dy === 0) return doc;
+  const r = shiftItem(doc, id, dx, dy);
+  if (r.doc === doc) return doc;
   // 線を動かしたときだけ、行き先の接続点に結び直す
-  return target.kind === 'wire' ? tidyDoc(moved) : applyAnchors(moved);
+  return r.wire ? tidyDoc(r.doc) : applyAnchors(r.doc);
 };
+
+/**
+ * 選んでいる複数の要素を、まとめて動かす。
+ * - 記号・文字・枠は、それぞれ、1つずつ動かすのと同じ動かし方（つないである線は、伸び縮みしてついていく）。
+ *   PASなどの内蔵品は、親の記号と一緒に選ばれているときは、親と一緒に動く（二重に動かさない）
+ * - 選ばれている線は、記号と一緒に平行に動かす。つないである端は、動かしたあとに、つなぎ先の接続点に合わせ直す
+ *   （つなぎ先が選ばれていなければ、つなぎ先は動かず、線が伸び縮みする）
+ */
+export const moveItems = (doc: Doc, ids: string[], dx: number, dy: number): Doc => {
+  if (dx === 0 && dy === 0) return doc;
+  const picked = new Set(ids);
+  // 記号・文字・枠は、まず、位置だけを動かす（つないである線の結び直しは、全部動かしたあとに、1回だけ行う）。
+  // 親の記号（PASなど）と一緒に動くもの（内蔵品・付属のGR・DGRと、その線）は、二度動かさない
+  let cur: Doc = doc;
+  const done = new Set<string>();
+  const doneWires = new Set<string>();
+  for (const id of ids) {
+    const it = cur.items.find((x) => x.id === id);
+    if (!it || it.kind === 'wire' || done.has(id)) continue;
+    const root = groupRootOf(cur, id);
+    if (root !== id && picked.has(root)) continue;
+    const r = shiftItem(cur, id, dx, dy);
+    cur = r.doc;
+    for (const c of r.covered) done.add(c);
+    for (const w of r.wires) doneWires.add(w);
+  }
+  // 選ばれている線も、記号と同じだけ平行に動かす（縦・横の向きは、そのまま）。
+  // つないである端は、最後に、つなぎ先の接続点にぴったり合わせ直す（つなぎ先も動いていれば、ついていく）
+  cur = {
+    ...cur,
+    items: cur.items.map((it) =>
+      it.kind === 'wire' && picked.has(it.id) && !doneWires.has(it.id) ? { ...it, x1: it.x1 + dx, y1: it.y1 + dy, x2: it.x2 + dx, y2: it.y2 + dy } : it,
+    ),
+  };
+  return applyAnchors(cur);
+};
+
+/** 選んでいる複数の要素を、まとめて消す */
+export const removeItems = (doc: Doc, ids: string[]): Doc => {
+  let cur = doc;
+  // 記号を先に消し、そのあとで、選ばれている線を消す（記号を消すと、つないであった線が、つなぎ先を失った印になる）
+  const order = [...ids].sort((a, b) => Number(cur.items.find((x) => x.id === a)?.kind === 'wire') - Number(cur.items.find((x) => x.id === b)?.kind === 'wire'));
+  for (const id of order) if (cur.items.some((x) => x.id === id)) cur = removeItem(cur, id);
+  return cur;
+};
+
+/**
+ * ドラッグで囲んだ範囲（図面の座標）の中に、まるごと入っている要素を選ぶ。
+ * 内蔵品のある記号（PAS）は、かたまりのすべてが範囲に入っているときだけ、かたまりごと選ぶ（内蔵品だけは選ばない）。
+ */
+export function itemsInRange(doc: Doc, r: { x0: number; y0: number; x1: number; y1: number }): string[] {
+  const inside = (it: DocItem) => {
+    const b = itemBounds(it);
+    return b.x0 >= r.x0 && b.y0 >= r.y0 && b.x1 <= r.x1 && b.y1 <= r.y1;
+  };
+  const insideIds = new Set(doc.items.filter(inside).map((it) => it.id));
+  const out: string[] = [];
+  for (const it of doc.items) {
+    if (!insideIds.has(it.id)) continue;
+    const root = groupRootOf(doc, it.id);
+    if (root === it.id) {
+      // かたまりの親は、内蔵品もすべて範囲に入っているときだけ
+      if (groupOf(doc, it.id).every((g) => insideIds.has(g))) out.push(it.id);
+    }
+  }
+  return out;
+}
 
 /** 点 (px,py) は動かさずに、点 (qx,qy) を縦か横に揃えた座標 */
 function alignTo(px: number, py: number, qx: number, qy: number): [number, number] {

@@ -13,7 +13,7 @@ import { ISSUE_LABEL, chooseSheet, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveWireEnd, removeItem, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -71,7 +71,11 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     const tidy = tidyDoc(initialDoc);
     return { past: [], present: tidy.base ? tidy : { ...tidy, base: generated.base }, future: [] };
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** 選んでいる要素（複数のこともある） */
+  const [selection, setSelection] = useState<string[]>([]);
+  /** 1つだけ選んでいるときの、その要素のid（右の「選んだもの」の欄などは、1つのときだけ出す） */
+  const selectedId = selection.length === 1 ? selection[0]! : null;
+  const setSelectedId = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
   const [mode, setMode] = useState<'select' | 'wire'>('select');
@@ -154,7 +158,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     const withOrientation: Doc = doc.orientation && !fresh.orientation ? { ...fresh, orientation: doc.orientation } : fresh;
     setHistory((h) => commit(h, withOrientation));
     onDocChange?.(withOrientation);
-    setSelectedId(null);
+    setSelection([]);
     return { ...report, lost: legacy };
   };
 
@@ -192,20 +196,22 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           onDocChange?.(n.present);
           return n;
         });
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length > 0) {
         e.preventDefault();
-        apply(removeItem(doc, selectedId));
-        setSelectedId(null);
-      } else if (selectedId && mode === 'select' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
-        // 選んでいる要素を、矢印キーの向きに動かす（マウスでドラッグするのと同じ動かし方）
+        apply(selection.length === 1 ? removeItem(doc, selection[0]!) : removeItems(doc, selection));
+        setSelection([]);
+      } else if (selection.length > 0 && mode === 'select' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
+        // 選んでいる要素（複数のときは、まとめて）を、矢印キーの向きに動かす（マウスでドラッグするのと同じ動かし方）
         e.preventDefault();
         const [ux, uy] = ARROW_MOVE[e.key]!;
         const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
-        const next: Doc = { ...moveItem(doc, selectedId, ux * step, uy * step), edited: true, basis: doc.basis };
+        const moved = selection.length === 1 ? moveItem(doc, selection[0]!, ux * step, uy * step) : moveItems(doc, selection, ux * step, uy * step);
+        const next: Doc = { ...moved, edited: true, basis: doc.basis };
         const now = Date.now();
         const last = lastArrow.current;
-        lastArrow.current = { id: selectedId, at: now };
-        if (last && last.id === selectedId && now - last.at < ARROW_MERGE_MS) {
+        const arrowKey = selection.join(',');
+        lastArrow.current = { id: arrowKey, at: now };
+        if (last && last.id === arrowKey && now - last.at < ARROW_MERGE_MS) {
           // 続けて押している間は、1回の操作として扱う（「操作を戻す」を1回押せば、押す前に戻る）
           setHistory((h) => ({ ...h, present: next }));
           onDocChange?.(next);
@@ -217,7 +223,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selectedId, apply, sheetView, mode]);
+  }, [doc, selection, apply, sheetView, mode]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -269,9 +275,19 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <div className="tool-group">
             <span className="cap">{t('editor.group.edit')}</span>
             <div className="tool-row">
-              <button type="button" className="btn danger" disabled={sheetView || !selected} onClick={() => selected && (apply(removeItem(doc, selected.id)), setSelectedId(null))}>
+              <button
+                type="button"
+                className="btn danger"
+                disabled={sheetView || selection.length === 0}
+                onClick={() => {
+                  if (selection.length === 0) return;
+                  apply(selection.length === 1 ? removeItem(doc, selection[0]!) : removeItems(doc, selection));
+                  setSelection([]);
+                }}
+              >
                 {t('editor.delete')}
               </button>
+              {selection.length > 1 && <span className="multi-note">{selection.length}{t('editor.multiSelected')}</span>}
               <button
                 type="button"
                 className="sec"
@@ -469,9 +485,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           ) : (
           <DrawingCanvas
             doc={doc}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onMoveEnd={(id, dx, dy) => apply(moveItem(doc, id, dx, dy))}
+            selectedIds={selection}
+            onSelect={setSelection}
+            onMoveEnd={(ids, dx, dy) => apply(ids.length === 1 ? moveItem(doc, ids[0]!, dx, dy) : moveItems(doc, ids, dx, dy))}
             onWireEnd={(id, end, dx, dy) => apply(moveWireEnd(doc, id, end, dx, dy))}
             onAddWire={(x1, y1, x2, y2, opts) => {
               const { doc: next, id } = addWire(doc, x1, y1, x2, y2, opts);

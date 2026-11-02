@@ -161,6 +161,8 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .canvas .item { cursor: move; }
 .canvas .item:hover { color: var(--draw-accent); }
 .canvas .selection { stroke: var(--draw-accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.canvas .band { fill: var(--draw-accent); fill-opacity: 0.08; stroke: var(--draw-accent); stroke-width: 1; stroke-dasharray: 4 3; }
+.multi-note { align-self: center; font-size: calc(12px * var(--text-scale)); color: var(--ink-2); padding: 0 6px; white-space: nowrap; }
 
 .side { border-left: 1px solid var(--rule); background: var(--panel); overflow-y: auto; padding: 16px 14px 60px; }
 .side section { margin-bottom: 22px; }
