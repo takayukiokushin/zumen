@@ -2385,6 +2385,24 @@ console.log('\n■ 客柱・電柱の記号');
   else console.log('  電柱：これまでどおり（引下線あり）');
 }
 
+/* ---------- 上向きのケーブルヘッド（CH） ---------- */
+console.log('\n■ 上向きのCH');
+{
+  const down = getSymbolDef('cable-head');
+  const up = getSymbolDef('cable-head-up');
+  const tri = (d: typeof up) => d.shapes.find((sh) => sh.k === 'poly') as { pts?: number[]; points?: number[] } | undefined;
+  const pts = (d: typeof up) => { const t = tri(d); return (t?.pts ?? t?.points ?? []) as number[]; };
+  const ys = (d: typeof up) => pts(d).filter((_, i) => i % 2 === 1);
+  const xs = (d: typeof up) => pts(d).filter((_, i) => i % 2 === 0);
+  const apexY = (d: typeof up) => ys(d)[xs(d).findIndex((x) => x === 12)];
+  if (up.category !== 'incoming') fail('上向きのCHが、引込元の分類に入っていません');
+  else if (JSON.stringify(up.box) !== JSON.stringify(down.box)) fail('上向きのCHの大きさが、下向きのCHと違います');
+  else if (JSON.stringify(up.ports.map((q) => [q.id, q.x, q.y])) !== JSON.stringify(down.ports.map((q) => [q.id, q.x, q.y]))) fail('上向きのCHの接続点が、下向きのCHと違います');
+  else if (!(apexY(down)! > 12 && apexY(up)! < 12)) fail(`CHの向きが正しくありません（下向きの頂点 ${apexY(down)}／上向きの頂点 ${apexY(up)}）`);
+  else console.log('  上向きのCH：引込元の分類に入っている／大きさ・接続点は下向きと同じ／頂点が上');
+  if (addSymbol({ items: [] } as unknown as Doc, 'cable-head-up', 0, 0).doc.items.length !== 1) fail('上向きのCHを図面に足せません');
+}
+
 /* ---------- 客柱：PAS・PGSの左に、枠の縦の真ん中で、隙間を空けて置く ---------- */
 console.log('\n■ 客柱の自動配置（PAS・PGS）');
 {
