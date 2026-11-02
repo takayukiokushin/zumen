@@ -800,7 +800,7 @@ export const addWire = (
   y1: number,
   x2: number,
   y2: number,
-  opts: { assist?: boolean; range?: number } = {},
+  opts: { assist?: boolean; range?: number; dashed?: boolean } = {},
 ): { doc: Doc; id: string } => {
   const assist = opts.assist !== false;
   const range = opts.range ?? ASSIST_RANGE;
@@ -813,7 +813,7 @@ export const addWire = (
     : straighten(a.x, a.y, snap(x2), snap(y2));
   const id = nextId('wire');
   return {
-    doc: tidyDoc({ ...doc, items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by }] }),
+    doc: tidyDoc({ ...doc, items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by, ...(opts.dashed ? { dashed: true } : {}) }] }),
     id,
   };
 };

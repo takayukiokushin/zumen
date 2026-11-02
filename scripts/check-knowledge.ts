@@ -293,15 +293,19 @@ for (const [name, ans] of [
 
 /* ---------- 6. AI解析の受け口 ---------- */
 console.log('\n■ AI解析');
-const schema = buildAnalysisSchema() as { properties: { answers: { properties: Record<string, unknown> } } };
-const schemaKeys = Object.keys(schema.properties.answers.properties);
-if (schemaKeys.length !== QUESTIONS.length) {
-  fail(`スキーマの項目数（${schemaKeys.length}）が質問数（${QUESTIONS.length}）と合いません`);
-}
+const schema = buildAnalysisSchema() as {
+  properties: { answers: { type: string; items: { properties: Record<string, unknown> } } };
+};
+// 答えは「項目ID＋値」の並びで受け取る（省略できる項目の上限を超えないため）。
+// 項目ごとのスキーマは持たないので、指示文に全質問のIDが載っているかを確かめる。
+if (schema.properties.answers.type !== 'array') fail('スキーマの answers が並び（配列）になっていません');
+const pairKeys = Object.keys(schema.properties.answers.items.properties);
+if (!pairKeys.includes('key') || !pairKeys.includes('value')) fail('スキーマの answers に key / value がありません');
+const promptForIds = buildSystemPrompt();
 for (const q of QUESTIONS) {
-  if (!schemaKeys.includes(q.id)) fail(`スキーマに質問 ${q.id} がありません`);
+  if (!promptForIds.includes(q.id)) fail(`指示文に質問 ${q.id} がありません`);
 }
-console.log(`  読み取り用スキーマ: ${schemaKeys.length}項目`);
+console.log(`  読み取り用スキーマ: 項目ID＋値の並び / 指示文に質問${QUESTIONS.length}項目`);
 
 const prompt = buildSystemPrompt();
 for (const must of ['7200V', '6600V', 'PFS形', '300kVA', 'たたき台']) {

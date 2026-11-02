@@ -2367,6 +2367,29 @@ console.log('\n■ DGRの遮断（TC）');
   else console.log('  CB形（VTが一次側）：重ならないので、VTは右のまま');
 }
 
+/* ---------- 「線を引く」：実線と点線 ---------- */
+console.log('\n■ 線を引く（実線・点線）');
+{
+  const a: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'no', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  const gen = (x: Answers, tag: string) => fromLayout(layout(buildComposition(x), x), tag);
+  const g1 = gen(a, 'k1');
+  const wireIds = (d: Doc) => new Set(d.items.filter((i) => i.kind === 'wire').map((i) => i.id));
+  const before = wireIds(g1);
+  const solid = addWire(g1, 400, 60, 400, 140).doc;
+  const dashed = addWire(g1, 460, 60, 460, 140, { dashed: true }).doc;
+  const added = (d: Doc) => d.items.find((i): i is DocWire => i.kind === 'wire' && !before.has(i.id));
+  if (!added(solid) || added(solid)!.dashed) fail('実線で引いた線に、点線の印が付いています');
+  else if (!added(dashed)?.dashed) fail('点線で引いた線に、点線の印が付いていません');
+  else console.log('  引いた線の種類（実線・点線）が、図面に残る');
+  // 点線で引いた線は、入力内容が変わって図面を作り直しても、点線のまま残る
+  const edited: Doc = { ...dashed, edited: true };
+  const g2 = gen({ ...a, transformerCount: 2, trConnection__2: 'tr-3p-dy' }, 'k2');
+  const r = rebuildWithOverrides(g2, edited);
+  const keptDashed = r.doc.items.some((i) => i.kind === 'wire' && i.dashed && Math.abs(i.x1 - 460) < 0.5 && Math.abs(i.y1 - 60) < 40);
+  if (!keptDashed) fail('点線で引いた線が、作り直したあとに、点線のまま残っていません');
+  else console.log('  点線で引いた線は、入力内容を変えて作り直しても、点線のまま残る');
+}
+
 /* ---------- 図面の確認画面：範囲選択・複数選択・まとめて移動・まとめて削除 ---------- */
 console.log('\n■ 範囲選択・複数選択');
 {

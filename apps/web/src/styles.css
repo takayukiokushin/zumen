@@ -770,5 +770,10 @@ button.with-icon svg { flex: 0 0 auto; }
 .editor-bar > .tools { flex: 1 1 100%; }
 .zoom-group { margin-left: auto; }
 .tool-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--gap, 10px); }
+/* 「線を引く」の下に出す、線の種類（実線・点線）の見本 */
+.wire-tool { display: inline-flex; flex-direction: column; align-items: stretch; gap: calc(4px * var(--text-scale)); }
+.wire-kinds { display: flex; gap: calc(4px * var(--text-scale)); }
+.wire-kinds .line-kind { flex: 1 1 0; min-width: 0; padding: calc(5px * var(--text-scale)) calc(6px * var(--text-scale)); display: inline-flex; align-items: center; justify-content: center; }
+.wire-kinds .line-kind svg { display: block; width: calc(44px * var(--text-scale)); height: calc(10px * var(--text-scale)); }
 .tool-select { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
 .tool-select select { min-width: 0; width: auto; padding-right: calc(24px * var(--text-scale)); }

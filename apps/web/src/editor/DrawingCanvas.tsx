@@ -19,6 +19,8 @@ interface Props {
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く */
   mode: 'select' | 'wire';
+  /** 線を引くとき、点線で引くか（引いている最中の見本の線も、同じ種類で出す） */
+  wireDashed?: boolean;
   zoom: number;
   /** 2本指で拡大縮小したとき（指で操作する端末用） */
   onZoom?: (zoom: number) => void;
@@ -53,7 +55,7 @@ interface Drag {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -490,6 +492,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             x2={hint ? hint.x : Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? wireStart.x : cursor.x}
             y2={hint ? hint.y : Math.abs(cursor.x - wireStart.x) <= Math.abs(cursor.y - wireStart.y) ? cursor.y : wireStart.y}
             strokeWidth={1}
+            strokeDasharray={wireDashed ? '5 4' : undefined}
           />
         )}
         {/* 吸い付く先の目印（丸）。揃う位置のときは、目安の線 */}

@@ -79,6 +79,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
   const [mode, setMode] = useState<'select' | 'wire'>('select');
+  /** 線を引くときの種類（false＝実線、true＝点線）。埋設ケーブル・TCなどは点線 */
+  const [wireDashed, setWireDashed] = useState(false);
   /** 用紙のまま（図枠つき）で見るか。印刷の見た目をそのまま確かめられる */
   const [sheetView, setSheetView] = useState(false);
   /** スマホ（幅の狭い画面）で、ほかの操作のボタン列・記号パレットを開いているか */
@@ -301,18 +303,40 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
               >
                 {t('editor.addNote')}
               </button>
-              <button
-                type="button"
-                className={`sec${mode === 'wire' ? ' on' : ''}`}
-                aria-pressed={mode === 'wire'}
-                disabled={sheetView}
-                onClick={() => {
-                  setMode((m) => (m === 'wire' ? 'select' : 'wire'));
-                  setSelectedId(null);
-                }}
-              >
-                {t('editor.drawWire')}
-              </button>
+              <span className="wire-tool sec">
+                <button
+                  type="button"
+                  className={mode === 'wire' ? 'on' : undefined}
+                  aria-pressed={mode === 'wire'}
+                  disabled={sheetView}
+                  onClick={() => {
+                    setMode((m) => (m === 'wire' ? 'select' : 'wire'));
+                    setSelection([]);
+                  }}
+                >
+                  {t('editor.drawWire')}
+                </button>
+                {/* 線を引くモードのあいだだけ、線の種類（実線・点線）を選べる */}
+                {mode === 'wire' && !sheetView && (
+                  <span className="wire-kinds" role="group" aria-label={t('editor.lineKind')}>
+                    {([false, true] as const).map((dashed) => (
+                      <button
+                        key={String(dashed)}
+                        type="button"
+                        className="line-kind"
+                        aria-pressed={wireDashed === dashed}
+                        title={t(dashed ? 'editor.lineDashed' : 'editor.lineSolid')}
+                        aria-label={t(dashed ? 'editor.lineDashed' : 'editor.lineSolid')}
+                        onClick={() => setWireDashed(dashed)}
+                      >
+                        <svg width="44" height="10" viewBox="0 0 44 10" aria-hidden="true">
+                          <line x1="2" y1="5" x2="42" y2="5" stroke="currentColor" strokeWidth="2" strokeDasharray={dashed ? '6 4' : undefined} />
+                        </svg>
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </span>
             </div>
           </div>
 
@@ -490,12 +514,13 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             onMoveEnd={(ids, dx, dy) => apply(ids.length === 1 ? moveItem(doc, ids[0]!, dx, dy) : moveItems(doc, ids, dx, dy))}
             onWireEnd={(id, end, dx, dy) => apply(moveWireEnd(doc, id, end, dx, dy))}
             onAddWire={(x1, y1, x2, y2, opts) => {
-              const { doc: next, id } = addWire(doc, x1, y1, x2, y2, opts);
+              const { doc: next, id } = addWire(doc, x1, y1, x2, y2, { ...opts, dashed: wireDashed });
               apply(next);
               // 線を引くモードは続ける（次の線を、続けて引ける）。やめるときは、Esc キーか「線を引く」をもう一度押す
               setSelectedId(id);
             }}
             mode={mode}
+            wireDashed={wireDashed}
             zoom={zoom}
             onZoom={setZoom}
             issues={issues ?? []}
