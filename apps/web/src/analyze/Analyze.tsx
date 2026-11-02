@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Answers } from '@zumen/knowledge';
-import type { AnalysisResult, ReviewItem } from '@zumen/ai';
+import type { AnalysisResult } from '@zumen/ai';
 import { api } from '../session/api.ts';
-import { AnalysisReview } from './AnalysisReview.tsx';
+import { SketchResult } from './SketchResult.tsx';
 
 interface Props {
   answers: Answers;
@@ -44,7 +44,6 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [review, setReview] = useState<ReviewItem[]>([]);
   /** 読み取りを実行するたびに変える（確認画面の、チェックの状態を作り直すため） */
   const [runId, setRunId] = useState(0);
   /** 読み取りが使える状態か（サーバーに利用券が置いてあるか）。未確認のあいだは undefined */
@@ -93,7 +92,6 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
         answers,
       });
       setResult(json.result as AnalysisResult);
-      setReview(json.review as ReviewItem[]);
       ok = true;
       onAnalyzed?.();
       setRunId((n) => n + 1);
@@ -138,8 +136,8 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
         )}
 
         <p className="hint">
-          手書きメモの写真やスキャン、過去の図面の PDF、メーカーの仕様書の PDF を選んでください（10件まで。PDF は1件10ページまで）。読み取った内容は<b>そのまま図面には入りません</b>。
-          この画面で確認して、採用するものだけを反映します。
+          手書きメモの写真やスキャン、過去の図面の PDF、メーカーの仕様書の PDF を選んでください（10件まで。PDF は1件10ページまで）。
+          読み取った内容は、「反映」を押したあと、「設備を入力して作成」と「図面」で、確認・修正できます。
         </p>
 
         <p className="privacy-note">
@@ -194,11 +192,10 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
       </section>
 
       {result && (
-        <AnalysisReview
+        <SketchResult
           key={runId}
           result={result}
-          review={review}
-          evidenceLabel="メモの記載"
+          current={answers}
           onApply={(patch) => {
             onApply(patch);
             onGoToHearing();

@@ -30,6 +30,7 @@ import {
   clearForDuplicate,
   NEW_PROJECT_ANSWERS,
   QUESTION_DEFAULTS,
+  missingRequiredFields,
   withDerived,
 } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
@@ -1192,6 +1193,18 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     // 質問の既定値は変えていない：保存済みの案件（答えを持たない質問は既定値）の見え方は、これまでどおり
     const old = withAutoValues({ ...QUESTION_DEFAULTS });
     ok(String(old.transformerCount) === '1' && String(old.hasCapacitor) === 'no' && old.vctLocation === 'pole' && old.mainBreakerForm === undefined, '質問の既定値が変わっています（保存済みの案件の内容が変わってしまいます）');
+  }
+  // スケッチ読み取りの確認事項：必須で、答えが無いものだけ。入力欄を出せる形（キーつき）で返る
+  {
+    const base = withAutoValues({ ...QUESTION_DEFAULTS, ...NEW_PROJECT_ANSWERS });
+    const miss = missingRequiredFields({ ...base, ...{ transformerCount: '3' } });
+    ok(miss.every((m) => m.question.required === true), '必須でない項目が、確認事項に入っています');
+    ok(miss.some((m) => m.key === 'siteName'), '事業場名称（必須・未入力）が、確認事項に入っていません');
+    ok(!miss.some((m) => m.key === 'mainBreakerForm'), 'すでに答えが入っている必須項目が、確認事項に入っています');
+    ok(!missingRequiredFields({ ...base, siteName: 'A' }).some((m) => m.key === 'siteName'), '答えを入れても、確認事項に残っています');
+    const two = missingRequiredFields({ ...base, siteName: 'A', areaCount: 2, 'a2:areaIntake': 'ds-vcb' });
+    ok(two.every((m) => /^a2:/.test(m.key) ? m.label.startsWith('2か所目：') : true), '2か所目の確認事項の書き方が違います');
+    ok(two.some((m) => m.key.startsWith('a2:')), '2か所目の必須項目が、確認事項に出ていません');
   }
   // 受電方式の質問は無い（高圧受電だけを扱う）。古い案件に残っている答えは、無視される
   ok(!QUESTIONS.some((q) => q.id === 'receivingType'), '「受電方式」の質問が残っています');

@@ -176,6 +176,33 @@ export function missingRequired(rawAnswers: Answers, opts: AskOptions = {}): Que
   return out;
 }
 
+/** 未回答の必須項目を、入力欄を出せる形で返す（スケッチ読み取りの画面で、その場で答えてもらうため） */
+export interface MissingField {
+  /** 答えを入れる先のキー（2か所目以降は a2:〜 の書き方） */
+  key: string;
+  question: Question;
+  /** 画面に出す名前（2か所目以降は「2か所目：」が付く） */
+  label: string;
+  /** その項目の選択肢を絞る条件を見るための、そのエリアの答え */
+  context: Answers;
+}
+
+export function missingRequiredFields(rawAnswers: Answers, opts: AskOptions = {}): MissingField[] {
+  const empty = (v: unknown) => v === undefined || v === null || v === '';
+  const answers = normalizeAnswers(rawAnswers);
+  const out: MissingField[] = visibleQuestions(answers, opts)
+    .filter((q) => q.required && empty(answers[q.id]))
+    .map((q) => ({ key: q.id, question: q, label: q.label, context: answers }));
+  for (let n = 1; n < areaCountOf(rawAnswers); n++) {
+    const view = normalizeAnswers(areaView(rawAnswers, n));
+    for (const q of visibleQuestions(view, opts)) {
+      const scoped = q.group === 'area' ? q.id !== 'areaCount' : PER_AREA_QUESTION_IDS.has(q.id);
+      if (scoped && q.required && empty(view[q.id])) out.push({ key: areaKey(q.id, n), question: q, label: `${n + 1}か所目：${q.label}`, context: view });
+    }
+  }
+  return out;
+}
+
 /**
  * 設備容量から主遮断装置の形式を提案する。
  * 300kVA以下ならPFS形を採用可能、301kVA以上はCB形でなければならない。

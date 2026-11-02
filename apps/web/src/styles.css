@@ -233,6 +233,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .drop:hover, .drop.over { border-color: var(--accent); color: var(--ink-2); }
 .drop.over { background: var(--accent-soft); }
 .drop input { display: none; }
+.ai-caution { margin: 12px 0 0; padding: 6px 10px; border-left: 3px solid var(--rule); color: var(--ink-2); font-size: calc(12.5px * var(--text-scale)); }
 .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 14px 0; }
 .thumbs figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .thumbs img { width: 100%; height: 90px; object-fit: contain; background: var(--paper); border: 1px solid var(--rule-soft); }
