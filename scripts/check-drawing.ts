@@ -2368,6 +2368,21 @@ console.log('\n■ DGRの遮断（TC）');
   else console.log('  CB形（VTが一次側）：重ならないので、VTは右のまま');
 }
 
+/* ---------- 引込元の記号：客柱は丸だけ、電柱は引下線つき ---------- */
+console.log('\n■ 客柱・電柱の記号');
+{
+  const cust = getSymbolDef('pole-customer');
+  const util = getSymbolDef('pole-utility');
+  const lowest = (d: typeof cust) => Math.max(...d.shapes.flatMap((sh) => (sh.k === 'line' ? [sh.y1, sh.y2] : sh.k === 'circle' ? [sh.cy + sh.r] : [0])));
+  if (cust.ports.length !== 0) fail('客柱に、つなぐ点（接続点）が残っています');
+  else if (lowest(cust) > 30.5) fail('客柱に、丸の下へ伸びる線（引下線）が残っています');
+  else if (cust.box.h > 34) fail('客柱の大きさが、丸だけになっていません');
+  else if (!cust.shapes.some((sh) => sh.k === 'circle') || !cust.shapes.some((sh) => sh.k === 'line')) fail('客柱に、丸と左半分の塗りがありません');
+  else console.log('  客柱：円の左半分を塗った丸だけ（引下線・接続点なし）');
+  if (util.ports.length !== 1 || lowest(util) < 47.5) fail('電柱の引下線が変わっています');
+  else console.log('  電柱：これまでどおり（引下線あり）');
+}
+
 /* ---------- 「線を引く」：実線と点線 ---------- */
 console.log('\n■ 線を引く（実線・点線）');
 {

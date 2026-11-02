@@ -12,6 +12,15 @@ const hatchLeftHalf = (cx: number, cy: number, r: number, step = 1.7): Shape[] =
   return out;
 };
 
+/** 電柱の本体：円＋左半分のハッチング */
+const poleName = {
+  key: 'poleName',
+  label: '電柱名称',
+  type: 'text' as const,
+  defaultValue: '中電柱：',
+  help: '「中電柱：」が最初から入っている（中国電力の電柱）。その後ろに電柱の名称を入力する（例: 猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱に記載されている内容をそのまま反映する',
+};
+
 /** 電柱（円＋左半分のハッチング＋引下線） */
 const pole = (id: string, abbr: string, nameJa: string, note: string): SymbolDef => ({
   id,
@@ -26,23 +35,34 @@ const pole = (id: string, abbr: string, nameJa: string, note: string): SymbolDef
     vline(16, 30, 48),
   ],
   ports: [{ id: 'out', x: 16, y: 48, dir: 'down', role: 'line' }],
-  fields: [
-    {
-      key: 'poleName',
-      label: '電柱名称',
-      type: 'text',
-      defaultValue: '中電柱：',
-      help: '「中電柱：」が最初から入っている（中国電力の電柱）。その後ろに電柱の名称を入力する（例: 猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱に記載されている内容をそのまま反映する',
-    },
-  ],
+  fields: [poleName],
   status: 'confirmed',
   statusNote: '見本図面のとおり、円の左半分を縦線でハッチングする形にしました。',
   note,
 });
 
+/**
+ * 客柱（お客様電柱）：円の左半分を塗った（ハッチングした）形だけ。引下線は無い。
+ * PAS・PGSの脇に添える印なので、つなぐ線も無い（接続点は持たない）。
+ */
+const customerPole = (): SymbolDef => ({
+  id: 'pole-customer',
+  abbr: '客柱',
+  nameJa: 'お客様電柱',
+  category: 'incoming',
+  tags: ['引込元', '電柱', '客柱'],
+  box: { w: 32, h: 32 },
+  shapes: [{ k: 'circle', cx: 16, cy: 16, r: 14 }, ...hatchLeftHalf(16, 16, 14)],
+  ports: [],
+  fields: [poleName],
+  status: 'confirmed',
+  statusNote: '円の左半分を縦線でハッチングする形だけにしました（引下線なし）。',
+  note: 'PASは電柱上に設置するため、図面上「お客様電柱」として描かれる場合がある。丸だけの印で、線はつながない。',
+});
+
 export const incomingSymbols: SymbolDef[] = [
   pole('pole-utility', '電柱', '電柱（電力会社所有）', '引込元パターンA。名称は「中電柱：猪子山（分）81」の形式。「中電柱：」は共通で、それ以降が現場ごとに異なる。'),
-  pole('pole-customer', '客柱', 'お客様電柱', 'PASは電柱上に設置するため、図面上「お客様電柱」として描かれる場合がある。'),
+  customerPole(),
   {
     /*
      * 引込元が地上キャビネットのときの記号（電柱の代わり）。
