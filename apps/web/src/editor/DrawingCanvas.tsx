@@ -196,11 +196,33 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
     };
 
+    /**
+     * Ctrl（Macでは、トラックパッドの2本指の広げ・縮めも同じ扱い）＋ホイール：
+     * ブラウザ全体ではなく、図面だけを拡大縮小する。マウスのある位置を動かさずに拡大縮小する。
+     * Ctrl を押していないホイールは、これまでどおり（画面を動かす）。
+     */
+    const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey || !latest.current.onZoom) return;
+      e.preventDefault();
+      // 行単位・ページ単位で届く環境（Firefoxなど）は、ピクセルに直す
+      const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
+      const dy = Math.max(-120, Math.min(120, e.deltaY * unit));
+      const z = latest.current.zoom;
+      const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * Math.exp(-dy * 0.002)));
+      if (Math.abs(next - z) < 0.005) return;
+      const r = sc.getBoundingClientRect();
+      anchor.current = { fx: e.clientX - r.left, fy: e.clientY - r.top, sl: sc.scrollLeft, st: sc.scrollTop, sw: sc.scrollWidth, sh: sc.scrollHeight };
+      latest.current.zoom = next;
+      latest.current.onZoom(next);
+    };
+
     sc.addEventListener('pointerdown', down, true);
     sc.addEventListener('pointermove', move, true);
     sc.addEventListener('pointerup', up, true);
     sc.addEventListener('pointercancel', up, true);
+    sc.addEventListener('wheel', wheel, { passive: false });
     return () => {
+      sc.removeEventListener('wheel', wheel);
       sc.removeEventListener('pointerdown', down, true);
       sc.removeEventListener('pointermove', move, true);
       sc.removeEventListener('pointerup', up, true);
