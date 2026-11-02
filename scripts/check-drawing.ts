@@ -2378,7 +2378,8 @@ console.log('\n■ 客柱・電柱の記号');
   else if (lowest(cust) > 30.5) fail('客柱に、丸の下へ伸びる線（引下線）が残っています');
   else if (cust.box.h > 34) fail('客柱の大きさが、丸だけになっていません');
   else if (!cust.shapes.some((sh) => sh.k === 'circle') || !cust.shapes.some((sh) => sh.k === 'line')) fail('客柱に、丸と左半分の塗りがありません');
-  else console.log('  客柱：円の左半分を塗った丸だけ（引下線・接続点なし）');
+  else if (addSymbol({ items: [] } as unknown as Doc, 'pole-customer', 0, 0).doc.items.some((i) => i.kind === 'symbol' && i.label.some((l) => l.trim() !== ''))) fail('客柱に、最初から文字（中電柱・客柱など）が入っています。基本は空白です');
+  else console.log('  客柱：円の左半分を塗った丸だけ（引下線・接続点なし）。名称は最初は空白');
   if (util.ports.length !== 1 || lowest(util) < 47.5) fail('電柱の引下線が変わっています');
   else console.log('  電柱：これまでどおり（引下線あり）');
 }
