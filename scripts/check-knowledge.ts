@@ -822,7 +822,8 @@ console.log('\n■ 編集画面で記号を足したときの文字（定格電�
     const unknown = used.filter((k) => !keys.has(k));
     if (unknown.length > 0) fail(`${d.id}：文字の雛形に、入力欄のない項目 ${unknown.join('、')} があります`);
     const blank = fillLabelLines(d, initialLabelValues(d));
-    if (blank.length === 0) fail(`${d.id}：足した直後に何も書かれません`);
+    // 客柱は、名称を基本的に空白にする決まり（「中電柱」「客柱」などの文字も付けない）
+    if (blank.length === 0 && d.id !== 'pole-customer') fail(`${d.id}：足した直後に何も書かれません`);
     if (blank.some((l) => l.includes('{'))) fail(`${d.id}：足した直後の文字に {…} が残っています`);
     if (labelFields(d).length !== used.length) fail(`${d.id}：入力欄の数が雛形と合いません`);
   }

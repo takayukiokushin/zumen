@@ -29,6 +29,7 @@ import {
   itemsInRange,
   itemBounds,
   setWireKind,
+  addSymbol,
 } from '../apps/web/src/editor/doc.ts';
 type PlacedSymbolLike = ReturnType<typeof layout>['symbols'][number];
 const portAbs = (s: PlacedSymbolLike, id: string) => {
