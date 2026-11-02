@@ -28,6 +28,7 @@ import {
   removeItems,
   itemsInRange,
   itemBounds,
+  setWireKind,
 } from '../apps/web/src/editor/doc.ts';
 type PlacedSymbolLike = ReturnType<typeof layout>['symbols'][number];
 const portAbs = (s: PlacedSymbolLike, id: string) => {
@@ -2388,6 +2389,16 @@ console.log('\n■ 線を引く（実線・点線）');
   const keptDashed = r.doc.items.some((i) => i.kind === 'wire' && i.dashed && Math.abs(i.x1 - 460) < 0.5 && Math.abs(i.y1 - 60) < 40);
   if (!keptDashed) fail('点線で引いた線が、作り直したあとに、点線のまま残っていません');
   else console.log('  点線で引いた線は、入力内容を変えて作り直しても、点線のまま残る');
+  // 引いたあとで、種類を切り替えられる
+  const addedId = added(solid)!.id;
+  const toDashed = setWireKind(solid, [addedId], true);
+  const backSolid = setWireKind(toDashed, [addedId], false);
+  const pick = (d: Doc) => d.items.find((i): i is DocWire => i.kind === 'wire' && i.id === addedId)!;
+  const others = (d: Doc) => d.items.filter((i) => i.id !== addedId).map((i) => JSON.stringify(i)).join('|');
+  if (!pick(toDashed).dashed) fail('実線の線を点線に切り替えられません');
+  else if ('dashed' in pick(backSolid)) fail('点線の線を実線に戻せません');
+  else if (others(toDashed) !== others(solid) || others(backSolid) !== others(solid)) fail('種類を切り替えたとき、ほかの要素まで変わりました');
+  else console.log('  選んだ線の実線・点線を、あとから切り替えられる（ほかの要素は変わらない）');
 }
 
 /* ---------- 図面の確認画面：範囲選択・複数選択・まとめて移動・まとめて削除 ---------- */

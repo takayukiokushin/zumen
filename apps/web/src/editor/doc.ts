@@ -968,6 +968,17 @@ export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Do
   return { doc: { ...doc, items: [...doc.items, { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start' }] }, id };
 };
 
+/** 選んだ線の種類を、実線／点線に変える（線以外は、そのまま） */
+export const setWireKind = (doc: Doc, ids: string[], dashed: boolean): Doc => ({
+  ...doc,
+  items: doc.items.map((it) => {
+    if (it.kind !== 'wire' || !ids.includes(it.id)) return it;
+    if (dashed) return { ...it, dashed: true };
+    const { dashed: _off, ...rest } = it;
+    return rest;
+  }),
+});
+
 export const setLabel = (doc: Doc, id: string, lines: string[]): Doc => ({
   ...doc,
   items: doc.items.map((it) => {

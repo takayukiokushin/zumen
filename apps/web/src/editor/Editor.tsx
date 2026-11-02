@@ -13,7 +13,7 @@ import { ISSUE_LABEL, chooseSheet, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, setWireKind, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -640,11 +640,36 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                   />
                 </>
               ) : (
-                <p className="hint">
-                  {selected.kind === 'wire'
-                    ? t('editor.wireSelected')
-                    : t('editor.frameSelected')}
-                </p>
+                <>
+                  <p className="hint">
+                    {selected.kind === 'wire'
+                      ? t('editor.wireSelected')
+                      : t('editor.frameSelected')}
+                  </p>
+                  {selected.kind === 'wire' && (
+                    <>
+                      <label className="lbl">{t('editor.lineKind')}</label>
+                      <span className="wire-kinds" role="group" aria-label={t('editor.lineKind')}>
+                        {([false, true] as const).map((dashed) => (
+                          <button
+                            key={String(dashed)}
+                            type="button"
+                            className="line-kind"
+                            aria-pressed={!!selected.dashed === dashed}
+                            disabled={sheetView}
+                            title={t(dashed ? 'editor.lineDashed' : 'editor.lineSolid')}
+                            aria-label={t(dashed ? 'editor.lineDashed' : 'editor.lineSolid')}
+                            onClick={() => apply(setWireKind(doc, [selected.id], dashed))}
+                          >
+                            <svg width="44" height="10" viewBox="0 0 44 10" aria-hidden="true">
+                              <line x1="2" y1="5" x2="42" y2="5" stroke="currentColor" strokeWidth="2" strokeDasharray={dashed ? '6 4' : undefined} />
+                            </svg>
+                          </button>
+                        ))}
+                      </span>
+                    </>
+                  )}
+                </>
               )}
             </section>
           )}
