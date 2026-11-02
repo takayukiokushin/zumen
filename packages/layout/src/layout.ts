@@ -1,5 +1,5 @@
 import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol } from '@zumen/symbols';
-import type { Port, SymbolDef } from '@zumen/symbols';
+import type { Port, RectShape, SymbolDef } from '@zumen/symbols';
 import { ROW, ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
 import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
@@ -62,6 +62,8 @@ export interface DrawingLayout {
 
 /** 主回路どうしの標準の間隔 */
 const GAP = 16;
+/** 別の記号の左に印を置くときの、記号との隙間（客柱とPAS・PGSの枠のあいだ） */
+const BESIDE_GAP = 14;
 /**
  * 高圧母線（変圧器などを並べる横線）を、その手前の機器から離す最小の距離。
  * 母線を描くとき（列が2つ以上のとき）だけ使う。OCR・試験端子・ZPDなどの分岐が手前にあっても、窮屈に見えないように
@@ -442,6 +444,20 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
           wires.push({ x1: tcX, y1: railY, x2: tcX, y2: tcY });
         }
       }
+      continue;
+    }
+
+    /* ---- 別の記号の左に、線をつながずに置く印（PAS・PGSの客柱） ---- */
+    if (item.kind === 'beside-left') {
+      const target = item.attachTo ? placed.get(item.attachTo) : undefined;
+      if (!target) continue;
+      // 相手の本体（いちばん大きい四角の枠）の、左の端と縦の真ん中にそろえる。枠が無ければ、箱の真ん中
+      const frame = target.def.shapes
+        .filter((sh): sh is RectShape => sh.k === 'rect')
+        .sort((a, b) => b.w * b.h - a.w * a.h)[0];
+      const left = target.sym.x + (frame ? frame.x : 0);
+      const centerY = target.sym.y + (frame ? frame.y + frame.h / 2 : target.def.box.h / 2);
+      add(item, def, left - BESIDE_GAP - def.box.w, centerY - def.box.h / 2, 0, 'left');
       continue;
     }
 

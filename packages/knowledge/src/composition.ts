@@ -88,7 +88,12 @@ export type PlacementKind =
    * 別の記号（attachTo）の上に重ねて描くだけの印。主回路の長さや並びは変えない。
    * 3点不一致のとき、主遮断装置（VCBまたはLBS）の中央に引く責任分界点の横線がこれ。
    */
-  | 'overlay';
+  | 'overlay'
+  /**
+   * 別の記号（attachTo）の左側に、線をつながずに、隙間を空けて置く印。主回路の長さや並びは変えない。
+   * 高さは、その記号の本体（枠）の真ん中にそろえる。PAS・PGSの左に置く客柱がこれ。
+   */
+  | 'beside-left';
 
 export interface Placement {
   role: string;
@@ -112,7 +117,7 @@ export interface Placement {
   connectFrom?: string[];
   /** 文字を記号のどちら側に書くか（既定は右） */
   labelSide?: 'left' | 'right';
-  /** kind==='overlay' のとき、重ねる先の記号のロール */
+  /** kind==='overlay'・'beside-left' のとき、重ねる（横に置く）先の記号のロール */
   attachTo?: string;
   /** つなぐ位置を答える質問のID（ZPD・LA）。答えに応じて、並びの位置を動かす */
   tapFrom?: string;
@@ -216,6 +221,16 @@ export const UPSTREAM: Placement[] = [
     // UGSのときは、キャビネットの名称を、定格の欄のすぐ上（先頭）に書く
     labelTemplate: ['{ugsCabinetLabel}', '{sectionalizerName}', '{pasRatingText}', '{pasBuiltinText}'],
     props: { ratedVoltage: 'pasRatedVoltage', ratedCurrent: 'pasRatedCurrent', control: 'pasControl' },
+  },
+  {
+    // 客柱：PAS・PGSは電柱の上に付けるので、開閉器の左に、客柱の丸を添える（UGS・区分開閉器なしでは出さない）。
+    // 線はつながない。高さは、開閉器の枠の真ん中
+    role: 'customer-pole',
+    symbolId: 'pole-customer',
+    kind: 'beside-left',
+    attachTo: 'pas',
+    when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'sectionalizer', ne: 'ugs' }] },
+    note: 'PAS・PGSの左に、客柱（円の左半分を塗った丸）を、隙間を空けて置く。UGSのときは置かない',
   },
   {
     // SOG（GR/DGR）があれば、ZCTはPASに内蔵される。無ければ入らない

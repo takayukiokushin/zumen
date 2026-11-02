@@ -2385,6 +2385,46 @@ console.log('\n■ 客柱・電柱の記号');
   else console.log('  電柱：これまでどおり（引下線あり）');
 }
 
+/* ---------- 客柱：PAS・PGSの左に、枠の縦の真ん中で、隙間を空けて置く ---------- */
+console.log('\n■ 客柱の自動配置（PAS・PGS）');
+{
+  const base: Answers = { ...answers, sourceType: 'pole', mainBreakerForm: 'cb', trCapacity: 100, transformerCount: 1, boundaryPattern: 'coincident' };
+  const gen7 = (a: Answers) => layout(buildComposition(a), a);
+  const frameOf = (symbolId: string) =>
+    getSymbolDef(symbolId).shapes
+      .filter((sh): sh is Extract<ReturnType<typeof getSymbolDef>['shapes'][number], { k: 'rect' }> => sh.k === 'rect')
+      .sort((p, q) => q.w * q.h - p.w * p.h)[0]!;
+  const cases: [string, Answers, boolean][] = [
+    ['PAS', { ...base, sectionalizer: 'pas', pasControl: 'dgr' }, true],
+    ['PAS（VT・LA内蔵）', { ...base, sectionalizer: 'pas', pasControl: 'dgr', pasBuiltinVt: 'yes', pasBuiltinLa: 'yes' }, true],
+    ['PAS（制御なし）', { ...base, sectionalizer: 'pas', pasControl: 'none' }, true],
+    ['PGS', { ...base, sectionalizer: 'pgs', pasControl: 'gr' }, true],
+    ['UGS（キャビネット）', { ...base, sourceType: 'cabinet', sectionalizer: 'ugs', pasControl: 'gr' }, false],
+    ['区分開閉器なし', { ...base, sectionalizer: 'none' }, false],
+  ];
+  for (const [name, a, want] of cases) {
+    const d = gen7(a);
+    const cps = d.symbols.filter((x) => x.symbolId === 'pole-customer');
+    const pas = d.symbols.find((x) => x.role === 'pas');
+    if (!want) {
+      if (cps.length > 0) fail(`${name}：客柱が出ています（出さない決まり）`);
+      else console.log(`  ${name}：客柱は出ない`);
+      continue;
+    }
+    if (cps.length !== 1 || !pas) { fail(`${name}：客柱が1個出ていません（${cps.length}個）`); continue; }
+    const cp = cps[0]!;
+    const fr = frameOf(pas.symbolId);
+    const gap = pas.x + fr.x - (cp.x + 30); // 丸の右の端（箱の左から30）と、枠の左の端
+    const dy = Math.abs(cp.y + 16 - (pas.y + fr.y + fr.h / 2));
+    if (gap < 8) fail(`${name}：客柱と枠の隙間が狭すぎます（${gap}）`);
+    else if (dy > 0.01) fail(`${name}：客柱が枠の縦の真ん中からずれています（${dy}）`);
+    else if (d.wires.some((w) => Math.abs(w.x1 - (cp.x + 16)) < 20 && Math.abs(w.y1 - (cp.y + 16)) < 20 && Math.abs(w.x2 - (cp.x + 16)) < 20 && Math.abs(w.y2 - (cp.y + 16)) < 20)) fail(`${name}：客柱に線がつながっています`);
+    else console.log(`  ${name}：枠の左・縦の真ん中・隙間${gap}`);
+    const issues = inspectDrawing(fromLayout(d), 'A3', 'portrait').filter((i) => i.kind !== 'paper');
+    if (issues.length > 0) fail(`${name}：図面の点検で指摘が出ます（${issues.map((i) => i.message).join(' / ')}）`);
+  }
+}
+
 /* ---------- 「線を引く」：実線と点線 ---------- */
 console.log('\n■ 線を引く（実線・点線）');
 {
