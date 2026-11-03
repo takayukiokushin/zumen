@@ -30,7 +30,7 @@ export function CompositionPreview({ answers }: { answers: Answers }) {
             <li className={item.kind}>
               <span className="kind">{t(`comp.kind.${item.kind}` as Key)}</span>
               <span>
-                <span className="name">{def?.abbr ?? item.symbolId}</span>
+                <span className="name">{def ? tx(def.abbr) : item.symbolId}</span>
                 {def && <>　{tx(def.nameJa)}</>}
                 {item.label.length > 0 && <span className="lbl">{item.label.join(' / ')}</span>}
               </span>

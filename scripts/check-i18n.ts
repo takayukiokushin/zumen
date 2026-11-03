@@ -14,8 +14,8 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { LANGS, dictionaryOf, dataOf } from '../apps/web/src/i18n/index.ts';
-import { matchTemplate } from '../apps/web/src/session/serverMessages.ts';
+import { LANGS, dictionaryOf, dataOf, setCurrentLang } from '../apps/web/src/i18n/index.ts';
+import { matchTemplate, translateReviewText, translateServerMessage } from '../apps/web/src/session/serverMessages.ts';
 import { QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import { SYMBOLS, CATEGORY_LABEL } from '../packages/symbols/src/index.ts';
 
@@ -35,7 +35,11 @@ const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!).sort
  * 訳に、その言語に無い文字（日本語）が、日本語の元の文に無い形で残っていないか。
  * 元の文からそのまま写した日本語（図面に印刷される例の「中電柱：」「猪子山（分）81」など）は、残してよい。
  */
+/** 図面に印刷される日本語の例そのもの（入力欄の例）。訳さず、そのまま出す */
+const SAME_OK = new Set(['第2変電所 / 第2電気室 / 第3キュービクル']);
+
 function wrongScript(lang: string, text: string, source: string): string | null {
+  if (text === source && SAME_OK.has(source)) return null;
   if (text === source && KANA.test(source)) return '日本語のままです（訳されていません）';
   const runs = text.match(/[\u3040-\u30ff\u4e00-\u9fff\uff00-\uffef]+/g) ?? [];
   const bad = runs.filter((r) => !source.includes(r) && !(lang === 'zh' && !KANA.test(r)));
@@ -106,6 +110,7 @@ for (const q of QUESTIONS) {
   }
 }
 for (const v of Object.values(CATEGORY_LABEL)) add(v);
+for (const d of SYMBOLS) add(d.abbr);
 for (const d of SYMBOLS) {
   add(d.nameJa);
   for (const f of d.fields ?? []) {
@@ -156,6 +161,39 @@ console.log('\n■ サーバーが返す日本語の文が、訳せるか');
     }
   }
   console.log(`  調べた文：${n}件 / 合わないもの：${miss}件`);
+}
+
+console.log('\n■ 言葉を切り替えたときの動き');
+{
+  const sample = 'そのIDはすでに使われています: abc-1。別のIDにしてください。';
+  const lock = '山田さんが編集中のため保存できません。山田さんの編集が終わるのを待つか、山田さんに連絡してください。';
+  setCurrentLang('ja');
+  if (translateServerMessage(sample) !== sample) fail('日本語のときに、サーバーの文が変わっています');
+  for (const lang of ['en', 'fr', 'zh', 'ko'] as const) {
+    setCurrentLang(lang);
+    const a = translateServerMessage(sample);
+    const b = translateServerMessage(lock);
+    const r = translateReviewText('高圧変圧器の合計容量が450kVA（301kVA以上）なので、CB形でなければなりません。');
+    const q = translateReviewText('主遮断装置の形式は？');
+    if (a === sample || !a.includes('abc-1')) fail(`${lang}：サーバーの文（ID入り）が、訳されて、IDが入っていません：${a}`);
+    if (b === lock || !b.includes('山田') || b.includes('さん')) fail(`${lang}：サーバーの文（名前入り）が、訳されていません：${b}`);
+    if (!r.includes('450')) fail(`${lang}：確認事項の文が、訳されていません：${r}`);
+    if (q === '主遮断装置の形式は？') fail(`${lang}：質問の名前が、訳されていません`);
+  }
+  setCurrentLang('ja');
+  console.log('  日本語のときは、そのまま／4言語では、訳されて、名前・数字が入る');
+}
+
+console.log('\n■ 構成の一覧の「種類」の名前');
+{
+  // 配置の種類（packages/knowledge/src/composition.ts の PlacementKind）が、すべて、辞書にある
+  const src = readFileSync('packages/knowledge/src/composition.ts', 'utf8');
+  const block = src.slice(src.indexOf('export type PlacementKind ='), src.indexOf('export interface Placement {'));
+  const kinds = [...block.matchAll(/\|\s*'([a-z-]+)'/g)].map((m) => m[1]!);
+  const lacking = kinds.filter((k) => !(`comp.kind.${k}` in ja));
+  if (kinds.length < 10) fail(`配置の種類を読み取れませんでした（${kinds.length}個）`);
+  if (lacking.length > 0) fail(`構成の一覧の「種類」の名前が、辞書にありません：${lacking.join('、')}`);
+  console.log(`  配置の種類 ${kinds.length}個：辞書に無いもの ${lacking.length}個`);
 }
 
 console.log('\n■ 画面の部品に、訳せない日本語が直接書かれていないか');

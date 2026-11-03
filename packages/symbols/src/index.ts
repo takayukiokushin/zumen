@@ -92,6 +92,8 @@ export interface SvgOptions {
   scale?: number;
   /** ポートを可視化する（カタログ・デバッグ用） */
   showPorts?: boolean;
+  /** 読み上げ用の名前（無ければ、記号の日本語の名前）。画面で選んでいる言葉に訳した名前を渡す */
+  label?: string;
 }
 
 /** 記号1つを単体のSVG文字列にする */
@@ -111,7 +113,7 @@ export function symbolToSvg(def: SymbolDef, opts: SvgOptions = {}): string {
       ].join('\n')
     : '';
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" role="img" aria-label="${def.nameJa}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" role="img" aria-label="${(opts.label ?? def.nameJa).replace(/"/g, '&quot;')}">`,
     `  <g transform="translate(${pad} ${pad})" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">`,
     shapesToSvg(def.shapes),
     ports,

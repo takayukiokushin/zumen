@@ -128,7 +128,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .chain li.series { background: var(--paper); }
 .chain li.inside { margin-left: 18px; color: var(--ink-2); }
 .chain li.branch-left, .chain li.branch-right { margin-left: 10px; color: var(--ink-2); }
-.chain .kind { flex: 0 0 auto; font-size: calc(10.5px * var(--text-scale)); color: var(--muted); width: 3.4em; }
+.chain .kind { flex: 0 0 auto; font-size: calc(10.5px * var(--text-scale)); color: var(--muted); width: 5.6em; overflow-wrap: anywhere; }
 .chain .name { font-weight: 600; }
 .chain .lbl { display: block; font-size: calc(11px * var(--text-scale)); color: var(--muted); }
 .warn { margin-top: 16px; padding: 10px 12px; background: var(--need-soft); font-size: calc(12px * var(--text-scale)); color: var(--ink-2); }

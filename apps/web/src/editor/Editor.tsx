@@ -554,9 +554,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                 <button key={s.id} type="button" title={tx(s.nameJa)} onClick={() => onPaletteClick(s.id)}>
                   <span
                     className="thumb"
-                    dangerouslySetInnerHTML={{ __html: symbolToSvg(s, { padding: 4, scale: 0.62 }) }}
+                    dangerouslySetInnerHTML={{ __html: symbolToSvg(s, { padding: 4, scale: 0.62, label: tx(s.nameJa) }) }}
                   />
-                  <span className="cap">{s.abbr}</span>
+                  <span className="cap">{tx(s.abbr)}</span>
                 </button>
               ))}
             </div>

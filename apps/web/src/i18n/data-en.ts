@@ -515,5 +515,11 @@ const data: Record<string, string> = {
   "例: 2階 / 中2階": "e.g. 2階 / 中2階 (= 2nd floor / mezzanine)",
   "例: 駐車場横": "e.g. 駐車場横 (= beside the parking lot)",
   "受電設備エリアの区分枠": "Receiving equipment area frame",
+  "客柱": "Cust. pole",
+  "財産・責任分界点": "Prop./Resp. pt",
+  "財産分界点": "Prop. pt",
+  "LBS(PF付)": "LBS (w/ PF)",
+  "地表面": "Ground level",
+  "外箱": "Enclosure",
 };
 export default data;
