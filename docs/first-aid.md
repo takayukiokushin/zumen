@@ -15,7 +15,7 @@
 | アプリのフォルダ | デスクトップの **`zumen`**（`test-mac.command` が見えるところ） |
 | APIキー | そのフォルダの **`.env`** |
 | 案件のデータ | そのフォルダの **`data/`** |
-| 記録（ログ） | そのフォルダの **`data/server.log`** |
+| 記録（ログ） | そのフォルダの **`data/server.log`**（自動起動のとき）。想定外のエラーだけを集めた記録は **`data/error.log`**（いつ・どの操作で・どんなエラーかが残る） |
 | 控え（バックアップ） | `.env` の `BACKUP_DIR` に書いた場所 |
 | 手順書（全文） | そのフォルダの `docs/server-setup.md` |
 | 置き場所（GitHub） | <https://github.com/takayukiokushin/zumen> |

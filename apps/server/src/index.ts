@@ -18,12 +18,17 @@ import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
 import { SERVER_VERSION } from './version.ts';
 import { bodyLimits, securityHeaders } from './security.ts';
+import { installProcessHandlers, logError, onUnexpectedError } from './errors.ts';
 
 /**
  * 案件の保管と解析を行うサーバー。
  * Claude APIキーはここにだけ置き、利用者の端末やブラウザには配らない。
  */
 const app = new Hono<{ Variables: { user: User } }>();
+
+// 想定外のエラーの最終的な受け皿（落ちない・分かる言葉で返す・error.log に残す）
+installProcessHandlers();
+app.onError(onUnexpectedError);
 
 app.use('*', securityHeaders);
 app.use('/api/*', bodyLimits);
@@ -166,12 +171,17 @@ serve({ fetch: app.fetch, port, ...(listenHost ? { hostname: listenHost } : {}) 
     console.warn('※ ANTHROPIC_API_KEY が設定されていないため、スケッチの読み取りは使えません。');
   }
   startAutoBackup();
-  // ごみ箱の期限切れを片づける（起動時と、1時間ごと）
-  purgeExpiredTrash();
-  setInterval(() => {
-    purgeExpiredTrash();
-    purgeOldDrafts();
-  }, 3600_000).unref();
+  // ごみ箱の期限切れと、古い下書きを片づける（起動時と、1時間ごと）。失敗しても、サーバーは止めない
+  const tidy = () => {
+    try {
+      purgeExpiredTrash();
+      purgeOldDrafts();
+    } catch (e) {
+      logError('片づけの失敗（動作は続けます）', e);
+    }
+  };
+  tidy();
+  setInterval(tidy, 3600_000).unref();
   if (!hasWeb) {
     console.warn(`※ 画面のビルドが見つかりません（${webDist}）。'pnpm build' を実行してください。`);
   }

@@ -10,11 +10,12 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import type { ChildProcess } from 'node:child_process';
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { pdfPageCount } from '../apps/server/src/analyze.ts';
 import { KEEP, dayOf, msUntilMidnight, pickToDelete, stamp } from '../apps/server/src/backup-rules.ts';
@@ -833,6 +834,42 @@ try {
     const big = 'x'.repeat(11 * 1024 * 1024);
     const r = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: 'a', password: big }) }).catch(() => null);
     check('極端に大きな通信は、読み込む前に断る', r !== null && r.status === 413, `${r?.status}`);
+  }
+
+  /* ---------- 8b. 想定外のエラーの受け皿 ---------- */
+  say('\n■ 想定外のエラーの受け皿');
+  {
+    const errDir = mkdtempSync(join(tmpdir(), 'zumen-errlog-'));
+    process.env.DATA_DIR = errDir; // この診断の中だけ、記録の置き場を、仮の場所にする（本物の data/ には触れない）
+    const { onUnexpectedError, logError, rotateIfBig, ERROR_LOG, LOG_MAX_BYTES } = await import('../apps/server/src/errors.ts');
+    check('記録の置き場が、仮の場所になっている（本物のデータに触れない）', ERROR_LOG.startsWith(errDir), ERROR_LOG);
+    // hono は、サーバー側の部品なので、サーバーのフォルダから探す
+    const req = createRequire(new URL('../apps/server/package.json', import.meta.url));
+    const load = async (name: string) => (await import(pathToFileURL(req.resolve(name)).href)) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const { Hono } = await load('hono');
+    const { HTTPException } = await load('hono/http-exception');
+    const t = new Hono();
+    t.onError(onUnexpectedError);
+    t.use('*', async (c: any, next: () => Promise<void>) => { c.set('user', { id: 'tester9' }); await next(); }); // eslint-disable-line @typescript-eslint/no-explicit-any
+    t.post('/boom', async () => { throw new Error('テスト用の想定外のエラー'); });
+    t.get('/big', () => { throw new HTTPException(413, { res: new Response(JSON.stringify({ error: '大きすぎます。' }), { status: 413 }) }); });
+    const r = await t.request('/boom', { method: 'POST', body: JSON.stringify({ password: 'ひみつの内容123', answers: { siteName: '案件の内容' } }), headers: { 'content-type': 'application/json' } });
+    check('想定外のエラーでも、落ちずに、500で返す', r.status === 500, `${r.status}`);
+    const rj = (await r.json()) as Record<string, unknown>;
+    check('英語の「Internal Server Error」ではなく、画面側が分かる言葉にできる形で返す', typeof rj === 'object' && rj.error === undefined);
+    const log = existsSync(ERROR_LOG) ? readFileSync(ERROR_LOG, 'utf8') : '';
+    check('error.log に、いつ・どの操作・どんなエラーかが残る', /\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] 想定外のエラー POST \/boom/.test(log) && log.includes('テスト用の想定外のエラー') && log.includes('tester9'));
+    check('送られてきた内容（パスワード・案件の内容）は、記録に入らない', !log.includes('ひみつの内容123') && !log.includes('案件の内容'));
+    const big = await t.request('/big');
+    check('意図して返している断り（413など）は、そのまま返す', big.status === 413 && ((await big.json()) as { error?: string }).error === '大きすぎます。');
+    // 記録が大きくなりすぎない
+    writeFileSync(ERROR_LOG, 'x'.repeat(LOG_MAX_BYTES + 10));
+    logError('試験', new Error('回転のあと'));
+    check('記録が上限を超えたら、古い記録を脇に移して、新しく始める', existsSync(`${ERROR_LOG}.1`) && statSync(ERROR_LOG).size < 5000, `${statSync(ERROR_LOG).size}バイト`);
+    rotateIfBig(join(errDir, 'none.log'));
+    check('記録ファイルが無くても、エラーにならない', true);
+    rmSync(errDir, { recursive: true, force: true });
+    delete process.env.DATA_DIR;
   }
 
   /* ---------- 9. 控え（バックアップ） ---------- */
