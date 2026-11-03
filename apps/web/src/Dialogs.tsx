@@ -54,7 +54,7 @@ let nextId = 1;
  * - そのほかのキー：後ろの画面（図面の Delete キーなど）に届かせない。窓は、元の画面を止めて使うものだから
  * - 日本語の変換を確定する Enter では、決定しない
  */
-function useDialogKeys(boxRef: React.RefObject<HTMLElement | null>, onCancel: () => void): void {
+export function useDialogKeys(boxRef: React.RefObject<HTMLElement | null>, onCancel: () => void): void {
   const cancelRef = useRef(onCancel);
   cancelRef.current = onCancel;
   useEffect(() => {

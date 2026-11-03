@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, ConnectionError, LockedError, StaleError } from './session/api.ts';
+import { api, ConnectionError, LockedError, setReauthHandler, StaleError } from './session/api.ts';
 import { saveRetry } from './session/messages.ts';
 import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
@@ -17,6 +17,7 @@ import { UserAdmin } from './projects/UserAdmin.tsx';
 import { SettingsPanel } from './settings/SettingsPanel.tsx';
 import { isNarrowScreen } from './settings/settings.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
+import { Relogin } from './session/Relogin.tsx';
 import { HelpPanel } from './help/HelpPanel.tsx';
 import { helpSeen, markHelpSeen } from './help/seen.ts';
 import { useDialogs } from './Dialogs.tsx';
@@ -35,6 +36,32 @@ export function App() {
   const { ask } = useDialogs();
   const lang = useLang();
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  /**
+   * ログインの有効期限が切れたときの「もう一度ログインする窓」。窓が出ているあいだは、done を持つ。
+   * 画面（入力した内容・図面）は、そのまま残る。ログインできたら、失敗した操作（保存など）が自動でやり直される
+   */
+  const [relogin, setRelogin] = useState<{ done: (ok: boolean) => void } | null>(null);
+  const reloginPending = useRef<Promise<boolean> | null>(null);
+  const loggedIn = user !== undefined && user !== null;
+  useEffect(() => {
+    if (!loggedIn) return;
+    setReauthHandler(() => {
+      // 窓が出ている最中に、ほかの通信も切れていたら、同じ窓の結果を待つ（窓を重ねて出さない）
+      if (reloginPending.current) return reloginPending.current;
+      const p = new Promise<boolean>((resolve) => {
+        setRelogin({
+          done: (ok) => {
+            reloginPending.current = null;
+            setRelogin(null);
+            resolve(ok);
+          },
+        });
+      });
+      reloginPending.current = p;
+      return p;
+    });
+    return () => setReauthHandler(null);
+  }, [loggedIn]);
   const [tab, setTab] = useState<Tab>('hearing');
   /** 「設備を入力して作成」のスクロール位置。別のタブへ移って戻ったときに、同じ位置へ戻すため */
   const hearingScroll = useRef(newScrollStore());
@@ -494,6 +521,7 @@ export function App() {
         </Shield>
       </div>
 
+      {relogin && user && <Relogin userId={user.id} userName={user.name} onDone={relogin.done} />}
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       {usersOpen && <UserAdmin me={user} onClose={() => setUsersOpen(false)} />}

@@ -117,7 +117,20 @@ export interface ProjectDetail {
   lock: Lock | null;
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+/**
+ * ログインの有効期限が切れたとき（401）に、画面が「もう一度ログインする窓」を出すための入口。
+ * 窓でログインし直せたら true を返す。そのときは、失敗した操作（保存など）を、自動で1回だけやり直す。
+ * ログイン画面のとき・窓を出せないときは、登録されていない（null）。
+ */
+let reauth: (() => Promise<boolean>) | null = null;
+export function setReauthHandler(fn: (() => Promise<boolean>) | null): void {
+  reauth = fn;
+}
+
+/** ログインし直しても意味がない呼び出し（ログイン・ログアウト・ログイン状態の確認） */
+const NO_REAUTH = new Set(['/api/auth/login', '/api/auth/logout', '/api/auth/me']);
+
+async function call<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
@@ -130,6 +143,10 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ConnectionError(describeFailure(null));
   }
   const json = await res.json().catch(() => ({}));
+  if (res.status === 401 && !retried && reauth && !NO_REAUTH.has(path)) {
+    // ログインの有効期限が切れた。窓でログインし直せたら、同じ操作を1回だけやり直す
+    if (await reauth()) return call<T>(path, init, true);
+  }
   if (!res.ok) {
     const { error, lock, remaining, lockMinutes, lockedSec, stale, updatedAt, updatedByName } = json as {
       error?: string;

@@ -977,3 +977,9 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .error-boundary details { font-size: calc(12px * var(--text-scale)); color: var(--muted); }
 .error-boundary summary { cursor: pointer; }
 .error-boundary pre { white-space: pre-wrap; word-break: break-all; margin: calc(8px * var(--text-scale)) 0 0; padding: calc(8px * var(--text-scale)); background: var(--alt-head, var(--panel)); border: 1px solid var(--rule-soft); font-size: calc(11px * var(--text-scale)); max-height: 240px; overflow: auto; }
+
+/* ---- ログインの有効期限が切れたときの「もう一度ログインする窓」 ---- */
+.relogin .relogin-id { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(8px * var(--text-scale)); }
+.relogin .relogin-id .lbl { color: var(--muted); font-size: calc(12px * var(--text-scale)); }
+.relogin .relogin-label { display: block; margin: calc(4px * var(--text-scale)) 0 calc(4px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
+.relogin .err { margin: calc(8px * var(--text-scale)) 0 0; }
