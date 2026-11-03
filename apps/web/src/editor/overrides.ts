@@ -1,7 +1,7 @@
 import { getSymbol } from '@zumen/symbols';
 import { rotatedBox } from '@zumen/layout';
 import { applyAnchors, baselineOf, defOf, freshId, moveItem, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
-import type { AddedItem, Doc, DocItem, DocSymbol, DocText, DocWire, Overrides, Placement, SymbolEdit } from './doc.ts';
+import type { AddedItem, Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire, FrameEdit, Overrides, Placement, SymbolEdit } from './doc.ts';
 
 /**
  * 手で直した内容を、入力内容が変わっても残す。
@@ -18,7 +18,7 @@ const EMPTY: Overrides = { moved: {}, removed: [], wiresRemoved: [], added: [] }
 
 /** 手で直した内容があるか */
 export function hasOverrides(o: Overrides | undefined): boolean {
-  return !!o && (Object.keys(o.moved).length > 0 || o.removed.length > 0 || o.wiresRemoved.length > 0 || o.added.length > 0);
+  return !!o && (Object.keys(o.moved).length > 0 || o.removed.length > 0 || o.wiresRemoved.length > 0 || o.added.length > 0 || Object.keys(o.frames ?? {}).length > 0);
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -99,7 +99,22 @@ export function collectOverrides(doc: Doc): Overrides {
       added.push({ kind: 'wire', item: it, at: placementOf(doc, it.x1, it.y1) });
     }
   }
-  return { moved, removed, wiresRemoved, added };
+  // 手で動かした・幅を変えた枠。自動で作った枠の並び順で、同じ枠を見分ける
+  const frames: Record<string, FrameEdit> = {};
+  if (base.frames) {
+    const cur = doc.items.filter((i): i is DocFrame => i.kind === 'frame');
+    base.frames.forEach((b, i) => {
+      const c = cur[i];
+      if (!c) return;
+      const e = { dx: c.x - b.x, dy: c.y - b.y, dw: c.w - b.w };
+      if (e.dx !== 0 || e.dy !== 0 || e.dw !== 0) frames[String(i)] = e;
+    });
+    // いまの入力に無い（枠の数が減った）ものの記録は、取っておく
+    for (const [k, e] of Object.entries(prev.frames ?? {})) if (!(Number(k) < base.frames.length) && !frames[k]) frames[k] = e;
+  } else if (prev.frames) {
+    Object.assign(frames, prev.frames);
+  }
+  return { moved, removed, wiresRemoved, added, ...(Object.keys(frames).length > 0 ? { frames } : {}) };
 }
 
 export interface RebuildReport {
@@ -269,6 +284,22 @@ export function rebuildWithOverrides(generated: Doc, current: Doc | null): { doc
       const b = boxOf(o);
       return a.x0 < b.x1 - 1 && a.x1 > b.x0 + 1 && a.y0 < b.y1 - 1 && a.y1 > b.y0 + 1;
     })())) overlaps++;
+  }
+
+  // 手で動かした・幅を変えた枠を、自動で作った枠の上に重ねる
+  const frameEdits = ov.frames ?? {};
+  if (Object.keys(frameEdits).length > 0) {
+    let n = -1;
+    work = {
+      ...work,
+      items: work.items.map((it): DocItem => {
+        if (it.kind !== 'frame') return it;
+        n++;
+        const e = frameEdits[String(n)];
+        if (!e) return it;
+        return { ...it, x: it.x + e.dx, y: it.y + e.dy, w: it.w + e.dw };
+      }),
+    };
   }
 
   const kept = hasOverrides(ov);

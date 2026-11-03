@@ -2456,6 +2456,53 @@ console.log('\n■ 外箱・区分枠の大きさ（端・角をつかんで変�
   else console.log('  印刷用の図にも、変えた幅で出る');
 }
 
+/* ---------- 自動で作る枠（キュービクルなどの外枠）：端をつかんで幅を変えられる ---------- */
+console.log('\n■ 自動で作る枠の幅');
+{
+  const a: Answers = { ...answers, mainBreakerForm: 'cb' };
+  const gen11 = (x: Answers, tag: string) => fromLayout(layout(buildComposition(x), x), tag);
+  const g0 = gen11(a, 'fr1');
+  const framesOf = (d: Doc) => d.items.filter((i): i is Extract<Doc['items'][number], { kind: 'frame' }> => i.kind === 'frame');
+  const f0 = framesOf(g0)[0];
+  if (!f0) fail('自動で作った図面に、枠がありません');
+  else {
+    const info = resizeInfoOf(f0)!;
+    if (!info.w2 || info.h2) fail('自動で作る枠：幅だけ変えられるはずです');
+    else console.log('  自動で作る枠：幅だけ変えられる（つかめるのは、左右の端）');
+    // 右端：左端は動かない
+    const r = framesOf(setItemRect(g0, f0.id, { x: f0.x, y: f0.y, w: f0.w + 100, h: 26 }))[0]!;
+    if (r.x !== f0.x || r.w !== f0.w + 100) fail('右端をつかんで広げたとき、左端が動きました');
+    else console.log('  右端をつかんで広げる：左端は動かない');
+    // 左端：右端は動かない
+    const l = framesOf(setItemRect(g0, f0.id, { x: f0.x - 60, y: f0.y, w: f0.w + 60, h: 26 }))[0]!;
+    if (l.x + l.w !== f0.x + f0.w) fail('左端をつかんで広げたとき、右端が動きました');
+    else console.log('  左端をつかんで広げる：右端は動かない');
+    const tiny = framesOf(setItemRect(g0, f0.id, { x: f0.x, y: f0.y, w: 1, h: 26 }))[0]!;
+    const huge = framesOf(setItemRect(g0, f0.id, { x: f0.x, y: f0.y, w: 99999, h: 26 }))[0]!;
+    if (tiny.w !== 60 || huge.w !== 1200) fail(`枠の幅が、範囲に収まりません（${tiny.w}／${huge.w}）`);
+    else console.log('  枠の幅は 60〜1200 に収まる');
+    // 手で広げた幅と、動かした位置は、入力内容が変わって図面を作り直しても、残る
+    const edited: Doc = { ...setItemRect(moveItem(g0, f0.id, 0, 12), f0.id, { x: f0.x - 50, y: f0.y + 12, w: f0.w + 150, h: 26 }), edited: true };
+    const g1 = gen11({ ...a, transformerCount: 2 }, 'fr2');
+    const g1f = framesOf(g1)[0]!;
+    const rb = framesOf(rebuildWithOverrides(g1, edited).doc)[0]!;
+    if (rb.w !== g1f.w + 150 || rb.x !== g1f.x - 50 || rb.y !== g1f.y + 12) fail(`手で変えた枠が、作り直したあとに残っていません（幅 ${rb.w}／期待 ${g1f.w + 150}、x ${rb.x}／期待 ${g1f.x - 50}、y ${rb.y}／期待 ${g1f.y + 12}）`);
+    else console.log('  手で変えた枠の幅・位置は、入力内容を変えて図面を作り直しても、残る');
+    // 手を入れていない枠は、作り直すと自動のとおり（記録を持たない）
+    const untouched = rebuildWithOverrides(g1, { ...g0, edited: true });
+    if (untouched.doc.overrides?.frames) fail('枠に手を入れていないのに、枠の記録が残っています');
+    else console.log('  手を入れていない枠は、記録を持たない');
+    // 印刷・PDFの図にも、広げた幅で出る
+    const t11 = { site: '確認', name: '確認' } as never;
+    const svgOut = buildSheetSvg(setItemRect(g0, f0.id, { x: f0.x, y: f0.y, w: f0.w + 80, h: 26 }), t11);
+    const svgBase = buildSheetSvg(g0, t11);
+    const pathOf = (svg: string) => svg.match(/<path d="M (-?[\d.]+) (-?[\d.]+) L (-?[\d.]+) (-?[\d.]+) M /);
+    const mOut = pathOf(svgOut);
+    if (svgOut === svgBase || !mOut || Math.abs(Number(mOut[3]) - (f0.x + f0.w + 80)) > 0.6) fail(`印刷用の図に、広げた枠の右端（${f0.x + f0.w + 80}）が出ていません（${mOut?.[3]}）`);
+    else console.log('  印刷用の図にも、広げた幅で出る');
+  }
+}
+
 /* ---------- PGS：開閉器・遮断器の分類にある。形はPASと同じ ---------- */
 console.log('\n■ PGS（編集画面の記号）');
 {

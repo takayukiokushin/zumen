@@ -105,6 +105,8 @@ export interface Baseline {
   /** 自動で作った線・文字の id。これに無いものは、手で足したもの */
   wireIds: string[];
   textIds: string[];
+  /** 自動で作った枠（キュービクルなどの外枠）の、位置と幅。並び順で、同じ枠を見分ける */
+  frames?: { x: number; y: number; w: number }[];
 }
 
 /** 手で直した記号の、自動の位置・状態からの違い */
@@ -119,6 +121,13 @@ export interface SymbolEdit {
   label?: string[];
   values?: Record<string, string>;
   symbolId?: string;
+}
+
+/** 手で直した枠の、自動の位置・幅からの違い */
+export interface FrameEdit {
+  dx: number;
+  dy: number;
+  dw: number;
 }
 
 /** 手で足したものを置く場所。近くの機器（near）からのずれで覚えるので、機器が動いても、ついていく */
@@ -144,6 +153,8 @@ export interface Overrides {
   /** 手で消した線（wireKey） */
   wiresRemoved: string[];
   added: AddedItem[];
+  /** 手で動かした・幅を変えた枠（自動で作った枠の並び順 → 違い）。無い（古い記録）ときは、無し */
+  frames?: Record<string, FrameEdit>;
 }
 
 /**
@@ -185,7 +196,8 @@ export function baselineOf(doc: Doc): Baseline {
       textIds.push(it.id);
     }
   }
-  return { symbols, wires, wireIds, textIds };
+  const frames = doc.items.filter((i): i is DocFrame => i.kind === 'frame').map((f) => ({ x: f.x, y: f.y, w: f.w }));
+  return { symbols, wires, wireIds, textIds, frames };
 }
 
 /** 新しい要素の id（保存してある id とぶつからないように、読み込んだ図面の分は避ける） */
@@ -980,6 +992,10 @@ export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Do
   return { doc: { ...doc, items: [...doc.items, { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start' }] }, id };
 };
 
+/** 自動で作る枠（「コ」の字）の、両端の縦線の長さと、幅を変えられる範囲 */
+export const FRAME_H = 26;
+export const FRAME_W_RANGE: SizeRange = { min: 60, max: 1200, step: 10 };
+
 /** 図面の上で、端や角をつかんで大きさを変えられる要素の、いまの範囲と、変えられる向き・範囲 */
 export interface ResizeInfo {
   x: number;
@@ -996,6 +1012,8 @@ export interface ResizeInfo {
  * 記号は、回していない（0°）ものだけ。回していると、つかむ向きが分かりにくいので、変えられない
  */
 export function resizeInfoOf(it: DocItem): ResizeInfo | null {
+  // 自動で作った枠（「コ」の字）：幅だけ、左右の端をつかんで変えられる（外箱と同じ）
+  if (it.kind === 'frame') return { x: it.x, y: it.y, w: it.w, h: FRAME_H, w2: FRAME_W_RANGE, h2: null };
   if (it.kind !== 'symbol') return null;
   const def = getSymbol(it.symbolId);
   if (!def.resizable || (it.rotate % 360) !== 0) return null;
@@ -1010,6 +1028,10 @@ export function resizeInfoOf(it: DocItem): ResizeInfo | null {
 export const setItemRect = (doc: Doc, id: string, rect: { x: number; y: number; w: number; h: number }): Doc => ({
   ...doc,
   items: doc.items.map((it) => {
+    if (it.kind === 'frame' && it.id === id) {
+      const r = FRAME_W_RANGE;
+      return { ...it, x: rect.x, w: Math.max(r.min, Math.min(r.max, rect.w)) };
+    }
     if (it.kind !== 'symbol' || it.id !== id) return it;
     const info = resizeInfoOf(it);
     if (!info) return it;
