@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { readBody, text } from './input.ts';
 import {
   adminCount,
   currentTokenKey,
@@ -27,16 +28,11 @@ const ID_PATTERN = /^[A-Za-z0-9._@-]{2,64}$/;
 admin.get('/users', (c) => c.json({ users: listUsers() }));
 
 admin.post('/users', async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as {
-    id?: string;
-    name?: string;
-    password?: string;
-    role?: string;
-  };
-  const id = (body.id ?? '').trim();
-  const name = (body.name ?? '').trim();
-  const password = body.password ?? '';
-  const role = (body.role ?? 'member') as Role;
+  const body = await readBody(c);
+  const id = text(body.id).trim();
+  const name = text(body.name).trim();
+  const password = text(body.password);
+  const role = (text(body.role) || 'member') as Role;
 
   if (!ID_PATTERN.test(id)) {
     return c.json({ error: 'IDは半角の英数字と . _ - @ で、2〜64文字にしてください。' }, 400);
@@ -55,11 +51,11 @@ admin.post('/users', async (c) => {
 
 admin.put('/users/:id/password', async (c) => {
   const id = c.req.param('id');
-  const { password } = (await c.req.json().catch(() => ({}))) as { password?: string };
-  const weak = checkPassword(password ?? '', id);
+  const password = text((await readBody(c)).password);
+  const weak = checkPassword(password, id);
   if (weak) return c.json({ error: weak }, 400);
   // 自分のパスワードを変えたときは、いまの画面のログインは残す（ほかの端末のログインは切れる）
-  if (!setPassword(id, password!, id === c.get('user').id ? currentTokenKey(c) : null)) return c.json({ error: `利用者が見つかりません: ${id}。すでに消されたかもしれません。一覧を開き直して確かめてください。` }, 404);
+  if (!setPassword(id, password, id === c.get('user').id ? currentTokenKey(c) : null)) return c.json({ error: `利用者が見つかりません: ${id}。すでに消されたかもしれません。一覧を開き直して確かめてください。` }, 404);
   // パスワードを変えたら、止まっていたログインも解除する（駆け込みの逃げ道）
   unlockUser(id);
   return c.json({ ok: true });

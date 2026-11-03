@@ -836,6 +836,45 @@ try {
     check('極端に大きな通信は、読み込む前に断る', r !== null && r.status === 413, `${r?.status}`);
   }
 
+  /* ---------- 8a. 想定外の形の入力（数字・配列・空など）でも、エラーにしない ---------- */
+  say('\n■ 想定外の形の入力');
+  {
+    const odd = [5, true, [1], { a: 1 }];
+    const status = async (who: string, path: string, init: RequestInit) => (await call(who, path, init)).status;
+    const bad500 = (code: number) => code >= 500;
+    let wrong = 0;
+    for (const w of odd) {
+      const bodies: [string, string, RequestInit][] = [
+        ['ログイン', '/api/auth/login', { method: 'POST', body: JSON.stringify({ userId: w, password: w }) }],
+        ['ログイン（IDだけ）', '/api/auth/login', { method: 'POST', body: JSON.stringify({ userId: w, password: 'abc' }) }],
+        ['ログイン（パスワードだけ）', '/api/auth/login', { method: 'POST', body: JSON.stringify({ userId: 'tester1', password: w }) }],
+        ['案件を作る', '/api/projects', { method: 'POST', body: JSON.stringify({ name: w, answers: w }) }],
+        ['利用者を足す', '/api/admin/users', { method: 'POST', body: JSON.stringify({ id: w, name: w, password: w, role: w }) }],
+        ['パスワードを変える', '/api/admin/users/tester1/password', { method: 'PUT', body: JSON.stringify({ password: w }) }],
+      ];
+      for (const [label, path, init] of bodies) {
+        const who = path.startsWith('/api/admin') ? kanri : path.startsWith('/api/auth') ? '' : a;
+        if (bad500(await status(who, path, init))) wrong++, ng(`想定外の入力でエラーになる：${label}（${JSON.stringify(w)}）`, '');
+      }
+    }
+    const mk = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '入力の試験' }) })).json()) as { id: string };
+    for (const w of odd) {
+      const r = await status(a, `/api/projects/${mk.id}/files`, { method: 'POST', body: JSON.stringify({ fileName: 'x', mediaType: 'image/png', data: w }) });
+      if (r !== 400) wrong++, ng(`写真のデータが文字ではないとき、400で断る（${JSON.stringify(w)}）`, `${r}`);
+    }
+    for (const raw of ['null', '[]', '"x"', '123']) {
+      for (const [path, init] of [
+        ['/api/auth/login', { method: 'POST', body: raw }],
+        ['/api/projects', { method: 'POST', body: raw }],
+      ] as [string, RequestInit][]) {
+        if (bad500(await status(path.startsWith('/api/auth') ? '' : a, path, init))) wrong++, ng(`想定外の本文でエラーになる：${path}（${raw}）`, '');
+      }
+    }
+    if (wrong === 0) check('数字・配列・空などが届いても、エラー（500）にならない', true);
+    const lg = await call('', '/api/auth/login', { method: 'POST', body: JSON.stringify({ userId: 123, password: 456 }) });
+    check('ログインの欄が文字ではないときは、「入力してください」と返す', lg.status === 400 && ((await lg.json()) as { error?: string }).error?.includes('入力') === true, `${lg.status}`);
+  }
+
   /* ---------- 8b. 想定外のエラーの受け皿 ---------- */
   say('\n■ 想定外のエラーの受け皿');
   {

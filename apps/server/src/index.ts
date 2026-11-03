@@ -19,6 +19,7 @@ import type { Answers } from '@zumen/knowledge';
 import { SERVER_VERSION } from './version.ts';
 import { bodyLimits, securityHeaders } from './security.ts';
 import { installProcessHandlers, logError, onUnexpectedError } from './errors.ts';
+import { readBody, text } from './input.ts';
 
 /**
  * 案件の保管と解析を行うサーバー。
@@ -45,10 +46,10 @@ app.get('/api/health', (c) =>
 /* ---------------- ログイン ---------------- */
 
 app.post('/api/auth/login', async (c) => {
-  const { userId, password } = (await c.req.json().catch(() => ({}))) as {
-    userId?: string;
-    password?: string;
-  };
+  const body = await readBody(c);
+  // 文字以外（数字・配列など）が届いても、エラーにせず、「入力してください」と返す
+  const userId = text(body.userId);
+  const password = text(body.password);
   if (!userId || !password) return c.json({ error: 'IDとパスワードを入力してください。' }, 400);
   const r = login(c, userId, password);
   if (!r.ok && r.reason === 'locked') {

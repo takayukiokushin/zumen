@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from '
 import { resolve } from 'node:path';
 import { Hono } from 'hono';
 import { FILES_DIR, db, now } from './db.ts';
+import { readBody, text } from './input.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
@@ -282,7 +283,7 @@ projects.get('/practice/sources', (c) => {
 projects.post('/practice/copy', async (c) => {
   const user = c.get('user');
   if (user.role !== 'sandbox') return c.json({ error: PRACTICE_ONLY }, 403);
-  const { sourceId } = (await c.req.json().catch(() => ({}))) as { sourceId?: string };
+  const sourceId = text((await readBody(c)).sourceId);
   const src = sourceId
     ? (db.prepare(`SELECT p.* FROM projects p WHERE p.id = ? AND ${PRODUCTION_WHERE}`).get(sourceId) as
         | (ProjectRow & { answers: string; drawing: string | null })
@@ -387,14 +388,16 @@ projects.post('/:id/restore', (c) => {
 });
 
 projects.post('/', async (c) => {
-  const { name, answers } = (await c.req.json().catch(() => ({}))) as { name?: string; answers?: unknown };
+  const body = await readBody(c);
+  const name = text(body.name);
+  const answers = body.answers;
   const id = newId();
   const t = now();
   // 最初から入れておく回答（図面の名称を事業場名称の初期値にするなど）。オブジェクト以外は無視する
   const initial = answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
   db.prepare(
     'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, owner) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, (name ?? '').trim() || '無題の案件', t, t, c.get('user').id, JSON.stringify(initial), c.get('user').id);
+  ).run(id, name.trim() || '無題の案件', t, t, c.get('user').id, JSON.stringify(initial), c.get('user').id);
   takeLock(id, c.get('user').id);
   return c.json({ id, updatedAt: t }, 201);
 });
@@ -601,7 +604,7 @@ projects.post('/:id/files', async (c) => {
   const body = (await c.req.json().catch(() => null)) as
     | { fileName?: string; mediaType?: string; data?: string }
     | null;
-  if (!body?.data || !body.mediaType) return c.json({ error: '画像が選ばれていません。画像を選んでから、もう一度お試しください。' }, 400);
+  if (typeof body?.data !== 'string' || typeof body.mediaType !== 'string' || !body.data || !body.mediaType) return c.json({ error: '画像が選ばれていません。画像を選んでから、もう一度お試しください。' }, 400);
   if (!isPhotoType(body.mediaType)) {
     return c.json({ error: `この種類のファイルは追加できません（${String(body.mediaType).slice(0, 40)}）。JPEG・PNG などの写真、または PDF を選んでください。` }, 400);
   }
