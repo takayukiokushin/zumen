@@ -2245,6 +2245,39 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
   }
 }
 
+/* ---------- 30c. 太陽光：PCSの枠ごとに、真下にPVの図記号を1つ ---------- */
+console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
+{
+  for (const [name, extra] of [
+    ['PCS 4台を2つの変圧器に（2枠）', { pcsCount: '4', pcsToTr1: 2, pcsToTr2: 2 }],
+    ['PCS 1台（1枠）', { pcsCount: '1', pcsToTr1: 1, pcsToTr2: 0 }],
+    ['PCS 10台を1つの変圧器に（1枠）', { pcsCount: '10', pcsToTr1: 10, pcsToTr2: 0 }],
+  ] as const) {
+    const a: Answers = { ...answers, transformerCount: 3, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, hasGenerator: 'no', hasCapacitor: 'no', ...extra };
+    const d = fromLayout(layout(buildComposition(a), a));
+    const syms = d.items.filter((it): it is DocSymbol => it.kind === 'symbol');
+    const wiresAll = d.items.filter((it): it is DocWire => it.kind === 'wire');
+    const pcs = syms.filter((x) => x.symbolId === 'pcs');
+    const pv = syms.filter((x) => x.symbolId === 'pv');
+    const problems: string[] = [];
+    if (pcs.length === 0) problems.push('PCSが描かれていません（試験の前提が違います）');
+    if (pv.length !== pcs.length) problems.push(`PCSの枠 ${pcs.length}つに対して、PVが ${pv.length}個です`);
+    for (const p of pcs) {
+      const below = pv.filter((v) => Math.abs((v.x + 28) - (p.x + 28)) < 0.5 && v.y > p.y);
+      if (below.length !== 1) { problems.push(`${p.id} の真下のPVが ${below.length}個です`); continue; }
+      const v = below[0]!;
+      // PCSの出口から、PVの入口まで、縦の線でつながっている
+      const linked = wiresAll.some((w) => w.x1 === w.x2 && Math.abs(w.x1 - (p.x + 28)) < 0.5 && Math.abs(Math.min(w.y1, w.y2) - (p.y + 38)) < 0.5 && Math.abs(Math.max(w.y1, w.y2) - v.y) < 0.5);
+      if (!linked) problems.push(`${p.id} と ${v.id} が、線でつながっていません`);
+      if (v.label.join('|') !== 'PV') problems.push(`PVの文字が違います（${v.label.join('|')}）`);
+    }
+    const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
+    if (issues.length) problems.push(`図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);
+    if (problems.length) fail(`${name}：${problems.join('、')}`);
+    else console.log(`  ${name}：PCS ${pcs.length}枠に、真下のPVが1つずつ（線でつながる）`);
+  }
+}
+
 /* ---------- 31. キュービクルの外枠も動かせる ---------- */
 console.log('\n■ 外枠（キュービクルの枠）を動かす');
 {

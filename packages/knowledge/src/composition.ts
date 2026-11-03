@@ -792,15 +792,28 @@ export const TRANSFORMER: Placement[] = [
  * 変圧器ごとに1つの枠にまとめて（例「50kW×2台 / 5kW×1台」）ぶら下げる。
  * 低圧開閉器（MCCB）の記号は、いまのところ描かない。
  */
-export const FEEDERS: Placement[] = Array.from({ length: 8 }, (_, t) => ({
-  role: `pcs-tr${t + 1}`,
-  symbolId: 'pcs',
-  kind: 'feeder' as const,
-  when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }] },
-  labelTemplate: [`{pcsAtTr${t + 1}}`],
-  props: { transformer: `pcsTrNo${t + 1}` },
-  laneBase: 200 + t,
-}));
+export const FEEDERS: Placement[] = Array.from({ length: 8 }, (_, t): Placement[] => [
+  {
+    role: `pcs-tr${t + 1}`,
+    symbolId: 'pcs',
+    kind: 'feeder' as const,
+    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }] },
+    labelTemplate: [`{pcsAtTr${t + 1}}`],
+    props: { transformer: `pcsTrNo${t + 1}` },
+    laneBase: 200 + t,
+  },
+  {
+    // PCSの枠の真下に、太陽電池パネル（PV）の図記号を1つだけ、線でつないで置く。PCSの台数に関わらず、枠ごとに1つ
+    // （PCSの項目のすぐ後ろに並べるので、同じ列の2つ目として、PCSの下に入る）
+    role: `pv-tr${t + 1}`,
+    symbolId: 'pv',
+    kind: 'feeder' as const,
+    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }] },
+    labelTemplate: ['PV'],
+    props: { transformer: `pcsTrNo${t + 1}` },
+    laneBase: 200 + t,
+  },
+]).flat();
 
 /** 高圧進相設備・特殊設備 */
 export const EXTRAS: Placement[] = [
