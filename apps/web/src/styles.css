@@ -77,7 +77,9 @@ html[data-zoom="standard"] #root { height: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
 
 .app { display: grid; grid-template-columns: 220px 1fr 300px; height: 100%; }
-@media (max-width: 900px) { .app { grid-template-columns: 1fr; height: auto; } .nav, .preview { position: static; height: auto; } }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 900px 以下のとき（html の data-uw に 900 が入る） */
+ :where(html[data-uw~="900"]) .app { grid-template-columns: 1fr; height: auto; } :where(html[data-uw~="900"]) .nav, :where(html[data-uw~="900"]) .preview { position: static; height: auto; } 
+
 
 /* ---- 左：目次 ---- */
 .nav { border-right: 1px solid var(--rule); padding: 20px 0; overflow-y: auto; background: var(--panel); }
@@ -169,7 +171,9 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .tools .zoom { font-size: calc(12px * var(--text-scale)); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 3.4em; text-align: center; }
 
 .editor-body { display: grid; grid-template-columns: 1fr 280px; flex: 1; min-height: 0; }
-@media (max-width: 900px) { .editor-body { grid-template-columns: 1fr; } }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 900px 以下のとき（html の data-uw に 900 が入る） */
+ :where(html[data-uw~="900"]) .editor-body { grid-template-columns: 1fr; } 
+
 .canvas-wrap { overflow: auto; background: var(--paper); padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
 .canvas { background: #fff; border: 1px solid var(--rule); width: auto; max-width: none; flex: 0 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
 .canvas .item { cursor: move; }
@@ -494,24 +498,24 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 .tabbar > * { flex: 0 0 auto; }
 
 /* 狭い画面（スマートフォン）：4つのタブは1段目に等分、右側は2段目 */
-@media (max-width: 700px) {
-  .tabbar > button, .tabbar > .tab-wrap { flex: 1 1 0; min-width: 0; }
-  .tabbar .tab-wrap button { width: 100%; }
-  .tabbar > button, .tabbar .tab-wrap button { min-width: 0; padding-left: 4px; padding-right: 4px; white-space: normal; line-height: 1.3; }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .tabbar > button, :where(html[data-uw~="700"]) .tabbar > .tab-wrap { flex: 1 1 0; min-width: 0; }
+  :where(html[data-uw~="700"]) .tabbar .tab-wrap button { width: 100%; }
+  :where(html[data-uw~="700"]) .tabbar > button, :where(html[data-uw~="700"]) .tabbar .tab-wrap button { min-width: 0; padding-left: 4px; padding-right: 4px; white-space: normal; line-height: 1.3; }
   /* 右側（使い方・設定・利用者の管理・氏名・ログアウト）は、2段目に、全部を1行で並べる（3段目に、ログアウトだけ回さない）。
      ボタンの余白を詰め、氏名は、足りなければ「…」で省く。幅が足りないほど大きい設定のときだけ、折り返す */
-  .tabbar > .tabbar-right { flex: 1 1 100%; margin-left: 0; justify-content: space-between; gap: calc(2px * var(--text-scale)); }
-  .tabbar-right > button { min-width: 0; padding-left: calc(7px * var(--ctl-scale)); padding-right: calc(7px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); white-space: nowrap; }
-  .tabbar-right > button.icon-btn { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(10.5px * var(--ctl-scale)); }
-  .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
-  .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-}
+  :where(html[data-uw~="700"]) .tabbar > .tabbar-right { flex: 1 1 100%; margin-left: 0; justify-content: space-between; gap: calc(2px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .tabbar-right > button { min-width: 0; padding-left: calc(7px * var(--ctl-scale)); padding-right: calc(7px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); white-space: nowrap; }
+  :where(html[data-uw~="700"]) .tabbar-right > button.icon-btn { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(10.5px * var(--ctl-scale)); }
+  :where(html[data-uw~="700"]) .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+  :where(html[data-uw~="700"]) .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* さらに狭い画面（幅400以下。小さめのスマホ）：文字と余白を、もう少し詰める */
-@media (max-width: 400px) {
-  .tabbar-right > button { padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
-  .tabbar-right > button.icon-btn { padding-left: calc(3px * var(--ctl-scale)); padding-right: calc(3px * var(--ctl-scale)); font-size: calc(10px * var(--ctl-scale)); }
-  .tabbar .who { font-size: calc(11px * var(--text-scale)); }
-}
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 400px 以下のとき（html の data-uw に 400 が入る） */
+  :where(html[data-uw~="400"]) .tabbar-right > button { padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
+  :where(html[data-uw~="400"]) .tabbar-right > button.icon-btn { padding-left: calc(3px * var(--ctl-scale)); padding-right: calc(3px * var(--ctl-scale)); font-size: calc(10px * var(--ctl-scale)); }
+  :where(html[data-uw~="400"]) .tabbar .who { font-size: calc(11px * var(--text-scale)); }
+
 
 /* ㉘ タブにしばらくカーソルを置くと出る説明 */
 .tab-wrap { position: relative; display: inline-flex; }
@@ -676,35 +680,35 @@ button.with-icon svg { flex: 0 0 auto; }
 .joblist .jobs .c-del { width: calc(76px * var(--text-scale)); text-align: right; white-space: nowrap; }
 .joblist .jobs .c-del .btn { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
 /* 狭い画面（スマートフォン）では、表をやめて、1つの案件を1枚のカードにする（名前・日時・ボタンを縦に並べる） */
-@media (max-width: 640px) {
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 640px 以下のとき（html の data-uw に 640 が入る） */
   /* 検索欄は1段目いっぱいに、件数と「案件を追加」は2段目に */
-  .joblist .search-row { flex-wrap: wrap; }
-  .joblist .search-row input { flex: 1 1 100%; }
-  .joblist .search-row .count { flex: 1 1 auto; }
-  .joblist .search-row .btn.primary { white-space: nowrap; }
-  .analyze.joblist { padding: calc(12px * var(--text-scale)) calc(10px * var(--text-scale)) 60px; }
-  .joblist .panel { padding: calc(14px * var(--text-scale)); }
-  .joblist table.jobs, .joblist .jobs tbody { display: block; }
-  .joblist .jobs thead { display: none; }
-  .joblist .jobs tr { display: grid; gap: calc(6px * var(--text-scale)); padding: calc(12px * var(--text-scale)); margin: 0 0 calc(12px * var(--text-scale));
+  :where(html[data-uw~="640"]) .joblist .search-row { flex-wrap: wrap; }
+  :where(html[data-uw~="640"]) .joblist .search-row input { flex: 1 1 100%; }
+  :where(html[data-uw~="640"]) .joblist .search-row .count { flex: 1 1 auto; }
+  :where(html[data-uw~="640"]) .joblist .search-row .btn.primary { white-space: nowrap; }
+  :where(html[data-uw~="640"]) .analyze.joblist { padding: calc(12px * var(--text-scale)) calc(10px * var(--text-scale)) 60px; }
+  :where(html[data-uw~="640"]) .joblist .panel { padding: calc(14px * var(--text-scale)); }
+  :where(html[data-uw~="640"]) .joblist table.jobs, :where(html[data-uw~="640"]) .joblist .jobs tbody { display: block; }
+  :where(html[data-uw~="640"]) .joblist .jobs thead { display: none; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr { display: grid; gap: calc(6px * var(--text-scale)); padding: calc(12px * var(--text-scale)); margin: 0 0 calc(12px * var(--text-scale));
     border: 1px solid var(--rule); border-radius: 3px; background: var(--field); }
-  .joblist .jobs tr.current { background: var(--accent-soft); border-color: var(--accent); }
-  .joblist .jobs td { display: block; padding: 0; border: 0; }
-  .joblist .jobs td.when { white-space: normal; }
-  .joblist .jobs td[data-label]::before { content: attr(data-label) "："; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.current { background: var(--accent-soft); border-color: var(--accent); }
+  :where(html[data-uw~="640"]) .joblist .jobs td { display: block; padding: 0; border: 0; }
+  :where(html[data-uw~="640"]) .joblist .jobs td.when { white-space: normal; }
+  :where(html[data-uw~="640"]) .joblist .jobs td[data-label]::before { content: attr(data-label) "："; }
   /* カード：1行目は名前、次に日時、最後に、ボタン（左に「開く」、右に「消す」）。「開く」と「消す」は、横いっぱいに離れる */
-  .joblist .jobs tr { grid-template-columns: 1fr auto; align-items: center; }
-  .joblist .jobs .c-name { grid-column: 1 / -1; order: 1; }
-  .joblist .jobs .c-info { grid-column: 1 / -1; order: 2; }
-  .joblist .jobs .c-act { grid-column: 1 / -1; order: 3; width: auto; margin-top: calc(6px * var(--text-scale)); }
-  .joblist .jobs tr.has-del .c-act { grid-column: 1; }
-  .joblist .jobs .c-del { order: 4; grid-column: 2; width: auto; margin-top: calc(6px * var(--text-scale)); }
-  .joblist .jobs .c-dup { order: 5; grid-column: 1 / -1; width: auto; text-align: left; margin-top: calc(6px * var(--text-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr { grid-template-columns: 1fr auto; align-items: center; }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-name { grid-column: 1 / -1; order: 1; }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-info { grid-column: 1 / -1; order: 2; }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-act { grid-column: 1 / -1; order: 3; width: auto; margin-top: calc(6px * var(--text-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act { grid-column: 1; }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-del { order: 4; grid-column: 2; width: auto; margin-top: calc(6px * var(--text-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-dup { order: 5; grid-column: 1 / -1; width: auto; text-align: left; margin-top: calc(6px * var(--text-scale)); }
   /* 「開く」は左に、「消す」は右端に。間を広くあけて、押し間違いを防ぐ */
-  .joblist .jobs .c-act { justify-self: start; }
-  .joblist .jobs .c-act .btn { width: auto; min-width: calc(128px * var(--ctl-scale)); }
-  .joblist .jobs .c-del { justify-self: end; }
-}
+  :where(html[data-uw~="640"]) .joblist .jobs .c-act { justify-self: start; }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-act .btn { width: auto; min-width: calc(128px * var(--ctl-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-del { justify-self: end; }
+
 
 /* 受電設備エリアが2か所以上のとき：エリアごとの大きなまとまり */
 .area-block { border: 2px solid var(--accent); border-radius: 4px; padding: 0 calc(14px * var(--text-scale)) calc(14px * var(--text-scale)); margin: calc(18px * var(--text-scale)) 0; background: var(--field); }
@@ -725,53 +729,53 @@ button.with-icon svg { flex: 0 0 auto; }
 .dialog-input-row input { flex: 1 1 auto; min-width: 0; }
 
 /* ---- スマートフォン（幅の狭い画面）：設備を入力する画面は、1列にする ---- */
-@media (max-width: 700px) {
-  .app, .app.no-nav, .app.no-preview, .app.no-nav.no-preview { display: flex; flex-direction: column; overflow-y: auto; }
-  .app > .form { overflow: visible; flex: none; padding: calc(14px * var(--text-scale)) calc(12px * var(--text-scale)) 80px; }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .app, :where(html[data-uw~="700"]) .app.no-nav, :where(html[data-uw~="700"]) .app.no-preview, :where(html[data-uw~="700"]) .app.no-nav.no-preview { display: flex; flex-direction: column; overflow-y: auto; }
+  :where(html[data-uw~="700"]) .app > .form { overflow: visible; flex: none; padding: calc(14px * var(--text-scale)) calc(12px * var(--text-scale)) 80px; }
   /* スマホでは、「目次を出す」「いまの構成を出す」のボタンと、目次・いまの構成の欄は、出さない（入力欄だけを、広く使う）。
      パソコン版は、これまでどおり。幅をまたいで広げ縮めしたときも、欄だけが残らないよう、欄ごと隠す */
-  .panel-bar, .app > .nav, .app > .preview { display: none; }
-}
+  :where(html[data-uw~="700"]) .panel-bar, :where(html[data-uw~="700"]) .app > .nav, :where(html[data-uw~="700"]) .app > .preview { display: none; }
+
 
 /* ---- 図面の画面：スマートフォン（幅の狭い画面）では、よく使うボタンだけ表に出し、ほかはしまう ---- */
 /* 広い画面（パソコン・タブレット）：しまう仕組みは使わない。ボタンは、これまでどおり全部並ぶ */
 .tools-toggle, .side-close { display: none; }
-@media (max-width: 700px) {
-  .tools-toggle { display: inline-flex; align-items: center; justify-content: center; }
-  .tools .sep { display: none; }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .tools-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  :where(html[data-uw~="700"]) .tools .sep { display: none; }
   /* スマホ：グループの見出しは出さず、「sec」のついたものは、「ほかの操作」を開くまでしまう */
-  .tool-group, .tool-row { display: contents; }
-  .tool-group > .cap { display: none; }
-  .editor-bar:not(.more-open) .sec { display: none; }
-  .editor { overflow-y: auto; }
-  .editor-body { display: flex; flex-direction: column; flex: 1 0 auto; }
-  .canvas-wrap { flex: 1 1 auto; min-height: max(320px, 50vh); padding: calc(10px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .tool-group, :where(html[data-uw~="700"]) .tool-row { display: contents; }
+  :where(html[data-uw~="700"]) .tool-group > .cap { display: none; }
+  :where(html[data-uw~="700"]) .editor-bar:not(.more-open) .sec { display: none; }
+  :where(html[data-uw~="700"]) .editor { overflow-y: auto; }
+  :where(html[data-uw~="700"]) .editor-body { display: flex; flex-direction: column; flex: 1 0 auto; }
+  :where(html[data-uw~="700"]) .canvas-wrap { flex: 1 1 auto; min-height: max(320px, 50vh); padding: calc(10px * var(--text-scale)); }
   /* 記号の一覧と、選んだものの設定は、ボタンで下から出す */
-  .side { display: none; }
-  .side.open { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; max-height: 55vh; overflow-y: auto;
+  :where(html[data-uw~="700"]) .side { display: none; }
+  :where(html[data-uw~="700"]) .side.open { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; max-height: 55vh; overflow-y: auto;
     border-left: 0; border-top: 2px solid var(--accent); box-shadow: 0 -6px 18px rgba(0, 0, 0, .25); }
-  .side-close { display: flex; margin-left: auto; margin-bottom: calc(6px * var(--text-scale)); }
-}
+  :where(html[data-uw~="700"]) .side-close { display: flex; margin-left: auto; margin-bottom: calc(6px * var(--text-scale)); }
+
 
 /* ---- 窓（設定・使い方・利用者の管理など）：スマートフォン（幅の狭い画面）では、画面いっぱいに近く広げて、はみ出しをなくす ---- */
-@media (max-width: 700px) {
-  .modal-back { padding: calc(10px * var(--text-scale)) calc(8px * var(--text-scale)); }
-  .modal > header { padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale)); }
-  .modal section { padding: calc(14px * var(--text-scale)) calc(14px * var(--text-scale)) 0; }
-  .modal .err, .modal .ok-note { margin: 12px calc(14px * var(--text-scale)) 0; }
-  .size-row input[type="range"] { min-width: 0; }
-  .size-row .val { min-width: 3.4em; }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .modal-back { padding: calc(10px * var(--text-scale)) calc(8px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .modal > header { padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .modal section { padding: calc(14px * var(--text-scale)) calc(14px * var(--text-scale)) 0; }
+  :where(html[data-uw~="700"]) .modal .err, :where(html[data-uw~="700"]) .modal .ok-note { margin: 12px calc(14px * var(--text-scale)) 0; }
+  :where(html[data-uw~="700"]) .size-row input[type="range"] { min-width: 0; }
+  :where(html[data-uw~="700"]) .size-row .val { min-width: 3.4em; }
   /* 利用者の一覧：表をやめて、1人を1枚のカードにする（種類・ID・名前を1行、ボタンを次の行） */
-  table.users, table.users tbody { display: block; }
-  table.users thead { display: none; }
-  table.users tr { display: flex; flex-wrap: wrap; align-items: center; gap: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); padding: calc(10px * var(--text-scale)) 0; border-bottom: 1px solid var(--rule-soft); }
-  table.users td { display: block; padding: 0; border: 0; }
-  table.users .role { margin-left: 0; white-space: nowrap; }
-  table.users td.row-actions { flex: 1 0 100%; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--gap, 10px); }
-  .add-user { grid-template-columns: 1fr; }
-  .add-user label { min-width: 0; }
-  .add-user input, .add-user select { min-width: 0; width: 100%; }
-}
+  :where(html[data-uw~="700"]) table.users, :where(html[data-uw~="700"]) table.users tbody { display: block; }
+  :where(html[data-uw~="700"]) table.users thead { display: none; }
+  :where(html[data-uw~="700"]) table.users tr { display: flex; flex-wrap: wrap; align-items: center; gap: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); padding: calc(10px * var(--text-scale)) 0; border-bottom: 1px solid var(--rule-soft); }
+  :where(html[data-uw~="700"]) table.users td { display: block; padding: 0; border: 0; }
+  :where(html[data-uw~="700"]) table.users .role { margin-left: 0; white-space: nowrap; }
+  :where(html[data-uw~="700"]) table.users td.row-actions { flex: 1 0 100%; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: var(--gap, 10px); }
+  :where(html[data-uw~="700"]) .add-user { grid-template-columns: 1fr; }
+  :where(html[data-uw~="700"]) .add-user label { min-width: 0; }
+  :where(html[data-uw~="700"]) .add-user input, :where(html[data-uw~="700"]) .add-user select { min-width: 0; width: 100%; }
+
 
 /* ---- 選んでいる状態は、色だけで知らせない：チェックマークと、太めの枠を付ける ---- */
 /* 対象：選ぶ形のボタン（あり／なし・用紙と向き・言葉・明るさ・文字の大きさ・線を引くモード・印刷プレビュー） */
@@ -854,26 +858,24 @@ main.form .radio-row button {
 }
 main.form .field .help {
   font-size: calc(10.5px * var(--text-scale)); line-height: 1.35;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: var(--help-lines, 1); -webkit-box-orient: vertical; overflow: hidden;
 }
-/* マウスで操作する端末では、説明文は1行にして（全文は、マウスを載せると出る）、縦に伸びないようにする */
-@media (hover: hover) { main.form .field .help { -webkit-line-clamp: 1; } }
 main.form .repeat-block { margin-bottom: calc(10px * var(--text-scale)); }
 main.form .repeat-block > .fields { padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale)) calc(12px * var(--text-scale)); }
 
 /* ---- スマホ（幅700以下）：案件の帯（図面一覧・図面名称・名称を変更・保存）を、1行にする ---- */
-@media (max-width: 700px) {
-  .projectbar { gap: calc(4px * var(--text-scale)); padding-left: calc(8px * var(--text-scale)); padding-right: calc(8px * var(--text-scale)); }
-  .projectbar button { min-width: 0; flex: 0 0 auto; white-space: nowrap; padding: calc(4px * var(--ctl-scale)) calc(8px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .projectbar { gap: calc(4px * var(--text-scale)); padding-left: calc(8px * var(--text-scale)); padding-right: calc(8px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .projectbar button { min-width: 0; flex: 0 0 auto; white-space: nowrap; padding: calc(4px * var(--ctl-scale)) calc(8px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
   /* 図面の名前は、残った幅いっぱいに出し、足りなければ「…」で省く（ボタンを押しのけない）。ボタンだけで幅を使い切るほど大きい設定のときだけ、次の行に折り返す */
-  .projectbar .jobname { flex: 1 1 0; min-width: 3em; max-width: none; margin: 0; font-size: calc(12.5px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .projectbar .jobname { flex: 1 1 0; min-width: 3em; max-width: none; margin: 0; font-size: calc(12.5px * var(--text-scale)); }
   /* 保存の状態の文字は、1行に収めるため、スマホでは出さない（保存ボタンの色と、ツールチップで分かる） */
-  .projectbar .saved { display: none; }
-}
-@media (max-width: 400px) {
-  .projectbar button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
-  .projectbar .jobname { font-size: calc(11.5px * var(--text-scale)); }
-}
+  :where(html[data-uw~="700"]) .projectbar .saved { display: none; }
+
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 400px 以下のとき（html の data-uw に 400 が入る） */
+  :where(html[data-uw~="400"]) .projectbar button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
+  :where(html[data-uw~="400"]) .projectbar .jobname { font-size: calc(11.5px * var(--text-scale)); }
+
 
 /* ---- 選択ボタン（2〜4択）は、全部を横一列に並べる（項目5：責任分界点・引込元など） ---- */
 /*   入力欄の幅（main.form の幅）が広いとき：欄の幅を、ボタンを全部並べた幅に合わせる（名前のほうが長いときは、名前が折り返す）。
@@ -900,10 +902,10 @@ main.form .field[data-kind="buttons"] .radio-row button { flex: 0 0 auto; white-
   flex: 0 1 auto; min-width: 0; padding-left: calc(9px * var(--ctl-scale)); padding-right: calc(9px * var(--ctl-scale)); line-height: 1.3;
 }
 /* 設定の窓：狭いときは、名前を上に、ボタンを下に置いて、ボタンが使える幅を、いっぱいにする */
-@media (max-width: 700px) {
-  .settings-row { grid-template-columns: minmax(0, 1fr); gap: calc(4px * var(--text-scale)); }
-  .settings-row > .lbl { padding-top: 0; }
-}
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .settings-row { grid-template-columns: minmax(0, 1fr); gap: calc(4px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .settings-row > .lbl { padding-top: 0; }
+
 /* 線の種類の窓：実線・点線を、横に並べる（上に見本の線、下に名前） */
 .wire-window { min-width: calc(210px * var(--text-scale)); }
 .wire-window-body { flex-direction: row; }
@@ -911,17 +913,19 @@ main.form .field[data-kind="buttons"] .radio-row button { flex: 0 0 auto; white-
 .login-size .seg { display: flex; flex-wrap: nowrap; }
 /* 選択ボタンの文字は、ボタンの中で折り返さない（「日／本語」のように割れない）。狭いときは、余白と文字を詰める */
 .seg > .btn, .seg > button, .paper-pick > .btn, .paper-pick > button { white-space: nowrap; }
-@media (max-width: 700px) {
-  .seg { gap: calc(4px * var(--ctl-scale)); }
-  .seg > .btn, .seg > button, .paper-pick > .btn, .paper-pick > button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); }
-}
-@media (max-width: 400px) {
-  .seg > .btn, .seg > button { font-size: calc(11.5px * var(--ctl-scale)); }
-}
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .seg { gap: calc(4px * var(--ctl-scale)); }
+  :where(html[data-uw~="700"]) .seg > .btn, :where(html[data-uw~="700"]) .seg > button, :where(html[data-uw~="700"]) .paper-pick > .btn, :where(html[data-uw~="700"]) .paper-pick > button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); }
+
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 400px 以下のとき（html の data-uw に 400 が入る） */
+  :where(html[data-uw~="400"]) .seg > .btn, :where(html[data-uw~="400"]) .seg > button { font-size: calc(11.5px * var(--ctl-scale)); }
+
 /* 横一列に収まらないとき（スマホで文字を最大にした場合など）だけ、横のまま、次の行へ折り返す（文字が切れたり、はみ出したりしない） */
 .seg, .paper-pick, .login-size .seg { flex-wrap: wrap; row-gap: calc(4px * var(--ctl-scale)); }
 .seg { gap: calc(5px * var(--ctl-scale)); }
-@media (max-width: 700px) { .seg { gap: calc(3px * var(--ctl-scale)); } }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+ :where(html[data-uw~="700"]) .seg { gap: calc(3px * var(--ctl-scale)); } 
+
 
 /* ------------------------------------------------------------------ */
 /* 項目7：同じ行に並んだ入力欄・ボタンの、縦の位置をそろえる（「設備を入力して作成」の画面だけ） */
@@ -930,15 +934,36 @@ main.form .field[data-kind="buttons"] .radio-row button { flex: 0 0 auto; white-
      - 説明文の枠は、いつも同じ高さ（マウスのある端末は1行、タッチの端末は2行）。説明文のない欄にも、その枠を空けておく。
        そうしないと、説明文のある欄とない欄で、入力欄の高さがずれる。 */
 /* ------------------------------------------------------------------ */
-main.form { --help-lines: 1; --help-h: calc(var(--help-lines) * 1.35 * 10.5px * var(--text-scale)); }
+/*   説明文の行数：ふつうは1行、タッチ端末は2行、広い画面（入力欄の幅 960px 以上）は3行（項目8）。全文は、マウスを載せると出る */
+main.form { --help-lines: 1; }
 @media (hover: none) { main.form { --help-lines: 2; } }
+main.form .fields { --help-h: calc(var(--help-lines) * 1.35 * 10.5px * var(--text-scale)); }
 main.form .fields { align-items: stretch; }
 main.form .field > label:first-child { flex: 1 1 auto; align-items: last baseline; }
 main.form .field .help { margin: 0; min-height: var(--help-h); }
 main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { content: ""; display: block; height: var(--help-h); }
 
 /* スマホ（幅700以下）：1段目の4つのタブは、文字が2行・3行に折れるものがあっても、同じ高さ・同じ位置にそろえる（項目7） */
-@media (max-width: 700px) {
-  .tabbar { align-items: stretch; }
-  .tabbar .tab-wrap button { height: 100%; }
+/* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
+  :where(html[data-uw~="700"]) .tabbar { align-items: stretch; }
+  :where(html[data-uw~="700"]) .tabbar .tab-wrap button { height: 100%; }
+
+
+/* ------------------------------------------------------------------ */
+/* 項目8：入力欄の幅（main.form の幅）に合わせて、並びを自動で変える */
+/*   - 広い（960px 以上）：ゆったり並べる。説明文は3行まで全文を出す（長い説明文の欄は、幅を広げて、3行に収まるようにする）。
+       それより長い説明文だけ、3行で切って、全文は、マウスを載せると出る。
+     - ふつう（640〜960px）：いまの並び（すき間を詰め、説明文は1行）。
+     - 狭い（640px 以下）：欄は幅いっぱい、ボタンは幅を分け合う（項目5）。 */
+/* ------------------------------------------------------------------ */
+@container (min-width: 960px) {
+  main.form .fields {
+    --help-lines: 3;
+    column-gap: calc(18px * var(--text-scale));
+    row-gap: calc(12px * var(--text-scale));
+  }
+  main.form .field[data-helpw="m"] { --fw-help: calc(210px * var(--text-scale)); }
+  main.form .field[data-helpw="l"] { --fw-help: calc(320px * var(--text-scale)); }
+  main.form .field[data-helpw]:not([data-kind="buttons"]) { flex-basis: max(var(--fw), var(--fw-help)); }
+  main.form .field[data-kind="buttons"][data-helpw] { min-width: min(max(var(--fw), var(--fw-help)), 100%); }
 }

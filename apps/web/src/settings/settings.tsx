@@ -96,9 +96,35 @@ function detectZoomMode(): 'standard' | 'legacy' {
 }
 let zoomMode: 'standard' | 'legacy' | null = null;
 
+/**
+ * 画面の「実効幅」の区切り（px）。実効幅 ＝ 画面の幅 ÷ 画面全体の倍率。
+ * 画面全体を60%にすれば、見えている幅の1.67倍ぶん、部品が並べられる。逆に160%なら、狭い画面と同じ。
+ * CSS の @media は、倍率を考えない画面の幅で決まってしまうので、ここで計算して、html の data-uw に、
+ * 「その幅以下の区切り」を全部入れる（例：実効幅 650 なら "700 900"）。CSS は html[data-uw~="700"] で見る。
+ */
+export const WIDTH_STEPS = [400, 640, 700, 900] as const;
+
+/** いまの実効幅（px） */
+export function usableWidth(uiScale: number): number {
+  return window.innerWidth / (uiScale > 0 ? uiScale : 1);
+}
+
+/** 実効幅が、スマホの区切り（700px）以下か */
+export function isNarrowScreen(): boolean {
+  return document.documentElement.dataset.uw?.split(' ').includes('700') ?? false;
+}
+
+function applyWidth(uiScale: number): void {
+  const w = usableWidth(uiScale);
+  const v = WIDTH_STEPS.filter((n) => w <= n).join(' ');
+  const el = document.documentElement;
+  if (el.dataset.uw !== v) el.dataset.uw = v;
+}
+
 /** 設定を実際の画面に効かせる。CSS側はこの印と変数だけを見る */
 function applyToDocument(s: Settings): void {
   const el = document.documentElement;
+  applyWidth(s.uiScale);
   el.dataset.theme = s.theme;
   el.dataset.bold = s.bold ? 'on' : 'off';
   zoomMode ??= detectZoomMode();
@@ -124,6 +150,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     applyToDocument(s);
     return s;
   });
+
+  // 画面の幅が変わったとき（窓の大きさ・スマホの向き）も、実効幅の印を付け直す
+  useEffect(() => {
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => applyWidth(settings.uiScale));
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(raf);
+    };
+  }, [settings.uiScale]);
 
   useEffect(() => {
     applyToDocument(settings);

@@ -15,6 +15,7 @@ import { TabBar } from './TabBar.tsx';
 import type { Tab } from './TabBar.tsx';
 import { UserAdmin } from './projects/UserAdmin.tsx';
 import { SettingsPanel } from './settings/SettingsPanel.tsx';
+import { isNarrowScreen } from './settings/settings.tsx';
 import { HelpPanel } from './help/HelpPanel.tsx';
 import { helpSeen, markHelpSeen } from './help/seen.ts';
 import { useDialogs } from './Dialogs.tsx';
@@ -64,7 +65,7 @@ export function App() {
    */
   const [sketchRead, setSketchRead] = useState(false);
   // スマホ（幅の狭い画面）では、入力欄を広く使うため、「いまの構成」は最初は隠しておく
-  const [showPreview, setShowPreview] = useState(() => !window.matchMedia?.('(max-width: 700px)').matches);
+  const [showPreview, setShowPreview] = useState(() => !isNarrowScreen());
 
   const [projectId, setProjectId] = useState<string | null>(null);
   // 別の案件を開いたら、読み取りの状態の印は、消す

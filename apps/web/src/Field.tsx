@@ -62,6 +62,16 @@ export function fieldSize(q: Question, show: (s: string) => string): FieldSize {
 }
 
 /**
+ * 説明文（help）の長さの目安。広い画面では、説明文を全文出すので、長いものを載せる欄は、幅を広げる（CSS が data-helpw を見る）。
+ * 見た目の長さで数える（半角は全角の半分ほど）。短い説明文（〜26）は、いまの幅のままでよい
+ */
+export function helpWidth(help: string | undefined, show: (s: string) => string): 'm' | 'l' | undefined {
+  if (!help) return undefined;
+  const w = [...show(help)].reduce((n, c) => n + (/[\x20-\x7E]/.test(c) ? 0.55 : 1), 0);
+  return w > 50 ? 'l' : w > 26 ? 'm' : undefined;
+}
+
+/**
  * 押しボタンで並べるか。選択肢が3つ以下で短いもの、または、4つで、どれもごく短い（6字まで。例：100A／200A／300A／400A）もの。
  * それ以外（5つ以上、4つで長いもの）は、プルダウン
  */
@@ -90,7 +100,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
     (pickedOther || (current !== '' && !q.options?.some((o) => o.value === String(current))));
 
   return (
-    <div className="field" data-size={fieldSize(q, tx)} data-kind={q.type === 'select' && asButtons(q, tx) ? 'buttons' : undefined}>
+    <div className="field" data-size={fieldSize(q, tx)} data-kind={q.type === 'select' && asButtons(q, tx) ? 'buttons' : undefined} data-helpw={helpWidth(q.help, tx)}>
       <label htmlFor={fieldKey}>
         {q.type === 'boolean' ? '' : tx(q.label)}
         {q.required && <span className="req">{t('field.required')}</span>}
