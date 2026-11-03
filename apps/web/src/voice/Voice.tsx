@@ -3,6 +3,10 @@ import type { Answers } from '@zumen/knowledge';
 import { VOICE_VERSION, buildReview, buildVoiceInstruction, parseVoiceResult } from '@zumen/ai';
 import type { ReviewItem, VoiceParse } from '@zumen/ai';
 import { AnalysisReview } from '../analyze/AnalysisReview.tsx';
+import { useT } from '../i18n/useT.ts';
+import { Rich } from '../i18n/Rich.tsx';
+import { translateByTemplate } from '../session/serverMessages.ts';
+import { getCurrentLang } from '../i18n/index.ts';
 
 /**
  * 音声入力から図面を作る画面。
@@ -44,7 +48,11 @@ async function copyText(text: string): Promise<boolean> {
   return done;
 }
 
+/** 取り込みの結果の文（packages/ai が日本語で作る）を、選んでいる言葉にする。型に合わなければ、そのまま */
+const vp = (m: string): string => (getCurrentLang() === 'ja' ? m : (translateByTemplate('vp.', m) ?? m));
+
 export function Voice({ answers, onApply, onGoToHearing }: Props) {
+  const t = useT();
   const [text, setText] = useState('');
   const [parsed, setParsed] = useState<{ id: number; parse: VoiceParse; review: ReviewItem[] } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -54,7 +62,7 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
 
   const copy = async (what: string, value: string) => {
     const ok = await copyText(value);
-    setCopied(ok ? `${what}をコピーしました` : `コピーできませんでした。下の枠の文字を、すべて選んで、コピーしてください（${what}）`);
+    setCopied(ok ? t('voice.copied', { what }) : t('voice.copyFailed', { what }));
   };
 
   const read = () => {
@@ -65,51 +73,51 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
   return (
     <div className="analyze voice">
       <section className="panel">
-        <h2>音声入力から図面を作る</h2>
+        <h2>{t('voice.title')}</h2>
         <ol className="hint voice-steps">
           <li>
-            <b>Claude のアプリ</b>で、会社の「単線結線図」プロジェクトを開き、<b>音声入力</b>で、設備の内容を話します。
-            Claude が、足りないところを聞き返します。
+            <Rich text={t('voice.s1')} />
           </li>
-          <li>話し終えたら、Claude に「アプリ用の文章を出してください」と言います。出てきた<b>コードブロック</b>を、コピーします。</li>
-          <li>下の枠に貼り付けて、「読み取る」を押します。確認画面が出るので、確かめて、反映します。</li>
+          <li>
+            <Rich text={t('voice.s2')} />
+          </li>
+          <li>{t('voice.s3')}</li>
         </ol>
         <p className="notice">
-          <b>お客様名称・事業場名称・図面名称は、声では話しません。</b>
-          アプリの「設備を入力して作成」で、手で入力してください（情報漏えいを防ぐためです。Claude には伝えません）。
+          <Rich text={t('voice.notice')} />
         </p>
       </section>
 
       <section className="panel">
-        <h2>Claude が出した文章を貼り付ける</h2>
+        <h2>{t('voice.pasteTitle')}</h2>
         <textarea
           className="voice-paste"
           rows={9}
           value={text}
-          placeholder="Claude が出したコードブロック（{ で始まる文章）を、ここに貼り付けます"
+          placeholder={t('voice.placeholder')}
           onChange={(e) => setText(e.target.value)}
         />
         <button type="button" className="primary" disabled={text.trim() === ''} onClick={read}>
-          読み取る
+          {t('voice.read')}
         </button>
 
-        {parsed?.parse.error && <p className="err">{parsed.parse.error}</p>}
+        {parsed?.parse.error && <p className="err">{vp(parsed.parse.error)}</p>}
         {parsed?.parse.warnings.map((w, i) => (
           <p className="warn-note" key={i}>
-            {w}
+            {vp(w)}
           </p>
         ))}
         {parsed && parsed.parse.rejected.length > 0 && (
           <div className="rejected">
-            <b>次の{parsed.parse.rejected.length}件は、取り込みませんでした：</b>
+            <Rich text={t('voice.rejected', { n: parsed.parse.rejected.length })} />
             <ul>
               {parsed.parse.rejected.map((r) => (
                 <li key={r.key}>
-                  <code>{r.key}</code>　{r.reason}
+                  <code>{r.key}</code>　{vp(r.reason)}
                 </li>
               ))}
             </ul>
-            <p className="hint">Claude に「次の項目は取り込めませんでした」と伝えて、直した文章を出してもらってください。</p>
+            <p className="hint">{t('voice.rejectedHint')}</p>
           </div>
         )}
       </section>
@@ -119,8 +127,8 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
           key={parsed.id}
           result={parsed.parse.result}
           review={parsed.review}
-          evidenceLabel="話された言葉"
-          notesLabel="話された特記事項"
+          evidenceLabel={t('voice.evidence')}
+          notesLabel={t('voice.notes')}
           onApply={(patch) => {
             onApply(patch);
             onGoToHearing();
@@ -129,27 +137,25 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
       )}
 
       <section className="panel">
-        <h2>Claude のプロジェクトを用意する（最初の1回だけ・管理する人）</h2>
+        <h2>{t('voice.setupTitle')}</h2>
         <ol className="hint voice-steps">
-          <li>Claude のアプリで、プロジェクトを1つ新しく作ります。</li>
+          <li>{t('voice.p1')}</li>
           <li>
-            下の<b>「Claude用の指示文をコピー」</b>を押し、コピーした文章を、プロジェクトの<b>「指示」</b>の欄に、<b>そのまま全部</b>貼り付けます。
+            <Rich text={t('voice.p2')} />
           </li>
-          <li>プロジェクトを会社の人と共有します（全員が同じように使えます）。</li>
+          <li>{t('voice.p3')}</li>
         </ol>
         <p className="hint">
-          この文章は、Claude に「どんな順番で聞き取り、どんな形の文章で答えるか」を教えるものです。
-          質問を増やしたときは、新しくコピーして、指示の欄を入れ替えてください（いまの版：<b>{VOICE_VERSION}</b>）。
-          古い指示文で作られた文章を貼り付けると、アプリが知らせます。
+          <Rich text={t('voice.explain', { version: VOICE_VERSION })} />
         </p>
         <div className="voice-actions">
-          <button type="button" className="primary" onClick={() => void copy('指示文', full)}>
-            Claude用の指示文をコピー
+          <button type="button" className="primary" onClick={() => void copy(t('voice.what'), full)}>
+            {t('voice.copyBtn')}
           </button>
         </div>
         {copied && <p className="ok-note-inline">{copied}</p>}
         <details>
-          <summary>指示文を見る（{full.length.toLocaleString()}文字）</summary>
+          <summary>{t('voice.seeInstruction', { n: full.length.toLocaleString() })}</summary>
           <textarea className="voice-paste" readOnly rows={14} value={full} onFocus={(e) => e.currentTarget.select()} />
         </details>
       </section>

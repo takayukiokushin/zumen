@@ -25,7 +25,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
     api
       .listUsers()
       .then((r) => setUsers(r.users))
-      .catch((e) => setError(e instanceof Error ? e.message : '読み込めませんでした。'));
+      .catch((e) => setError(e instanceof Error ? e.message : t('err.load')));
 
   useEffect(() => {
     void reload();
@@ -49,7 +49,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
       setDone(message);
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'うまくいきませんでした。');
+      setError(e instanceof Error ? e.message : t('err.generic'));
     }
   };
 
@@ -61,25 +61,25 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
       setName('');
       setPassword('');
       setRole('member');
-    }, `利用者を追加しました：${id.trim()}`);
+    }, t('users.added', { id: id.trim() }));
   };
 
   const resetPassword = async (u: User) => {
     const pw = await input({
-      title: `${u.name}（${u.id}）の新しいパスワード`,
+      title: t('users.pwTitle', { name: u.name, id: u.id }),
       message: [
-        '新しいパスワードを入れてください。10文字以上。IDと同じ・よくある言葉・連番は使えません。',
-        '※ ログインが止まっている場合も、ここで変えればすぐ入れるようになります。',
+        t('users.pwMsg1'),
+        t('users.pwMsg2'),
       ],
       secret: true,
     });
     if (!pw) return;
-    void run(() => api.setUserPassword(u.id, pw), `${u.id} のパスワードを変えました。`);
+    void run(() => api.setUserPassword(u.id, pw), t('users.pwChanged', { id: u.id }));
   };
 
   const remove = async (u: User) => {
-    if (!(await ask({ title: `${u.name}（${u.id}）を消す`, message: [`${u.name}（${u.id}）を消します。元に戻せません。よろしいですか。`], confirmLabel: t('users.remove') }))) return;
-    void run(() => api.removeUser(u.id), `${u.id} を消しました。`);
+    if (!(await ask({ title: t('users.removeTitle', { name: u.name, id: u.id }), message: [t('users.removeMsg', { name: u.name, id: u.id })], confirmLabel: t('users.remove') }))) return;
+    void run(() => api.removeUser(u.id), t('users.removed', { id: u.id }));
   };
 
   return (
@@ -127,7 +127,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
                       <button
                         type="button"
                         className="btn"
-                        onClick={() => void run(() => api.unlockUser(u.id), `${u.id} のログインを解除しました。`)}
+                        onClick={() => void run(() => api.unlockUser(u.id), t('users.unlocked', { id: u.id }))}
                       >
                         {t('users.unlock')}
                       </button>
@@ -162,7 +162,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
             </label>
             <label>
               {t('users.name')}
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="営業部" />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('users.namePlaceholder')} />
             </label>
             <label>
               {t('users.password')}

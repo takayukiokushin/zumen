@@ -3,6 +3,7 @@ import { missingRequiredFields } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
 import { Field } from '../Field.tsx';
+import { useT, useTx } from '../i18n/useT.ts';
 
 /**
  * スケッチの読み取りが終わったあとの画面。
@@ -23,6 +24,8 @@ export function SketchResult({
   current: Answers;
   onApply: (patch: Answers) => void;
 }) {
+  const t = useT();
+  const tx = useTx();
   /** この画面で答えた分 */
   const [extra, setExtra] = useState<Answers>({});
 
@@ -47,19 +50,19 @@ export function SketchResult({
     <>
       <section className="panel">
         <button type="button" className="primary" onClick={apply}>
-          読み込んだ内容を反映させる
+          {t('sketch.apply')}
         </button>
-        <p className="ai-caution">AIは間違えることがあります。図面プレビューで、意図した図面になっているか確認してください。</p>
+        <p className="ai-caution">{t('sketch.caution')}</p>
       </section>
 
       {rows.length > 0 && (
         <section className="panel">
-          <h2>図面を作るために、答えてください</h2>
+          <h2>{t('sketch.answer')}</h2>
           <div className="fields">
             {rows.map((r) => (
               <Field
                 key={r.key}
-                question={{ ...r.question, label: r.label }}
+                question={{ ...r.question, label: r.areaNo ? `${t('hearing.areaPrefix', { n: r.areaNo })}${tx(r.question.label)}` : r.question.label }}
                 fieldKey={r.key}
                 value={extra[r.key]}
                 onChange={set}

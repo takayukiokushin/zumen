@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Question } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import { evaluate } from '@zumen/knowledge';
+import { useT, useTx } from './i18n/useT.ts';
 
 interface Props {
   question: Question;
@@ -25,6 +26,8 @@ export function Field({ question: question, fieldKey, value, onChange, context }
   const q = context && question.options?.some((o) => o.showIf)
     ? { ...question, options: question.options.filter((o) => evaluate(o.showIf, context)) }
     : question;
+  const t = useT();
+  const tx = useTx();
   const [pickedOther, setPickedOther] = useState(false);
   const set = (v: Value) => onChange(fieldKey, v);
   // まだ答えていないときは、いま効いている値を見せる（例：引込元がキャビネットなら、区分開閉器は既定でUGS）
@@ -37,16 +40,16 @@ export function Field({ question: question, fieldKey, value, onChange, context }
   return (
     <div className="field">
       <label htmlFor={fieldKey}>
-        {q.type === 'boolean' ? '' : q.label}
-        {q.required && <span className="req">必須</span>}
-        {q.unit && <span className="unit">（{q.unit}）</span>}
+        {q.type === 'boolean' ? '' : tx(q.label)}
+        {q.required && <span className="req">{t('field.required')}</span>}
+        {q.unit && <span className="unit">（{tx(q.unit)}）</span>}
       </label>
 
       {q.type === 'select' &&
       !q.allowFreeInput &&
       !q.dropdown &&
       (q.options?.length ?? 0) <= 3 &&
-      (q.options ?? []).every((o) => o.label.length <= 12) ? (
+      (q.options ?? []).every((o) => tx(o.label).length <= 14) ? (
         <div className="radio-row" id={fieldKey}>
           {q.options?.map((o) => (
             <button
@@ -55,8 +58,8 @@ export function Field({ question: question, fieldKey, value, onChange, context }
               aria-pressed={current === o.value}
               onClick={() => set(current === o.value ? undefined : o.value)}
             >
-              {o.label}
-              {o.share && <span className="share">　{o.share}</span>}
+              {tx(o.label)}
+              {o.share && <span className="share">　{tx(o.share)}</span>}
             </button>
           ))}
         </div>
@@ -74,20 +77,20 @@ export function Field({ question: question, fieldKey, value, onChange, context }
               }
             }}
           >
-            <option value="">選択してください</option>
+            <option value="">{t('field.choose')}</option>
             {q.options?.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
-                {o.share ? `（${o.share}）` : ''}
+                {tx(o.label)}
+                {o.share ? `（${tx(o.share)}）` : ''}
               </option>
             ))}
-            {q.allowFreeInput && <option value={OTHER}>その他（手入力）</option>}
+            {q.allowFreeInput && <option value={OTHER}>{t('field.other')}</option>}
           </select>
           {free && (
             <input
               type="text"
-              aria-label={`${q.label}（一覧にない値）`}
-              placeholder="一覧にない値を入力"
+              aria-label={t('field.otherValue', { label: tx(q.label) })}
+              placeholder={t('field.otherPlaceholder')}
               value={q.options?.some((o) => o.value === String(current)) ? '' : String(current)}
               onChange={(e) => set(e.target.value || undefined)}
             />
@@ -102,14 +105,14 @@ export function Field({ question: question, fieldKey, value, onChange, context }
             checked={current === 'yes'}
             onChange={(e) => set(e.target.checked ? 'yes' : 'no')}
           />
-          <span>{q.label}</span>
+          <span>{tx(q.label)}</span>
         </label>
       ) : q.type === 'number' ? (
         <input
           id={fieldKey}
           type="number"
           value={current === '' ? '' : String(current)}
-          placeholder={q.placeholder}
+          placeholder={q.placeholder ? tx(q.placeholder) : undefined}
           onChange={(e) => set(e.target.value === '' ? undefined : Number(e.target.value))}
         />
       ) : q.type === 'date' ? (
@@ -119,7 +122,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
           id={fieldKey}
           type="text"
           value={String(current)}
-          placeholder={q.placeholder}
+          placeholder={q.placeholder ? tx(q.placeholder) : undefined}
           // 自動で入る欄（autoValue）は、空にしたことを覚える（空に戻すと、また自動で入ってしまうため）
           onChange={(e) => set(e.target.value === '' && q.keepEmpty ? '' : e.target.value || undefined)}
           onBlur={(e) => {
@@ -130,7 +133,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
         />
       )}
 
-      {q.help && <p className="help">{q.help}</p>}
+      {q.help && <p className="help">{tx(q.help)}</p>}
     </div>
   );
 }

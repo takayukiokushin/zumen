@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { setCurrentLang } from '../i18n/index.ts';
 import type { Lang } from '../i18n/index.ts';
 
 /**
@@ -67,6 +68,8 @@ function applyToDocument(s: Settings): void {
   el.style.setProperty('--text-scale', String(s.textScale * BASE_TEXT_SCALE));
   el.style.setProperty('--ui-scale', String(s.uiScale));
   el.lang = s.lang;
+  // 画面の部品の外（通信の失敗の文言など）でも、選んでいる言葉を使えるように
+  setCurrentLang(s.lang);
 }
 
 interface Ctx {

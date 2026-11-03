@@ -61,7 +61,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
         setTrash(tr.projects);
         setSources(src.projects);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : '案件を読み込めませんでした。'));
+      .catch((e) => setError(e instanceof Error ? e.message : t('err.loadProjects')));
 
   useEffect(() => {
     void reload();
@@ -86,36 +86,36 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     try {
       setError(null);
       await api.deleteProject(p.id);
-      setNotice({ id: p.id, name: p.name, text: `「${p.name}」${t('project.deletedNote')}`, undo: true });
+      setNotice({ id: p.id, name: p.name, text: `${t('project.quote', { name: p.name })}${t('project.deletedNote')}`, undo: true });
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '削除できませんでした。');
+      setError(e instanceof Error ? e.message : t('err.delete'));
     }
   };
 
   /** 本番の案件を練習用にコピーして、そのまま開く。本番の案件は変わらない */
   const copyToPractice = async (src: PracticeSource) => {
-    if (!(await ask({ message: [`「${src.name}」${t('project.practice.confirm')}`] }))) return;
+    if (!(await ask({ message: [`${t('project.quote', { name: src.name })}${t('project.practice.confirm')}`] }))) return;
     if (!(await canLeave())) return;
     try {
       setError(null);
       const r = await api.copyToPractice(src.id);
       onOpen(r.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'コピーできませんでした。');
+      setError(e instanceof Error ? e.message : t('err.copy'));
     }
   };
 
   /** 過去の図面を複製して、新しい案件として開く。もとの案件は変わらない */
   const duplicate = async (src: { id: string; name: string }) => {
-    if (!(await ask({ message: [`「${src.name}」${t('project.duplicate.confirm')}`] }))) return;
+    if (!(await ask({ message: [`${t('project.quote', { name: src.name })}${t('project.duplicate.confirm')}`] }))) return;
     if (!(await canLeave())) return;
     try {
       setError(null);
       const r = await api.duplicateProject(src.id);
       onOpen(r.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '複製できませんでした。');
+      setError(e instanceof Error ? e.message : t('err.duplicate'));
     }
   };
 
@@ -123,10 +123,10 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     try {
       setError(null);
       await api.restoreProject(id);
-      setNotice({ id, name, text: `「${name}」${t('project.restoredNote')}`, undo: false });
+      setNotice({ id, name, text: `${t('project.quote', { name })}${t('project.restoredNote')}`, undo: false });
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '戻せませんでした。');
+      setError(e instanceof Error ? e.message : t('err.restore'));
     }
   };
 
@@ -191,7 +191,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     <button
                       type="button"
                       className="btn primary job-open"
-                      aria-label={`${p.name}を${t('project.open')}`}
+                      aria-label={t('project.openLabel', { name: p.name })}
                       onClick={() => {
                         // 開いている案件に戻るだけなら、何も失わないので確認しない
                         void (async () => {
@@ -208,9 +208,9 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       <Highlight text={p.name} needle={q.trim()} />
                     </span>
                     {p.lock && p.lock.userId !== meId && (
-                      <b className="editing">　{p.lock.userName}さんが{t('project.editing')}</b>
+                      <b className="editing">　{t('project.editingBy', { user: p.lock.userName })}</b>
                     )}
-                    {p.file_count > 0 && <span className="when">　写真{p.file_count}枚</span>}
+                    {p.file_count > 0 && <span className="when">　{t('project.photos', { n: p.file_count })}</span>}
                   </td>
                   <td className="when c-info">{new Date(p.updated_at).toLocaleString(lang)}</td>
                   <td className="c-dup">
@@ -230,7 +230,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       className="btn danger job-delete"
                       disabled={p.lock !== null && p.lock.userId !== meId}
                       onClick={() => void remove(p)}
-                      aria-label={`${p.name}を削除`}
+                      aria-label={t('project.deleteLabel', { name: p.name })}
                     >
                       {t('project.delete')}
                     </button>
@@ -268,7 +268,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       </td>
                       <td className="c-name">
                         <span className="name">{p.name}</span>
-                        {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
+                        {p.fileCount > 0 && <span className="when">　{t('project.photos', { n: p.fileCount })}</span>}
                       </td>
                       <td className="when c-info">
                         {new Date(p.updatedAt).toLocaleString(lang)}
@@ -307,7 +307,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     </td>
                     <td className="c-name">
                       <span className="name">{p.name}</span>
-                      {p.fileCount > 0 && <span className="when">　写真{p.fileCount}枚</span>}
+                      {p.fileCount > 0 && <span className="when">　{t('project.photos', { n: p.fileCount })}</span>}
                     </td>
                     <td className="when c-info" data-label={t('project.trashDeleted')}>
                       {new Date(p.deletedAt).toLocaleString(lang)}

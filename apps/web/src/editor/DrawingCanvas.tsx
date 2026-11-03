@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
@@ -439,7 +440,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
         if (e.ctrlKey && mode === 'select') e.preventDefault();
       }}
       role="application"
-      aria-label="図面"
+      aria-label={tr('editor.canvasLabel')}
     >
       <g stroke="#000" fill="none" strokeLinecap="round" strokeLinejoin="round" color="#000">
         {view.items.map((it) => {

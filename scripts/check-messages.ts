@@ -7,7 +7,7 @@
  *   node --experimental-strip-types scripts/check-messages.ts
  */
 import { readFileSync } from 'node:fs';
-import { NETWORK_DOWN, SAVE_RETRY, describeFailure, isGateway } from '../apps/web/src/session/messages.ts';
+import { describeFailure, isGateway, networkDown, saveRetry } from '../apps/web/src/session/messages.ts';
 import { Anthropic, describeAnalyzeFailure } from '../apps/server/src/analyze-errors.ts';
 
 let failed = 0;
@@ -24,7 +24,7 @@ const hasAscii = (s: string) => /Failed to fetch|NetworkError|Load failed/i.test
 
 // 通信が届かなかったとき
 const down = describeFailure(null);
-if (down !== NETWORK_DOWN) fail('通信が届かなかったときの文言が NETWORK_DOWN ではありません');
+if (down !== networkDown()) fail('通信が届かなかったときの文言が networkDown() ではありません');
 if (hasAscii(down)) fail('英語のエラー文が混ざっています');
 if (!down.includes('入力した内容は')) fail('「入力した内容は残っている」ことが書かれていません');
 if (down.includes('読み込み直してください')) fail('「読み込み直して」と案内しています（未保存の入力が消えます）');
@@ -53,8 +53,8 @@ if (!describeFailure(418).includes('もう一度')) fail('その他の失敗に�
 else console.log('  500番台・401・413・その他：どれも次にすることを書く');
 
 // 保存のやり直しの案内
-if (!SAVE_RETRY.includes('「保存」')) fail('保存のやり直しの案内に、ボタンの名前がありません');
-else console.log(`  保存に失敗したときの案内：${SAVE_RETRY}`);
+if (!saveRetry().includes('「保存」')) fail('保存のやり直しの案内に、ボタンの名前がありません');
+else console.log(`  保存に失敗したときの案内：${saveRetry()}`);
 
 
 console.log('\n■ 手書きメモの読み取りが失敗したときの文言');

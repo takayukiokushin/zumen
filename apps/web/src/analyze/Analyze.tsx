@@ -3,6 +3,9 @@ import type { Answers } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
 import { api } from '../session/api.ts';
 import { SketchResult } from './SketchResult.tsx';
+import { useT } from '../i18n/useT.ts';
+import { tr } from '../i18n/index.ts';
+import { Rich } from '../i18n/Rich.tsx';
 
 interface Props {
   answers: Answers;
@@ -28,7 +31,7 @@ function toBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-    r.onerror = () => reject(new Error('ファイルを読み込めませんでした'));
+    r.onerror = () => reject(new Error(tr('an.err.read')));
     r.readAsDataURL(file);
   });
 }
@@ -40,6 +43,7 @@ function toBase64(file: File): Promise<string> {
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
 export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onGoToHearing }: Props) {
+  const t = useT();
   const [images, setImages] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +106,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
           .catch(() => undefined);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : '解析に失敗しました。');
+      setError(e instanceof Error ? e.message : t('an.err.fail'));
     } finally {
       setBusy(false);
       onStatus?.(ok ? 'done' : 'idle');
@@ -113,37 +117,27 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
   return (
     <div className="analyze">
       <section className="panel">
-        <h2>手書きメモ・既存の図面・仕様書を読み取る</h2>
+        <h2>{t('an.title')}</h2>
 
         {ready === false && (
           <div className="notready">
-            <b>この機能は、まだ使えるようになっていません。</b>
+            <Rich text={t('an.notready.title')} />
             <p>
-              手書きメモの読み取りには、Claude の<b>利用券（APIキー）</b>が要ります。
-              サーバーに利用券を置くと使えるようになります。
+              <Rich text={t('an.notready.p1')} />
             </p>
             <p className="how">
-              置き方：サーバーのフォルダにある <code>.env.example</code> を <code>.env</code> という名前で
-              コピーし、<code>ANTHROPIC_API_KEY=</code> の後ろに利用券の文字列を書いて、サーバーを
-              起動し直します。利用券は <code>https://platform.claude.com/</code> で発行します。
-              <b>残高（クレジット）の購入も必要です</b>（カードの登録だけでは使えません）。
+              <Rich text={t('an.notready.how')} />
             </p>
             <p className="how">
-              <b>利用券が無くても、ほかの機能はすべて使えます。</b>
-              「事前ヒアリング」で質問に答えれば、図面のたたき台はできます。
+              <Rich text={t('an.notready.other')} />
             </p>
           </div>
         )}
 
-        <p className="hint">
-          手書きメモの写真やスキャン、過去の図面の PDF、メーカーの仕様書の PDF を選んでください（10件まで。PDF は1件10ページまで）。
-          読み取った内容は、「反映」を押したあと、「設備を入力して作成」と「図面」で、確認・修正できます。
-        </p>
+        <p className="hint">{t('an.hint')}</p>
 
         <p className="privacy-note">
-          <b>個人情報（お客様の名前・住所・電話番号など）は、書かないでください。</b>
-          個人情報が写っている画像・PDF は、選ばないでください。
-          選んだものは、読み取りのため、外部の AI に送られます。
+          <Rich text={t('an.privacy')} />
         </p>
 
         <label
@@ -160,7 +154,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
           }}
         >
           <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => void pick(e.target.files)} />
-          <span>画像・PDF を選ぶ / ここにドラッグ</span>
+          <span>{t('an.drop')}</span>
         </label>
 
         {images.length > 0 && (
@@ -169,7 +163,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
               {images.map((img, i) => (
                 <figure key={img.url}>
                   {img.mediaType === 'application/pdf' ? (
-                    <div className="pdf-thumb" role="img" aria-label={`PDF：${img.file.name}`}>
+                    <div className="pdf-thumb" role="img" aria-label={t('an.pdfLabel', { name: img.file.name })}>
                       PDF
                     </div>
                   ) : (
@@ -177,13 +171,13 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
                   )}
                   <figcaption>{img.file.name}</figcaption>
                   <button type="button" onClick={() => setImages((p) => p.filter((_, j) => j !== i))}>
-                    外す
+                    {t('an.remove')}
                   </button>
                 </figure>
               ))}
             </div>
             <button type="button" className="primary" disabled={busy} onClick={() => void run()}>
-              {busy ? '読み取り中…' : `${images.length}件を読み取る`}
+              {busy ? t('an.busy') : t('an.run', { n: images.length })}
             </button>
           </>
         )}

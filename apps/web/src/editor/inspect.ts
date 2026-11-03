@@ -1,4 +1,6 @@
 import { getSymbol } from '@zumen/symbols';
+import { tr } from '../i18n/index.ts';
+import type { Key } from '../i18n/index.ts';
 import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
@@ -40,15 +42,8 @@ export interface TidyResult {
   issues: Issue[];
 }
 
-export const ISSUE_LABEL: Record<IssueKind, string> = {
-  floating: 'つながっていない線',
-  stray: '余分な線',
-  through: '記号を突き抜けている線',
-  overlap: '重なっている文字',
-  skew: '斜めになっている線',
-  paper: '用紙に収まりきらない',
-  gap: '整えた間隔',
-};
+/** 点検で見つけるものの名前（選んでいる言葉で） */
+export const issueLabel = (kind: IssueKind): string => tr(`insp.kind.${kind}` as Key);
 
 /**
  * 線の端を、この距離まで探して接続点につなぐ。
@@ -557,7 +552,7 @@ function attachFloatingEnds(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
       } else {
         issues.push({
           kind: 'floating',
-          message: '線の端がどこにもつながっていません。近くに接続点が見つかりませんでした',
+          message: tr('insp.floatingNear'),
           x,
           y,
           itemId: it.id,
@@ -618,7 +613,7 @@ function trimThroughSymbols(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
         // 通り抜けている → 2本に割らないと直せないので、印だけ付ける
         issues.push({
           kind: 'through',
-          message: `線が記号（${getSymbol(s.symbolId).abbr}）を突き抜けています`,
+          message: tr('insp.through', { abbr: getSymbol(s.symbolId).abbr }),
           x: (box.x0 + box.x1) / 2,
           y: (box.y0 + box.y1) / 2,
           itemId: it.id,
@@ -704,7 +699,7 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
       if (best.bad >= CLASH_TEXT) {
         issues.push({
           kind: 'overlap',
-          message: `文字「${lines[0] ?? ''}」が、ほかのものと重なっています`,
+          message: tr('insp.overlapText', { text: lines[0] ?? '' }),
           x: baseX + best.dx,
           y: baseY + best.dy,
           itemId: it.id,
@@ -835,7 +830,7 @@ function straightenWires(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] }
     .map(
       (w): Issue => ({
         kind: 'skew',
-        message: '線が斜めになっています。両端とも別の機器につながっているため、動かして直せませんでした',
+        message: tr('insp.skewLocked'),
         x: (w.x1 + w.x2) / 2,
         y: (w.y1 + w.y2) / 2,
         itemId: w.id,
@@ -888,7 +883,7 @@ export function chooseSheet(
   return best!;
 }
 
-const ORIENT_LABEL = (o: Orientation) => (o === 'portrait' ? '縦' : '横');
+const ORIENT_LABEL = (o: Orientation) => (o === 'portrait' ? tr('insp.portrait') : tr('insp.landscape'));
 
 /** 台紙に対して図面が大きすぎないか。向きを変えると大きく出せるなら勧める */
 function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation, titleH?: number): Issue[] {
@@ -903,9 +898,12 @@ function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation, titleH
     return [
       {
         kind: 'paper',
-        message:
-          `いまは${ORIENT_LABEL(orientation)}向きで、用紙いっぱいに ${Math.round(now * 100)}% まで縮めています。` +
-          `${ORIENT_LABEL(other)}向きにすると ${Math.round(sc * 100)}% で出せます`,
+        message: tr('insp.paperOther', {
+          now: ORIENT_LABEL(orientation),
+          pct: Math.round(now * 100),
+          other: ORIENT_LABEL(other),
+          pct2: Math.round(sc * 100),
+        }),
         ...where,
       },
     ];
@@ -913,7 +911,7 @@ function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation, titleH
   return [
     {
       kind: 'paper',
-      message: `図面が大きく、用紙いっぱいに ${Math.round(now * 100)}% まで縮めて収めています。向きを変えても、これ以上は大きくなりません`,
+      message: tr('insp.paperFit', { pct: Math.round(now * 100) }),
       ...where,
     },
   ];
@@ -935,7 +933,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
       if (nearestPort(doc, x, y, TOUCH)) continue;
       if (wires.some((o) => o.id !== w.id && distToSegment(x, y, o.x1, o.y1, o.x2, o.y2) <= TOUCH)) continue;
       if (branchesInsideParent(doc, w, x, y)) continue;
-      issues.push({ kind: 'floating', message: '線の端がどこにもつながっていません', x, y, itemId: w.id });
+      issues.push({ kind: 'floating', message: tr('insp.floating'), x, y, itemId: w.id });
     }
   }
 
@@ -954,7 +952,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
       }
       issues.push({
         kind: 'through',
-        message: `線が記号（${getSymbol(s.symbolId).abbr}）を突き抜けています`,
+        message: tr('insp.through', { abbr: getSymbol(s.symbolId).abbr }),
         x: (box.x0 + box.x1) / 2,
         y: (box.y0 + box.y1) / 2,
         itemId: w.id,
@@ -967,7 +965,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
     if (w.x1 === w.x2 || w.y1 === w.y2) continue;
     issues.push({
       kind: 'skew',
-      message: '線が斜めになっています',
+      message: tr('insp.skew'),
       x: (w.x1 + w.x2) / 2,
       y: (w.y1 + w.y2) / 2,
       itemId: w.id,
@@ -992,7 +990,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
       if (!overlaps(boxes[i]!.box, boxes[j]!.box, 1)) continue;
       issues.push({
         kind: 'overlap',
-        message: `文字「${boxes[i]!.head}」と「${boxes[j]!.head}」が重なっています`,
+        message: tr('insp.overlapTwo', { a: boxes[i]!.head, b: boxes[j]!.head }),
         x: boxes[i]!.box.x0,
         y: boxes[i]!.box.y0 + 8,
         itemId: boxes[i]!.id,
@@ -1074,7 +1072,7 @@ export function tidyDrawing(
   const unsure = bridgeBrokenWires(next).unsure;
   const issues = inspectDrawing(next, paper, orientation, titleH).map((i) =>
     i.kind === 'floating' && unsure.some((u) => Math.hypot(u.x - i.x, u.y - i.y) < 1)
-      ? { ...i, message: '線が途切れています。つなぐ相手が2か所以上あり、一つに決められません。どの線とつなぐか、確かめてください' }
+      ? { ...i, message: tr('insp.ambiguous') }
       : i,
   );
   return { doc: next, fixed, issues };

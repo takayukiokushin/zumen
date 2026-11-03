@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, LoginError } from './api.ts';
 import { useT } from '../i18n/useT.ts';
+import { Rich } from '../i18n/Rich.tsx';
+import { tr } from '../i18n/index.ts';
 import { EyeIcon, EyeOffIcon } from '../icons.tsx';
 import { TEXT_STEPS, useSettings } from '../settings/settings.tsx';
 import { APP_VERSION } from '../version.ts';
@@ -10,7 +12,7 @@ import type { User } from './api.ts';
 function formatLeft(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
-  return m > 0 ? `${m}分${String(s).padStart(2, '0')}秒` : `${s}秒`;
+  return m > 0 ? tr('time.minSec', { m, s: String(s).padStart(2, '0') }) : tr('time.sec', { s });
 }
 
 /** ログイン画面。社内数名での利用を想定した最小構成 */
@@ -55,7 +57,7 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
         if (err.lockMinutes) setLockMinutes(err.lockMinutes);
         setLockedSec(err.lockedSec ?? null);
       } else {
-        setError(err instanceof Error ? err.message : 'ログインできませんでした。');
+        setError(err instanceof Error ? err.message : t('login.failed'));
       }
     } finally {
       setBusy(false);
@@ -103,21 +105,20 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
 
         {locked ? (
           <div className="locked-box">
-            <b>何度もまちがえたため、このIDはログインできません。</b>
+            <b>{t('login.lockedTitle')}</b>
             <p className="countdown">
-              あと <strong>{formatLeft(lockedSec!)}</strong> で、もう一度お試しいただけます。
+              <Rich text={t('login.lockedLeft', { left: formatLeft(lockedSec!) })} />
             </p>
-            <p>お急ぎの場合は、管理者にパスワードの再設定を頼んでください。すぐに入れるようになります。</p>
+            <p>{t('login.lockedAdmin')}</p>
           </div>
         ) : (
           <>
             {error && <p className="err">{error}</p>}
             {remaining !== null && remaining > 0 && (
               <p className="warn-box">
-                あと <b>{remaining}回</b> まちがえると、<b>{lockMinutes}分間</b>
-                ログインできなくなります。
+                <Rich text={t('login.warnLeft', { n: remaining, minutes: lockMinutes })} />
                 <br />
-                パスワードが分からない場合は、<b>管理者に確認してください。</b>
+                <Rich text={t('login.warnAdmin')} />
               </p>
             )}
           </>

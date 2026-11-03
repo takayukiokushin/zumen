@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { QUESTIONS } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult, ReviewItem } from '@zumen/ai';
+import { useT, useTx } from '../i18n/useT.ts';
+import { translateReviewText } from '../session/serverMessages.ts';
 
 /**
  * AIの読み取り結果を、人が確認して、採用するものだけを反映する画面。
@@ -11,33 +13,32 @@ import type { AnalysisResult, ReviewItem } from '@zumen/ai';
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
 
-const LEVEL_LABEL: Record<ReviewItem['level'], string> = {
-  error: '矛盾',
-  confirm: '確認',
-  ask: '未記入',
-};
+const levelKey = { error: 'revui.level.error', confirm: 'revui.level.confirm', ask: 'revui.level.ask' } as const;
 
-const labelOf = (id: string) => {
+type T = ReturnType<typeof useT>;
+type Tx = ReturnType<typeof useTx>;
+
+const labelOf = (id: string, t: T, tx: Tx) => {
   // 繰り返し（__2）やエリア（a2:）の書き方は、基本の項目名に、書き方の説明を添えて出す
   const m = /^(?:a(\d+):)?(.*?)(?:__(\d+))?$/.exec(id);
   const base = QUESTIONS.find((q) => q.id === (m?.[2] ?? id));
   if (!base) return id;
-  const extra = [m?.[1] ? `${m[1]}か所目のエリア` : '', m?.[3] ? `${m[3]}件目` : ''].filter(Boolean).join('・');
-  return extra ? `${base.label}（${extra}）` : base.label;
+  const extra = [m?.[1] ? t('revui.extraArea', { n: m[1] }) : '', m?.[3] ? t('revui.extraUnit', { n: m[3] }) : ''].filter(Boolean).join('・');
+  return extra ? `${tx(base.label)}（${extra}）` : tx(base.label);
 };
 
-const displayValue = (id: string, v: unknown): string => {
+const displayValue = (id: string, v: unknown, tx: Tx): string => {
   const baseId = id.replace(/^a\d+:/, '').replace(/__\d+$/, '');
   const q = QUESTIONS.find((x) => x.id === baseId);
   const o = q?.options?.find((opt) => opt.value === String(v));
-  return o ? o.label : String(v);
+  return o ? tx(o.label) : String(v);
 };
 
 export function AnalysisReview({
   result,
   review,
   evidenceLabel,
-  notesLabel = 'メモに書かれていた特記事項',
+  notesLabel,
   onApply,
 }: {
   result: AnalysisResult;
@@ -49,6 +50,9 @@ export function AnalysisReview({
   /** 選んだ項目だけを、答えとして渡す */
   onApply: (patch: Answers) => void;
 }) {
+  const t = useT();
+  const tx = useTx();
+  const notesTitle = notesLabel ?? t('revui.notes');
   // 自信がある項目は、最初からチェックを入れておく
   const [chosen, setChosen] = useState<Record<string, boolean>>(() => {
     const uncertain = new Set(result.uncertain);
@@ -67,18 +71,18 @@ export function AnalysisReview({
   return (
         <>
           <section className="panel">
-            <h2>確認してほしいこと（{review.length}件）</h2>
+            <h2>{t('revui.title', { n: review.length })}</h2>
             {review.length === 0 ? (
-              <p className="hint">特にありません。</p>
+              <p className="hint">{t('revui.none')}</p>
             ) : (
               <ul className="review">
                 {review.map((r, i) => (
                   <li key={i} className={r.level}>
-                    <span className="tag">{LEVEL_LABEL[r.level]}</span>
+                    <span className="tag">{t(levelKey[r.level])}</span>
                     <div>
-                      <b>{r.label}</b>
-                      {r.value && <span className="val">読み取り: {r.value}</span>}
-                      <p>{r.message}</p>
+                      <b>{translateReviewText(r.label)}</b>
+                      {r.value && <span className="val">{t('revui.read', { value: translateReviewText(r.value) })}</span>}
+                      <p>{translateReviewText(r.message)}</p>
                       {r.evidence && <p className="ev">{evidenceLabel}: {r.evidence}</p>}
                     </div>
                   </li>
@@ -88,14 +92,14 @@ export function AnalysisReview({
           </section>
 
           <section className="panel">
-            <h2>読み取った内容（{Object.keys(result.answers).length}件）</h2>
-            <p className="hint">反映するものにチェックを入れてください。チェックを外したものは今までの回答のままです。</p>
+            <h2>{t('revui.picked', { n: Object.keys(result.answers).length })}</h2>
+            <p className="hint">{t('revui.pickedHint')}</p>
             <table className="picked">
               <thead>
                 <tr>
-                  <th>反映</th>
-                  <th>項目</th>
-                  <th>読み取った値</th>
+                  <th>{t('revui.col.apply')}</th>
+                  <th>{t('revui.col.item')}</th>
+                  <th>{t('revui.col.value')}</th>
                   <th>{evidenceLabel}</th>
                 </tr>
               </thead>
@@ -107,27 +111,27 @@ export function AnalysisReview({
                         type="checkbox"
                         checked={Boolean(chosen[id])}
                         onChange={(e) => setChosen((p) => ({ ...p, [id]: e.target.checked }))}
-                        aria-label={`${labelOf(id)}を反映する`}
+                        aria-label={t('revui.applyLabel', { label: labelOf(id, t, tx) })}
                       />
                     </td>
                     <td>
-                      {labelOf(id)}
-                      {result.uncertain.includes(id) && <span className="warn-tag">自信なし</span>}
+                      {labelOf(id, t, tx)}
+                      {result.uncertain.includes(id) && <span className="warn-tag">{t('revui.unsureTag')}</span>}
                     </td>
-                    <td>{displayValue(id, v)}</td>
+                    <td>{displayValue(id, v, tx)}</td>
                     <td className="ev">{result.evidence[id] ?? ''}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <button type="button" className="primary" disabled={chosenCount === 0} onClick={apply}>
-              選んだ{chosenCount}件を反映してヒアリングへ
+              {t('revui.applyBtn', { n: chosenCount })}
             </button>
           </section>
 
           {result.notes.length > 0 && (
             <section className="panel">
-              <h2>{notesLabel}</h2>
+              <h2>{notesTitle}</h2>
               <ul className="notes">
                 {result.notes.map((n, i) => (
                   <li key={i}>{n}</li>

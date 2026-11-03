@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ConnectionError, LockedError, StaleError } from './session/api.ts';
-import { SAVE_RETRY } from './session/messages.ts';
+import { saveRetry } from './session/messages.ts';
 import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
@@ -205,7 +205,7 @@ export function App() {
         setLockedBy(e.lock);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : '案件を開けませんでした。');
+      setError(e instanceof Error ? e.message : t('err.openProject'));
     }
   };
 
@@ -220,7 +220,7 @@ export function App() {
       const initial: Answers = { ...NEW_PROJECT_ANSWERS, ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}) };
       const { id, updatedAt } = await api.createProject(name, initial);
       setProjectId(id);
-      setProjectName(name || '無題の案件');
+      setProjectName(name || t('project.untitled'));
       setAnswers(initial);
       setDrawing(null);
       setSketchRead(false);
@@ -231,7 +231,7 @@ export function App() {
       setLockedBy(null);
       setShowList(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '案件を作れませんでした。');
+      setError(e instanceof Error ? e.message : t('err.createProject'));
     }
   };
 
@@ -261,8 +261,8 @@ export function App() {
       }
       if (e instanceof LockedError) setLockedBy(e.lock);
       // 通信が届かなかったときは、つながってからもう一度保存すればよいと伝える
-      const retry = e instanceof ConnectionError ? SAVE_RETRY : '';
-      setError(`${e instanceof Error ? e.message : '保存できませんでした。'}${retry}`);
+      const retry = e instanceof ConnectionError ? saveRetry() : '';
+      setError(`${e instanceof Error ? e.message : t('err.save')}${retry}`);
       return false;
     } finally {
       setSaving(false);
@@ -395,13 +395,13 @@ export function App() {
           <button
             type="button"
             onClick={() => {
-              const warning = dirty ? ['この画面の未保存の変更は破棄され、保存されている内容を読み直します。'] : [];
+              const warning = dirty ? [t('lock.takeoverDiscard')] : [];
               void ask({
                 title: t('lock.takeover'),
                 message: [
-                  `${lockedBy.userName}さんから編集を引き継ぎます。`,
+                  t('lock.takeoverFrom', { name: lockedBy.userName }),
                   ...warning,
-                  `${lockedBy.userName}さんの未保存の変更も失われます。よろしいですか。`,
+                  t('lock.takeoverLose', { name: lockedBy.userName }),
                 ],
                 confirmLabel: t('lock.takeover'),
               }).then((yes) => {

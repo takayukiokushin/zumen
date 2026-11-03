@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { areaCountOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, Question, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
+import { useT, useTx } from './i18n/useT.ts';
 
 /**
  * 事前ヒアリングのフォーム。
@@ -44,6 +45,8 @@ interface Block {
 }
 
 export function HearingForm({ answers, effective, onChange, showNav = true, sketchRead = false }: Props) {
+  const t = useT();
+  const tx = useTx();
   /** スケッチから読み取れた前提で、質問がどれだけ減るかを確かめる切り替え */
   const [aiAssist, setAiAssist] = useState(false);
 
@@ -105,7 +108,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
       if (rows.length === 0) continue;
       blocks.push({
         index: i,
-        heading: count > 1 ? `${i + 1}${group.repeatUnit ?? '件'}目` : null,
+        heading: count > 1 ? t('hearing.nth', { n: i + 1, unit: tx(group.repeatUnit ?? '件') }) : null,
         rows,
         answered: rows.filter((r) => effective[r.key] !== undefined).length,
         need: rows.some((r) => r.question.required && effective[r.key] === undefined),
@@ -178,7 +181,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     return chunks.map((c, i) =>
       c.section ? (
         <div className="subgroup" key={`${c.section}-${i}`}>
-          <h4 className="subhead">{c.section}</h4>
+          <h4 className="subhead">{tx(c.section)}</h4>
           {fields(c.rows)}
         </div>
       ) : (
@@ -191,8 +194,8 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
   const renderSection = (sec: Section, id: string, inner = false) => (
     <section className={`group${inner ? ' inner' : ''}`} id={id} key={id}>
       <header>
-        {inner ? <h4 className="grouphead">{sec.group.label}</h4> : <h3>{sec.group.label}</h3>}
-        {sec.group.description && <span className="desc">{sec.group.description}</span>}
+        {inner ? <h4 className="grouphead">{tx(sec.group.label)}</h4> : <h3>{tx(sec.group.label)}</h3>}
+        {sec.group.description && <span className="desc">{tx(sec.group.description)}</span>}
         <span className="badge">
           {sec.answered}/{sec.total}
         </span>
@@ -208,7 +211,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
             <div className="repeat-head">
               <b>{b.heading}</b>
               <span className={b.need ? 'need' : b.answered === b.rows.length ? 'done' : ''}>
-                {b.need ? '未入力あり' : `${b.answered}/${b.rows.length}`}
+                {b.need ? t('hearing.needInput') : `${b.answered}/${b.rows.length}`}
               </span>
             </div>
             {renderRows(b.rows)}
@@ -223,9 +226,9 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     areaBlocks.map((ab) => (
       <section className="area-block" id={`area-${ab.index + 1}`} key={`area-${ab.index}`}>
         <header className="area-head">
-          <h3>{ab.index + 1}か所目のエリア</h3>
+          <h3>{t('hearing.areaNth', { n: ab.index + 1 })}</h3>
           <span className={ab.need ? 'need' : ab.answered === ab.total ? 'done' : ''}>
-            {ab.need ? '未入力あり' : `${ab.answered}/${ab.total}`}
+            {ab.need ? t('hearing.needInput') : `${ab.answered}/${ab.total}`}
           </span>
         </header>
         {ab.areaRows.length > 0 && <div className="fields">{ab.areaRows.map(field)}</div>}
@@ -237,9 +240,9 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     <>
       {showNav && (
       <nav className="nav">
-        <h1>事前ヒアリング</h1>
+        <h1>{t('hearing.title')}</h1>
         <p className="sub">
-          全{QUESTIONS.length}問のうち、いまの回答で{totalQuestions}問が対象
+          {t('hearing.target', { total: QUESTIONS.length, n: totalQuestions })}
         </p>
         {sections.flatMap((s) => [
           <a
@@ -247,7 +250,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
             href={`#g-${s.group.id}`}
             className={s.need ? 'need' : s.answered === s.total ? 'done' : ''}
           >
-            <span>{s.group.label}</span>
+            <span>{tx(s.group.label)}</span>
             <span className="count">
               {s.answered}/{s.total}
             </span>
@@ -259,7 +262,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
                   href={`#area-${ab.index + 1}`}
                   className={`sub-link ${ab.need ? 'need' : ab.answered === ab.total ? 'done' : ''}`}
                 >
-                  <span>{ab.index + 1}か所目のエリア</span>
+                  <span>{t('hearing.areaNth', { n: ab.index + 1 })}</span>
                   <span className="count">
                     {ab.answered}/{ab.total}
                   </span>
@@ -272,12 +275,12 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
 
       <main className="form">
         <div className="form-head">
-          <h2>ヒアリング項目</h2>
+          <h2>{t('hearing.items')}</h2>
           {sketchRead && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <label className="toggle">
                 <input type="checkbox" checked={aiAssist} onChange={(e) => setAiAssist(e.target.checked)} />
-                スケッチから判定できた質問を隠す
+                {t('hearing.hideResolved')}
               </label>
             </div>
           )}

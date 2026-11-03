@@ -183,6 +183,8 @@ export interface MissingField {
   question: Question;
   /** 画面に出す名前（2か所目以降は「2か所目：」が付く） */
   label: string;
+  /** 2か所目以降のエリアの項目のとき、何か所目か（2〜）。画面で、選んでいる言葉に合わせた「2か所目：」を付けるのに使う */
+  areaNo?: number;
   /** その項目の選択肢を絞る条件を見るための、そのエリアの答え */
   context: Answers;
 }
@@ -197,7 +199,7 @@ export function missingRequiredFields(rawAnswers: Answers, opts: AskOptions = {}
     const view = normalizeAnswers(areaView(rawAnswers, n));
     for (const q of visibleQuestions(view, opts)) {
       const scoped = q.group === 'area' ? q.id !== 'areaCount' : PER_AREA_QUESTION_IDS.has(q.id);
-      if (scoped && q.required && empty(view[q.id])) out.push({ key: areaKey(q.id, n), question: q, label: `${n + 1}か所目：${q.label}`, context: view });
+      if (scoped && q.required && empty(view[q.id])) out.push({ key: areaKey(q.id, n), question: q, label: `${n + 1}か所目：${q.label}`, areaNo: n + 1, context: view });
     }
   }
   return out;

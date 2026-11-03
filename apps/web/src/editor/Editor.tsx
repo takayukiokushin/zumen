@@ -6,11 +6,12 @@ import type { Orientation, PaperSize } from '@zumen/layout';
 import { buildComposition, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
-import { useT } from '../i18n/useT.ts';
+import { useT, useTx } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
 import { UndoIcon, ZoomIcon } from '../icons.tsx';
-import { ISSUE_LABEL, chooseSheet, tidyDrawing } from './inspect.ts';
-import type { Issue } from './inspect.ts';
+import { chooseSheet, issueLabel, tidyDrawing } from './inspect.ts';
+import type { Issue, IssueKind } from './inspect.ts';
+import { Rich } from '../i18n/Rich.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setWireKind, tidyDoc } from './doc.ts';
@@ -50,6 +51,7 @@ interface EditorProps {
 
 export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const t = useT();
+  const tx = useTx();
   const composition = useMemo(() => buildComposition(answers), [answers]);
   /** いまのヒアリング回答の印。これが変わったら、図面の中身も変わるはず */
   const basis = useMemo(
@@ -361,12 +363,12 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                   applyAuto(r.doc);
                   const done = Object.entries(r.fixed)
                     .filter(([, n]) => n > 0)
-                    .map(([k, n]) => `${ISSUE_LABEL[k as keyof typeof ISSUE_LABEL]} ${n}件`);
+                    .map(([k, n]) => t('editor.issueCount', { label: issueLabel(k as IssueKind), n }));
                   setIssues(r.issues);
                   setTidyNote(
                     done.length > 0
-                      ? `直しました：${done.join(' / ')}`
-                      : '直すところはありませんでした',
+                      ? t('editor.tidyDone', { list: done.join(' / ') })
+                      : t('editor.tidyNone'),
                   );
                 }}
               >
@@ -395,13 +397,13 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                 type="button"
                 className="btn"
                 aria-pressed={sheetView}
-                title="図枠つきの、印刷したときの見た目で確かめます"
+                title={t('editor.sheetTitle')}
                 onClick={() => {
                   setSheetView((v) => !v);
                   setMode('select');
                 }}
               >
-                印刷プレビュー
+                {t('editor.sheetOpen')}
               </button>
               <button type="button" onClick={() => window.print()}>
                 {t('editor.print')}
@@ -428,21 +430,21 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
       {rebuiltNote && (
         <p className="stale-note" role="status">
-          <b>入力内容が変わったので、図面を作り直しました。</b>
+          <Rich text={t('editor.rebuilt')} />
           {rebuiltNote.lost ? (
-            <span className="hint">この図面は、手で直した内容を取り出せない古い形式なので、手で直した内容は残せませんでした。「操作を戻す」で、元に戻せます。</span>
+            <span className="hint">{t('editor.rebuiltLost')}</span>
           ) : rebuiltNote.kept ? (
             <span className="hint">
-              手で直した内容は、そのまま残しています。
-              {rebuiltNote.dormant > 0 && `いまの入力に無い機器の分（${rebuiltNote.dormant}件）は、取ってあります（その機器が戻ると、また重なります）。`}
-              {rebuiltNote.overlaps > 0 && `手で動かした記号のうち ${rebuiltNote.overlaps}個が、ほかの記号と重なっています。位置を確かめてください。`}
-              「操作を戻す」で、元に戻せます。
+              {t('editor.rebuiltKept')}
+              {rebuiltNote.dormant > 0 && ` ${t('editor.rebuiltDormant', { n: rebuiltNote.dormant })}`}
+              {rebuiltNote.overlaps > 0 && ` ${t('editor.rebuiltOverlap', { n: rebuiltNote.overlaps })}`}
+              {` ${t('editor.rebuiltUndo')}`}
             </span>
           ) : (
-            <span className="hint">「操作を戻す」で、元の図面に戻せます。</span>
+            <span className="hint">{t('editor.rebuiltUndo2')}</span>
           )}
           <button type="button" className="btn" onClick={() => setRebuiltNote(null)}>
-            閉じる
+            {t('common.close')}
           </button>
         </p>
       )}
@@ -452,19 +454,19 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <b>{tidyNote}</b>
           {issues && issues.length > 0 ? (
             <>
-              <span>直しきれなかったところが {issues.length}件 あります（図面に赤い印を出しています）</span>
+              <span>{t('editor.issuesLeft', { n: issues.length })}</span>
               <ul className="issue-list">
                 {issues.slice(0, 8).map((is, i) => (
                   <li key={i}>
-                    <span className="tag">{ISSUE_LABEL[is.kind]}</span>
+                    <span className="tag">{issueLabel(is.kind)}</span>
                     {is.message}
                   </li>
                 ))}
-                {issues.length > 8 && <li>ほか {issues.length - 8}件</li>}
+                {issues.length > 8 && <li>{t('editor.issuesMore', { n: issues.length - 8 })}</li>}
               </ul>
             </>
           ) : (
-            <span>直しきれなかったところはありません</span>
+            <span>{t('editor.issuesNone')}</span>
           )}
           <button
             type="button"
@@ -485,9 +487,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
 
       {sheetView && (
         <p className="preview-note" role="status">
-          <span>印刷プレビュー中は編集できません。編集するときは、印刷プレビューを閉じてください</span>
+          <span>{t('editor.sheetNoEdit')}</span>
           <button type="button" className="btn" onClick={() => setSheetView(false)}>
-            印刷プレビューを閉じる
+            {t('editor.sheetClose')}
           </button>
         </p>
       )}
@@ -543,13 +545,13 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             <select value={paletteCategory} onChange={(e) => setPaletteCategory(e.target.value as SymbolCategory)}>
               {categories.map((c) => (
                 <option key={c} value={c}>
-                  {CATEGORY_LABEL[c]}
+                  {tx(CATEGORY_LABEL[c])}
                 </option>
               ))}
             </select>
             <div className="palette">
               {palette.map((s) => (
-                <button key={s.id} type="button" title={s.nameJa} onClick={() => onPaletteClick(s.id)}>
+                <button key={s.id} type="button" title={tx(s.nameJa)} onClick={() => onPaletteClick(s.id)}>
                   <span
                     className="thumb"
                     dangerouslySetInnerHTML={{ __html: symbolToSvg(s, { padding: 4, scale: 0.62 }) }}
@@ -566,7 +568,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
               {selectedSymbol ? (
                 <>
                   <p className="hint">
-                    {getSymbol(selectedSymbol.symbolId).nameJa}
+                    {tx(getSymbol(selectedSymbol.symbolId).nameJa)}
                   </p>
                   {/* 外箱・エリアの区分枠：端や角をつかんで、大きさを変えられる */}
                   {resizeInfoOf(selectedSymbol) && <p className="hint">{t('editor.resizeHint')}</p>}
@@ -586,12 +588,12 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                               const free = f.type !== 'select' || f.allowFreeInput;
                               return (
                                 <label className="rating" key={f.key}>
-                                  <span>{f.label}</span>
+                                  <span>{tx(f.label)}</span>
                                   {f.type === 'select' && !f.allowFreeInput ? (
                                     <select value={values[f.key] ?? ''} onChange={(e) => apply(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value))}>
                                       <option value="">{t('editor.ratings.blank')}</option>
                                       {f.options?.map((o) => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                        <option key={o.value} value={o.value}>{tx(o.label)}</option>
                                       ))}
                                     </select>
                                   ) : (
@@ -603,11 +605,11 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                                       onChange={(e) => apply(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value))}
                                     />
                                   )}
-                                  {f.unit && <span className="unit">{f.unit}</span>}
+                                  {f.unit && <span className="unit">{tx(f.unit)}</span>}
                                   {free && f.type === 'select' && (
                                     <datalist id={listId}>
                                       {f.options?.map((o) => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                        <option key={o.value} value={o.value}>{tx(o.label)}</option>
                                       ))}
                                     </datalist>
                                   )}
