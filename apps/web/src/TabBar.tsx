@@ -92,7 +92,7 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
         </button>
       )}
       <span className="who">
-        {user.name}
+        <span className="who-name">{user.name}</span>
         <span className={`role role-${user.role}`}>{t(`role.${user.role}`)}</span>
       </span>
       <button
