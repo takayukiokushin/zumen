@@ -1482,14 +1482,22 @@ console.log('\n■ 説明文の整理');
   // AI・音声入力には、これまでの手がかりを、そのまま渡す（画面の説明文を消しても、読み取りの精度は変えない）
   const aiPrompt = buildSystemPrompt();
   for (const [id, needle] of [
-    ['pasRatedVoltage', '手書きメモに記載があればそれを使い'],
+    ['pasRatedVoltage', 'メモに書かれている数字をそのまま使ってください'],
     ['relayAt', 'CTにつく継電器は、CTの二次側'],
-    ['cableCrossSection', '一覧にない値は手入力できる'],
-    ['transformerCount', '51台以上のときは手入力できる'],
+    ['cableCrossSection', 'これ以外の値でも'],
+    ['transformerCount', '51以上の数も答えられます'],
+    ['sectionalizer', 'pas（PAS）・pgs（PGS）・ugs（UGS）・none（なし）'],
+    ['pasControl', 'gr（GR＝無方向性）'],
   ] as const) {
-    if (!aiPrompt.includes(needle)) fail(`${id}：AIへの手がかり「${needle}」が、指示文から消えています`);
+    const ask = QUESTIONS.find((x) => x.id === id);
+    if (!aiPrompt.includes(needle)) fail(`${id}：AIへの説明「${needle}」が、指示文にありません`);
+    // AIへの説明は、短いメモ書きではなく、丁寧な文章にする（選ぶ値の説明・メモに無いときの扱いを含む）
+    if ((ask?.aiHint ?? '').length < 80) fail(`${id}：AIへの説明が短すぎます（${(ask?.aiHint ?? '').length}文字）`);
   }
-  console.log('  画面の説明文を消したものも、AIの読み取りには、これまでの手がかりを渡している');
+  for (const x of QUESTIONS.filter((y) => y.aiHint !== undefined)) {
+    if ((x.aiHint ?? '').length < 60) fail(`${x.id}：AIへの説明が短すぎます（${(x.aiHint ?? '').length}文字）`);
+  }
+  console.log(`  AIへの説明（${QUESTIONS.filter((y) => y.aiHint !== undefined).length}項目）：選ぶ値・メモに無いときの扱いまで書いた、丁寧な文章`);
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
