@@ -874,3 +874,17 @@ main.form .repeat-block > .fields { padding: calc(10px * var(--text-scale)) calc
   .projectbar button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
   .projectbar .jobname { font-size: calc(11.5px * var(--text-scale)); }
 }
+
+/* ---- 選択ボタン（2〜4択）は、全部を横一列に並べる（項目5：責任分界点・引込元など） ---- */
+/*   入力欄の幅（main.form の幅）が広いとき：欄の幅を、ボタンを全部並べた幅に合わせる（名前のほうが長いときは、名前が折り返す）。
+     ボタンは折り返さず、高さがそろう。 */
+main.form { container-type: inline-size; }
+main.form .field[data-kind="buttons"] { flex: 0 1 auto; width: min-content; min-width: min(var(--fw), 100%); max-width: 100%; }
+main.form .field[data-kind="buttons"] .radio-row { flex-wrap: nowrap; align-items: stretch; }
+main.form .field[data-kind="buttons"] .radio-row button { flex: 0 0 auto; white-space: nowrap; }
+/*   入力欄の幅が狭いとき（スマホ・小さい画面・大きな文字の設定）：欄は、幅いっぱい。ボタンは、同じ幅に分け合い、
+     足りなければ、ボタンの中で文字が折り返す（ボタンを、上下に積まない） */
+@container (max-width: 640px) {
+  main.form .field[data-kind="buttons"] { width: 100%; flex: 1 1 100%; }
+  main.form .field[data-kind="buttons"] .radio-row button { flex: 1 1 0; min-width: 0; white-space: normal; line-height: 1.3; }
+}

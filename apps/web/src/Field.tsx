@@ -90,7 +90,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
     (pickedOther || (current !== '' && !q.options?.some((o) => o.value === String(current))));
 
   return (
-    <div className="field" data-size={fieldSize(q, tx)}>
+    <div className="field" data-size={fieldSize(q, tx)} data-kind={q.type === 'select' && asButtons(q, tx) ? 'buttons' : undefined}>
       <label htmlFor={fieldKey}>
         {q.type === 'boolean' ? '' : tx(q.label)}
         {q.required && <span className="req">{t('field.required')}</span>}
