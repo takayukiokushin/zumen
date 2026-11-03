@@ -374,7 +374,7 @@ export const PFS_CHAIN: Placement[] = [
     role: 'main-breaker',
     symbolId: 'lbs-pf',
     kind: 'series',
-    labelTemplate: ['LBS', '{lbsRatedVoltage}V', '{lbsRatedCurrent}A', 'PF×{lbsFuseCount}', '{lbsFuseSpec}'],
+    labelTemplate: ['LBS', '{lbsRatingLine}', 'PF×{lbsFuseCount}', '{lbsFuseSpec}'],
     props: { ratedVoltage: 'lbsRatedVoltage', ratedCurrent: 'lbsRatedCurrent', fuseCount: 'lbsFuseCount', fuseSpec: 'lbsFuseSpec' },
   },
 ];
@@ -668,7 +668,7 @@ export const AREA_CHAIN: Placement[] = [
     symbolId: 'lbs-pf',
     kind: 'series',
     when: { key: 'intakeLbsPf', eq: 'yes' },
-    labelTemplate: ['LBS', '{lbsRatedVoltage}V', '{lbsRatedCurrent}A', 'PF×{lbsFuseCount}', '{lbsFuseSpec}'],
+    labelTemplate: ['LBS', '{lbsRatingLine}', 'PF×{lbsFuseCount}', '{lbsFuseSpec}'],
     props: { ratedVoltage: 'lbsRatedVoltage', ratedCurrent: 'lbsRatedCurrent', fuseCount: 'lbsFuseCount', fuseSpec: 'lbsFuseSpec' },
   },
   {
@@ -676,7 +676,7 @@ export const AREA_CHAIN: Placement[] = [
     symbolId: 'lbs',
     kind: 'series',
     when: { all: [{ key: 'intakeLbs', eq: 'yes' }, { key: 'intakeLbsPf', ne: 'yes' }] },
-    labelTemplate: ['LBS', '{lbsRatedVoltage}V', '{lbsRatedCurrent}A'],
+    labelTemplate: ['LBS', '{lbsRatingLine}'],
     props: { ratedVoltage: 'lbsRatedVoltage', ratedCurrent: 'lbsRatedCurrent' },
   },
   {

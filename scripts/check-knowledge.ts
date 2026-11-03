@@ -1072,7 +1072,7 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   const role = (list: typeof all, r: string) => list.find((i) => i.role === r);
   // 2か所目：LBS（PF付）
   ok(role(a2, 'a2:main-breaker')?.symbolId === 'lbs-pf', '2か所目の受電側がLBS（PF付）になっていません');
-  ok(role(a2, 'a2:main-breaker')?.label.join('|') === 'LBS|7200V|200A|PF×3', `2か所目のLBSの文字：${role(a2, 'a2:main-breaker')?.label.join('|')}`);
+  ok(role(a2, 'a2:main-breaker')?.label.join('|') === 'LBS|7200V 200A|PF×3', `2か所目のLBSの文字：${role(a2, 'a2:main-breaker')?.label.join('|')}`);
   ok(!role(a2, 'a2:ds') && !role(a2, 'a2:relay-tt'), '2か所目（LBS）に、DS・試験端子が入っています');
   ok(role(a2, 'a2:site-vt')?.kind === 'branch-right' && Boolean(role(a2, 'a2:zpd')) && !role(a2, 'a2:ovgr'), '2か所目のVT・ZPDが入り、OVGRは自動では入らない、になっていません');
   ok(role(a2, 'a2:area-frame')?.label[0]?.startsWith('オープンフレーム式'), `2か所目の枠の文字：${role(a2, 'a2:area-frame')?.label[0]}`);

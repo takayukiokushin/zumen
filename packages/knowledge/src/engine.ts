@@ -421,6 +421,9 @@ export function withDerived(rawAnswers: Answers): Answers {
     if (ka) parts.push(String(ka));
     return parts.join(' ');
   };
+  // 受電側のLBS（主遮断装置・エリアのLBS）の2行目：「7200V 200A」（定格電圧と定格電流。入れてあるものだけ）。
+  // 変圧器・コンデンサの手前のLBSと同じ形（LBS／7200V 200A／PF×3／ヒューズの定格）にそろえる
+  d.lbsRatingLine = [answers.lbsRatedVoltage ? `${answers.lbsRatedVoltage}V` : '', answers.lbsRatedCurrent ? `${answers.lbsRatedCurrent}A` : ''].filter(Boolean).join(' ');
   for (const prefix of ['tr', 'cap'] as const) {
     // 定格を入れていないときは、せめて記号名を出す
     d[`${prefix}PcHead`] = answers[`${prefix}PcRating`] || 'PC';
