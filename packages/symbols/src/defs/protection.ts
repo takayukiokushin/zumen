@@ -136,6 +136,38 @@ export const protectionSymbols: SymbolDef[] = [
     note: 'DGR方式で零相電圧が必要なときに入る。見本図面ではOVGRへ接続されていた。',
   },
   {
+    // PAS・PGSの枠の中に入れる、小さなZPD。母線につなぐ ZPD（zpd）を、枠に収まるように、左右を逆に・小さく描き直したもの。
+    // 一次側（入口）は、枠の右寄りの上から入れ、二次側（出口）は右へ出す（DGRが枠の右にあるため）。
+    // 接地記号は、LAと同じく、枠の外（下）に出す（枠の下の線を、接地へ向かう線がまたぐ）
+    id: 'zpd-pas',
+    abbr: 'ZPD',
+    nameJa: '零相電圧検出装置（PAS・PGS内蔵用）',
+    nameFormal: 'ゼロポテンシャルデバイス（ユーザー呼称）',
+    category: 'protection',
+    tags: ['PAS', 'PGS', 'DGR', '零相電圧', '内蔵'],
+    altOf: 'zpd',
+    optional: true,
+    box: { w: 38, h: 38 },
+    shapes: [
+      vline(30, 0, 11),
+      rect(1, 6, 36, 16),
+      hline(11, 24, 36),
+      hline(15, 24, 36),
+      vline(30, 15, 32),
+      ...earth(30, 32, 0.5),
+      hline(13, 18, 38),
+      circle(9, 13, CONTACT_R),
+      circle(14, 13, CONTACT_R),
+    ],
+    ports: [
+      { id: 'in', x: 30, y: 0, dir: 'up', role: 'line' },
+      { id: 'sec', x: 38, y: 13, dir: 'right', role: 'control', label: 'DGRへ' },
+    ],
+    status: 'confirmed',
+    statusNote: 'PAS・PGSの大きさを変えずに収めるため、ZPDを小さくし、左右を逆にして描いた。',
+    note: 'DGR方式のPAS・PGSに、ZCTやVTと同じく、枠の中に入れる。',
+  },
+  {
     id: 'earth',
     abbr: 'E',
     nameJa: '接地',

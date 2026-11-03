@@ -592,7 +592,9 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     // 二次側から結線してくる機器（継電器など）
     if (sources.length > 0) {
       const railX = Math.max(...sources.map((v) => v.x * dir)) * dir + 18 * dir;
-      const midY = sources.reduce((a, v) => a + v.y, 0) / sources.length;
+      // 3つ以上から集めるときは、平均が割り切れず、端数の座標になる（動かして戻すと、わずかにずれる）ので、整数にする
+      const avgY = sources.reduce((a, v) => a + v.y, 0) / sources.length;
+      const midY = sources.length > 2 ? Math.round(avgY) : avgY;
       const entry0 = portOf(def, dir > 0 ? 'l' : 'r', 'in') ?? def.ports[0]!;
       // 左へ分岐するのに、入口が左にある記号（試験端子など。右へ分岐する向きに作ってある）は、180°回す
       const flip = dir < 0 && entry0.dir === 'left' && entry0.x < def.box.w / 2;

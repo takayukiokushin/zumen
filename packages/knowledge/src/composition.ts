@@ -267,6 +267,16 @@ export const UPSTREAM: Placement[] = [
     note: 'LAの接地はPAS本体の接地と同じ箇所で施工する',
   },
   {
+    // DGRのときは、零相電圧を得るZPDも、PAS・PGSの枠の中に入れる（枠の大きさは変えず、ZPDのほうを小さくして収める）
+    role: 'pas-zpd',
+    symbolId: 'zpd-pas',
+    kind: 'inside',
+    parent: 'pas',
+    slot: 'zpd',
+    when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasControl', eq: 'dgr' }] },
+    note: 'DGR方式の区分開閉器（PAS・PGS）の中に、ZCT・VTと並べて入れる。GR・SOGなしのときは入れない',
+  },
+  {
     role: 'pas-relay',
     symbolId: 'relay-gr',
     kind: 'branch-right',
@@ -278,7 +288,7 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'relay-dgr',
     kind: 'branch-right',
     when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'pasControl', eq: 'dgr' }] },
-    connectFrom: ['pas-zct', 'pas-vt'],
+    connectFrom: ['pas-zct', 'pas-vt', 'pas-zpd'],
   },
   {
     role: 'vct-pole',

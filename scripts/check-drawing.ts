@@ -2169,6 +2169,71 @@ console.log('\n■ PASを動かしたとき（内蔵品・中の枝線・GR/DGR�
   }
 }
 
+/* ---------- 30b. DGRのとき、PAS・PGSの中にZPDが入る（枠の大きさは変えない） ---------- */
+console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
+{
+  const mk = (extra: Partial<Answers>): Answers => ({
+    ...answers, mainBreakerForm: 'cb', transformerCount: 1, feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no', ...extra,
+  });
+  const cases: [string, Answers, boolean][] = [
+    ['PAS・DGR・VT・LA内蔵', mk({ pasControl: 'dgr', pasBuiltinVt: 'yes', pasBuiltinLa: 'yes' }), true],
+    ['PAS・DGR・VTのみ', mk({ pasControl: 'dgr', pasBuiltinVt: 'yes', pasBuiltinLa: 'no' }), true],
+    ['PAS・DGR・内蔵なし', mk({ pasControl: 'dgr', pasBuiltinVt: 'no', pasBuiltinLa: 'no' }), true],
+    ['PGS・DGR・VT・LA内蔵', mk({ sectionalizer: 'pgs', pasControl: 'dgr', pasBuiltinVt: 'yes', pasBuiltinLa: 'yes' }), true],
+    ['PGS・DGR・内蔵なし', mk({ sectionalizer: 'pgs', pasControl: 'dgr', pasBuiltinVt: 'no', pasBuiltinLa: 'no' }), true],
+    ['PAS・GR', mk({ pasControl: 'gr', pasBuiltinVt: 'yes', pasBuiltinLa: 'yes' }), false],
+    ['PAS・SOGなし', mk({ pasControl: 'none', pasBuiltinVt: 'no', pasBuiltinLa: 'no' }), false],
+  ];
+  for (const [name, a, want] of cases) {
+    const d = fromLayout(layout(buildComposition(a), a));
+    const syms = d.items.filter((it): it is DocSymbol => it.kind === 'symbol');
+    const pas = syms.find((s) => s.id === 'pas')!;
+    const zpd = syms.find((s) => s.parent === 'pas' && s.symbolId === 'zpd-pas');
+    if (!want) {
+      if (zpd) fail(`${name}：ZPDが入っています`);
+      else console.log(`  ${name}：ZPDは入らない`);
+      continue;
+    }
+    if (!zpd) {
+      fail(`${name}：PASの中にZPDが入っていません`);
+      continue;
+    }
+    // 枠の大きさは変えない（内蔵品があるときは pas-builtin の 96×172、無いときは pas・ugs・pgs の 86×148）
+    const pb = getSymbolDef(pas.symbolId).box;
+    const sizeOk = pas.symbolId === 'pas-builtin' ? pb.w === 96 && pb.h === 172 : pb.w === 86 && pb.h === 148;
+    const zx0 = zpd.x + 1; const zx1 = zpd.x + 37; const zy0 = zpd.y + 6; const zy1 = zpd.y + 22;
+    // 枠の下の線（PASの枠の下端）：LAの接地記号が出る高さと同じ。LAが無いときも、PASの記号から求める
+    const frameBottom = pas.y + (pas.symbolId === 'pas-builtin' ? 148 : 136);
+    const frameRight = pas.x + (pas.symbolId === 'pas-builtin' ? 6 + 74 + 10 : 6 + 74);
+    const others = syms.filter((s) => s.parent === 'pas' && s.id !== zpd.id);
+    const hit = others.filter((o) => {
+      const b = getSymbolDef(o.symbolId).box;
+      // 記号の絵が占める範囲（接地記号が枠の外へ出る部分は、別に見る）
+      return zx0 < o.x + b.w && zx1 > o.x && zy0 < o.y + b.h && zy1 > o.y && !(o.symbolId === 'zct');
+    });
+    const earthY = zpd.y + 32; // 接地記号の1本目
+    const vt = others.find((o) => o.symbolId === 'vt');
+    const la = others.find((o) => o.symbolId === 'la');
+    const problems: string[] = [];
+    if (!sizeOk) problems.push(`PASの大きさが変わっています（${pb.w}×${pb.h}）`);
+    if (zy1 > frameBottom || zx1 > frameRight) problems.push('ZPDの枠が、PASの枠から、はみ出しています');
+    if (earthY < frameBottom + 3) problems.push(`接地記号が、枠の外に出ていません（枠の下 ${frameBottom}、接地 ${earthY}）`);
+    if (vt && zy0 < vt.y + 30) problems.push('ZPDが、VTの下に入っていません');
+    if (la && zx0 < la.x + 41) problems.push('ZPDが、LAの右横に入っていません');
+    if (hit.length) problems.push(`ZPDが、${hit.map((o) => o.symbolId).join('・')} と重なっています`);
+    // DGRまで線がつながっている
+    const dgr = syms.find((s) => s.symbolId === 'relay-dgr')!;
+    const w = d.items.filter((it): it is DocWire => it.kind === 'wire');
+    const viaZpd = w.some((x) => x.at1?.item === zpd.id || x.at2?.item === zpd.id);
+    if (!viaZpd) problems.push('ZPDの出口に線がありません');
+    if (!w.some((x) => x.at1?.item === dgr.id || x.at2?.item === dgr.id)) problems.push('DGRに線がつながっていません');
+    const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
+    if (issues.length) problems.push(`図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);
+    if (problems.length) fail(`${name}：${problems.join('、')}`);
+    else console.log(`  ${name}：ZPDが、VTの下・LAの右横に入り、接地記号は枠の外。PASの大きさは そのまま`);
+  }
+}
+
 /* ---------- 31. キュービクルの外枠も動かせる ---------- */
 console.log('\n■ 外枠（キュービクルの枠）を動かす');
 {

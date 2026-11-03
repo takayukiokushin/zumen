@@ -113,6 +113,9 @@ const pasDef = (
       // LAは枠の左半分の真ん中に置く（枠の左の線までと主回路までが同じ余白になる）
       { id: 'la', x: 13 + l, y: laY, label: 'LA内蔵', accepts: ['la'] },
       { id: 'vt', x, y: 100, label: 'VT内蔵', accepts: ['vt'] },
+      // DGRのときのZPD。VTの下、LAの右横（主回路をはさんで反対側）に入れる。枠の大きさは変えない。
+      // 接地記号は、LAと同じく、枠の下の線の外へ出る（枠の下から 4 下が接地の1本目）
+      { id: 'zpd', x: x + 40, y: frameBottom - 28, label: 'ZPD内蔵（DGR方式のとき）', accepts: ['zpd-pas'] },
     ],
     fields: [
       PAS_RATED_VOLTAGE,
@@ -138,7 +141,7 @@ const pasDef = (
           { value: 'dgr', label: 'DGR（方向性）' },
         ],
         defaultValue: 'dgr',
-        help: 'GRはZCTが入る。DGRはZCTに加え零相電圧（内蔵VTまたはZPD）が必要。',
+        help: 'GRはZCTが入る。DGRはZCTに加え零相電圧が必要なので、PASの中にZPDも描く。',
       },
       { key: 'builtinVt', label: 'VT内蔵', type: 'boolean', defaultValue: false },
       { key: 'builtinLa', label: 'LA内蔵', type: 'boolean', defaultValue: false },

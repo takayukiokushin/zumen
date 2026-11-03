@@ -263,8 +263,10 @@ console.log('\n■ PASの内蔵機器');
     ['SOGなし（VT内蔵と読み違えても無視する）', 'none', 'yes', 'yes', ['la']],
     ['GR・VTなし・LAなし', 'gr', 'no', 'no', ['zct']],
     ['GR・LAのみ', 'gr', 'no', 'yes', ['zct', 'la']],
-    ['DGR・VTのみ', 'dgr', 'yes', 'no', ['zct', 'vt']],
-    ['DGR・VTとLA', 'dgr', 'yes', 'yes', ['zct', 'vt', 'la']],
+    // DGRのときは、零相電圧を得るZPDも、PAS・PGSの中に入る（GR・SOGなしでは入らない）
+    ['DGR・VTのみ', 'dgr', 'yes', 'no', ['zct', 'vt', 'zpd-pas']],
+    ['DGR・VTとLA', 'dgr', 'yes', 'yes', ['zct', 'vt', 'la', 'zpd-pas']],
+    ['DGR・VTなし・LAなし', 'dgr', 'no', 'no', ['zct', 'zpd-pas']],
   ];
   for (const [name, control, vt, la, want] of cases) {
     const got = builtin(control, vt, la);
