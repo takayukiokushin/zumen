@@ -331,9 +331,10 @@ const bad = buildReview(
   {},
 );
 const hasCapacityError = bad.some((r) => r.level === 'error' && r.questionId === 'mainBreakerForm');
-const hasDgrError = bad.some((r) => r.level === 'error' && r.label.includes('零相電圧'));
+// DGRのときは、PASの中にZPDが内蔵されるので、「VT内蔵もZPDも無い」ことは、矛盾として弾かない
+const hasDgrError = bad.some((r) => r.label.includes('零相電圧'));
 if (!hasCapacityError) fail('500kVAでPFS形という矛盾を検出できませんでした');
-if (!hasDgrError) fail('DGRなのに零相電圧源が無い矛盾を検出できませんでした');
+if (hasDgrError) fail('DGRなのに「零相電圧源が無い」と弾いています（DGRのときは、PASの中にZPDが内蔵されます）');
 
 const sogless = buildReview(
   {

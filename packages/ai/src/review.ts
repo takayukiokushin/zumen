@@ -144,15 +144,9 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
     }
   }
 
-  // DGRは零相電圧が必要（内蔵VTかZPDのどちらか）
-  if (hasPas && a.pasControl === 'dgr' && a.pasBuiltinVt !== 'yes' && a.hasZpd !== 'yes') {
-    items.push({
-      level: 'error',
-      questionId: 'pasBuiltinVt',
-      label: 'DGRの零相電圧源',
-      message: 'DGR（方向性）には零相電圧が必要です。PASのVT内蔵か、ZPDのどちらかを指定してください。',
-    });
-  }
+  // （DGRの零相電圧）以前は、「DGRなのに、VT内蔵もZPDも無い」を矛盾として弾いていた。
+  // いまは、DGRのときは、PAS・PGSの中に、零相電圧を得るZPDが必ず内蔵されて描かれるので、この矛盾は起きない。
+  // 受電設備側（母線）のZPD（hasZpd）は、別の機器で、DGRの有無とは関係なく、答えに従う
 
   // GR・DGRはZCTが要る（記号は構成ルールが自動で入れるため、SOGなしとの取り違えを見る）
   if (hasPas && a.pasControl === 'none' && a.hasZpd === 'yes') {
