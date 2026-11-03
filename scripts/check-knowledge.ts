@@ -1572,6 +1572,24 @@ console.log('\n■ 説明文の整理');
   console.log(`  AIへの説明（${QUESTIONS.filter((y) => y.aiHint !== undefined).length}項目）：選ぶ値・メモに無いときの扱いまで書いた、丁寧な文章`);
 }
 
+console.log('\n■ 点検：太陽光があるときは、ZPD・OVGR が必須');
+{
+  const r = (answers: Record<string, unknown>) =>
+    buildReview({ answers, uncertain: [], evidence: {}, notes: [], questions: [] } as never, {}).filter((i) => i.level === 'error' && i.label.startsWith('太陽光があるときの'));
+  const none = r({ hasPv: 'yes' });
+  const onlyZpd = r({ hasPv: 'yes', hasZpd: 'yes' });
+  const both = r({ hasPv: 'yes', hasZpd: 'yes', hasOvgr: 'yes' });
+  const noPv = r({ hasPv: 'no' });
+  const explicitNo = r({ hasPv: 'yes', hasZpd: 'no', hasOvgr: 'no' });
+  const ids = (xs: { questionId?: string }[]) => xs.map((x) => x.questionId).sort().join('・');
+  if (ids(none) !== 'hasOvgr・hasZpd') fail(`太陽光ありで、ZPD・OVGR が未入力のとき、2つとも警告されていません（${ids(none)}）`);
+  else if (ids(onlyZpd) !== 'hasOvgr') fail(`ZPD だけあるとき、OVGR が警告されていません（${ids(onlyZpd)}）`);
+  else if (both.length !== 0) fail('ZPD・OVGR が両方あるのに、警告されています');
+  else if (noPv.length !== 0) fail('太陽光が無いのに、警告されています');
+  else if (explicitNo.length !== 2 || !explicitNo.every((x) => x.value === 'なし')) fail('「なし」と答えてあるときも、警告されるはずです');
+  else console.log('  太陽光あり：ZPD・OVGR が抜けていれば、それぞれ警告／両方あれば警告なし／太陽光なしなら警告なし');
+}
+
 console.log('\n■ 読み取りの指示文：現場で決まっていること');
 {
   const p = buildSystemPrompt();

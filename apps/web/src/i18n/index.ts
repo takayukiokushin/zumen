@@ -364,7 +364,6 @@ const ja = {
   'rev.m.powerSingle': '用途が動力なのに、単相の結線方式になっています。動力は、ふつう三相（またはV結線）です。確認してください。',
   'rev.m.needCb': '高圧変圧器の合計容量が{total}kVA（301kVA以上）なので、CB形でなければなりません。',
   'rev.m.maybePfs': '合計容量が{total}kVA（300kVA以下）なのでPFS形も選べます。CB形で合っていますか。',
-  'rev.m.dgrNeedsVoltage': 'DGR（方向性）には零相電圧が必要です。PASのVT内蔵か、ZPDのどちらかを指定してください。',
   'rev.m.zpdNoSog': 'ZPDがあるのにSOGが「なし」になっています。GRかDGRではありませんか。',
   'rev.m.noSogNoVt': 'SOGが無いPASにVTは内蔵されません。SOG（GRまたはDGR）があるか、VTは内蔵されていないかのどちらかです。',
   'rev.m.splitWhere': '3点不一致です。責任分界点がLBSとVCBのどちらの上にあるか教えてください。',
@@ -374,7 +373,6 @@ const ja = {
   'rev.l.confirm': '確認',
   'rev.l.trConnection': '変圧器の結線方式',
   'rev.l.mainBreakerForm': '主遮断装置の形式',
-  'rev.l.dgrVoltage': 'DGRの零相電圧源',
   'rev.l.pasSog': 'PASのSOG',
   'rev.l.pasVt': 'PASの内蔵VT',
   'rev.l.splitWhere': '責任分界点の位置',
@@ -521,6 +519,11 @@ const ja = {
   'editor.wireWindowDrag': 'この帯をつかんで動かすと、窓を動かせます',
   'editor.lineDashedShort': '点線',
   'insp.openGap': 'つながっていません。向かい合う線（や接続点）が、横にずれていて、自動ではつなげませんでした。位置を揃えてから、もう一度「結線を整える」を押してください',
+  'rev.m.pvZpd': '太陽光発電設備があるときは、ZPD（零相電圧検出装置）が必ず必要です（ZPDとOVGRはセットです）。「あり」にしてください。',
+  'rev.m.pvOvgr': '太陽光発電設備があるときは、OVGR（地絡過電圧継電器）が必ず必要です（ZPDとOVGRはセットです）。「あり」にしてください。',
+  'rev.l.pvZpd': '太陽光があるときのZPD（零相電圧検出装置）',
+  'rev.l.pvOvgr': '太陽光があるときのOVGR（地絡過電圧継電器）',
+  'rev.v.unset': '未入力',
 } as const;
 
 export type Key = keyof typeof ja;
@@ -867,7 +870,6 @@ const en: Dict = {
   'rev.m.powerSingle': 'The use is power, but a single-phase connection is selected. Power is normally three-phase (or V connection). Please check.',
   'rev.m.needCb': 'The total capacity of the high-voltage transformers is {total} kVA (301 kVA or more), so it must be a CB type.',
   'rev.m.maybePfs': 'The total capacity is {total} kVA (300 kVA or less), so a PFS type can also be chosen. Is CB type correct?',
-  'rev.m.dgrNeedsVoltage': 'A DGR (directional) needs a zero-sequence voltage. Specify either a VT built into the PAS or a ZPD.',
   'rev.m.zpdNoSog': 'There is a ZPD but the SOG is set to “None”. Is it a GR or a DGR?',
   'rev.m.noSogNoVt': 'A PAS without an SOG does not have a built-in VT. Either there is an SOG (GR or DGR), or no VT is built in.',
   'rev.m.splitWhere': 'The 3 points differ. Please tell us whether the demarcation point of responsibility is above the LBS or above the VCB.',
@@ -877,7 +879,6 @@ const en: Dict = {
   'rev.l.confirm': 'Check',
   'rev.l.trConnection': 'Transformer connection',
   'rev.l.mainBreakerForm': 'Main breaking device type',
-  'rev.l.dgrVoltage': 'DGR zero-sequence voltage source',
   'rev.l.pasSog': 'SOG of the PAS',
   'rev.l.pasVt': 'Built-in VT of the PAS',
   'rev.l.splitWhere': 'Location of the demarcation point of responsibility',
@@ -1024,6 +1025,11 @@ const en: Dict = {
   'editor.wireWindowDrag': 'Grab this bar and drag to move the window',
   'editor.lineDashedShort': 'Dashed',
   'insp.openGap': 'Not connected. The facing lines (or connection points) are offset sideways, so they could not be joined automatically. Align them, then press “Tidy connections” again',
+  'rev.m.pvZpd': 'When there is a solar power system, a ZPD (zero-phase voltage detector) is always required (a ZPD and an OVGR come as a set). Please set it to “Yes”.',
+  'rev.m.pvOvgr': 'When there is a solar power system, an OVGR (ground-fault overvoltage relay) is always required (a ZPD and an OVGR come as a set). Please set it to “Yes”.',
+  'rev.l.pvZpd': 'ZPD (zero-phase voltage detector) needed with solar power',
+  'rev.l.pvOvgr': 'OVGR (ground-fault overvoltage relay) needed with solar power',
+  'rev.v.unset': 'Not entered',
 };
 
 const fr: Dict = {
@@ -1368,7 +1374,6 @@ const fr: Dict = {
   'rev.m.powerSingle': 'L’usage est la force motrice, mais le couplage est monophasé. La force motrice est normalement triphasée (ou en V). Veuillez vérifier.',
   'rev.m.needCb': 'La puissance totale des transformateurs HT est de {total} kVA (301 kVA ou plus) : le type CB est obligatoire.',
   'rev.m.maybePfs': 'La puissance totale est de {total} kVA (300 kVA ou moins) : le type PFS est aussi possible. Le type CB est-il bien le bon ?',
-  'rev.m.dgrNeedsVoltage': 'Le DGR (directionnel) nécessite une tension homopolaire. Indiquez soit un VT intégré au PAS, soit un ZPD.',
   'rev.m.zpdNoSog': 'Il y a un ZPD, mais le SOG est sur « Sans ». S’agit-il d’un GR ou d’un DGR ?',
   'rev.m.noSogNoVt': 'Un PAS sans SOG n’a pas de VT intégré. Soit il y a un SOG (GR ou DGR), soit le VT n’est pas intégré.',
   'rev.m.splitWhere': 'Les 3 points ne sont pas confondus. Indiquez si le point de démarcation de responsabilité se situe au niveau du LBS ou du VCB.',
@@ -1378,7 +1383,6 @@ const fr: Dict = {
   'rev.l.confirm': 'À vérifier',
   'rev.l.trConnection': 'Couplage du transformateur',
   'rev.l.mainBreakerForm': 'Type du dispositif de coupure principal',
-  'rev.l.dgrVoltage': 'Source de tension homopolaire du DGR',
   'rev.l.pasSog': 'SOG du PAS',
   'rev.l.pasVt': 'VT intégré au PAS',
   'rev.l.splitWhere': 'Position du point de démarcation de responsabilité',
@@ -1525,6 +1529,11 @@ const fr: Dict = {
   'editor.wireWindowDrag': 'Saisissez cette barre et faites glisser pour déplacer la fenêtre',
   'editor.lineDashedShort': 'Pointillé',
   'insp.openGap': 'Non relié. Les traits (ou points de connexion) en vis-à-vis sont décalés latéralement et n’ont pas pu être reliés automatiquement. Alignez-les, puis appuyez de nouveau sur « Remettre les liaisons d’aplomb »',
+  'rev.m.pvZpd': 'Avec une installation solaire, un ZPD (détecteur de tension homopolaire) est toujours nécessaire (le ZPD et l’OVGR vont ensemble). Réglez-le sur « Oui ».',
+  'rev.m.pvOvgr': 'Avec une installation solaire, un OVGR (relais de surtension de défaut à la terre) est toujours nécessaire (le ZPD et l’OVGR vont ensemble). Réglez-le sur « Oui ».',
+  'rev.l.pvZpd': 'ZPD (détecteur de tension homopolaire) requis avec le solaire',
+  'rev.l.pvOvgr': 'OVGR (relais de surtension de défaut à la terre) requis avec le solaire',
+  'rev.v.unset': 'Non renseigné',
 };
 
 const zh: Dict = {
@@ -1865,7 +1874,6 @@ const zh: Dict = {
   'rev.m.powerSingle': '用途是动力，但接线方式为单相。动力通常为三相（或V接线）。请确认。',
   'rev.m.needCb': '高压变压器的合计容量为{total}kVA（301kVA以上），因此必须采用CB型。',
   'rev.m.maybePfs': '合计容量为{total}kVA（300kVA以下），也可选择PFS型。CB型没有问题吗？',
-  'rev.m.dgrNeedsVoltage': 'DGR（方向性）需要零序电压。请指定PAS内置VT或ZPD其中之一。',
   'rev.m.zpdNoSog': '有ZPD，但SOG为“无”。是否应为GR或DGR？',
   'rev.m.noSogNoVt': '没有SOG的PAS不会内置VT。要么有SOG（GR或DGR），要么VT并未内置，二者必居其一。',
   'rev.m.splitWhere': '三点不一致。请告知责任分界点位于LBS还是VCB之上。',
@@ -1875,7 +1883,6 @@ const zh: Dict = {
   'rev.l.confirm': '确认',
   'rev.l.trConnection': '变压器的接线方式',
   'rev.l.mainBreakerForm': '主断路装置的形式',
-  'rev.l.dgrVoltage': 'DGR的零序电压源',
   'rev.l.pasSog': 'PAS的SOG',
   'rev.l.pasVt': 'PAS的内置VT',
   'rev.l.splitWhere': '责任分界点的位置',
@@ -2022,6 +2029,11 @@ const zh: Dict = {
   'editor.wireWindowDrag': '按住此栏拖动，可移动窗口',
   'editor.lineDashedShort': '虚线',
   'insp.openGap': '未连接。相对的线（或接点）横向错开，无法自动连接。请先对齐位置，再按一次“整理接线”',
+  'rev.m.pvZpd': '有太阳能发电设备时，必须设置ZPD（零序电压检测装置）（ZPD与OVGR成套）。请设为“有”。',
+  'rev.m.pvOvgr': '有太阳能发电设备时，必须设置OVGR（接地过电压继电器）（ZPD与OVGR成套）。请设为“有”。',
+  'rev.l.pvZpd': '有太阳能时所需的ZPD（零序电压检测装置）',
+  'rev.l.pvOvgr': '有太阳能时所需的OVGR（接地过电压继电器）',
+  'rev.v.unset': '未输入',
 };
 
 const ko: Dict = {
@@ -2364,7 +2376,6 @@ const ko: Dict = {
   'rev.m.powerSingle': '용도가 동력인데 단상 결선 방식으로 되어 있습니다. 동력은 보통 3상(또는 V결선)입니다. 확인하세요.',
   'rev.m.needCb': '고압 변압기의 합계 용량이 {total}kVA(301kVA 이상)이므로 CB형이어야 합니다.',
   'rev.m.maybePfs': '합계 용량이 {total}kVA(300kVA 이하)이므로 PFS형도 선택할 수 있습니다. CB형이 맞습니까?',
-  'rev.m.dgrNeedsVoltage': 'DGR(방향성)에는 영상 전압이 필요합니다. PAS의 VT 내장 또는 ZPD 중 하나를 지정하세요.',
   'rev.m.zpdNoSog': 'ZPD가 있는데 SOG가 “없음”으로 되어 있습니다. GR이나 DGR이 아닙니까?',
   'rev.m.noSogNoVt': 'SOG가 없는 PAS에는 VT가 내장되지 않습니다. SOG(GR 또는 DGR)가 있거나 VT가 내장되어 있지 않거나 둘 중 하나입니다.',
   'rev.m.splitWhere': '3점 불일치입니다. 책임분계점이 LBS와 VCB 중 어느 쪽 위에 있는지 알려 주세요.',
@@ -2374,7 +2385,6 @@ const ko: Dict = {
   'rev.l.confirm': '확인',
   'rev.l.trConnection': '변압기의 결선 방식',
   'rev.l.mainBreakerForm': '주차단장치의 형식',
-  'rev.l.dgrVoltage': 'DGR의 영상 전압원',
   'rev.l.pasSog': 'PAS의 SOG',
   'rev.l.pasVt': 'PAS의 내장 VT',
   'rev.l.splitWhere': '책임분계점의 위치',
@@ -2521,6 +2531,11 @@ const ko: Dict = {
   'editor.wireWindowDrag': '이 막대를 잡고 끌면 창을 옮길 수 있습니다',
   'editor.lineDashedShort': '점선',
   'insp.openGap': '연결되어 있지 않습니다. 마주 보는 선(또는 접속점)이 옆으로 어긋나 있어 자동으로 연결하지 못했습니다. 위치를 맞춘 뒤 다시 「결선 정리」를 누르세요',
+  'rev.m.pvZpd': '태양광 발전 설비가 있을 때는 ZPD(영상 전압 검출 장치)가 반드시 필요합니다(ZPD와 OVGR는 한 세트입니다). 「있음」으로 해 주세요.',
+  'rev.m.pvOvgr': '태양광 발전 설비가 있을 때는 OVGR(지락 과전압 계전기)이 반드시 필요합니다(ZPD와 OVGR는 한 세트입니다). 「있음」으로 해 주세요.',
+  'rev.l.pvZpd': '태양광이 있을 때의 ZPD(영상 전압 검출 장치)',
+  'rev.l.pvOvgr': '태양광이 있을 때의 OVGR(지락 과전압 계전기)',
+  'rev.v.unset': '미입력',
 };
 
 const DICTS: Record<Lang, Dict> = { ja, en, fr, zh, ko };

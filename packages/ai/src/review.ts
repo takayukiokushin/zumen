@@ -148,6 +148,19 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
   // いまは、DGRのときは、PAS・PGSの中に、零相電圧を得るZPDが必ず内蔵されて描かれるので、この矛盾は起きない。
   // 受電設備側（母線）のZPD（hasZpd）は、別の機器で、DGRの有無とは関係なく、答えに従う
 
+  // 太陽光発電設備があるときは、ZPD と OVGR が必ず必要（セットで必要。書かれていなくても「あり」になるのが正しい）。
+  // AI・音声・手入力のどれで入れても、抜けていたら、警告する
+  if (a.hasPv === 'yes') {
+    const need: [string, string, string][] = [
+      ['hasZpd', '太陽光があるときのZPD（零相電圧検出装置）', '太陽光発電設備があるときは、ZPD（零相電圧検出装置）が必ず必要です（ZPDとOVGRはセットです）。「あり」にしてください。'],
+      ['hasOvgr', '太陽光があるときのOVGR（地絡過電圧継電器）', '太陽光発電設備があるときは、OVGR（地絡過電圧継電器）が必ず必要です（ZPDとOVGRはセットです）。「あり」にしてください。'],
+    ];
+    for (const [id, label, message] of need) {
+      if (a[id] === 'yes') continue;
+      items.push({ level: 'error', questionId: id, label, value: a[id] === 'no' ? 'なし' : '未入力', message });
+    }
+  }
+
   // GR・DGRはZCTが要る（記号は構成ルールが自動で入れるため、SOGなしとの取り違えを見る）
   if (hasPas && a.pasControl === 'none' && a.hasZpd === 'yes') {
     items.push({
