@@ -724,9 +724,9 @@ button.with-icon svg { flex: 0 0 auto; }
 @media (max-width: 700px) {
   .app, .app.no-nav, .app.no-preview, .app.no-nav.no-preview { display: flex; flex-direction: column; overflow-y: auto; }
   .app > .form { overflow: visible; flex: none; padding: calc(14px * var(--text-scale)) calc(12px * var(--text-scale)) 80px; }
-  /* 目次と「いまの構成」を開いたときは、入力欄の上に出す（高さは画面の半分までで、中を動かせる） */
-  .app > .preview { order: -1; flex: none; max-height: 45vh; overflow-y: auto; border-left: 0; border-bottom: 1px solid var(--rule); }
-  .app > .nav { order: -2; flex: none; max-height: 40vh; overflow-y: auto; border-right: 0; border-bottom: 1px solid var(--rule); }
+  /* スマホでは、「目次を出す」「いまの構成を出す」のボタンと、目次・いまの構成の欄は、出さない（入力欄だけを、広く使う）。
+     パソコン版は、これまでどおり。幅をまたいで広げ縮めしたときも、欄だけが残らないよう、欄ごと隠す */
+  .panel-bar, .app > .nav, .app > .preview { display: none; }
 }
 
 /* ---- 図面の画面：スマートフォン（幅の狭い画面）では、よく使うボタンだけ表に出し、ほかはしまう ---- */
