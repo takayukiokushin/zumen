@@ -76,6 +76,8 @@ const ja = {
   'settings.textSize': '文字の大きさ',
   'settings.uiSize': '画面全体の大きさ',
   'settings.bold': '文字を太くする',
+  'settings.hideHelp': '入力欄の下の説明文を隠す',
+  'settings.hideHelpNote': '「設備を入力して作成」の、入力欄の下の説明文を隠します。慣れた方向けです。隠しているときも、名前の上にマウスを載せると、説明が出ます。',
   'settings.sizeNote':
     '文字だけ大きくしたいときは「文字の大きさ」、ボタンや余白も含めて大きくしたいときは「画面全体の大きさ」を変えてください。',
   'settings.preview': '見本：この大きさで表示されます',
@@ -597,6 +599,8 @@ const en: Dict = {
   'settings.textSize': 'Text size',
   'settings.uiSize': 'Overall size',
   'settings.bold': 'Bold text',
+  'settings.hideHelp': 'Hide the help text under input fields',
+  'settings.hideHelpNote': 'Hides the help text under the fields on the equipment input screen. For experienced users. While hidden, hover over a field name to see the help.',
   'settings.sizeNote':
     'Use “Text size” to enlarge only the text, and “Overall size” to enlarge buttons and spacing as well.',
   'settings.preview': 'Sample: text appears at this size',
@@ -1115,6 +1119,8 @@ const fr: Dict = {
   'settings.textSize': 'Taille du texte',
   'settings.uiSize': 'Taille générale',
   'settings.bold': 'Texte en gras',
+  'settings.hideHelp': 'Masquer les textes d’aide sous les champs',
+  'settings.hideHelpNote': 'Masque les textes d’aide sous les champs de l’écran de saisie des équipements. Pour les utilisateurs expérimentés. Quand ils sont masqués, survolez le nom d’un champ pour voir l’aide.',
   'settings.sizeNote':
     'Utilisez « Taille du texte » pour agrandir seulement le texte, et « Taille générale » pour agrandir aussi les boutons et les marges.',
   'settings.preview': 'Exemple : le texte s’affiche à cette taille',
@@ -1634,6 +1640,8 @@ const zh: Dict = {
   'settings.textSize': '文字大小',
   'settings.uiSize': '整体大小',
   'settings.bold': '文字加粗',
+  'settings.hideHelp': '隐藏输入栏下方的说明文字',
+  'settings.hideHelpNote': '隐藏设备输入界面中输入栏下方的说明文字。适合熟练的用户。隐藏时，将鼠标放在项目名称上即可看到说明。',
   'settings.sizeNote': '只想放大文字时请调整“文字大小”；想连按钮和间距一起放大时请调整“整体大小”。',
   'settings.preview': '示例：文字将以此大小显示',
   'settings.reset': '恢复初始设置',
@@ -2149,6 +2157,8 @@ const ko: Dict = {
   'settings.textSize': '글자 크기',
   'settings.uiSize': '화면 전체 크기',
   'settings.bold': '글자를 굵게',
+  'settings.hideHelp': '입력란 아래의 설명문 숨기기',
+  'settings.hideHelpNote': '설비 입력 화면의 입력란 아래에 있는 설명문을 숨깁니다. 익숙한 분을 위한 설정입니다. 숨긴 상태에서도 항목 이름 위에 마우스를 올리면 설명이 나옵니다.',
   'settings.sizeNote':
     '글자만 크게 하려면 「글자 크기」를, 버튼과 여백까지 크게 하려면 「화면 전체 크기」를 바꾸세요.',
   'settings.preview': '보기: 이 크기로 표시됩니다',

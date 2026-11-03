@@ -3,6 +3,7 @@ import type { Question } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import { evaluate } from '@zumen/knowledge';
 import { useT, useTx } from './i18n/useT.ts';
+import { useSettings } from './settings/settings.tsx';
 
 interface Props {
   question: Question;
@@ -90,6 +91,9 @@ export function Field({ question: question, fieldKey, value, onChange, context }
     : question;
   const t = useT();
   const tx = useTx();
+  // 設定で説明文を隠しているときは、説明文を出さない（名前の上にマウスを載せると、説明が出る）
+  const { settings } = useSettings();
+  const hideHelp = settings.hideHelp;
   const [pickedOther, setPickedOther] = useState(false);
   const set = (v: Value) => onChange(fieldKey, v);
   // まだ答えていないときは、いま効いている値を見せる（例：引込元がキャビネットなら、区分開閉器は既定でUGS）
@@ -100,8 +104,8 @@ export function Field({ question: question, fieldKey, value, onChange, context }
     (pickedOther || (current !== '' && !q.options?.some((o) => o.value === String(current))));
 
   return (
-    <div className="field" data-size={fieldSize(q, tx)} data-kind={q.type === 'select' && asButtons(q, tx) ? 'buttons' : undefined} data-helpw={helpWidth(q.help, tx)}>
-      <label htmlFor={fieldKey}>
+    <div className="field" data-size={fieldSize(q, tx)} data-kind={q.type === 'select' && asButtons(q, tx) ? 'buttons' : undefined} data-helpw={hideHelp ? undefined : helpWidth(q.help, tx)}>
+      <label htmlFor={fieldKey} title={hideHelp && q.help ? tx(q.help) : undefined}>
         {q.type === 'boolean' ? '' : tx(q.label)}
         {q.required && <span className="req">{t('field.required')}</span>}
         {q.unit && <span className="unit">（{tx(q.unit)}）</span>}
@@ -191,7 +195,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
         />
       )}
 
-      {q.help && <p className="help" title={tx(q.help)}>{tx(q.help)}</p>}
+      {q.help && !hideHelp && <p className="help" title={tx(q.help)}>{tx(q.help)}</p>}
     </div>
   );
 }

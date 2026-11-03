@@ -20,6 +20,8 @@ export interface Settings {
   uiScale: number;
   /** 文字を太くする */
   bold: boolean;
+  /** 入力欄の下の説明文を隠す（名前の上にマウスを載せると、説明が出る）。慣れた人向け */
+  hideHelp: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -28,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   textScale: 1,
   uiScale: 1,
   bold: false,
+  hideHelp: false,
 };
 
 /** 文字・画面の大きさの選べる段階。％で見せる */
@@ -61,6 +64,7 @@ function load(): Settings {
       textScale: typeof v.textScale === 'number' ? snapToStep(TEXT_STEPS, v.textScale) : 1,
       uiScale: typeof v.uiScale === 'number' ? snapToStep(UI_STEPS, v.uiScale) : 1,
       bold: v.bold === true,
+      hideHelp: v.hideHelp === true,
     };
   } catch {
     return DEFAULT_SETTINGS;

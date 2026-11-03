@@ -135,10 +135,15 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             value={settings.uiScale}
             onChange={(v) => set('uiScale', v)}
           />
-          <label className="switch wide">
+          <label className="switch wide block">
             <input type="checkbox" checked={settings.bold} onChange={(e) => set('bold', e.target.checked)} />
             {t('settings.bold')}
           </label>
+          <label className="switch wide block">
+            <input type="checkbox" checked={settings.hideHelp} onChange={(e) => set('hideHelp', e.target.checked)} />
+            {t('settings.hideHelp')}
+          </label>
+          <p className="hint">{t('settings.hideHelpNote')}</p>
           <p className="hint">{t('settings.sizeNote')}</p>
           <p className="sample">{t('settings.preview')}</p>
         </section>
