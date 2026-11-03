@@ -131,7 +131,8 @@ const answers: Answers = {
   lbsRatedVoltage: '7200',
   lbsRatedCurrent: 200,
   lbsFuseCount: 3,
-  lbsFuseSpec: '7200V 50A 40kA',
+  lbsPfG: '50A',
+  lbsPfKa: '40kA',
   hasSiteVt: 'yes',
   hasSiteCt: 'yes',
   ctRatio: '40A/5A',
@@ -1072,7 +1073,26 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   const role = (list: typeof all, r: string) => list.find((i) => i.role === r);
   // 2か所目：LBS（PF付）
   ok(role(a2, 'a2:main-breaker')?.symbolId === 'lbs-pf', '2か所目の受電側がLBS（PF付）になっていません');
-  ok(role(a2, 'a2:main-breaker')?.label.join('|') === 'LBS|7200V 200A|PF×3', `2か所目のLBSの文字：${role(a2, 'a2:main-breaker')?.label.join('|')}`);
+  ok(role(a2, 'a2:main-breaker')?.label.join('|') === 'LBS|7200V 200A|PF×3|40kA', `2か所目のLBSの文字：${role(a2, 'a2:main-breaker')?.label.join('|')}`);
+  // 受電側のLBSのヒューズは、PFの定格電流（G）と短絡電流だけ。T・C・Mの電流は書かない。以前の「ヒューズ定格」（自由な文字）だけの案件は、その中のGとkAを使う
+  {
+    // 画面と同じに、標準の値（短絡電流 40kA など）を足してから、図面の文字を作る
+    const lbsLine = (extra: Answers) => {
+      const base: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3 };
+      delete base.lbsPfG;
+      delete base.lbsPfKa;
+      delete base.lbsFuseSpec;
+      return buildComposition({ ...QUESTION_DEFAULTS, ...base, ...extra }).find((i) => i.role === 'main-breaker')?.label.join('/');
+    };
+    const nu = {};
+    const new1 = lbsLine({ ...nu, lbsPfG: '40A', lbsPfKa: '40kA' });
+    const new2 = lbsLine({ ...nu, lbsPfG: '30A' });
+    const old1 = lbsLine({ ...nu, lbsFuseSpec: '7200V G50A T40A' });
+    if (new1 !== 'LBS/7200V 200A/PF×3/G40A 40kA') fail(`受電側LBSのヒューズの行が違います（${new1}）`);
+    else if (new2 !== 'LBS/7200V 200A/PF×3/G30A 40kA') fail(`短絡電流を入れていないとき、標準の40kAが出ていません（${new2}）`);
+    else if (old1 !== 'LBS/7200V 200A/PF×3/G50A 40kA' || String(old1).includes('T40A')) fail(`以前の「ヒューズ定格」の案件で、T・C・Mの電流が出ています（${old1}）`);
+    else console.log(`  受電側LBSのヒューズの行：${new1}（T・C・Mの電流は書かない。以前の自由な文字の案件も、Gだけを使う）`);
+  }
   ok(!role(a2, 'a2:ds') && !role(a2, 'a2:relay-tt'), '2か所目（LBS）に、DS・試験端子が入っています');
   ok(role(a2, 'a2:site-vt')?.kind === 'branch-right' && Boolean(role(a2, 'a2:zpd')) && !role(a2, 'a2:ovgr'), '2か所目のVT・ZPDが入り、OVGRは自動では入らない、になっていません');
   ok(role(a2, 'a2:area-frame')?.label[0]?.startsWith('オープンフレーム式'), `2か所目の枠の文字：${role(a2, 'a2:area-frame')?.label[0]}`);

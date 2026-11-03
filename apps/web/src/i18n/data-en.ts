@@ -431,7 +431,7 @@ const data: Record<string, string> = {
   "ヒューズ本数": "Number of fuses",
   "図面の記載例: PF×3": "Example on the drawing: PF×3",
   "ヒューズ定格": "Fuse rating",
-  "図面の記載例: 7200V G50A T40A": "Example on the drawing: 7200V G50A T40A",
+  "図面の記載例: G50A 40kA": "Example on the drawing: G50A 40kA",
   "限流ヒューズ": "Current-limiting fuse",
   "高圧カットアウト": "High-voltage cutout",
   "ヒューズの定格電流": "Fuse rated current",

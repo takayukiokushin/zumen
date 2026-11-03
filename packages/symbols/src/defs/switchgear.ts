@@ -266,7 +266,7 @@ export const switchgearSymbols: SymbolDef[] = [
       RATED_VOLTAGE,
       RATED_CURRENT,
       { key: 'fuseCount', label: 'ヒューズ本数', type: 'number', unit: '本', defaultValue: 3, help: '図面の記載例: PF×3' },
-      { key: 'fuseSpec', label: 'ヒューズ定格', type: 'text', help: '図面の記載例: 7200V G50A T40A' },
+      { key: 'fuseSpec', label: 'ヒューズ定格', type: 'text', help: '図面の記載例: G50A 40kA' },
     ],
     status: 'confirmed',
     statusNote: '見本図面のとおり、上部に横バー＋丸（負荷開閉器の印）、左上がりの可動刃の上に傾けた長方形のヒューズを描く形にしました。',

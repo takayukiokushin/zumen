@@ -431,7 +431,7 @@ const data: Record<string, string> = {
   "ヒューズ本数": "Nombre de fusibles",
   "図面の記載例: PF×3": "Exemple sur le schéma : PF×3",
   "ヒューズ定格": "Calibre des fusibles",
-  "図面の記載例: 7200V G50A T40A": "Exemple sur le schéma : 7200V G50A T40A",
+  "図面の記載例: G50A 40kA": "Exemple sur le schéma : G50A 40kA",
   "限流ヒューズ": "Fusible limiteur de courant",
   "高圧カットアウト": "Coupe-circuit haute tension",
   "ヒューズの定格電流": "Courant nominal du fusible",

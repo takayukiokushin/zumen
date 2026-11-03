@@ -843,7 +843,9 @@ export const QUESTIONS: Question[] = [
   },
   { id: 'lbsRatedCurrent', group: 'receiving', section: 'LBS', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'intakeLbs', eq: 'yes' }, ask: 'always' },
   { id: 'lbsFuseCount', group: 'receiving', section: 'LBS', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
-  { id: 'lbsFuseSpec', group: 'receiving', section: 'LBS', label: 'LBSのヒューズ定格', type: 'text', placeholder: '7200V G50A T40A', showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
+  // 受電側のLBSのヒューズは、PFの定格電流（G）と、許容できる短絡電流だけを書く（T・C・Mの電流は書かない）
+  { id: 'lbsPfG', group: 'receiving', section: 'LBS', label: 'パワーヒューズ（PF）の定格電流（G）', type: 'select', options: PF_RATINGS, allowFreeInput: true, showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
+  { id: 'lbsPfKa', group: 'receiving', section: 'LBS', label: 'PFの許容できる短絡電流', type: 'select', options: SHORT_CIRCUIT, allowFreeInput: true, defaultValue: '40kA', showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
   { id: 'dsRating', group: 'receiving', section: 'DS・VCB', label: 'DSの定格', type: 'text', placeholder: '7200V 400A', showIf: { key: 'intakeDs', eq: 'yes' }, ask: 'always' },
   { id: 'vcbRating', group: 'receiving', section: 'DS・VCB', label: 'VCBの定格', type: 'text', placeholder: '7200V 600A 12.5kA', showIf: { key: 'intakeVcb', eq: 'yes' }, ask: 'always' },
   {

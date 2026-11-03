@@ -424,6 +424,12 @@ export function withDerived(rawAnswers: Answers): Answers {
   // 受電側のLBS（主遮断装置・エリアのLBS）の2行目：「7200V 200A」（定格電圧と定格電流。入れてあるものだけ）。
   // 変圧器・コンデンサの手前のLBSと同じ形（LBS／7200V 200A／PF×3／ヒューズの定格）にそろえる
   d.lbsRatingLine = [answers.lbsRatedVoltage ? `${answers.lbsRatedVoltage}V` : '', answers.lbsRatedCurrent ? `${answers.lbsRatedCurrent}A` : ''].filter(Boolean).join(' ');
+  // 受電側のLBSのヒューズの行：「G40A 40kA」（PFの定格電流Gと、短絡電流だけ。T・C・Mの電流は書かない）。
+  // 以前の「ヒューズ定格」（自由な文字。例：7200V G50A T40A）だけが入っている案件は、その中の G と kA を使う
+  const legacySpec = String(answers.lbsFuseSpec ?? '');
+  const lbsG = answers.lbsPfG ? String(answers.lbsPfG) : (/G(\d+(?:\.\d+)?A)/.exec(legacySpec)?.[1] ?? '');
+  const lbsKa = answers.lbsPfKa ? String(answers.lbsPfKa) : (/(\d+(?:\.\d+)?kA)/i.exec(legacySpec)?.[1] ?? '');
+  d.lbsPfLine = [lbsG ? `G${lbsG}` : '', lbsKa].filter(Boolean).join(' ');
   for (const prefix of ['tr', 'cap'] as const) {
     // 定格を入れていないときは、せめて記号名を出す
     d[`${prefix}PcHead`] = answers[`${prefix}PcRating`] || 'PC';
