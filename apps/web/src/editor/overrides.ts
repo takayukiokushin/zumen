@@ -1,6 +1,6 @@
 import { getSymbol } from '@zumen/symbols';
 import { rotatedBox } from '@zumen/layout';
-import { applyAnchors, baselineOf, freshId, moveItem, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
+import { applyAnchors, baselineOf, defOf, freshId, moveItem, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
 import type { AddedItem, Doc, DocItem, DocSymbol, DocText, DocWire, Overrides, Placement, SymbolEdit } from './doc.ts';
 
 /**
@@ -29,7 +29,7 @@ function placementOf(doc: Doc, x: number, y: number): Placement {
   let best: { id: string; d: number; sx: number; sy: number } | null = null;
   for (const it of doc.items) {
     if (it.kind !== 'symbol' || !base[sameName(it.id)]) continue;
-    const def = getSymbol(it.symbolId);
+    const def = defOf(it);
     const cx = it.x + def.box.w / 2;
     const cy = it.y + def.box.h / 2;
     const d = Math.hypot(cx - x, cy - y);
@@ -113,7 +113,7 @@ export interface RebuildReport {
 
 /** 記号の絵が占める範囲 */
 function boxOf(it: DocSymbol) {
-  const rb = rotatedBox(getSymbol(it.symbolId).box, it.rotate);
+  const rb = rotatedBox(defOf(it).box, it.rotate);
   return { x0: it.x + rb.dx, y0: it.y + rb.dy, x1: it.x + rb.dx + rb.w, y1: it.y + rb.dy + rb.h };
 }
 

@@ -30,6 +30,7 @@ import {
   itemBounds,
   setWireKind,
   addSymbol,
+  setSymbolSize,
 } from '../apps/web/src/editor/doc.ts';
 type PlacedSymbolLike = ReturnType<typeof layout>['symbols'][number];
 const portAbs = (s: PlacedSymbolLike, id: string) => {
@@ -45,7 +46,8 @@ import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, PER_UNIT_QUESTION_IDS, QUESTIONS, QUESTION_GROUPS } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { rotatedBox, rotatedPort, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
-import { getSymbol as getSymbolDef } from '../packages/symbols/src/index.ts';
+import { getSymbol as getSymbolDef, sizedSymbol } from '../packages/symbols/src/index.ts';
+import { buildSheetSvg } from '../apps/web/src/editor/exportSheet.ts';
 import { chooseSheet, inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
 let failed = 0;
@@ -2383,6 +2385,59 @@ console.log('\n■ 客柱・電柱の記号');
   else console.log('  客柱：円の左半分を塗った丸だけ（引下線・接続点なし）。名称は最初は空白');
   if (util.ports.length !== 1 || lowest(util) < 47.5) fail('電柱の引下線が変わっています');
   else console.log('  電柱：これまでどおり（引下線あり）');
+}
+
+/* ---------- 外箱・エリアの区分枠：幅・高さを変えられる ---------- */
+console.log('\n■ 外箱・区分枠の大きさ');
+{
+  const box0 = addSymbol({ items: [] } as unknown as Doc, 'enclosure-cubicle', 50, 50);
+  const area0 = addSymbol({ items: [] } as unknown as Doc, 'substation-area', 50, 50);
+  const getS = (d: Doc, id: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === id)!;
+  const defBox = getSymbolDef('enclosure-cubicle').box;
+  const defArea = getSymbolDef('substation-area').box;
+  // 外箱：幅だけ変えられる
+  const wide = setSymbolSize(box0.doc, box0.id, { w: 300, h: 999 });
+  const wideSym = getS(wide, box0.id);
+  const wideBounds = itemBounds(wideSym);
+  if (wideSym.w !== 300 || wideSym.h !== undefined) fail(`外箱：幅だけが変わるはずが、幅 ${wideSym.w}・高さ ${wideSym.h} になりました`);
+  else if (wideBounds.x1 - wideBounds.x0 !== 300 || wideBounds.y1 - wideBounds.y0 !== defBox.h) fail('外箱：変えたあとの占める範囲が、幅300・もとの高さになっていません');
+  else if (wideBounds.x0 !== itemBounds(getS(box0.doc, box0.id)).x0 || wideBounds.y0 !== itemBounds(getS(box0.doc, box0.id)).y0) fail('外箱：大きさを変えたとき、左上の位置が動きました');
+  else console.log('  外箱：幅300にできる（高さは変わらない・左上は動かない）');
+  const sized = sizedSymbol(getSymbolDef('enclosure-cubicle'), { w: 300 });
+  const rightLine = sized.shapes.some((sh) => sh.k === 'line' && sh.x1 === 300 && sh.x2 === 300);
+  if (!rightLine) fail('外箱：右端の縦線が、幅300の位置に来ていません');
+  // 範囲の外は、範囲に収まる
+  const tiny = getS(setSymbolSize(box0.doc, box0.id, { w: 1 }), box0.id);
+  const huge = getS(setSymbolSize(box0.doc, box0.id, { w: 99999 }), box0.id);
+  const r = getSymbolDef('enclosure-cubicle').resizable!.w!;
+  if (tiny.w !== r.min || huge.w !== r.max) fail(`外箱：範囲の外の値が収まりません（${tiny.w}／${huge.w}）`);
+  else console.log(`  外箱：幅は ${r.min}〜${r.max} に収まる`);
+  // 区分枠：幅も高さも変えられる
+  const area1 = getS(setSymbolSize(setSymbolSize(area0.doc, area0.id, { w: 400 }), area0.id, { h: 250 }), area0.id);
+  const ab = itemBounds(area1);
+  if (ab.x1 - ab.x0 !== 400 || ab.y1 - ab.y0 !== 250) fail(`区分枠：幅400・高さ250になっていません（${ab.x1 - ab.x0}×${ab.y1 - ab.y0}）`);
+  else console.log('  区分枠：幅400・高さ250にできる（片方ずつ変えても、もう片方は保たれる）');
+  // もとの大きさに戻せば、記号定義の大きさ（余計な値を持たない）
+  const back = getS(setSymbolSize(setSymbolSize(area0.doc, area0.id, { w: 400, h: 250 }), area0.id, { w: defArea.w, h: defArea.h }), area0.id);
+  if (back.w !== undefined || back.h !== undefined) fail('区分枠：もとの大きさに戻しても、大きさの値が残っています');
+  else console.log('  区分枠：もとの大きさに戻すと、大きさの値は残らない');
+  // 大きさを変えられない記号は、そのまま
+  const pas0 = addSymbol({ items: [] } as unknown as Doc, 'pas', 0, 0);
+  if (getS(setSymbolSize(pas0.doc, pas0.id, { w: 300 }), pas0.id).w !== undefined) fail('PASの大きさが変わってしまいました（変えられない記号です）');
+  // 手で直した内容として保存され、作り直しても残る
+  const gen7 = (a: Answers, tag: string) => fromLayout(layout(buildComposition(a), a), tag);
+  const g7 = gen7({ ...answers, mainBreakerForm: 'cb' } as Answers, 'sz1');
+  const withBox = addSymbol(g7, 'enclosure-cubicle', 400, 500);
+  const resized: Doc = { ...setSymbolSize(withBox.doc, withBox.id, { w: 320 }), edited: true };
+  const g8 = gen7({ ...answers, mainBreakerForm: 'cb' } as Answers, 'sz2');
+  const rebuilt = rebuildWithOverrides(g8, resized).doc;
+  const kept = rebuilt.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.symbolId === 'enclosure-cubicle' && !g8.items.some((g) => g.id === i.id));
+  if (!kept || kept.w !== 320) fail(`外箱：手で変えた幅が、作り直したあとに残っていません（${kept?.w}）`);
+  else console.log('  手で変えた幅は、入力内容を変えて図面を作り直しても、残る');
+  // 印刷・PDFの図にも、変えた大きさで出る
+  const svgOut = buildSheetSvg(setSymbolSize(box0.doc, box0.id, { w: 300 }), { site: '確認', name: '確認' } as never);
+  if (!svgOut.includes('300')) fail('印刷用の図に、変えた幅が出ていません');
+  else console.log('  印刷用の図にも、変えた幅で出る');
 }
 
 /* ---------- PGS：開閉器・遮断器の分類にある。形はPASと同じ ---------- */

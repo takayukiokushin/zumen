@@ -1,4 +1,4 @@
-import { fillLabelLines, getSymbol, initialLabelValues } from '@zumen/symbols';
+import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sizedSymbol } from '@zumen/symbols';
 import type { SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
@@ -27,6 +27,12 @@ export interface DocSymbol {
   y: number;
   rotate: number;
   label: string[];
+  /**
+   * 図面の上で決めた幅・高さ（外箱・エリアの区分枠のように、大きさを変えられる記号だけ）。
+   * 無ければ、記号定義の大きさ
+   */
+  w?: number;
+  h?: number;
   /**
    * 定格電圧・定格電流などの入力値（キーは記号定義の fields）。
    * あるときは、label を入力値から作り直す（足した記号の、数字の入力欄に使う）。
@@ -228,6 +234,10 @@ export function digest(text: string): string {
   return h.toString(36);
 }
 
+/** 図面の上の記号の定義。幅・高さを変えた記号は、その大きさで作り直したもの */
+export const defOf = (it: { symbolId: string; w?: number; h?: number }): SymbolDef =>
+  sizedSymbol(getSymbol(it.symbolId), it);
+
 let seq = 0;
 const nextId = (prefix: string) => `${prefix}-${++seq}`;
 
@@ -250,6 +260,8 @@ export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
       x: s.x,
       y: s.y,
       rotate: s.rotate,
+      ...(s.w !== undefined ? { w: s.w } : {}),
+      ...(s.h !== undefined ? { h: s.h } : {}),
       label: s.label,
       labelDx: s.labelAt.x - s.x,
       labelDy: s.labelAt.y - s.y,
@@ -282,7 +294,7 @@ const ASSIST_RANGE = 10;
 
 /** 記号の接続点の絶対座標 */
 export function portsOf(it: DocSymbol): { id: string; x: number; y: number }[] {
-  const def = getSymbol(it.symbolId);
+  const def = defOf(it);
   return def.ports.map((p) => {
     const [px, py] = rotatedPort(def.box, p.x, p.y, it.rotate);
     return { id: p.id, x: it.x + px, y: it.y + py };
@@ -305,7 +317,7 @@ function outwardOf(doc: Doc, a: Anchor | undefined): { dx: number; dy: number } 
   if (!a) return null;
   const it = doc.items.find((i) => i.id === a.item);
   if (!it || it.kind !== 'symbol') return null;
-  const port = getSymbol(it.symbolId).ports.find((p) => p.id === a.port);
+  const port = defOf(it).ports.find((p) => p.id === a.port);
   if (!port) return null;
   const base = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[port.dir];
   // 時計まわりに rotate 度回す
@@ -558,7 +570,7 @@ function followersOf(doc: Doc, parentId: string): { wires: Set<string>; symbols:
   if (kids.size === 0) return { wires, symbols };
   const group = new Set([parentId, ...kids]);
 
-  const rb = rotatedBox(getSymbol(parent.symbolId).box, parent.rotate);
+  const rb = rotatedBox(defOf(parent).box, parent.rotate);
   const box = { x0: parent.x + rb.dx - 0.5, y0: parent.y + rb.dy - 0.5, x1: parent.x + rb.dx + rb.w + 0.5, y1: parent.y + rb.dy + rb.h + 0.5 };
   const inBox = (x: number, y: number) => x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
   const allWires = doc.items.filter((i): i is DocWire => i.kind === 'wire');
@@ -825,7 +837,7 @@ export const removeItem = (doc: Doc, id: string): Doc => {
   const freed: { y0: number; y1: number }[] = [];
   for (const it of doc.items) {
     if (it.kind !== 'symbol' || !gone.has(it.id)) continue;
-    const rb = rotatedBox(getSymbol(it.symbolId).box, it.rotate);
+    const rb = rotatedBox(defOf(it).box, it.rotate);
     let y0 = it.y + rb.dy;
     let y1 = it.y + rb.dy + rb.h;
     if (it.label.length > 0) {
@@ -850,7 +862,7 @@ export const removeItem = (doc: Doc, id: string): Doc => {
           !!it.dashed &&
           doc.items.some((o) => {
             if (o.kind !== 'symbol' || !gone.has(o.id)) return false;
-            const rb = rotatedBox(getSymbol(o.symbolId).box, o.rotate);
+            const rb = rotatedBox(defOf(o).box, o.rotate);
             return x > o.x + rb.dx && x < o.x + rb.dx + rb.w && y > o.y + rb.dy && y < o.y + rb.dy + rb.h;
           });
         const e1 = !it.at1 && inGone(it.x1, it.y1);
@@ -967,6 +979,28 @@ export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Do
   const id = nextId('text');
   return { doc: { ...doc, items: [...doc.items, { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start' }] }, id };
 };
+
+/**
+ * 大きさを変えられる記号（外箱・エリアの区分枠）の、幅・高さを変える。
+ * 変えられる範囲に収める。変えられない記号・向きは、そのまま。
+ * 左上の位置は動かさない（右・下へ広がる）
+ */
+export const setSymbolSize = (doc: Doc, id: string, size: { w?: number; h?: number }): Doc => ({
+  ...doc,
+  items: doc.items.map((it) => {
+    if (it.kind !== 'symbol' || it.id !== id) return it;
+    const def = getSymbol(it.symbolId);
+    if (!def.resizable) return it;
+    const now = clampSize(def, it);
+    const next = clampSize(def, { w: size.w ?? now.w, h: size.h ?? now.h });
+    const { w: _w, h: _h, ...rest } = it;
+    return {
+      ...rest,
+      ...(next.w !== def.box.w ? { w: next.w } : {}),
+      ...(next.h !== def.box.h ? { h: next.h } : {}),
+    };
+  }),
+});
 
 /** 選んだ線の種類を、実線／点線に変える（線以外は、そのまま） */
 export const setWireKind = (doc: Doc, ids: string[], dashed: boolean): Doc => ({
@@ -1339,7 +1373,7 @@ export function itemBounds(it: DocItem): { x0: number; y0: number; x1: number; y
     const w = labelWidth(it.lines);
     return { x0: it.x, y0: it.y - LABEL_FONT, x1: it.x + w, y1: it.y + it.lines.length * LABEL_LINE };
   }
-  const def = getSymbol(it.symbolId);
+  const def = defOf(it);
   const rb = rotatedBox(def.box, it.rotate);
   return { x0: it.x + rb.dx, y0: it.y + rb.dy, x1: it.x + rb.dx + rb.w, y1: it.y + rb.dy + rb.h };
 }

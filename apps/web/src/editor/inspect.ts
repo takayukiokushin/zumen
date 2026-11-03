@@ -2,7 +2,7 @@ import { getSymbol } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
-import { applyAnchors, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, moveItem, nearestPort, portsOf } from './doc.ts';
+import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, moveItem, nearestPort, portsOf } from './doc.ts';
 
 /**
  * 図面全体を見まわして、おかしなところを直す。
@@ -107,7 +107,7 @@ function textBox(x: number, y: number, lines: string[], anchor: 'start' | 'middl
 
 /** 記号が占める範囲（絵のぶんだけ。文字は別に数える） */
 function symbolBox(it: DocSymbol): Box {
-  const def = getSymbol(it.symbolId);
+  const def = defOf(it);
   return { x0: it.x, y0: it.y, x1: it.x + def.box.w, y1: it.y + def.box.h };
 }
 
@@ -392,7 +392,7 @@ const GAP_AFTER_DELETE = 16;
 
 /** 記号の絵が占める範囲（回していれば、回したあとの範囲） */
 function drawnBox(it: DocSymbol): Box {
-  const rb = rotatedBox(getSymbol(it.symbolId).box, it.rotate);
+  const rb = rotatedBox(defOf(it).box, it.rotate);
   return { x0: it.x + rb.dx, y0: it.y + rb.dy, x1: it.x + rb.dx + rb.w, y1: it.y + rb.dy + rb.h };
 }
 

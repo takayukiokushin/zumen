@@ -215,6 +215,8 @@ export const miscSymbols: SymbolDef[] = [
     tags: ['キュービクル', '電気室', 'オープンフレーム式'],
     box: { w: 160, h: 30 },
     shapes: [hline(6, 0, 160), vline(0, 6, 30), vline(160, 6, 30)],
+    // 幅だけ変えられる（図面の上で、ほかの機器を囲む広さに合わせる）。高さ（両端の縦線）は変えない
+    resizable: { w: { min: 60, max: 800, step: 10 }, style: 'bracket' },
     ports: [],
     fields: [
       {
@@ -258,6 +260,8 @@ export const miscSymbols: SymbolDef[] = [
     tags: ['受電設備エリア', '複数箇所'],
     box: { w: 150, h: 96 },
     shapes: [rect(0, 0, 150, 96, { dash: DASH_DOT })],
+    // 幅と高さを変えられる（エリアの中の機器を囲む広さに合わせる）
+    resizable: { w: { min: 60, max: 800, step: 10 }, h: { min: 40, max: 1000, step: 10 }, style: 'area' },
     ports: [],
     status: 'confirmed',
     statusNote: '一点鎖線で確定。',

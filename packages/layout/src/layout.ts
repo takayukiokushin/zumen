@@ -24,6 +24,9 @@ export interface PlacedSymbol {
   x: number;
   y: number;
   rotate: number;
+  /** 図面の上で決めた幅・高さ（大きさを変えた外箱・区分枠だけ）。無ければ記号定義の大きさ */
+  w?: number;
+  h?: number;
   label: string[];
   labelAt: { x: number; y: number; anchor: 'start' | 'middle' | 'end' };
 }

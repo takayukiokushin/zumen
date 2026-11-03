@@ -3,7 +3,7 @@ import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
-import { assistMove, assistPoint, assistWireEnd, assistWireNew, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd } from './doc.ts';
+import { assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd } from './doc.ts';
 import type { Issue } from './inspect.ts';
 
 interface Props {
@@ -447,7 +447,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             );
           }
 
-          const def = getSymbol(it.symbolId);
+          const def = defOf(it);
           const cx = def.box.w / 2;
           const cy = def.box.h / 2;
           return (

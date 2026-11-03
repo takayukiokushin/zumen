@@ -1,4 +1,4 @@
-import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
+import { FONT_FAMILY, getSymbol, shapesToSvg, sizedSymbol } from '@zumen/symbols';
 import type { DrawingLayout } from './layout.ts';
 import { LABEL_FONT, LABEL_LINE, textWidth } from './text.ts';
 
@@ -176,7 +176,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   }
 
   for (const s of drawing.symbols) {
-    const def = getSymbol(s.symbolId);
+    const def = sizedSymbol(getSymbol(s.symbolId), s);
     const cx = def.box.w / 2;
     const cy = def.box.h / 2;
     body.push(

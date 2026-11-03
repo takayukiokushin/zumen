@@ -1,4 +1,4 @@
-import { getSymbol } from '@zumen/symbols';
+import { getSymbol, sizedSymbol } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, renderSvg } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
@@ -33,6 +33,8 @@ export function buildSheetSvg(
         x: it.x,
         y: it.y,
         rotate: it.rotate,
+        ...(it.w !== undefined ? { w: it.w } : {}),
+        ...(it.h !== undefined ? { h: it.h } : {}),
         label: it.label,
         labelAt: { x: it.x + it.labelDx, y: it.y + it.labelDy, anchor: it.labelAnchor },
       });
@@ -48,7 +50,7 @@ export function buildSheetSvg(
     b.y1 = Math.max(b.y1, y1);
   };
   for (const s of drawing.symbols) {
-    const def = getSymbol(s.symbolId);
+    const def = sizedSymbol(getSymbol(s.symbolId), s);
     ext(s.x, s.y, s.x + def.box.w, s.y + def.box.h);
     if (s.label.length) {
       const r = labelRect(s.labelAt, s.label);

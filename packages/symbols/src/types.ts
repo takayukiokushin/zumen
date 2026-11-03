@@ -126,6 +126,25 @@ export interface SymbolDef {
   optional?: boolean;
   /** 別の記号の上に重ねて描くだけの印（結線しないので、ポートを持たない） */
   overlay?: boolean;
+  /**
+   * 図面の上で、幅（や高さ）を変えられる記号（外箱・エリアの区分枠）。
+   * 変えたあとの形は、`sizedSymbol`（記号の index.ts）が、box と shapes を作り直して返す。
+   * w・h のどちらかを省くと、その向きは変えられない（記号定義の大きさのまま）。
+   */
+  resizable?: {
+    w?: SizeRange;
+    h?: SizeRange;
+    /** 形の作り方。bracket＝「コ」の字（上辺＋両端の短い縦線）／area＝一点鎖線の四角 */
+    style: 'bracket' | 'area';
+  };
+}
+
+/** 大きさを変えられる範囲 */
+export interface SizeRange {
+  min: number;
+  max: number;
+  /** つまみ・ボタンで動かす刻み */
+  step: number;
 }
 
 /** 記号定義のバリデーション（ポートが枠内にあるか等の単純な整合性確認） */

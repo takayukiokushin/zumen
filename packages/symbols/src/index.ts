@@ -1,12 +1,12 @@
 import type { SymbolDef } from './types.ts';
 import { validateSymbol } from './types.ts';
-import { shapesToSvg } from './shape.ts';
+import { hline, rect, shapesToSvg, vline } from './shape.ts';
 import { incomingSymbols } from './defs/incoming.ts';
 import { switchgearSymbols } from './defs/switchgear.ts';
 import { instrumentSymbols } from './defs/instrument.ts';
 import { protectionSymbols } from './defs/protection.ts';
 import { transformerSymbols } from './defs/transformer.ts';
-import { miscSymbols } from './defs/misc.ts';
+import { DASH_DOT, miscSymbols } from './defs/misc.ts';
 
 export * from './shape.ts';
 export * from './types.ts';
@@ -35,6 +35,36 @@ export function getSymbol(id: string): SymbolDef {
 
 export function findSymbol(id: string): SymbolDef | undefined {
   return byId.get(id);
+}
+
+/** 図面の上で決めた大きさ。省いた向きは、記号定義の大きさのまま */
+export interface SymbolSize {
+  w?: number;
+  h?: number;
+}
+
+/** 大きさを、変えられる範囲に収める（変えられない記号・向きは、記号定義のまま） */
+export function clampSize(def: SymbolDef, size: SymbolSize = {}): { w: number; h: number } {
+  const r = def.resizable;
+  const fit = (v: number | undefined, base: number, range?: { min: number; max: number }) =>
+    range && typeof v === 'number' && Number.isFinite(v) ? Math.max(range.min, Math.min(range.max, v)) : base;
+  return { w: fit(size.w, def.box.w, r?.w), h: fit(size.h, def.box.h, r?.h) };
+}
+
+/**
+ * 図面の上で幅・高さを変えた記号の、box と shapes を作り直して返す。
+ * 大きさを変えられない記号、または大きさが定義のままのときは、定義をそのまま返す
+ * （同じ記号は、何度呼んでも同じオブジェクト）。
+ */
+export function sizedSymbol(def: SymbolDef, size?: SymbolSize): SymbolDef {
+  if (!def.resizable || !size) return def;
+  const { w, h } = clampSize(def, size);
+  if (w === def.box.w && h === def.box.h) return def;
+  const shapes =
+    def.resizable.style === 'bracket'
+      ? [hline(6, 0, w), vline(0, 6, h), vline(w, 6, h)]
+      : [rect(0, 0, w, h, { dash: DASH_DOT })];
+  return { ...def, box: { w, h }, shapes };
 }
 
 /** 記号マスタ全体の整合性チェック（IDの重複・ポートの位置など） */
