@@ -4,7 +4,7 @@ import { useT } from '../i18n/useT.ts';
 import { Rich } from '../i18n/Rich.tsx';
 import { tr } from '../i18n/index.ts';
 import { EyeIcon, EyeOffIcon } from '../icons.tsx';
-import { TEXT_STEPS, useSettings } from '../settings/settings.tsx';
+import { useSettings } from '../settings/settings.tsx';
 import { APP_VERSION } from '../version.ts';
 import type { User } from './api.ts';
 
@@ -136,10 +136,10 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
           <span className="lbl">{t('login.size')}</span>
           <div className="seg">
             {([
-              [TEXT_STEPS[1]!, 'login.size.small'],
-              [TEXT_STEPS[2]!, 'login.size.normal'],
-              [TEXT_STEPS[4]!, 'login.size.large'],
-              [TEXT_STEPS[6]!, 'login.size.xlarge'],
+              [0.9, 'login.size.small'],
+              [1, 'login.size.normal'],
+              [1.2, 'login.size.large'],
+              [1.6, 'login.size.xlarge'],
             ] as const).map(([value, key]) => (
               <button
                 key={key}

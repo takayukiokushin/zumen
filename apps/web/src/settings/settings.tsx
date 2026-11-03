@@ -14,9 +14,9 @@ export interface Settings {
   lang: Lang;
   /** 明るい／暗い／端末に合わせる */
   theme: Theme;
-  /** 文字の大きさ（0.85〜1.6） */
+  /** 文字の大きさ（0.6〜1.6。0.1 刻み） */
   textScale: number;
-  /** 画面全体の大きさ（0.85〜1.5）。文字も含めて全部が拡大縮小する */
+  /** 画面全体の大きさ（0.6〜1.6。0.1 刻み）。文字も含めて全部が拡大縮小する */
   uiScale: number;
   /** 文字を太くする */
   bold: boolean;
@@ -31,8 +31,22 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /** 文字・画面の大きさの選べる段階。％で見せる */
-export const TEXT_STEPS = [0.85, 0.925, 1, 1.1, 1.25, 1.4, 1.6];
-export const UI_STEPS = [0.85, 0.925, 1, 1.1, 1.25, 1.4, 1.5];
+export const SIZE_MIN = 0.6;
+export const SIZE_MAX = 1.6;
+/** 60%〜160% を 10% 刻み（11段階）。文字も画面全体も同じ段階 */
+const stepsFrom = (): number[] => Array.from({ length: Math.round((SIZE_MAX - SIZE_MIN) * 10) + 1 }, (_, i) => Math.round((SIZE_MIN + i * 0.1) * 10) / 10);
+export const TEXT_STEPS = stepsFrom();
+export const UI_STEPS = stepsFrom();
+
+/**
+ * 前に保存された値（85%・92.5%・125% など、いまの段階に無いもの）は、いちばん近い段階に合わせる。
+ * 範囲の外（60%より小さい・160%より大きい）は、端に寄せる。真ん中ちょうどのとき（85%・125%）は、読みやすいよう、大きいほう（90%・130%）。
+ */
+export function snapToStep(steps: number[], value: number): number {
+  let best = steps[0]!;
+  for (const st of steps) if (Math.abs(st - value) <= Math.abs(best - value) + 1e-9) best = st;
+  return best;
+}
 
 const KEY = 'zumen.display';
 
@@ -44,8 +58,8 @@ function load(): Settings {
     return {
       lang: v.lang ?? DEFAULT_SETTINGS.lang,
       theme: v.theme ?? DEFAULT_SETTINGS.theme,
-      textScale: typeof v.textScale === 'number' ? v.textScale : 1,
-      uiScale: typeof v.uiScale === 'number' ? v.uiScale : 1,
+      textScale: typeof v.textScale === 'number' ? snapToStep(TEXT_STEPS, v.textScale) : 1,
+      uiScale: typeof v.uiScale === 'number' ? snapToStep(UI_STEPS, v.uiScale) : 1,
       bold: v.bold === true,
     };
   } catch {
