@@ -888,3 +888,37 @@ main.form .field[data-kind="buttons"] .radio-row button { flex: 0 0 auto; white-
   main.form .field[data-kind="buttons"] { width: 100%; flex: 1 1 100%; }
   main.form .field[data-kind="buttons"] .radio-row button { flex: 1 1 0; min-width: 0; white-space: normal; line-height: 1.3; }
 }
+
+/* ------------------------------------------------------------------ */
+/* 選択ボタン（言語・明るさ・文字の大きさ・縦横・線の種類など）は、アプリ全体で、横一列に並べる（項目6） */
+/*   - 折り返して、上下に積まない。幅が足りないときは、ボタンの余白が詰まり、それでも足りなければ、ボタンの中で文字が折り返す */
+/*   - 例外（横一列にしない）：選択肢が5つ以上のもの、4つで長いものは、もともと、プルダウン（Field.tsx）。 */
+/*     入力欄の選択ボタンは、項目5の仕組み（欄の幅を合わせる）。 */
+/* ------------------------------------------------------------------ */
+.seg, .paper-pick, .wire-kinds { display: flex; flex-wrap: nowrap; align-items: stretch; max-width: 100%; }
+.seg > .btn, .seg > button, .paper-pick > .btn, .paper-pick > button {
+  flex: 0 1 auto; min-width: 0; padding-left: calc(9px * var(--ctl-scale)); padding-right: calc(9px * var(--ctl-scale)); line-height: 1.3;
+}
+/* 設定の窓：狭いときは、名前を上に、ボタンを下に置いて、ボタンが使える幅を、いっぱいにする */
+@media (max-width: 700px) {
+  .settings-row { grid-template-columns: minmax(0, 1fr); gap: calc(4px * var(--text-scale)); }
+  .settings-row > .lbl { padding-top: 0; }
+}
+/* 線の種類の窓：実線・点線を、横に並べる（上に見本の線、下に名前） */
+.wire-window { min-width: calc(210px * var(--text-scale)); }
+.wire-window-body { flex-direction: row; }
+.wire-window-body .line-kind { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; text-align: center; gap: calc(3px * var(--text-scale)); }
+.login-size .seg { display: flex; flex-wrap: nowrap; }
+/* 選択ボタンの文字は、ボタンの中で折り返さない（「日／本語」のように割れない）。狭いときは、余白と文字を詰める */
+.seg > .btn, .seg > button, .paper-pick > .btn, .paper-pick > button { white-space: nowrap; }
+@media (max-width: 700px) {
+  .seg { gap: calc(4px * var(--ctl-scale)); }
+  .seg > .btn, .seg > button, .paper-pick > .btn, .paper-pick > button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); }
+}
+@media (max-width: 400px) {
+  .seg > .btn, .seg > button { font-size: calc(11.5px * var(--ctl-scale)); }
+}
+/* 横一列に収まらないとき（スマホで文字を最大にした場合など）だけ、横のまま、次の行へ折り返す（文字が切れたり、はみ出したりしない） */
+.seg, .paper-pick, .login-size .seg { flex-wrap: wrap; row-gap: calc(4px * var(--ctl-scale)); }
+.seg { gap: calc(5px * var(--ctl-scale)); }
+@media (max-width: 700px) { .seg { gap: calc(3px * var(--ctl-scale)); } }
