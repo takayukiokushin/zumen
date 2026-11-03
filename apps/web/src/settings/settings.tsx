@@ -74,11 +74,35 @@ function load(): Settings {
  */
 export const BASE_TEXT_SCALE = 1.1;
 
+/**
+ * ブラウザの zoom の仕組みを調べる。
+ * 新しいブラウザ（Chrome 128 以降など）は、拡大した部品の中の「％」が、拡大したあとの長さで決まる。古いものは、拡大する前の長さで決まる。
+ * 幅200の入れ物の中に、zoom:2・幅100% の箱を入れ、見た目の幅が 200（新）か 400（古）かで見分ける。
+ */
+function detectZoomMode(): 'standard' | 'legacy' {
+  try {
+    const outer = document.createElement('div');
+    outer.style.cssText = 'position:absolute;visibility:hidden;width:200px;height:10px;left:-9999px;';
+    const inner = document.createElement('div');
+    inner.style.cssText = 'zoom:2;width:100%;height:1px;';
+    outer.appendChild(inner);
+    document.body.appendChild(outer);
+    const w = inner.getBoundingClientRect().width;
+    outer.remove();
+    return w < 300 ? 'standard' : 'legacy';
+  } catch {
+    return 'legacy';
+  }
+}
+let zoomMode: 'standard' | 'legacy' | null = null;
+
 /** 設定を実際の画面に効かせる。CSS側はこの印と変数だけを見る */
 function applyToDocument(s: Settings): void {
   const el = document.documentElement;
   el.dataset.theme = s.theme;
   el.dataset.bold = s.bold ? 'on' : 'off';
+  zoomMode ??= detectZoomMode();
+  el.dataset.zoom = zoomMode;
   el.style.setProperty('--text-scale', String(s.textScale * BASE_TEXT_SCALE));
   el.style.setProperty('--ui-scale', String(s.uiScale));
   el.lang = s.lang;

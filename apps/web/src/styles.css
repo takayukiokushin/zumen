@@ -61,6 +61,9 @@ b, strong, th { font-weight: var(--weight-strong); }
 
 /* 画面全体の大きさ。高さを割り戻して、縦スクロールが出ないようにする */
 #root { zoom: var(--ui-scale); height: calc(100% / var(--ui-scale)); }
+/* 新しいブラウザ（zoom の仕様がそろった版）では、％がすでに拡大縮小のあとの長さで決まるので、割り戻すと、画面の高さに合わなくなる
+   （大きくすると下が空き、小さくすると下が画面の外へ切れる）。どちらの仕組みかは、settings.tsx が調べて、この印を付ける */
+html[data-zoom="standard"] #root { height: 100%; }
 
 /* ---- 画面の骨組み：上から帯、残り全部が中身 ---- */
 .shell { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -143,9 +146,16 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .tabbar button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
 
 /* ---- エディタ ---- */
-.editor { display: flex; flex-direction: column; height: 100%; }
+.editor { display: flex; flex-direction: column; height: 100%; container: editor / size; }
+/* 図面の画面の高さが、ボタンの列だけで埋まってしまうほど低いとき（スマホで文字を最大にした場合など）は、固定をやめて、図面まで動かせるようにする */
+@container editor (max-height: 330px) { .editor-bar { position: static; max-height: none; } }
 .editor-bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--gap, 10px);
-  padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--rule); }
+  padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--rule);
+  /* 図面を下へ動かしても、ボタンの列は、常に画面の上に残す（スマホの縦長の画面では、画面全体が動くので、sticky で固定する）。
+     大きい文字・大きい画面全体の設定でボタンの列が高くなりすぎ、図面を隠してしまわないよう、高さは図面の画面の45%まで
+     （それを超えるぶんは、ボタンの列の中だけが動く）。 */
+  flex: 0 0 auto; position: sticky; top: 0; z-index: 20;
+  max-height: max(45%, 110px); overflow-y: auto; overscroll-behavior: contain; }
 .tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .tools button { padding: 6px 12px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px;
   cursor: pointer; font-size: calc(12.5px * var(--text-scale)); }
@@ -193,7 +203,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
   .tabbar, .projectbar, .bar-error, .bar-lock, .editor-bar, .editor-body, .app,
   .mode-hint, .preview-note, .stale-note, .panel-bar, .modal-back { display: none !important; }
   .shell, .shell > .body { display: block; height: auto; overflow: visible; }
-  .editor { display: block; height: auto; }
+  .editor { display: block; height: auto; container-type: normal; }
   .print-root { display: block; }
   /* 大きさは Editor が選んだ用紙に合わせて差し込む */
   .print-root svg { display: block; }
