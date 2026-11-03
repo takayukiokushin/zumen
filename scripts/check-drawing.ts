@@ -2180,25 +2180,43 @@ console.log('\n■ 送り出しの開閉器（1か所目 → 2か所目の線の
   if (draw({}).symbols.some((s) => /^sendout/.test(s.id))) fail('「なし」のとき、送り出しの開閉器が描かれています');
 }
 
-/* ---------- ケーブルでつなぐとき：送り出し側にも、ケーブルの端末 ---------- */
-console.log('\n■ 送り出し側のケーブルの端末');
+/* ---------- ケーブルでつなぐとき：送り出し側にも、ケーブルの端末（三角は、必ず下向き） ---------- */
+console.log('\n■ 送り出し側のケーブルの端末（分岐する位置・開閉器の有無に関わらず、必ず下向き）');
 {
   const base2: Answers = { ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried' };
-  for (const [name, extra] of [['送り出しの開閉器なし', {}], ['DS＋VCBあり', { sendoutSwitch: 'ds-vcb' }], ['VCBの負荷側から', { 'a2:linkTap': 'vcb-load' }]] as [string, Answers][]) {
-    const a = { ...base2, ...extra };
-    const d = layout(buildComposition(a), a);
-    const head = d.symbols.find((s) => s.id === 'cable-head-send');
-    if (!head) { fail(`${name}：送り出し側に、ケーブルの端末が描かれていません`); continue; }
-    const [inP, outP] = [portAbs(head, 'in'), portAbs(head, 'out')];
-    const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
-    // 頂点（出口側）がケーブル側を向き、入口・出口の両方に線がつながっている。送り出しの開閉器があるときは、下向き（縦）、無いときは、右向き（横）
-    const withSwitch = extra.sendoutSwitch !== undefined;
-    const oriented = withSwitch ? Math.abs(inP.x - outP.x) < 0.5 && inP.y < outP.y : inP.x < outP.x && Math.abs(inP.y - outP.y) < 0.5;
-    if (!oriented) fail(`${name}：ケーブルの端末の向きが違います（${withSwitch ? '下向き（縦）' : '右向き（横）'}のはず）`);
-    else if (!wireAt(inP.x, inP.y) || !wireAt(outP.x, outP.y)) fail(`${name}：送り出し側のケーブルの端末に、線がつながっていません`);
-    else if (findLabelCollisions(d).length > 0) fail(`${name}：文字が重なりました`);
-    else console.log(`  ${name}：ケーブルの端末が、送り出す線の途中（開閉器があるときは下向き、無いときは右向き）に入り、前後が線でつながる`);
+  const taps = ['ds-source', 'ds-vcb', 'vcb-load', 'bus'] as const;
+  const switches: [string, Answers][] = [['開閉器なし', {}], ['DS＋VCBあり', { sendoutSwitch: 'ds-vcb' }], ['VCBのみ', { sendoutSwitch: 'vcb' }]];
+  let n = 0;
+  for (const tap of taps) {
+    for (const [swName, sw] of switches) {
+      const name = `分岐「${tap}」・${swName}`;
+      const a = { ...base2, ...sw, 'a2:linkTap': tap };
+      const d = layout(buildComposition(a), a);
+      const head = d.symbols.find((s) => s.id === 'cable-head-send');
+      if (!head) { fail(`${name}：送り出し側に、ケーブルの端末が描かれていません`); continue; }
+      const [inP, outP] = [portAbs(head, 'in'), portAbs(head, 'out')];
+      const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+      // 三角の頂点（出口側）が下を向く：ふつうの向き（回さない）で、入口の真下に出口がある。入口・出口の両方に線がつながっている
+      const down = head.rotate === 0 && Math.abs(inP.x - outP.x) < 0.5 && inP.y < outP.y;
+      if (!down) fail(`${name}：ケーブルの端末が、下向きになっていません（回転 ${head.rotate}°）`);
+      else if (!wireAt(inP.x, inP.y) || !wireAt(outP.x, outP.y)) fail(`${name}：送り出し側のケーブルの端末に、線がつながっていません`);
+      else if (findLabelCollisions(d).length > 0) fail(`${name}：文字が重なりました`);
+      else if (inspectDrawing(fromLayout(d), 'A3', 'portrait').some((i) => i.kind === 'overlap' || i.kind === 'floating' || i.kind === 'through')) fail(`${name}：図面の点検で、重なり・つながっていない線が見つかりました`);
+      else n++;
+    }
   }
+  if (n === taps.length * switches.length) console.log(`  分岐の位置4つ × 開閉器3通り（${n}通り）すべて、端末は下向きで、前後が線でつながり、重ならない`);
+  // 3か所：どの幹の端末も、下向き
+  const a3: Answers = { ...base2, areaCount: 3, 'a3:areaIntake': 'ds-vcb', 'a3:trCapacity': 100, 'a3:linkTap': 'bus', 'a3:linkCableInstallation': 'buried', 'a3:linkFrom': 1 };
+  const d3 = layout(buildComposition(a3), a3);
+  const heads3 = d3.symbols.filter((s) => /cable-head-send/.test(s.id));
+  if (heads3.length < 1) fail('3か所のとき、送り出し側の端末が描かれていません');
+  else if (!heads3.every((h) => h.rotate === 0 && Math.abs(portAbs(h, 'in').x - portAbs(h, 'out').x) < 0.5 && portAbs(h, 'in').y < portAbs(h, 'out').y)) fail('3か所のとき、送り出し側の端末が、すべて下向きになっていません');
+  else console.log(`  3か所：送り出し側の端末 ${heads3.length}個が、すべて下向き`);
+  // ふつうの線でつなぐとき：端末は描かない
+  const aw: Answers = { ...base2, 'a2:linkCable': 'no' };
+  if (layout(buildComposition(aw), aw).symbols.some((s) => /cable-head-send/.test(s.id))) fail('ケーブルでつながないのに、送り出し側に端末が描かれています');
+  else console.log('  ケーブルでつながないとき：端末は描かない');
 }
 
 /* ---------- OVGR（ZPDの左）・DGR（ZCTの横） ---------- */
