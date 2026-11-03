@@ -17,6 +17,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { pdfPageCount } from '../apps/server/src/analyze.ts';
+import { KEEP, dayOf, msUntilMidnight, pickToDelete, stamp } from '../apps/server/src/backup-rules.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const WEB_DIST = resolve(ROOT, 'apps/web/dist');
@@ -812,6 +813,20 @@ try {
 
   /* ---------- 9. 控え（バックアップ） ---------- */
   say('\n■ 控え（バックアップ）');
+  {
+    // 時刻の決まり：「午前0時」は日本時間。サーバーの時計（世界標準時でも）に左右されない
+    const jst = (iso: string) => new Date(iso); // 例：2026-11-03T23:59:30+09:00
+    check('残す日数は、10日分', KEEP === 10, `${KEEP}`);
+    check('午前0時の30秒前なら、あと31秒（1秒だけ過ぎてから動く）', msUntilMidnight(jst('2026-11-03T23:59:30+09:00'), 'Asia/Tokyo') === 31_000, `${msUntilMidnight(jst('2026-11-03T23:59:30+09:00'), 'Asia/Tokyo')}`);
+    check('午前0時ちょうどなら、次の0時まで24時間（と1秒）', msUntilMidnight(jst('2026-11-04T00:00:00+09:00'), 'Asia/Tokyo') === 86_401_000);
+    check('昼の12時なら、あと12時間（と1秒）', msUntilMidnight(jst('2026-11-03T12:00:00+09:00'), 'Asia/Tokyo') === 43_201_000);
+    check('世界標準時の15時（日本時間の午前0時）は、日本の翌日の名前になる', stamp(new Date('2026-11-03T15:00:00Z'), 'Asia/Tokyo') === '20261104-000000' && dayOf(new Date('2026-11-03T14:59:59Z'), 'Asia/Tokyo') === '20261103');
+    const days = Array.from({ length: 12 }, (_, i) => `202611${String(i + 1).padStart(2, '0')}-000000`);
+    const del = pickToDelete([...days, '20261112-093000', 'notes', '20261001-000000']);
+    check('10日分だけ残し、古い日は消す', del.includes('20261001-000000') && del.includes('20261101-000000') && del.includes('20261102-000000') && !del.includes('20261103-000000'), del.join(' '));
+    check('同じ日に2つあれば、新しいほうだけ残る', del.includes('20261112-000000') && !del.includes('20261112-093000'));
+    check('控えではない名前のものは、触らない', !del.includes('notes'));
+  }
   const bk = await runNode(['apps/server/src/cli.ts', 'backup', backupDir], env);
   check('控えを作れる', bk.code === 0, bk.code === 0 ? '' : bk.out.trim().split('\n').pop() ?? '');
   const copies = readdirSync(backupDir).filter((n) => /^\d{8}-\d{6}$/.test(n));
@@ -828,7 +843,7 @@ try {
     } catch (e) {
       ng('控えから案件を読み出せる', e instanceof Error ? e.message : String(e));
     }
-    check('控えに写真が入っている', readdirSync(join(latest, 'files')).length > 0);
+    check('控えには、写真・PDFを入れない（案件のデータだけ）', !existsSync(join(latest, 'files')));
   }
 
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */

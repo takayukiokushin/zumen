@@ -73,7 +73,7 @@ try {
       const r = backup(dest);
       console.log(`控えを作りました: ${r.dir}`);
       console.log(`  元の場所: ${sourceDir}`);
-      console.log(`  案件のデータ: ${(r.bytes / 1024).toFixed(0)}KB / 写真: ${r.fileCount}枚`);
+      console.log(`  案件のデータ: ${(r.bytes / 1024).toFixed(0)}KB`);
       break;
     }
     case 'purge-photos': {
