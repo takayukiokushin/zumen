@@ -34,6 +34,16 @@ export function ProjectBar({
   const t = useT();
   const { input } = useDialogs();
   const lang = useLang();
+  // 保存の状態の文字（横に出す。狭いスマホでは、1行に収めるため出さず、保存ボタンのツールチップに入れる）
+  const status = readOnly
+    ? t('project.readonly')
+    : saving
+      ? t('project.saving')
+      : dirty
+        ? t('project.hasUnsaved')
+        : savedAt
+          ? `${new Date(savedAt).toLocaleTimeString(lang)} ${t('project.savedAt')}`
+          : '';
   return (
     <div className="projectbar">
       <button type="button" className="picker" aria-pressed={listing} onClick={onList}>
@@ -61,23 +71,14 @@ export function ProjectBar({
           <button
             type="button"
             className={dirty ? 'need-save' : ''}
+            title={status}
             onClick={onSave}
             disabled={saving || !dirty || readOnly}
           >
             {/* 名前は、いつも「保存」。保存したあとは、押せなくなるだけ（横に、保存した時刻が出る） */}
             {t('project.save')}
           </button>
-          <span className="saved">
-            {readOnly
-              ? t('project.readonly')
-              : saving
-                ? t('project.saving')
-                : dirty
-                  ? t('project.hasUnsaved')
-                  : savedAt
-                    ? `${new Date(savedAt).toLocaleTimeString(lang)} ${t('project.savedAt')}`
-                    : ''}
-          </span>
+          <span className="saved">{status}</span>
         </>
       )}
     </div>

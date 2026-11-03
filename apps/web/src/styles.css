@@ -856,3 +856,17 @@ main.form .field .help {
 @media (hover: hover) { main.form .field .help { -webkit-line-clamp: 1; } }
 main.form .repeat-block { margin-bottom: calc(10px * var(--text-scale)); }
 main.form .repeat-block > .fields { padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale)) calc(12px * var(--text-scale)); }
+
+/* ---- スマホ（幅700以下）：案件の帯（図面一覧・図面名称・名称を変更・保存）を、1行にする ---- */
+@media (max-width: 700px) {
+  .projectbar { gap: calc(4px * var(--text-scale)); padding-left: calc(8px * var(--text-scale)); padding-right: calc(8px * var(--text-scale)); }
+  .projectbar button { min-width: 0; flex: 0 0 auto; white-space: nowrap; padding: calc(4px * var(--text-scale)) calc(8px * var(--text-scale)); font-size: calc(12px * var(--text-scale)); }
+  /* 図面の名前は、残った幅いっぱいに出し、足りなければ「…」で省く（ボタンを押しのけない）。ボタンだけで幅を使い切るほど大きい設定のときだけ、次の行に折り返す */
+  .projectbar .jobname { flex: 1 1 0; min-width: 3em; max-width: none; margin: 0; font-size: calc(12.5px * var(--text-scale)); }
+  /* 保存の状態の文字は、1行に収めるため、スマホでは出さない（保存ボタンの色と、ツールチップで分かる） */
+  .projectbar .saved { display: none; }
+}
+@media (max-width: 400px) {
+  .projectbar button { padding-left: calc(6px * var(--text-scale)); padding-right: calc(6px * var(--text-scale)); font-size: calc(11px * var(--text-scale)); }
+  .projectbar .jobname { font-size: calc(11.5px * var(--text-scale)); }
+}
