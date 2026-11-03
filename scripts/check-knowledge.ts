@@ -1546,5 +1546,29 @@ console.log('\n■ 説明文の整理');
   console.log(`  AIへの説明（${QUESTIONS.filter((y) => y.aiHint !== undefined).length}項目）：選ぶ値・メモに無いときの扱いまで書いた、丁寧な文章`);
 }
 
+console.log('\n■ 読み取りの指示文：現場で決まっていること');
+{
+  const p = buildSystemPrompt();
+  const must: [string, string][] = [
+    ['太陽光があるときの ZPD・OVGR（必須）', '太陽光発電設備（PCS・PV。「太陽」「太陽光」「発電」などの書き方もあります）があるときは、ZPD と OVGR が必ず必要です'],
+    ['RPR は、書かれていなければ質問で確認', '逆電力継電器（RPR）は必要ですか'],
+    ['読み取れない機器は質問で確認', 'ZPD・OVGR・RPR のように、図やメモから読み取れない機器は、推測で答えず、questions で確認します'],
+    ['中電柱の名前は、カナ・漢字を変換しない', '漢字とカタカナを、互いに変換しないでください'],
+    ['CV・CVT は、書いてあるとおり', '別の資料（以前の図面など）と食い違っていても、補正しないでください'],
+    ['動力の書き方の揺れ', '「カ」「力」「動」「動力」「カTr」「動Tr」 → 動力'],
+    ['電灯の書き方の揺れ', '「電」「灯」「電灯」「電Tr」「灯Tr」 → 電灯'],
+    ['写真の向き', '90度回って撮影されていることがあります'],
+    ['小数点の見落とし', '「4.95kW」が「495kW」'],
+  ];
+  for (const [name, text] of must) {
+    if (!p.includes(text)) fail(`読み取りの指示文に、「${name}」が入っていません`);
+  }
+  // 項目ごとの説明（hasZpd・hasOvgr）も、太陽光のときの決まりと食い違わない
+  for (const id of ['hasZpd', 'hasOvgr']) {
+    if (!(AI_HINTS[id] ?? '').includes('太陽光発電設備（hasPv が yes）があるとき')) fail(`${id}：AIへの説明に、太陽光のときの決まりが入っていません`);
+  }
+  if (failed === 0) console.log(`  ${must.length}項目すべて、指示文に入っている（太陽光＝ZPD・OVGR必須、RPR・読み取れない機器は質問、書いてある文字のまま、用途の書き方の揺れ、写真の向き、小数点）`);
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
