@@ -1176,6 +1176,10 @@ const HANG_GAP = 14;
 const HEAD_MARGIN = 10;
 /** 送り出しの開閉器の前後・あいだの線の長さ */
 const SENDOUT_GAP = 16;
+/** 同じ位置から出る、ケーブルの線が2本以上あるとき、外側の線の端末を、内側より、この分だけ下に置く（横の線が、内側の並びを横切らないように） */
+const DROP_STEP = 34;
+/** 同じ位置から出るケーブルの線が2本以上あるとき、縦に上がる線どうしの間隔（くっついて、1本に見えないように） */
+const GROUP_STEP = 24;
 /** ケーブルが、エリアの枠の上端より上を通る高さ */
 const LINK_RISE = 40;
 
@@ -1246,16 +1250,24 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     linkInfos.push({ n: part.n, from: link.from, sx, sy, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false });
   }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
-  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number };
+  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 同じ位置から出るケーブルの線の中での順番（0＝いちばん近いエリアへ）と、本数 */ gi: number; gn: number };
   const trunks: Trunk[] = [];
   for (const li of linkInfos) {
-    // ケーブルでつなぐ線と、ふつうの線でつなぐ線は、別の幹にする（ケーブルの端末を共有しないため）
-    let tr = trunks.find((x) => x.from === li.from && x.cable === li.cable && Math.abs(x.sy - li.sy) < 0.5);
+    // ケーブルでつなぐ線は、1本ずつ、別の幹にする（ケーブルは、線ごとに別の物なので、端末も、線の数だけ描く）。
+    // ふつうの線でつなぐ線は、同じ位置から出るものを、1つの幹にまとめる
+    let tr = li.cable ? undefined : trunks.find((x) => x.from === li.from && !x.cable && Math.abs(x.sy - li.sy) < 0.5);
     if (!tr) {
-      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length };
+      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, gi: 0, gn: 1 };
       trunks.push(tr);
     }
     tr.links.push(li);
+  }
+  // 同じ位置から出るケーブルの線：近いエリアへの線から順に 0, 1, …
+  for (const tr of trunks) {
+    if (!tr.cable) continue;
+    const same = trunks.filter((x) => x.cable && x.from === tr.from && Math.abs(x.sy - tr.sy) < 0.5);
+    tr.gi = same.indexOf(tr);
+    tr.gn = same.length;
   }
   // 同じエリアから出る幹は、上から出る線ほど、左に置く（線が交わらないように）
   for (const f of new Set(trunks.map((x) => x.from))) {
@@ -1356,7 +1368,15 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   const stackX = (tr: Trunk): number => gapLeftOf(tr.from) + STACK_LEFT + tr.index * (stackW(tr.from) + STACK_STEP);
   /** 幹の、縦の線の位置（送り出しの開閉器があるときは、並びの右。無いときは、すきまの真ん中から、幹ごとに少しずつ右へ） */
   const trunkX = (tr: Trunk): number => {
-    if (stackedArea(tr.from)) return stackX(tr) + stackW(tr.from) + TRUNK_STEP;
+    if (stackedArea(tr.from)) {
+      // 同じ位置から出るケーブルの線が2本以上：近いエリアへの線ほど、外側（右）を通る。
+      // 遠いエリアへの線は、横の線が高い所を通るので、内側にしておくと、近い線の縦線と交わらない
+      if (tr.cable && tr.gn > 1) {
+        const last = trunks.find((x) => x.cable && x.from === tr.from && Math.abs(x.sy - tr.sy) < 0.5 && x.gi === tr.gn - 1)!;
+        return stackX(last) + stackW(tr.from) + TRUNK_STEP + (tr.gn - 1 - tr.gi) * GROUP_STEP;
+      }
+      return stackX(tr) + stackW(tr.from) + TRUNK_STEP;
+    }
     const next = moved[tr.from + 1];
     const base = next ? next.part.result.bounds.x0 + next.dx - gapBefore(tr.from + 1) / 2 : moved[tr.from]!.part.result.bounds.x1 + moved[tr.from]!.dx + AREA_GAP / 2;
     return base + TRUNK_STEP * tr.index;
@@ -1383,8 +1403,11 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       const xs = stackX(tr);
       // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、IDに印を付ける
       const sfx = tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`;
-      wires.push({ x1: sx, y1: sy, x2: xs, y2: sy });
-      ext(sx, sy, xs, sy);
+      // 同じ位置から出る2本目以降のケーブルは、前の線の縦の並びの位置から、右へ分かれる（同じ線を、重ねて引かない）
+      const prev = tr.gi > 0 ? trunks.find((x) => x.cable && x.from === tr.from && Math.abs(x.sy - tr.sy) < 0.5 && x.gi === tr.gi - 1) : undefined;
+      const startX = prev ? stackX(prev) : sx;
+      wires.push({ x1: startX, y1: sy, x2: xs, y2: sy });
+      ext(startX, sy, xs, sy);
       let y = sy;
       /** 縦の並びに、記号を1つ置く。入口を、いまの位置から SENDOUT_GAP 下に。出口の高さを返す */
       const stackPut = (id: string, role: string, symbolId: string, label: string[]): PlacedSymbol => {
@@ -1422,6 +1445,13 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         stackPut(hid0, hid0, 'cable-head', []);
       }
       if (zctPos === 'cable') putZct();
+      // 外側の線は、内側の線の並びの下を通って、右へ出る。端末のあとを、その分、下へ延ばす（ここから先が、ケーブル）
+      if (tr.cable && tr.gn > 1 && tr.gi < tr.gn - 1) {
+        const extra = DROP_STEP * (tr.gn - 1 - tr.gi);
+        wires.push({ x1: xs, y1: y, x2: xs, y2: y + extra, dashed: tr.links.every((l) => l.dashed) });
+        ext(xs, y, xs, y + extra);
+        y += extra;
+      }
       // 送り出しの開閉器に付くDGR：DGRは、ZCTの横。TCは、開閉器の横
       if (gr && breaker && zsym) {
         const bdef = getSymbol(breaker.symbolId);

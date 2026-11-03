@@ -2206,13 +2206,61 @@ console.log('\n■ 送り出し側のケーブルの端末（分岐する位置�
     }
   }
   if (n === taps.length * switches.length) console.log(`  分岐の位置4つ × 開閉器3通り（${n}通り）すべて、端末は下向きで、前後が線でつながり、重ならない`);
-  // 3か所：どの幹の端末も、下向き
-  const a3: Answers = { ...base2, areaCount: 3, 'a3:areaIntake': 'ds-vcb', 'a3:trCapacity': 100, 'a3:linkTap': 'bus', 'a3:linkCableInstallation': 'buried', 'a3:linkFrom': 1 };
-  const d3 = layout(buildComposition(a3), a3);
-  const heads3 = d3.symbols.filter((s) => /cable-head-send/.test(s.id));
-  if (heads3.length < 1) fail('3か所のとき、送り出し側の端末が描かれていません');
-  else if (!heads3.every((h) => h.rotate === 0 && Math.abs(portAbs(h, 'in').x - portAbs(h, 'out').x) < 0.5 && portAbs(h, 'in').y < portAbs(h, 'out').y)) fail('3か所のとき、送り出し側の端末が、すべて下向きになっていません');
-  else console.log(`  3か所：送り出し側の端末 ${heads3.length}個が、すべて下向き`);
+  // 3か所：ケーブルの数（2本）だけ、端末が描かれ、どれも下向きで、線が交わらず、重ならない
+  const cross = (d: ReturnType<typeof layout>) => {
+    // 縦線と横線が、どちらの途中でも交わるもの（端点で接するものは、つなぎ目なので除く）
+    const hs = d.wires.filter((w) => Math.abs(w.y1 - w.y2) < 0.01 && Math.abs(w.x1 - w.x2) > 0.5);
+    const vs = d.wires.filter((w) => Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y1 - w.y2) > 0.5);
+    // 1か所目のエリアの中の線（枠の右端より左）は、このテストの対象外。エリアの間（すきま）を通る線どうしの交わりを数える
+    const area1Right = Math.max(...d.symbols.filter((x) => !/^a\d+:/.test(x.id) && !/^(cable-head-send|sendout)/.test(x.id)).map((x) => x.x + getSymbolDef(x.symbolId).box.w));
+    let n = 0;
+    for (const h of hs) for (const v of vs) {
+      const [hx0, hx1] = [Math.min(h.x1, h.x2), Math.max(h.x1, h.x2)];
+      const [vy0, vy1] = [Math.min(v.y1, v.y2), Math.max(v.y1, v.y2)];
+      if (v.x1 <= area1Right) continue;
+      if (v.x1 > hx0 + 0.5 && v.x1 < hx1 - 0.5 && h.y1 > vy0 + 0.5 && h.y1 < vy1 - 0.5) n++;
+    }
+    return n;
+  };
+  const a3base: Answers = { ...base2, areaCount: 3, 'a3:areaIntake': 'ds-vcb', 'a3:trCapacity': 100, 'a3:linkTap': 'bus', 'a3:linkCableInstallation': 'buried', 'a3:linkFrom': 1 };
+  const cases3: [string, Answers][] = [
+    ['同じ位置（高圧母線）から2本', {}],
+    ['同じ位置（VCBの負荷側）から2本', { 'a2:linkTap': 'vcb-load', 'a3:linkTap': 'vcb-load' }],
+    ['位置が違う2本（上の位置から、遠いエリアへ）', { 'a2:linkTap': 'vcb-load', 'a3:linkTap': 'ds-vcb' }],
+    ['同じ位置から2本・送り出しの開閉器あり', { sendoutSwitch: 'ds-vcb' }],
+    ['2本目は、2か所目から', { 'a3:linkFrom': 2 }],
+  ];
+  for (const [name, extra] of cases3) {
+    const a = { ...a3base, ...extra };
+    const d3 = layout(buildComposition(a), a);
+    const heads3 = d3.symbols.filter((s) => /cable-head-send/.test(s.id));
+    const fromFirst = a['a3:linkFrom'] === 2 ? 1 : 2;
+    const wantHeads = a['a3:linkFrom'] === 2 ? 2 : 2;
+    void fromFirst;
+    const down = heads3.every((h) => h.rotate === 0 && Math.abs(portAbs(h, 'in').x - portAbs(h, 'out').x) < 0.5 && portAbs(h, 'in').y < portAbs(h, 'out').y);
+    const ids = new Set(heads3.map((h) => h.id));
+    const wireAt = (x: number, y: number) => d3.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
+    const joined = heads3.every((h) => wireAt(portAbs(h, 'in').x, portAbs(h, 'in').y) && wireAt(portAbs(h, 'out').x, portAbs(h, 'out').y));
+    const crossings = cross(d3);
+    const iss = inspectDrawing(fromLayout(d3), 'A3', 'landscape').filter((i) => i.kind === 'overlap' || i.kind === 'floating' || i.kind === 'through');
+    if (heads3.length !== wantHeads || ids.size !== heads3.length) fail(`${name}：ケーブルは${wantHeads}本なのに、端末が${heads3.length}個（重複なしで ${ids.size}個）です`);
+    else if (!down) fail(`${name}：端末が、すべて下向きになっていません`);
+    else if (!joined) fail(`${name}：端末の前後が、線でつながっていません`);
+    else if (crossings > 0) fail(`${name}：線が、途中で交わっています（${crossings}か所）`);
+    else if (findLabelCollisions(d3).length > 0) fail(`${name}：文字が重なりました`);
+    else if (iss.length > 0) fail(`${name}：図面の点検で、重なり・つながっていない線が見つかりました（${iss.map((i) => i.message).join(' / ')}）`);
+    else console.log(`  ${name}：ケーブル${wantHeads}本に、端末${heads3.length}個。すべて下向き・線は交わらず・重ならない`);
+  }
+  // 4か所（同じ位置から3本）
+  {
+    const a4: Answers = { ...a3base, areaCount: 4, 'a4:areaIntake': 'ds-vcb', 'a4:trCapacity': 100, 'a4:linkTap': 'bus', 'a4:linkCableInstallation': 'buried', 'a4:linkFrom': 1 };
+    const d4 = layout(buildComposition(a4), a4);
+    const h4 = d4.symbols.filter((s) => /cable-head-send/.test(s.id));
+    if (h4.length !== 3) fail(`4か所（同じ位置から3本）：端末が3個ではありません（${h4.length}個）`);
+    else if (cross(d4) > 0) fail(`4か所：線が、途中で交わっています（${cross(d4)}か所）`);
+    else if (inspectDrawing(fromLayout(d4), 'A3', 'landscape').some((i) => i.kind === 'overlap' || i.kind === 'floating' || i.kind === 'through')) fail('4か所：図面の点検で、問題が見つかりました');
+    else console.log('  4か所（同じ位置から3本）：端末3個。線は交わらず、重ならない');
+  }
   // ふつうの線でつなぐとき：端末は描かない
   const aw: Answers = { ...base2, 'a2:linkCable': 'no' };
   if (layout(buildComposition(aw), aw).symbols.some((s) => /cable-head-send/.test(s.id))) fail('ケーブルでつながないのに、送り出し側に端末が描かれています');
