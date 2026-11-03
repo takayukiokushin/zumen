@@ -989,3 +989,11 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 
 /* 設定：日本語以外は参考訳である旨（言葉を選ぶところの下） */
 .ref-note { border-left: 3px solid var(--accent); padding-left: calc(10px * var(--text-scale)); }
+
+/* ログイン画面の「言葉」：5つのボタンを、1行に収める（文字と余白を詰める。それでも足りないときだけ折り返す） */
+.login-lang .seg { flex: 1 1 100%; gap: calc(4px * var(--ctl-scale)); }
+.login-lang .btn { min-width: 0; padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
+:where(html[data-uw~="700"]) .login-lang .seg { gap: calc(2px * var(--ctl-scale)); }
+:where(html[data-uw~="700"]) .login-lang .btn { padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); font-size: calc(11.5px * var(--ctl-scale)); }
+/* 狭いスマホでは、ログインの枠の左右の余白を詰めて、ボタンの幅を確保する */
+:where(html[data-uw~="400"]) .login .panel { padding-left: 20px; padding-right: 20px; }
