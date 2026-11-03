@@ -24,6 +24,7 @@ import {
   dropHiddenChoices,
   resolveDrawingName,
   suggestMainBreakerForm,
+  viewAt,
   visibleQuestions,
   VIEW_KEYS,
   withAutoValues,
@@ -719,6 +720,35 @@ console.log('\n■ 主遮断装置「それ以外（高圧マンション・電�
   const pcLabel = buildComposition({ ...answers, transformerCount: 1, trHasPc: 'yes', trPcRating: '50A', trPcFuse: '12.5A' }).find((i) => i.role === 'tr-pc')?.label.join('|');
   if (pcLabel !== '50A|F:12.5A') fail(`PCの図面の文字が違います（${pcLabel}）`);
   else console.log(`  図面の文字：${pcLabel}`);
+}
+
+console.log('\n■ 変圧器ごとのPC・LBS（1台目は無し、2台目だけ有り）');
+{
+  // 件ごとに独立して答える。1台目が「なし」でも、2台目で「あり」と答えたら、2台目に、定格・ヒューズを入力する欄が出て、図面にも出る
+  const a2: Answers = {
+    ...answers, transformerCount: 3, trHasPc: 'no', trHasLbs: 'no',
+    trHasPc__2: 'no', trHasLbs__2: 'yes', trLbsRating__2: '300A', trPfG__2: '50A', trPfLoad__2: 'T', trPfLoadAmp__2: '30A',
+    trHasPc__3: 'yes', trHasLbs__3: 'no', trPcRating__3: '50A', trPcFuse__3: '12.5A',
+  };
+  const ids = (n: number) => visibleQuestions(viewAt(a2, n), {}).filter((q) => q.group === 'transformer').map((q) => q.id);
+  const lbsIds = ['trLbsRating', 'trPfG', 'trPfLoad', 'trPfLoadAmp', 'trPfKa'];
+  const pcIds = ['trPcRating', 'trPcFuse'];
+  const u1 = ids(0), u2 = ids(1), u3 = ids(2);
+  if (lbsIds.some((id) => u1.includes(id)) || pcIds.some((id) => u1.includes(id))) fail('1台目は「なし」なのに、PC・LBSの定格の欄が出ています');
+  else if (!lbsIds.every((id) => u2.includes(id)) || pcIds.some((id) => u2.includes(id))) fail('2台目（LBSあり）に、LBSの定格・ヒューズの欄が出ていません');
+  else if (!pcIds.every((id) => u3.includes(id)) || lbsIds.some((id) => u3.includes(id))) fail('3台目（PCあり）に、PCの定格・ヒューズの欄が出ていません');
+  else console.log('  1台目なし・2台目LBSあり・3台目PCあり：それぞれの台に、定格・ヒューズの入力欄が出る');
+  const comp = buildComposition(a2);
+  const lbs = comp.filter((i) => i.role === 'tr-lbs');
+  const pc = comp.filter((i) => i.role === 'tr-pc');
+  if (lbs.length !== 1 || pc.length !== 1) fail(`図面に出るPC・LBSの数が違います（LBS ${lbs.length}・PC ${pc.length}）`);
+  else if (!lbs[0]!.label.join('|').includes('300A') || !pc[0]!.label.join('|').includes('50A|F:12.5A')) fail(`図面の文字が違います（${lbs[0]!.label.join('|')} / ${pc[0]!.label.join('|')}）`);
+  else console.log(`  図面：LBS（2台目だけ）${lbs[0]!.label.join('|')} ／ PC（3台目だけ）${pc[0]!.label.join('|')}`);
+  // コンデンサも同じ（1台目は無し、2台目だけLBSあり）
+  const ac: Answers = { ...answers, hasCapacitor: 'yes', capacitorCount: 2, capHasPc: 'no', capHasLbs: 'no', capHasPc__2: 'no', capHasLbs__2: 'yes', capLbsRating__2: '200A' };
+  const capIds = (n: number) => visibleQuestions(viewAt(ac, n), {}).filter((q) => q.group === 'compensation').map((q) => q.id);
+  if (capIds(0).includes('capLbsRating') || !capIds(1).includes('capLbsRating') || !capIds(1).includes('capPfG')) fail('コンデンサ：1台目なし・2台目LBSありのとき、2台目にだけ、LBSの定格の欄が出ていません');
+  else console.log('  コンデンサ：1台目なし・2台目LBSあり → 2台目にだけ、LBSの定格・ヒューズの入力欄が出る');
 }
 
 console.log('\n■ 受電設備エリア：高圧マンション（電柱上構成）');

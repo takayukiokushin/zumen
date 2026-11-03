@@ -100,9 +100,14 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     const blocks: Block[] = [];
     for (let i = 0; i < count && !leadOnly; i++) {
       const rows: Row[] = [];
-      for (const q of repeated) {
-        // 表示条件も件ごとに見る（他の件の答えは引き継がない）
-        if (i > 0 && !evaluate(q.showIf, viewAt(view, i))) continue;
+      // 表示条件も件ごとに見る（他の件の答えは引き継がない）。
+      // 1台目の答えで出ている質問の中から選ぶと、「1台目はPCなし・2台目だけPCあり」のとき、2台目のPCの定格が出なくなるので、
+      // 2台目以降は、その件の答えで、出す質問を決め直す
+      const unitQuestions =
+        i === 0
+          ? repeated
+          : visibleQuestions(viewAt(view, i), { resolvedByAi }).filter((q) => q.group === group.id && q.id !== countKey && !q.shared);
+      for (const q of unitQuestions) {
         rows.push({ key: keyOf(q.id, i), question: q, unit: i, area });
       }
       if (rows.length === 0) continue;
