@@ -1,5 +1,5 @@
 import type { SymbolDef } from '../types.ts';
-import { arrowDown, circle, earth, hline, rect, text, vline } from '../shape.ts';
+import { CONTACT_R, arrowDown, circle, earth, hline, rect, text, vline } from '../shape.ts';
 
 
 /**
@@ -114,21 +114,22 @@ export const protectionSymbols: SymbolDef[] = [
     nameFormal: 'ゼロポテンシャルデバイス（ユーザー呼称）',
     category: 'protection',
     tags: ['PAS', 'DGR', 'OVGR', '零相電圧'],
-    box: { w: 100, h: 70 },
+    // 大きさは、もとの図（幅100・高さ70）の半分。線の太さは変えない
+    box: { w: 50, h: 35 },
     shapes: [
-      vline(30, 0, 22),
-      rect(14, 12, 76, 32),
-      hline(22, 18, 42),
-      hline(30, 18, 42),
-      vline(30, 30, 58),
-      ...earth(30, 58),
-      hline(26, 0, 55),
-      circle(64, 26, 9),
-      circle(76, 26, 9),
+      vline(15, 0, 11),
+      rect(7, 6, 38, 16),
+      hline(11, 9, 21),
+      hline(15, 9, 21),
+      vline(15, 15, 29),
+      ...earth(15, 29, 0.5),
+      hline(13, 0, 27.5),
+      circle(32.5, 13, CONTACT_R),
+      circle(37.5, 13, CONTACT_R),
     ],
     ports: [
-      { id: 'in', x: 30, y: 0, dir: 'up', role: 'line' },
-      { id: 'out', x: 0, y: 26, dir: 'left', role: 'control', label: 'OVGR/DGRへ' },
+      { id: 'in', x: 15, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 0, y: 13, dir: 'left', role: 'control', label: 'OVGR/DGRへ' },
     ],
     status: 'confirmed',
     statusNote: '見本図面のとおり、箱の中にコンデンサ（2枚の板）と変圧器（二重丸）、下に接地を描く形にしました。',
