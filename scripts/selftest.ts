@@ -783,6 +783,30 @@ try {
     await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '保存した' } }) });
     check('保存のあとに届いた写真も、次の保存で消える', (await detail()).files.length === 0 && !existsSync(join(dataDir, 'files', late.id)));
   }
+
+  // 下書き（保存を押す前の入力を、自動で控える）
+  {
+    const pj = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '下書きの試験' }) })).json()) as { id: string };
+    await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '保存した内容' } }) });
+    const getD = async (who: string) =>
+      (await (await call(who, `/api/projects/${pj.id}`)).json()) as { answers: Record<string, unknown>; draft: null | { answers: Record<string, unknown>; name: string | null; savedAt: string; baseUpdatedAt: string | null } };
+    check('下書きが無いときは、null', (await getD(a)).draft === null);
+    const put = await call(a, `/api/projects/${pj.id}/draft`, { method: 'PUT', body: JSON.stringify({ name: '下書きの名前', answers: { siteName: '保存前の入力' }, drawing: null, sketchRead: true, baseUpdatedAt: '2026-01-01T00:00:00.000Z' }) });
+    check('下書きを預けられる', put.ok, `${put.status}`);
+    const d1 = await getD(a);
+    check('開くと、書いた本人に、下書きが返る', d1.draft?.answers.siteName === '保存前の入力' && d1.draft?.name === '下書きの名前' && Boolean(d1.draft?.savedAt) && d1.draft?.baseUpdatedAt === '2026-01-01T00:00:00.000Z');
+    check('下書きは、案件そのものを書き換えない', d1.answers.siteName === '保存した内容');
+    const put2 = await call(a, `/api/projects/${pj.id}/draft`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '2回目の下書き' } }) });
+    check('同じ案件の下書きは、上書きされる（1つだけ）', put2.ok && (await getD(a)).draft?.answers.siteName === '2回目の下書き');
+    check('ほかの人には、下書きは見えない', (await getD(b)).draft === null);
+    check('中身のない下書きは、断る', (await call(a, `/api/projects/${pj.id}/draft`, { method: 'PUT', body: JSON.stringify({ answers: 'x' }) })).status === 400);
+    const other = await call(b, `/api/projects/${pj.id}/draft`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '別の人' } }) });
+    check('ほかの人が編集中の案件には、下書きを預けられない', other.status === 409, `${other.status}`);
+    await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '保存した内容2' } }) });
+    check('「保存」を押すと、下書きは消える', (await getD(a)).draft === null);
+    await call(a, `/api/projects/${pj.id}`, { method: 'DELETE' });
+    check('消した案件には、下書きを預けられない', (await call(a, `/api/projects/${pj.id}/draft`, { method: 'PUT', body: JSON.stringify({ answers: {} }) })).status === 404);
+  }
   // 1×1の小さなPNG
   const png =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';

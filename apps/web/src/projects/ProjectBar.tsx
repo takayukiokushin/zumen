@@ -8,6 +8,8 @@ interface Props {
   dirty: boolean;
   saving: boolean;
   savedAt: string | null;
+  /** 保存していない入力を、自動で控えた時刻（まだ控えていなければ null） */
+  draftAt?: string | null;
   /** 他の人が編集中で、閲覧のみになっているか */
   readOnly: boolean;
   /** 一覧を開いているか（押すと、開閉が切り替わる） */
@@ -25,6 +27,7 @@ export function ProjectBar({
   dirty,
   saving,
   savedAt,
+  draftAt = null,
   readOnly,
   listing,
   onList,
@@ -40,7 +43,9 @@ export function ProjectBar({
     : saving
       ? t('project.saving')
       : dirty
-        ? t('project.hasUnsaved')
+        ? draftAt
+          ? `${t('project.hasUnsaved')}（${new Date(draftAt).toLocaleTimeString(lang)} ${t('project.draftSaved')}）`
+          : t('project.hasUnsaved')
         : savedAt
           ? `${new Date(savedAt).toLocaleTimeString(lang)} ${t('project.savedAt')}`
           : '';

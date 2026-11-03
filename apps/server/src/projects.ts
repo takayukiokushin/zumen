@@ -104,6 +104,42 @@ function removeProjectFiles(projectId: string): number {
   return rows.length;
 }
 
+/** 下書きを、保存の期限（日数）。これを過ぎた下書きは、消す */
+const DRAFT_DAYS = 30;
+
+/** その人が書いた、この案件の下書き。無ければ null */
+function draftOf(projectId: string, userId: string) {
+  const d = db.prepare('SELECT * FROM project_drafts WHERE project_id = ? AND user_id = ?').get(projectId, userId) as
+    | {
+        name: string | null;
+        answers: string;
+        drawing: string | null;
+        sketch_read: number;
+        base_updated_at: string | null;
+        saved_at: string;
+      }
+    | undefined;
+  if (!d) return null;
+  try {
+    return {
+      savedAt: d.saved_at,
+      name: d.name,
+      answers: JSON.parse(d.answers),
+      drawing: d.drawing ? JSON.parse(d.drawing) : null,
+      sketchRead: d.sketch_read === 1,
+      baseUpdatedAt: d.base_updated_at,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 古い下書きを消す */
+export function purgeOldDrafts(): number {
+  const cutoff = new Date(Date.now() - DRAFT_DAYS * 86400_000).toISOString();
+  return Number(db.prepare('DELETE FROM project_drafts WHERE saved_at < ?').run(cutoff).changes);
+}
+
 export interface PhotoPurgeResult {
   /** 写真・PDFがある案件の数（ごみ箱の中も含む） */
   projects: number;
@@ -379,6 +415,8 @@ projects.get('/:id', (c) => {
     answers: JSON.parse(row.answers),
     drawing: row.drawing ? JSON.parse(row.drawing) : null,
     files,
+    // 保存していない入力を、自動で控えたもの（書いた本人にだけ返す）
+    draft: draftOf(row.id, c.get('user').id),
     // 写真は保存したときに消すので、「読み取った案件か」は、写真の有無とは別に覚えている
     sketchRead: row.sketch_read === 1 || files.some((f) => { const m = (f as { media_type: string }).media_type; return m.startsWith('image/') || m === 'application/pdf'; }),
     lock: currentLock(row.id),
@@ -448,9 +486,56 @@ projects.put('/:id', async (c) => {
   // 「保存」を押したら、読み取りに使った写真・PDFは消す（図面の元になる内容は、回答と図面として、いま保存した）。
   // 「読み取った案件か」の印は、写真が無くなっても残す
   let removed = 0;
-  if (body.answers !== undefined) removed = removeProjectFiles(id);
+  if (body.answers !== undefined) {
+    removed = removeProjectFiles(id);
+    // 保存できたので、自動で控えた下書きは、もう要らない
+    db.prepare('DELETE FROM project_drafts WHERE project_id = ?').run(id);
+  }
   if (removed > 0 || body.sketchRead === true) db.prepare('UPDATE projects SET sketch_read = 1 WHERE id = ?').run(id);
   return c.json({ ok: true, updatedAt: args[0] });
+});
+
+/* ---------------- 下書き（自動で控える） ---------------- */
+
+/**
+ * 画面が、保存していない入力を、一定の間隔で預ける。案件そのものは、書き換えない（「保存」を押すまで、確定しない）。
+ * 開いたとき、書いた本人にだけ、「復元するか」を尋ねる。「保存」を押すと、下書きは消える。
+ * 編集中の印は、取らない（印を取るのは、保存と、1分ごとの更新）。
+ */
+projects.put('/:id/draft', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('user');
+  const NOT_FOUND = { error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' };
+  if (!db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(id)) return c.json(NOT_FOUND, 404);
+  if (!canTouch(user, id)) return c.json(NOT_FOUND, 404);
+  const lock = currentLock(id);
+  if (lock && lock.userId !== user.id && user.role !== 'admin') {
+    return c.json({ error: `${lock.userName}さんが編集中のため保存できません。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 409);
+  }
+  const body = (await c.req.json().catch(() => null)) as
+    | { name?: unknown; answers?: unknown; drawing?: unknown; sketchRead?: unknown; baseUpdatedAt?: unknown }
+    | null;
+  if (!body || typeof body.answers !== 'object' || body.answers === null || Array.isArray(body.answers)) {
+    return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
+  }
+  const t = now();
+  db.prepare(
+    `INSERT INTO project_drafts (project_id, user_id, name, answers, drawing, sketch_read, base_updated_at, saved_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(project_id) DO UPDATE SET user_id = excluded.user_id, name = excluded.name, answers = excluded.answers,
+       drawing = excluded.drawing, sketch_read = excluded.sketch_read, base_updated_at = excluded.base_updated_at,
+       saved_at = excluded.saved_at`,
+  ).run(
+    id,
+    user.id,
+    typeof body.name === 'string' ? body.name.slice(0, 200) : null,
+    JSON.stringify(body.answers),
+    body.drawing && typeof body.drawing === 'object' ? JSON.stringify(body.drawing) : null,
+    body.sketchRead === true ? 1 : 0,
+    typeof body.baseUpdatedAt === 'string' ? body.baseUpdatedAt : null,
+    t,
+  );
+  return c.json({ ok: true, savedAt: t });
 });
 
 /* ---------------- 編集中の印 ---------------- */

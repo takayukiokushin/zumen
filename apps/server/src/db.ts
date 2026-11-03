@@ -63,6 +63,19 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  -- 下書き（「保存」を押す前の入力を、画面が自動で控えたもの）。案件ごとに1つ。「保存」を押すと消える
+  CREATE TABLE IF NOT EXISTS project_drafts (
+    project_id      TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+    user_id         TEXT NOT NULL,
+    name            TEXT,
+    answers         TEXT NOT NULL,
+    drawing         TEXT,
+    sketch_read     INTEGER NOT NULL DEFAULT 0,
+    -- 下書きのもとにした、案件の更新時刻（別の人が先に保存していないかを、あとで確かめるため）
+    base_updated_at TEXT,
+    saved_at        TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_files_project ON project_files(project_id);
 `);

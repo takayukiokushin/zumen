@@ -104,6 +104,8 @@ export function App() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  /** 保存していない入力を、自動で控えた時刻（下書き）。保存したら消す */
+  const [draftAt, setDraftAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** 他の人が編集中のときの、その人の情報。閲覧のみになる */
   const [lockedBy, setLockedBy] = useState<Lock | null>(null);
@@ -215,16 +217,37 @@ export function App() {
     try {
       await leaveCurrent();
       const p = await api.getProject(id);
+      // 保存していない入力を、自動で控えた下書きがあれば、復元するか尋ねる（他の人が編集中で、自分は見るだけのときは、尋ねない）
+      const busyByOther = p.lock && user && p.lock.userId !== user.id && user.role !== 'admin';
+      const draft = !busyByOther && p.draft ? p.draft : null;
+      const restore = draft
+        ? await ask({
+            title: t('draft.restore.title'),
+            message: [
+              t('draft.restore.msg1', { when: new Date(draft.savedAt).toLocaleString(lang) }),
+              t('draft.restore.msg2'),
+              t('draft.restore.msg3'),
+            ],
+            confirmLabel: t('draft.restore.yes'),
+            cancelLabel: t('draft.restore.no'),
+          })
+        : false;
+      const base = restore && draft ? draft : null;
       setProjectId(p.id);
-      setProjectName(p.name);
-      setAnswers(p.answers ?? {});
-      setDrawing(p.drawing);
-      setSketchRead(p.sketchRead ?? p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf'));
-      setDirty(false);
+      setProjectName(base?.name ?? p.name);
+      setAnswers(base ? base.answers : (p.answers ?? {}));
+      setDrawing(base ? base.drawing : p.drawing);
+      setSketchRead(
+        base?.sketchRead || (p.sketchRead ?? p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf')),
+      );
+      // 復元したときは、「保存していない」状態で開く（「保存」を押すまで確定しない）。
+      // 下書きをとったあとに、別の人が保存していたら、保存のときに、上書きしてよいか尋ねられる
+      setDirty(base !== null);
+      setDraftAt(base ? base.savedAt : null);
       setSavedAt(null);
       setError(null);
       setStale(null);
-      setBaseUpdatedAt(p.updatedAt);
+      setBaseUpdatedAt(base ? (base.baseUpdatedAt ?? p.updatedAt) : p.updatedAt);
       setShowList(false);
       try {
         await api.takeLock(id, force);
@@ -254,6 +277,7 @@ export function App() {
       setDrawing(null);
       setSketchRead(false);
       setDirty(false);
+      setDraftAt(null);
       setError(null);
       setStale(null);
       setBaseUpdatedAt(updatedAt);
@@ -283,6 +307,7 @@ export function App() {
       setBaseUpdatedAt(r.updatedAt);
       setStale(null);
       setDirty(false);
+      setDraftAt(null);
       return true;
     } catch (e) {
       if (e instanceof StaleError) {
@@ -311,6 +336,41 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [canCloseListWithEsc]);
+
+  /**
+   * 保存していない入力を、20秒ごとに、サーバーへ自動で控える（下書き）。
+   * 保存を押し忘れて、画面を閉じたり、パソコンが止まったりしても、次に案件を開いたとき、復元できる。
+   * 案件そのものは書き換えない。「保存」を押すと、下書きは消える。変わっていないとき・他の人が編集中のときは、控えない
+   */
+  const draftState = useRef({ projectId, projectName, answers, drawing, sketchRead, baseUpdatedAt, dirty, readOnly, saving });
+  draftState.current = { projectId, projectName, answers, drawing, sketchRead, baseUpdatedAt, dirty, readOnly, saving };
+  const draftSig = useRef('');
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const s = draftState.current;
+      if (!s.dirty || !s.projectId || s.readOnly || s.saving) {
+        if (!s.dirty) draftSig.current = '';
+        return;
+      }
+      const sig = JSON.stringify([s.projectId, s.projectName, s.answers, s.drawing, s.sketchRead]);
+      if (sig === draftSig.current) return;
+      draftSig.current = sig;
+      api
+        .saveDraft(s.projectId, {
+          name: s.projectName,
+          answers: s.answers,
+          drawing: s.drawing,
+          sketchRead: s.sketchRead,
+          baseUpdatedAt: s.baseUpdatedAt,
+        })
+        .then((r) => setDraftAt(r.savedAt))
+        .catch(() => {
+          // 控えられなかったときは、次の機会（20秒後）にやり直す。画面には何も出さない
+          draftSig.current = '';
+        });
+    }, 20_000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (user === undefined) return <p className="booting">…</p>;
   if (user === null) return <Login onDone={setUser} />;
@@ -350,6 +410,7 @@ export function App() {
         dirty={dirty}
         saving={saving}
         savedAt={savedAt}
+        draftAt={draftAt}
         listing={listing}
         // 一覧を開いているときに、もう一度押すと閉じる（開いている案件が無いときは、戻る先が無いので開いたまま）
         onList={() => setShowList((open) => (projectId ? !open : true))}

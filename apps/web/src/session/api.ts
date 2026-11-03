@@ -105,6 +105,16 @@ export interface TrashItem {
   fileCount: number;
 }
 
+/** 自動で控えた下書き（「保存」を押す前の入力） */
+export interface Draft {
+  savedAt: string;
+  name: string | null;
+  answers: Answers;
+  drawing: Doc | null;
+  sketchRead: boolean;
+  baseUpdatedAt: string | null;
+}
+
 export interface ProjectDetail {
   id: string;
   name: string;
@@ -114,6 +124,8 @@ export interface ProjectDetail {
   files: { id: string; file_name: string; media_type: string; size: number }[];
   /** スケッチ・PDFを読み取った案件か（写真は保存したときに消すので、写真の有無とは別に持つ） */
   sketchRead?: boolean;
+  /** 保存していない入力を、自動で控えたもの（書いた本人にだけ返る）。無ければ null */
+  draft?: Draft | null;
   lock: Lock | null;
 }
 
@@ -194,6 +206,14 @@ export const api = {
     patch: { name?: string; answers?: Answers; drawing?: Doc | null; sketchRead?: boolean; baseUpdatedAt?: string; force?: boolean },
   ) =>
     call<{ ok: true; updatedAt: string }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+  /**
+   * 下書きを預ける（自動で控える）。案件そのものは書き換えない。
+   * 裏で自動で行うので、ログインが切れていても、窓は出さず、静かに失敗させる（retried=true で、ログインし直しの窓を省く）
+   */
+  saveDraft: (
+    id: string,
+    draft: { name: string; answers: Answers; drawing: Doc | null; sketchRead: boolean; baseUpdatedAt: string | null },
+  ) => call<{ ok: true; savedAt: string }>(`/api/projects/${id}/draft`, { method: 'PUT', body: JSON.stringify(draft) }, true),
   /** 消す。本当には消えず、ごみ箱へ入る（30日間は戻せる） */
   deleteProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}`, { method: 'DELETE' }),
   /** 練習用のアカウントだけ：コピーできる本番の案件の一覧 */
