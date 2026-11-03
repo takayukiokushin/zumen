@@ -986,3 +986,6 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 
 /* 設定の窓：スイッチ（太字・説明文を隠す）は、1つずつ、1行に */
 .switch.wide.block { display: flex; margin-bottom: calc(6px * var(--text-scale)); }
+
+/* 設定：日本語以外は参考訳である旨（言葉を選ぶところの下） */
+.ref-note { border-left: 3px solid var(--accent); padding-left: calc(10px * var(--text-scale)); }

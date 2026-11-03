@@ -2,6 +2,7 @@ import { LANGS, LANG_LABEL } from '../i18n/index.ts';
 import type { Lang } from '../i18n/index.ts';
 import { useEffect, useState } from 'react';
 import { useT } from '../i18n/useT.ts';
+import { Rich } from '../i18n/Rich.tsx';
 import { api } from '../session/api.ts';
 import { APP_VERSION, BUILD_DATE } from '../version.ts';
 import { useEscapeToClose } from '../useEscapeToClose.ts';
@@ -103,6 +104,10 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <p className="hint">{t('settings.langNote')}</p>
+          {/* 日本語以外は、専門の翻訳者の確認を受けていない参考訳であることを、言葉を選ぶところに出す */}
+          <p className="hint ref-note">
+            <Rich text={t('settings.langRef')} />
+          </p>
 
           <div className="settings-row">
             <span className="lbl">{t('settings.theme')}</span>
