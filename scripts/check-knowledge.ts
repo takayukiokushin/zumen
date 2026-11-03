@@ -35,6 +35,7 @@ import {
 } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, TRANSFORMER, UPSTREAM } from '../packages/knowledge/src/composition.ts';
+import { AI_HINTS } from '../packages/knowledge/src/ai-hints.ts';
 import { layout } from '../packages/layout/src/index.ts';
 import { findSymbol as getSymbolForCheck } from '../packages/symbols/src/index.ts';
 import { buildAnalysisSchema, buildReview, buildSystemPrompt } from '../packages/ai/src/index.ts';
@@ -1494,6 +1495,11 @@ console.log('\n■ 説明文の整理');
     // AIへの説明は、短いメモ書きではなく、丁寧な文章にする（選ぶ値の説明・メモに無いときの扱いを含む）
     if ((ask?.aiHint ?? '').length < 80) fail(`${id}：AIへの説明が短すぎます（${(ask?.aiHint ?? '').length}文字）`);
   }
+  // 画面に説明文（help）のある項目は、すべて、AIに渡す詳しい説明（ai-hints.ts）も持つ
+  const noHint = QUESTIONS.filter((y) => y.help !== undefined && y.aiHint === undefined).map((y) => y.id);
+  if (noHint.length > 0) fail(`画面の説明文はあるのに、AIへの説明が無い項目があります（${noHint.join('、')}）`);
+  const staleHint = Object.keys(AI_HINTS).filter((k) => !QUESTIONS.some((y) => y.id === k));
+  if (staleHint.length > 0) fail(`AIへの説明（ai-hints.ts）に、質問に無い項目IDがあります（${staleHint.join('、')}）`);
   for (const x of QUESTIONS.filter((y) => y.aiHint !== undefined)) {
     if ((x.aiHint ?? '').length < 60) fail(`${x.id}：AIへの説明が短すぎます（${(x.aiHint ?? '').length}文字）`);
   }
