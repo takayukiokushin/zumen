@@ -54,6 +54,7 @@ const customerPole = (): SymbolDef => ({
   box: { w: 32, h: 32 },
   shapes: [{ k: 'circle', cx: 16, cy: 16, r: 14 }, ...hatchLeftHalf(16, 16, 14)],
   ports: [],
+  decorative: true,
   // 客柱には、「中電柱：」も「客柱：」も付けない。名前は、基本的に空白（書く場合だけ入力する）
   fields: [{ key: 'customerPoleName', label: '客柱の名称', type: 'text', defaultValue: '', help: '基本的に空白のままでよい。名前を書きたいときだけ入力する（「中電柱」「客柱」などの文字は付けない）' }],
   labelLines: ['{customerPoleName}'],

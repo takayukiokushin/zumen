@@ -124,6 +124,8 @@ export interface SymbolDef {
   review?: string;
   /** 既定で図面に描かない記号（指示があったときだけ配置する） */
   optional?: boolean;
+  /** 線をつながない、飾りの記号（客柱など）。接続点が無くてよい */
+  decorative?: boolean;
   /** 別の記号の上に重ねて描くだけの印（結線しないので、ポートを持たない） */
   overlay?: boolean;
   /**
@@ -150,7 +152,7 @@ export interface SizeRange {
 /** 記号定義のバリデーション（ポートが枠内にあるか等の単純な整合性確認） */
 export function validateSymbol(def: SymbolDef): string[] {
   const errors: string[] = [];
-  if (def.ports.length === 0 && def.category !== 'enclosure' && !def.overlay) {
+  if (def.ports.length === 0 && def.category !== 'enclosure' && !def.overlay && !def.decorative) {
     errors.push(`${def.id}: ポートが1つもありません`);
   }
   const ids = new Set<string>();

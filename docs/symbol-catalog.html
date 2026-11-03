@@ -198,8 +198,8 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>67</b><span>記号</span></div>
-      <div class="stat"><b>67</b><span>確定</span></div>
+      <div class="stat"><b>72</b><span>記号</span></div>
+      <div class="stat"><b>72</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
       <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
@@ -229,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>5</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>3</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>12</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>18</i></a><a class="navchip" href="#cat-transformer">変圧器<i>10</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>20</i></a><a class="navchip" href="#cat-transformer">変圧器<i>10</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -237,7 +237,7 @@
     <section class="group" id="cat-incoming" data-cat="incoming">
       <header class="group-head">
         <h2>引込元・引込点</h2>
-        <span class="count">5</span>
+        <span class="count">6</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-pole-utility" data-search="電柱（電力会社所有）  電柱 pole-utility 引込元 電柱" data-status="confirmed">
@@ -275,8 +275,8 @@
           
         </div>
       </article>
-      <article class="card card--confirmed" id="sym-pole-customer" data-search="お客様電柱  客柱 pole-customer 引込元 電柱" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 64" width="88.39999999999999" height="108.8" role="img" aria-label="お客様電柱">
+      <article class="card card--confirmed" id="sym-pole-customer" data-search="お客様電柱  客柱 pole-customer 引込元 電柱 客柱" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="81.6" height="81.6" role="img" aria-label="お客様電柱">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="16" cy="16" r="14" fill="none" stroke-width="1" />
     <line x1="3.7" y1="9.313" x2="3.7" y2="22.687" stroke-width="0.7" />
@@ -287,9 +287,7 @@
     <line x1="12.2" y1="2.526" x2="12.2" y2="29.474" stroke-width="0.7" />
     <line x1="13.9" y1="2.158" x2="13.9" y2="29.842" stroke-width="0.7" />
     <line x1="15.6" y1="2.006" x2="15.6" y2="29.994" stroke-width="0.7" />
-    <line x1="16" y1="30" x2="16" y2="48" stroke-width="1" />
     <g class="ports">
-      <circle cx="16" cy="48" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -301,12 +299,12 @@
           </div>
           
           
-          <p class="idline"><code>pole-customer</code> ・ 接続点 1</p>
+          <p class="idline"><code>pole-customer</code> ・ 接続点 0</p>
           
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">電柱名称</span></div>
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">客柱の名称</span></div>
           
-          <p class="statusnote">見本図面のとおり、円の左半分を縦線でハッチングする形にしました。</p>
-          <p class="note">PASは電柱上に設置するため、図面上「お客様電柱」として描かれる場合がある。</p>
+          <p class="statusnote">円の左半分を縦線でハッチングする形だけにしました（引下線なし）。</p>
+          <p class="note">PASは電柱上に設置するため、図面上「お客様電柱」として描かれる場合がある。丸だけの印で、線はつながない。</p>
           
         </div>
       </article>
@@ -372,14 +370,14 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-cable-head" data-search="高圧ケーブル端末 ケーブル終端接続部 ch cable-head 受電点 ケーブルヘッド 端末処理" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="高圧ケーブル端末">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="68" height="68" role="img" aria-label="高圧ケーブル端末">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="20" y1="0" x2="20" y2="6" stroke-width="1" />
-    <polygon points="6,6 34,6 20,30" fill="none" stroke-width="1" />
-    <line x1="20" y1="30" x2="20" y2="40" stroke-width="1" />
+    <line x1="12" y1="0" x2="12" y2="3.6" stroke-width="1" />
+    <polygon points="3.6,3.6 20.4,3.6 12,18" fill="none" stroke-width="1" />
+    <line x1="12" y1="18" x2="12" y2="24" stroke-width="1" />
     <g class="ports">
-      <circle cx="20" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="20" cy="40" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="12" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="12" cy="24" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -395,8 +393,37 @@
           
           
           
-          <p class="statusnote">見本図面のとおり三角形にしました。頂点がケーブル側を向きます。</p>
+          <p class="statusnote">見本図面のとおり三角形にしました。頂点がケーブル側を向きます。大きさは、もとの60%にしました。</p>
           <p class="note">受電側の端末は同じ記号を180°回転して使う（頂点が常にケーブル側を向く）。電気設備側の引込点は、図面上まずこの高圧ケーブル端末が該当する。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-cable-head-up" data-search="高圧ケーブル端末（上向き） ケーブル終端接続部（上向き） ch cable-head-up 受電点 ケーブルヘッド 端末処理 上向き" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="68" height="68" role="img" aria-label="高圧ケーブル端末（上向き）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="0" x2="12" y2="6" stroke-width="1" />
+    <polygon points="12,6 20.4,20.4 3.6,20.4" fill="none" stroke-width="1" />
+    <line x1="12" y1="20.4" x2="12" y2="24" stroke-width="1" />
+    <g class="ports">
+      <circle cx="12" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="12" cy="24" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">CH</span>
+            <h3>高圧ケーブル端末（上向き）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          <p class="formal">ケーブル終端接続部（上向き）</p>
+          <p class="idline"><code>cable-head-up</code> ・ 接続点 2</p>
+          
+          
+          
+          <p class="statusnote">高圧ケーブル端末（CH）の三角形を、上向き（頂点が上）にした形です。大きさ・接続点は、下向きのCHと同じです。</p>
+          <p class="note">頂点が上を向くケーブルヘッド。下向きのCHと並べて、引込元の分類から選んで置く。</p>
           
         </div>
       </article></div>
@@ -404,13 +431,13 @@
     <section class="group" id="cat-boundary" data-cat="boundary">
       <header class="group-head">
         <h2>責任分界点</h2>
-        <span class="count">3</span>
+        <span class="count">4</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-boundary-safety" data-search="責任分界点（3点不一致のとき）  責任分界点 boundary-safety 分界点 責任分界点" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 18" width="289" height="30.599999999999998" role="img" aria-label="責任分界点（3点不一致のとき）">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 116 18" width="197.2" height="30.599999999999998" role="img" aria-label="責任分界点（3点不一致のとき）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="0" y1="1" x2="154" y2="1" stroke-width="1" />
+    <line x1="0" y1="1" x2="100" y2="1" stroke-width="1" />
     <g class="ports">
     </g>
   </g>
@@ -427,8 +454,35 @@
           <p class="deflabel">既定の記載文言：<b>責任分界点</b></p>
           
           
-          <p class="statusnote">主遮断装置（VCBまたはLBS）の図記号の中央に重ねる横線。その左上に「責任分界点」と記載します。</p>
+          <p class="statusnote">主遮断装置（VCBまたはLBS）の図記号の中央の高さに引く横線。図記号には重ならず、手前（左）で止まります。その左上に「責任分界点」と記載します。</p>
           <p class="note">3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。CB形ならVCB、PFS形ならLBS。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-boundary-safety-arrow" data-search="責任分界点（3点不一致のとき・矢印）  責任分界点 boundary-safety-arrow 分界点 責任分界点 矢印" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 72" width="102" height="122.39999999999999" role="img" aria-label="責任分界点（3点不一致のとき・矢印）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="2" y1="0" x2="44" y2="56" stroke-width="1" />
+    <line x1="44" y1="56" x2="41.943" y2="46.214" stroke-width="1" />
+    <line x1="44" y1="56" x2="35.181" y2="51.285" stroke-width="1" />
+    <g class="ports">
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">責任分界点</span>
+            <h3>責任分界点（3点不一致のとき・矢印）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>boundary-safety-arrow</code> ・ 接続点 0</p>
+          <p class="deflabel">既定の記載文言：<b>責任分界点</b></p>
+          
+          
+          <p class="statusnote">斜めの矢印の先が、主遮断装置（VCB）の図記号の左の端を指します。矢印の上に「責任分界点」と記載します。</p>
+          <p class="note">励磁突入電流抑制開閉器が付いているVCBで、3点不一致のとき。横線では、並列の開閉器にかかるため、矢印で示す。</p>
           
         </div>
       </article>
@@ -492,7 +546,7 @@
     <section class="group" id="cat-switchgear" data-cat="switchgear">
       <header class="group-head">
         <h2>開閉器・遮断器</h2>
-        <span class="count">12</span>
+        <span class="count">13</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-as" data-search="気中開閉器  as as 電力会社 引込元 屋側" data-status="confirmed">
@@ -563,7 +617,7 @@
         <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88" width="108.8" height="149.6" role="img" aria-label="断路器（ディスコン）">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <line x1="24" y1="0" x2="24" y2="15" stroke-width="1" />
-    <line x1="13" y1="15" x2="35" y2="15" stroke-width="1" />
+    <line x1="16" y1="15" x2="32" y2="15" stroke-width="1" />
     <line x1="24" y1="53" x2="44" y2="20" stroke-width="1" />
     <line x1="24" y1="53" x2="24" y2="72" stroke-width="1" />
     <g class="ports">
@@ -799,7 +853,7 @@
           <p class="idline"><code>pas</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">制御装置の種類<i>3択</i></span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
-          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span></div>
+          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span><span class="chip">ZPD内蔵（DGR方式のとき）</span></div>
           <p class="statusnote">実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。</p>
           <p class="note">記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。</p>
           
@@ -832,7 +886,40 @@
           <p class="idline"><code>ugs</code> ・ 接続点 2</p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">制御装置の種類<i>3択</i></span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
-          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span></div>
+          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span><span class="chip">ZPD内蔵（DGR方式のとき）</span></div>
+          <p class="statusnote">実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。</p>
+          <p class="note">記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-pgs" data-search="区分開閉器（pgs）  pgs pgs 区分開閉器 電柱上 pgs gr dgr" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 102 164" width="173.4" height="278.8" role="img" aria-label="区分開閉器（PGS）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
+    <rect x="6" y="10" width="74" height="126" fill="none" stroke-width="1" />
+    <line x1="28" y1="10" x2="28" y2="58" stroke-width="1" />
+    <line x1="20" y1="58" x2="36" y2="58" stroke-width="1" />
+    <circle cx="28" cy="62" r="4" fill="none" stroke-width="1" />
+    <line x1="28" y1="84" x2="16" y2="66" stroke-width="1" />
+    <line x1="28" y1="84" x2="28" y2="148" stroke-width="1" />
+    <g class="ports">
+      <circle cx="28" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="28" cy="148" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">PGS</span>
+            <h3>区分開閉器（PGS）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>pgs</code> ・ 接続点 2</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">制御装置の種類<i>3択</i></span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
+          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span><span class="chip">ZPD内蔵（DGR方式のとき）</span></div>
           <p class="statusnote">実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。</p>
           <p class="note">記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。</p>
           
@@ -865,7 +952,7 @@
           <p class="idline"><code>pas-builtin</code> ・ 接続点 2 ・ <span class="alt">pas の別表記</span></p>
           
           <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">制御装置の種類<i>3択</i></span><span class="chip">VT内蔵</span><span class="chip">LA内蔵</span></div>
-          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span></div>
+          <div class="chips"><span class="chips-label">内蔵スロット</span><span class="chip">ZCT（GR/DGR方式のとき内蔵）</span><span class="chip">LA内蔵</span><span class="chip">VT内蔵</span><span class="chip">ZPD内蔵（DGR方式のとき）</span></div>
           <p class="statusnote">実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。</p>
           <p class="note">記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。</p>
           
@@ -1156,7 +1243,7 @@
     <section class="group" id="cat-protection" data-cat="protection">
       <header class="group-head">
         <h2>保護継電器・避雷器・接地</h2>
-        <span class="count">18</span>
+        <span class="count">20</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-relay-ocr" data-search="過電流継電器  ocr relay-ocr 保護継電器 ocr" data-status="confirmed">
@@ -1573,6 +1660,7 @@
     <g class="ports">
       <circle cx="0" cy="11" r="2.2" fill="currentColor" stroke="none" class="port" />
       <circle cx="15" cy="22" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="15" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1584,7 +1672,7 @@
           </div>
           
           
-          <p class="idline"><code>trip-coil</code> ・ 接続点 2</p>
+          <p class="idline"><code>trip-coil</code> ・ 接続点 3</p>
           
           
           
@@ -1627,22 +1715,22 @@
         </div>
       </article>
       <article class="card card--confirmed" id="sym-zpd" data-search="零相電圧検出装置 ゼロポテンシャルデバイス（ユーザー呼称） zpd zpd pas dgr ovgr 零相電圧" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 116 86" width="197.2" height="146.2" role="img" aria-label="零相電圧検出装置">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 54" width="112.2" height="91.8" role="img" aria-label="零相電圧検出装置">
   <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="30" y1="0" x2="30" y2="22" stroke-width="1" />
-    <rect x="14" y="12" width="76" height="32" fill="none" stroke-width="1" />
-    <line x1="18" y1="22" x2="42" y2="22" stroke-width="1" />
-    <line x1="18" y1="30" x2="42" y2="30" stroke-width="1" />
-    <line x1="30" y1="30" x2="30" y2="58" stroke-width="1" />
-    <line x1="21" y1="58" x2="39" y2="58" stroke-width="1" />
-    <line x1="24.5" y1="62" x2="35.5" y2="62" stroke-width="1" />
-    <line x1="27.5" y1="66" x2="32.5" y2="66" stroke-width="1" />
-    <line x1="0" y1="26" x2="55" y2="26" stroke-width="1" />
-    <circle cx="64" cy="26" r="9" fill="none" stroke-width="1" />
-    <circle cx="76" cy="26" r="9" fill="none" stroke-width="1" />
+    <line x1="15" y1="0" x2="15" y2="11" stroke-width="1" />
+    <rect x="7" y="6" width="38" height="16" fill="none" stroke-width="1" />
+    <line x1="9" y1="11" x2="21" y2="11" stroke-width="1" />
+    <line x1="9" y1="15" x2="21" y2="15" stroke-width="1" />
+    <line x1="15" y1="15" x2="15" y2="29" stroke-width="1" />
+    <line x1="6" y1="29" x2="24" y2="29" stroke-width="1" />
+    <line x1="9.5" y1="33" x2="20.5" y2="33" stroke-width="1" />
+    <line x1="12.5" y1="37" x2="17.5" y2="37" stroke-width="1" />
+    <line x1="0" y1="13" x2="27.5" y2="13" stroke-width="1" />
+    <circle cx="32.5" cy="13" r="4" fill="none" stroke-width="1" />
+    <circle cx="37.5" cy="13" r="4" fill="none" stroke-width="1" />
     <g class="ports">
-      <circle cx="30" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="0" cy="26" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="15" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="0" cy="13" r="2.2" fill="currentColor" stroke="none" class="port" />
     </g>
   </g>
 </svg></div>
@@ -1660,6 +1748,77 @@
           
           <p class="statusnote">見本図面のとおり、箱の中にコンデンサ（2枚の板）と変圧器（二重丸）、下に接地を描く形にしました。</p>
           <p class="note">DGR方式で零相電圧が必要なときに入る。見本図面ではOVGRへ接続されていた。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-zpd-pas" data-search="零相電圧検出装置（pas・pgs内蔵用） ゼロポテンシャルデバイス（ユーザー呼称） zpd zpd-pas pas pgs dgr 零相電圧 内蔵" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="95.2" height="95.2" role="img" aria-label="零相電圧検出装置（PAS・PGS内蔵用）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="30" y1="0" x2="30" y2="11" stroke-width="1" />
+    <rect x="1" y="6" width="36" height="16" fill="none" stroke-width="1" />
+    <line x1="24" y1="11" x2="36" y2="11" stroke-width="1" />
+    <line x1="24" y1="15" x2="36" y2="15" stroke-width="1" />
+    <line x1="30" y1="15" x2="30" y2="32" stroke-width="1" />
+    <line x1="21" y1="32" x2="39" y2="32" stroke-width="1" />
+    <line x1="24.5" y1="36" x2="35.5" y2="36" stroke-width="1" />
+    <line x1="27.5" y1="40" x2="32.5" y2="40" stroke-width="1" />
+    <line x1="18" y1="13" x2="40" y2="13" stroke-width="1" />
+    <circle cx="9" cy="13" r="4" fill="none" stroke-width="1" />
+    <circle cx="14" cy="13" r="4" fill="none" stroke-width="1" />
+    <g class="ports">
+      <circle cx="30" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="40" cy="13" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">ZPD</span>
+            <h3>零相電圧検出装置（PAS・PGS内蔵用）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          <p class="optional">既定では図面に描かない（指示があったときだけ配置）</p>
+          <p class="formal">ゼロポテンシャルデバイス（ユーザー呼称）</p>
+          <p class="idline"><code>zpd-pas</code> ・ 接続点 2 ・ <span class="alt">zpd の別表記</span></p>
+          
+          
+          
+          <p class="statusnote">PAS・PGSの大きさを変えずに収めるため、ZPDを小さくし、左右を逆にして描いた。</p>
+          <p class="note">DGR方式のPAS・PGSに、ZCTやVTと同じく、枠の中に入れる。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-zpd-pas-boxed" data-search="零相電圧検出装置（pas・pgs内蔵用・laと接地を共用） ゼロポテンシャルデバイス（ユーザー呼称） zpd zpd-pas-boxed pas pgs dgr 零相電圧 内蔵 la" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 44" width="95.2" height="74.8" role="img" aria-label="零相電圧検出装置（PAS・PGS内蔵用・LAと接地を共用）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="30" y1="0" x2="30" y2="11" stroke-width="1" />
+    <rect x="1" y="6" width="36" height="16" fill="none" stroke-width="1" />
+    <line x1="24" y1="11" x2="36" y2="11" stroke-width="1" />
+    <line x1="24" y1="15" x2="36" y2="15" stroke-width="1" />
+    <line x1="30" y1="15" x2="30" y2="28" stroke-width="1" />
+    <line x1="18" y1="13" x2="40" y2="13" stroke-width="1" />
+    <circle cx="9" cy="13" r="4" fill="none" stroke-width="1" />
+    <circle cx="14" cy="13" r="4" fill="none" stroke-width="1" />
+    <g class="ports">
+      <circle cx="30" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="40" cy="13" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">ZPD</span>
+            <h3>零相電圧検出装置（PAS・PGS内蔵用・LAと接地を共用）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          <p class="optional">既定では図面に描かない（指示があったときだけ配置）</p>
+          <p class="formal">ゼロポテンシャルデバイス（ユーザー呼称）</p>
+          <p class="idline"><code>zpd-pas-boxed</code> ・ 接続点 2 ・ <span class="alt">zpd の別表記</span></p>
+          
+          
+          
+          <p class="statusnote">LAが一緒に入るときは、接地の記号を描かず、下の縦線を外箱へつないだ。</p>
+          <p class="note">PAS・PGSの外箱に出す接地の記号は、最大1つ。LAとZPDが両方あるときは、LAのものだけを描く。</p>
           
         </div>
       </article>
