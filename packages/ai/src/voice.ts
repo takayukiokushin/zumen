@@ -76,7 +76,7 @@ function describeQuestion(q: Question): string {
   if (q.showIf) parts.push(`聞くのは、${describeCondition(q.showIf)}`);
   if (q.required) parts.push('必ず答えてもらう');
   else if (q.defaultValue !== undefined || q.autoValue) parts.push('最初から入っている値があるので、話されなければ聞かなくてよい');
-  if (q.help) parts.push(`※${q.help}`);
+  if (q.aiHint ?? q.help) parts.push(`※${q.aiHint ?? q.help}`);
   return parts.join('。');
 }
 

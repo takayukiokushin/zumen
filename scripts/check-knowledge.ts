@@ -1447,10 +1447,49 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   // 分界点の文言：「財産・責任分界点」で統一する（今後の案件もすべて）。「財産保安責任分界点」は使わない
   const boundary = buildComposition({ ...base, boundaryPattern: 'coincident' }).find((i) => i.role === 'boundary');
   ok(boundary?.label.join('') === '財産・責任分界点', `3点一致の分界点の文言が違います（${boundary?.label.join('')}）`);
-  const everyLabel = [...UPSTREAM, ...DOWNSTREAM, ...EXTRAS].flatMap((p) => p.labelTemplate ?? []).concat(QUESTIONS.flatMap((q) => [q.label, q.help ?? '']));
+  const everyLabel = [...UPSTREAM, ...DOWNSTREAM, ...EXTRAS].flatMap((p) => p.labelTemplate ?? []).concat(QUESTIONS.flatMap((q) => [q.label, q.help ?? '', q.aiHint ?? '']));
   ok(!everyLabel.some((t) => /財産保安責任分界点|財産責任分界点|財産及び責任分界点/.test(t)), '分界点の文言に、「財産・責任分界点」以外の書き方が残っています');
   console.log('  VT・CTは組で数え、継電器は1個ずつ「種類・どこについているか・試験端子」を選ぶ。VCBとOCRがあればトリップコイルが入る');
   console.log('  補助変圧器は蓄電所のときだけ。分界点の文言は「財産・責任分界点」');
+}
+
+/* ---------- 「設備を入力して作成」の説明文の整理（第8弾 項目12） ---------- */
+console.log('\n■ 説明文の整理');
+{
+  const q = (id: string) => QUESTIONS.find((x) => x.id === id);
+  const expectText: [string, string][] = [
+    ['poleName', '電柱番号を入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。'],
+    ['sectionalizer', 'PAS・PGS＝電柱上に設置する区分開閉器。UGS＝キャビネット内に設置する区分開閉器。図面には、選んだ名前（PAS・PGS・UGS）を書く。引込元が地上キャビネットのときは、UGS（またはなし）。'],
+    ['cableInstallation', '「なし」は、電柱の上に受電設備を構成する場合などで、区分開閉器の後をケーブルを介さず、ふつうの電線でつなぐとき（ケーブル端末も描かない）'],
+    ['relayCount', 'GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）'],
+    ['drawingName', '記載がなければ自動で表示させます。（例：キュービクル式高圧受電設備単線結線図）。ここに入力された場合は、この入力内容を優先して表示させます。'],
+  ];
+  for (const [id, want] of expectText) {
+    const got = q(id)?.help;
+    if (got !== want) fail(`${id}：説明文が指定の文になっていません（${got}）`);
+  }
+  console.log(`  変更した説明文 ${expectText.length}件：指定の文のとおり`);
+  const gone = ['pasRatedVoltage', 'pasControl', 'cableCrossSection', 'areaCount', 'areaForm', 'relayType', 'relayAt', 'transformerCount'];
+  for (const id of gone) if (q(id)?.help !== undefined) fail(`${id}：説明文が残っています`);
+  console.log(`  削除した説明文 ${gone.length}件：画面に出ない`);
+  // 受電設備の構成：「ZPD・LA・接地」の欄の説明文だけを残し、ほかは出さない
+  const receiving = QUESTIONS.filter((x) => x.group === 'receiving');
+  const stray = receiving.filter((x) => x.section !== 'ZPD・LA・接地' && x.help !== undefined).map((x) => x.id);
+  const kept = receiving.filter((x) => x.section === 'ZPD・LA・接地' && x.help !== undefined).map((x) => x.id);
+  if (stray.length > 0) fail(`受電設備の構成：「ZPD・LA・接地」以外に説明文が残っています（${stray.join('、')}）`);
+  else if (kept.length === 0) fail('受電設備の構成：「ZPD・LA・接地」の説明文が消えています');
+  else console.log(`  受電設備の構成：「ZPD・LA・接地」の説明文 ${kept.length}件だけ残る`);
+  // AI・音声入力には、これまでの手がかりを、そのまま渡す（画面の説明文を消しても、読み取りの精度は変えない）
+  const aiPrompt = buildSystemPrompt();
+  for (const [id, needle] of [
+    ['pasRatedVoltage', '手書きメモに記載があればそれを使い'],
+    ['relayAt', 'CTにつく継電器は、CTの二次側'],
+    ['cableCrossSection', '一覧にない値は手入力できる'],
+    ['transformerCount', '51台以上のときは手入力できる'],
+  ] as const) {
+    if (!aiPrompt.includes(needle)) fail(`${id}：AIへの手がかり「${needle}」が、指示文から消えています`);
+  }
+  console.log('  画面の説明文を消したものも、AIの読み取りには、これまでの手がかりを渡している');
 }
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);

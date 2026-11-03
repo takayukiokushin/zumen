@@ -69,7 +69,7 @@ export function buildSystemPrompt(): string {
         : q.unit
           ? `（単位: ${q.unit}）`
           : '';
-      return `  - ${q.id}: ${q.label}${opts}${q.help ? ` ※${q.help}` : ''}`;
+      return `  - ${q.id}: ${q.label}${opts}${q.aiHint ?? q.help ? ` ※${q.aiHint ?? q.help}` : ''}`;
     });
     return `【${g.label}】\n${lines.join('\n')}`;
   }).join('\n\n');

@@ -45,7 +45,14 @@ export interface Question {
   dropdown?: boolean;
   unit?: string;
   defaultValue?: Value;
+  /** 画面に出す説明文 */
   help?: string;
+  /**
+   * 読み取り・音声入力のAIに渡す補足。画面には出さない。
+   * 画面の説明文（help）を消したり変えたりしても、AIへの手がかりは変えたくないときに使う。
+   * 無いときは、help をそのまま渡す
+   */
+  aiHint?: string;
   placeholder?: string;
   /**
    * 文字を入れる欄のとき、数字だけが入力されたら、欄を離れたときに、この文字を後ろに足す。
@@ -368,7 +375,8 @@ export const QUESTIONS: Question[] = [
     defaultValue: '中電柱：',
     showIf: { key: 'sourceType', ne: 'cabinet' },
     ask: 'always',
-    help:
+    help: '電柱番号を入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。',
+    aiHint:
       '「中電柱：」が最初から入っている（中電柱＝中国電力の電柱。全現場で共通）。その後ろに、電柱の名称を入力する（例：猪子山（分）81）。' +
       '（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する',
   },
@@ -451,7 +459,8 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'pas',
     ask: 'ai-uncertain',
     required: true,
-    help:
+    help: 'PAS・PGS＝電柱上に設置する区分開閉器。UGS＝キャビネット内に設置する区分開閉器。図面には、選んだ名前（PAS・PGS・UGS）を書く。引込元が地上キャビネットのときは、UGS（またはなし）。',
+    aiHint:
       'PAS・PGS＝電柱上に設置する区分開閉器。UGS＝キャビネット内に設置する区分開閉器。図面には、選んだ名前（PAS・PGS・UGS）を書く。' +
       '引込元が地上キャビネットのときは、UGS（またはなし）。図記号・定格・SOG（制御装置）などの質問は、どれも同じ。なしのときは、地上キャビネット（電力会社のキャビネットで受電）の有無を聞く',
   },
@@ -509,7 +518,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'dgr',
     showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
-    help:
+    aiHint:
       'SOGがあればZCTが内蔵される（GRはZCTのみ、DGRはZCTに加えて零相電圧＝内蔵VTかZPDが必要）。' +
       'SOGが無ければVTとZCTは入らない。LAはSOGの有無に関わらず入ることがある',
   },
@@ -544,7 +553,7 @@ export const QUESTIONS: Question[] = [
     options: [3300, 6600, 7200].map((v) => ({ value: String(v), label: `${v}V` })),
     showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
-    help: '3300V・6600V・7200Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
+    aiHint: '3300V・6600V・7200Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
   },
   {
     id: 'pasRatedCurrent',
@@ -599,7 +608,8 @@ export const QUESTIONS: Question[] = [
       { value: 'none', label: 'なし（ケーブルを介さない）' },
     ],
     ask: 'ai-uncertain',
-    help:
+    help: '「なし」は、電柱の上に受電設備を構成する場合などで、区分開閉器の後をケーブルを介さず、ふつうの電線でつなぐとき（ケーブル端末も描かない）',
+    aiHint:
       '埋設のみ図面の線を点線で描く。「なし」は、電柱の上に受電設備を構成する場合などで、' +
       '区分開閉器の後をケーブルを介さず、ふつうの電線でつなぐとき（ケーブル端末も描かない）',
   },
@@ -638,7 +648,7 @@ export const QUESTIONS: Question[] = [
     allowFreeInput: true,
     showIf: CABLE_EXISTS,
     ask: 'always',
-    help: '一覧にない値は手入力できる',
+    aiHint: '一覧にない値は手入力できる',
   },
   {
     id: 'cableLength',
@@ -675,7 +685,7 @@ export const QUESTIONS: Question[] = [
     unit: 'か所',
     defaultValue: 1,
     ask: 'ai-uncertain',
-    help: '画像から1箇所と判別できる場合は聞かない。2箇所以上のときだけ各エリアを一点鎖線で囲う',
+    aiHint: '画像から1箇所と判別できる場合は聞かない。2箇所以上のときだけ各エリアを一点鎖線で囲う',
   },
   {
     // 2か所目以降のエリアだけ。エリアの名前を、自由に入れられる（例：第2変電所、第2電気室、第3キュービクル）
@@ -701,7 +711,7 @@ export const QUESTIONS: Question[] = [
     ],
     ask: 'ai-uncertain',
     required: true,
-    help: '「高圧マンション（電柱上構成）」を選ぶと、設置場所は「電柱上」に決まる（設置場所の質問は出ない）',
+    aiHint: '「高圧マンション（電柱上構成）」を選ぶと、設置場所は「電柱上」に決まる（設置場所の質問は出ない）',
   },
   {
     id: 'areaPlacement',
@@ -738,7 +748,7 @@ export const QUESTIONS: Question[] = [
     ],
     ask: 'ai-uncertain',
     required: true,
-    help:
+    aiHint:
       'この選択で受電設備の構成が大きく変わる。高圧変圧器の合計容量から自動で提案する。' +
       '「それ以外（高圧マンション・電柱上構成）」を選んだ場合は、電柱上に受電設備が構成されているものとして扱う（追加の質問は無い）',
   },
@@ -760,7 +770,7 @@ export const QUESTIONS: Question[] = [
     showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
     required: true,
-    help: '2か所目以降は、標準構成（DS・VT・CTなど）でなくてもよい。このエリアの入口にある開閉器を選ぶ。VT・CT・ZPD・LAなどは、下で、あるかないかを答える',
+    aiHint: '2か所目以降は、標準構成（DS・VT・CTなど）でなくてもよい。このエリアの入口にある開閉器を選ぶ。VT・CT・ZPD・LAなどは、下で、あるかないかを答える',
   },
   {
     // 2か所目以降のエリアだけ。2か所目の受電側にも電柱があって、PAS（区分開閉器）が付いている場合がある
@@ -775,7 +785,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'no',
     showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
-    help: 'PAS＝電柱上に設置する区分開閉器。このエリアの受電側にも電柱があって、PASが付いているときは「ある」。ASとは別のもの',
+    aiHint: 'PAS＝電柱上に設置する区分開閉器。このエリアの受電側にも電柱があって、PASが付いているときは「ある」。ASとは別のもの',
   },
   {
     // 2か所目以降のエリアだけ。電気室などにAS（気中開閉器）が付いていて、そこから設備につながっている場合がある
@@ -790,7 +800,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'no',
     showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
-    help: 'AS＝気中開閉器。電気室などに付いていて、そこから設備につながっているときは「ある」。PASとは別のもの',
+    aiHint: 'AS＝気中開閉器。電気室などに付いていて、そこから設備につながっているときは「ある」。PASとは別のもの',
   },
   {
     id: 'areaPasRatedVoltage',
@@ -799,7 +809,7 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     options: [3300, 6600, 7200].map((v) => ({ value: String(v), label: `${v}V` })),
-    help: '3300V・6600V・7200Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
+    aiHint: '3300V・6600V・7200Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
     ask: 'ai-uncertain',
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'areaPas', eq: 'yes' }] },
   },
@@ -821,7 +831,7 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     options: [3300, 6600, 7200].map((v) => ({ value: String(v), label: `${v}V` })),
-    help: '3300V・6600V・7200Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
+    aiHint: '3300V・6600V・7200Vから選ぶ。7200Vと6600Vは機器によって使い分ける。手書きメモに記載があればそれを使い、記載が無いときだけ確認する',
     ask: 'ai-uncertain',
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'areaAs', eq: 'yes' }] },
   },
@@ -847,7 +857,7 @@ export const QUESTIONS: Question[] = [
     ],
     showIf: { key: 'intakeLbs', eq: 'yes' },
     ask: 'ai-uncertain',
-    help: '7200Vと6600Vは機器によって使い分ける。手書きメモの記載を優先し、記載が無いときだけ確認する',
+    aiHint: '7200Vと6600Vは機器によって使い分ける。手書きメモの記載を優先し、記載が無いときだけ確認する',
   },
   { id: 'lbsRatedCurrent', group: 'receiving', section: 'LBS', label: 'LBSの定格電流', type: 'number', unit: 'A', showIf: { key: 'intakeLbs', eq: 'yes' }, ask: 'always' },
   { id: 'lbsFuseCount', group: 'receiving', section: 'LBS', label: 'LBSのヒューズ本数', type: 'number', unit: '本', defaultValue: 3, showIf: { key: 'intakeLbsPf', eq: 'yes' }, ask: 'always' },
@@ -863,7 +873,7 @@ export const QUESTIONS: Question[] = [
     defaultValue: 'no',
     showIf: { key: 'intakeVcb', eq: 'yes' },
     ask: 'ai-uncertain',
-    help: '系統用蓄電所などで、VCBの横に並列に入る、励磁突入電流を抑えるための開閉器（図面には「励突抑制開閉器」と書く）。PF付LBSの形で描く',
+    aiHint: '系統用蓄電所などで、VCBの横に並列に入る、励磁突入電流を抑えるための開閉器（図面には「励突抑制開閉器」と書く）。PF付LBSの形で描く',
   },
   {
     id: 'inrushRatedVoltage',
@@ -914,7 +924,7 @@ export const QUESTIONS: Question[] = [
     options: YES_NO,
     showIf: { key: 'intakeOptional', eq: 'yes' },
     ask: 'ai-uncertain',
-    help: 'PFS形はVTが入る現場と入らない現場がある。CB形はDSの次に必ず入る',
+    aiHint: 'PFS形はVTが入る現場と入らない現場がある。CB形はDSの次に必ず入る',
   },
   {
     id: 'hasSiteCt',
@@ -924,7 +934,7 @@ export const QUESTIONS: Question[] = [
     options: YES_NO,
     showIf: { key: 'intakeOptional', eq: 'yes' },
     ask: 'ai-uncertain',
-    help: 'PFS形はCTが入る現場と入らない現場がある。OCRなどをCTにつなぐなら「あり」。CB形はVCBのすぐ下に必ず入る',
+    aiHint: 'PFS形はCTが入る現場と入らない現場がある。OCRなどをCTにつなぐなら「あり」。CB形はVCBのすぐ下に必ず入る',
   },
   // ---- VT（組ごと）。1組目は、これまでの答え（vtCount・vtRatio）をそのまま使う ----
   {
@@ -1056,7 +1066,8 @@ export const QUESTIONS: Question[] = [
     // VCBとCTがあるときは、OCRが1個入る。それ以外は0個から
     autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN] }, value: '1' }, { value: '0' }],
     ask: 'ai-uncertain',
-    help: 'OCR・UVR・OVRなど、VCB・LBSを動かす継電器の個数。なければ0個（LBSの初期値）。GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）',
+    help: 'GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）',
+    aiHint: 'OCR・UVR・OVRなど、VCB・LBSを動かす継電器の個数。なければ0個（LBSの初期値）。GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）',
   },
   {
     id: 'relayType',
@@ -1073,7 +1084,7 @@ export const QUESTIONS: Question[] = [
       { value: 'OVR' },
     ],
     ask: 'always',
-    help: '手書き図面にある記号を選ぶ。一覧にない記号は、先に確認してから追加する',
+    aiHint: '手書き図面にある記号を選ぶ。一覧にない記号は、先に確認してから追加する',
   },
   {
     id: 'relayAt',
@@ -1106,7 +1117,7 @@ export const QUESTIONS: Question[] = [
       { when: { key: 'intakeStandard', eq: 'yes' }, value: 'none' },
     ],
     ask: 'always',
-    help: 'CTやVTの有無が決まっていないとき（LBSなど）は、ここが空欄になる。「受電設備内にCTはありますか？」「…VTはありますか？」に答えるか、「置き場所は決まっていない」を選ぶ。CTにつく継電器は、CTの二次側（試験端子の先）に置く。VTにつく継電器（UVR・OVR）は、VTの二次側（右の端）につなぐ。UVRとOVRが両方あるときは、上下に並べる。決まっていないときは、OCRの上に名前だけ書く',
+    aiHint: 'CTやVTの有無が決まっていないとき（LBSなど）は、ここが空欄になる。「受電設備内にCTはありますか？」「…VTはありますか？」に答えるか、「置き場所は決まっていない」を選ぶ。CTにつく継電器は、CTの二次側（試験端子の先）に置く。VTにつく継電器（UVR・OVR）は、VTの二次側（右の端）につなぐ。UVRとOVRが両方あるときは、上下に並べる。決まっていないときは、OCRの上に名前だけ書く',
   },
   {
     id: 'relayTest',
@@ -1252,7 +1263,7 @@ export const QUESTIONS: Question[] = [
     unit: '台',
     defaultValue: '1',
     ask: 'ai-uncertain',
-    help: '51台以上のときは手入力できる',
+    aiHint: '51台以上のときは手入力できる',
   },
   {
     id: 'trUsage',
@@ -1619,7 +1630,8 @@ export const QUESTIONS: Question[] = [
     manualOnly: true,
     clearOnDuplicate: true,
     ask: 'always',
-    help: '空欄のときは、受電設備の形態から自動で決まります（例：キュービクル式高圧受電設備単線結線図）。書いた場合は、それを優先します',
+    help: '記載がなければ自動で表示させます。（例：キュービクル式高圧受電設備単線結線図）。ここに入力された場合は、この入力内容を優先して表示させます。',
+    aiHint: '空欄のときは、受電設備の形態から自動で決まります（例：キュービクル式高圧受電設備単線結線図）。書いた場合は、それを優先します',
   },
 
 
