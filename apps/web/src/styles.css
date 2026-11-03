@@ -800,3 +800,46 @@ button.with-icon svg { flex: 0 0 auto; }
 .wire-window-body { display: flex; flex-direction: column; gap: calc(4px * var(--text-scale)); padding: calc(8px * var(--text-scale)); }
 .wire-window-body .line-kind { display: flex; align-items: center; justify-content: flex-start; gap: calc(8px * var(--text-scale)); padding: calc(5px * var(--text-scale)) calc(8px * var(--text-scale)); text-align: left; }
 .wire-window-body .line-kind svg { flex: 0 0 auto; width: calc(44px * var(--text-scale)); height: calc(10px * var(--text-scale)); }
+
+/* ------------------------------------------------------------------ */
+/* 「設備を入力して作成」：入力欄をコンパクトにして、1行にたくさん並べる   */
+/*   - 欄の幅は、中身の長さで決める（xs 電圧・電流／s 短い／m ふつう／l 長い。Field.tsx）*/
+/*   - 入力欄・ボタンは、文字に対して大きすぎないよう、高さと余白を詰める      */
+/*   - 説明文は2行までにして、全文は、マウスを載せると出る                    */
+/*   ほかの画面（スケッチ読み取り・図面など）の見た目は、変えない（main.form の中だけ） */
+/* ------------------------------------------------------------------ */
+main.form {
+  --fw-xs: calc(104px * var(--text-scale));
+  --fw-s: calc(128px * var(--text-scale));
+  --fw-m: calc(180px * var(--text-scale));
+  --fw-l: calc(260px * var(--text-scale));
+  --form-h: calc(30px * var(--text-scale));
+}
+@media (pointer: coarse) { main.form { --form-h: max(40px, calc(30px * var(--text-scale))); } }
+main.form .fields {
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: calc(8px * var(--text-scale)) calc(12px * var(--text-scale));
+  padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale));
+}
+main.form .subgroup .fields { padding-top: calc(6px * var(--text-scale)); padding-bottom: calc(10px * var(--text-scale)); }
+main.form .field { --fw: var(--fw-m); flex: 0 1 var(--fw); min-width: 0; max-width: 100%; gap: calc(3px * var(--text-scale)); }
+main.form .field[data-size="xs"] { --fw: var(--fw-xs); }
+main.form .field[data-size="s"] { --fw: var(--fw-s); }
+main.form .field[data-size="m"] { --fw: var(--fw-m); }
+main.form .field[data-size="l"] { --fw: var(--fw-l); }
+main.form .field label { font-size: calc(12px * var(--text-scale)); line-height: 1.35; }
+main.form .field input[type="text"], main.form .field input[type="number"], main.form .field input[type="date"], main.form .field select {
+  min-height: var(--form-h); padding: calc(2px * var(--text-scale)) calc(8px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale));
+}
+main.form .radio-row { gap: calc(5px * var(--text-scale)); }
+main.form .radio-row button {
+  min-width: 0; min-height: var(--form-h); padding: calc(2px * var(--text-scale)) calc(8px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale));
+}
+main.form .field .help {
+  font-size: calc(10.5px * var(--text-scale)); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* マウスで操作する端末では、説明文は1行にして（全文は、マウスを載せると出る）、縦に伸びないようにする */
+@media (hover: hover) { main.form .field .help { -webkit-line-clamp: 1; } }
+main.form .repeat-block { margin-bottom: calc(10px * var(--text-scale)); }
+main.form .repeat-block > .fields { padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale)) calc(12px * var(--text-scale)); }

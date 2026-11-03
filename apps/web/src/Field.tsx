@@ -20,6 +20,48 @@ interface Props {
 /** 手入力に切り替えるための、一覧の中の特別な値 */
 const OTHER = '__other__';
 
+/** 入力欄の幅の目安。1行にたくさん並べるために、中身の長さから決める（質問に size があれば、それを使う） */
+export type FieldSize = 'xs' | 's' | 'm' | 'l';
+const ORDER: FieldSize[] = ['xs', 's', 'm', 'l'];
+const atLeast = (a: FieldSize, b: FieldSize): FieldSize => (ORDER.indexOf(a) >= ORDER.indexOf(b) ? a : b);
+export function fieldSize(q: Question, show: (s: string) => string): FieldSize {
+  if (q.size) return q.size;
+  // 名前の長さ（単位「（kVA）」と「必須」の札も、同じ行に並ぶので、数える）
+  const label = show(q.label).length + (q.unit ? show(q.unit).length + 2 : 0) + (q.required ? 3 : 0);
+  const opts = (q.options ?? []).map((o) => show(o.label).length);
+  const widest = Math.max(0, ...opts);
+  let size: FieldSize;
+  if (q.type === 'boolean') size = 's';
+  else if (q.type === 'number' || q.type === 'date') size = 'xs';
+  else if (q.type === 'text') {
+    // 入力例（placeholder）の見た目の長さ（半角は全角の半分ほど）で決める。例が無い欄は、名前などの自由な文字なので、ふつう（m）
+    const ph = q.placeholder ?? '';
+    const w = [...ph].reduce((n, c) => n + (/[\x20-\x7E]/.test(c) ? 0.55 : 1), 0);
+    size = ph === '' ? 'm' : w <= 9.5 ? 's' : w <= 18 ? 'm' : 'l';
+  }
+  else {
+    const asButtons = !q.allowFreeInput && !q.dropdown && opts.length <= 3 && widest <= 14;
+    if (asButtons) {
+      // 押しボタン：並べた長さで決める（字数＋ボタンの余白）
+      const total = opts.reduce((a, n) => a + n + 3, 0);
+      size = total <= 12 ? 's' : total <= 22 ? 'm' : 'l';
+    } else {
+      // プルダウンは、「選択してください」（8字）も出るので、それより短くはしない
+      // ただし、標準の値が入っていて、「選択してください」が出ないもの（7200V・200A・40kA など）は、短くてよい
+      const w = q.defaultValue !== undefined && widest <= 6 ? widest : Math.max(widest, 8);
+      size = w <= 6 ? 'xs' : w <= 12 ? 's' : w <= 20 ? 'm' : 'l';
+    }
+  }
+  // 「必須」の札や単位が付く欄は、名前が3行に折れないよう、せめて s にする
+  if (q.required || q.unit) size = atLeast(size, 's');
+  // 名前は、2行までなら折り返してよい（その行の高さは、いちばん高い欄で決まるので、幅を広げるより、縦が増えない）。
+  // 3行以上になるときだけ、幅を広げる（1行に入る字数の目安：xs 7字・s 10字・m 14字・l 21字）
+  if (label > 30) size = atLeast(size, 'l');
+  else if (label > 20) size = atLeast(size, 'm');
+  else if (label > 14) size = atLeast(size, 's');
+  return size;
+}
+
 /** 選択肢が3つ以下で短ければ押しボタン、それ以外はプルダウンにする */
 export function Field({ question: question, fieldKey, value, onChange, context }: Props) {
   // 選択肢に出す条件（Choice.showIf）がある質問は、いまの答えで出すものを絞る
@@ -38,7 +80,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
     (pickedOther || (current !== '' && !q.options?.some((o) => o.value === String(current))));
 
   return (
-    <div className="field">
+    <div className="field" data-size={fieldSize(q, tx)}>
       <label htmlFor={fieldKey}>
         {q.type === 'boolean' ? '' : tx(q.label)}
         {q.required && <span className="req">{t('field.required')}</span>}
@@ -133,7 +175,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
         />
       )}
 
-      {q.help && <p className="help">{tx(q.help)}</p>}
+      {q.help && <p className="help" title={tx(q.help)}>{tx(q.help)}</p>}
     </div>
   );
 }

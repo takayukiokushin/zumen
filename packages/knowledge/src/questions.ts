@@ -44,6 +44,12 @@ export interface Question {
    * 指定が無ければ、選択肢が3つ以下で短いものはボタン、それ以外はドロップダウン。
    */
   dropdown?: boolean;
+  /**
+   * 入力画面での欄の幅の目安（xs＝電圧・電流のような短い値／s＝短い／m＝ふつう／l＝長い）。
+   * 指定が無ければ、種類・選択肢の長さ・名前の長さから、画面側で決める（Field.tsx）。
+   * 1行にたくさん並べて、縦に伸びすぎないようにするための指定
+   */
+  size?: 'xs' | 's' | 'm' | 'l';
   unit?: string;
   defaultValue?: Value;
   /** 画面に出す説明文 */
@@ -284,7 +290,8 @@ function breakerRatings(
     },
     {
       id: P('PfLoad'), group, label: 'PFの負荷側につなぐもの', type: 'select',
-      options: PF_LOAD_KIND, defaultValue: defaultLoad,
+      // 3つのボタンを並べると、1行に収まらず、縦に伸びる。ふだんは標準のまま使うので、プルダウンにする
+      options: PF_LOAD_KIND, defaultValue: defaultLoad, dropdown: true,
       showIf: hasLbs, ask: 'always',
       help: `${cap}につなぐので、ふつうは「${defaultLoad}」`,
     },
@@ -1813,6 +1820,15 @@ export const QUESTIONS: Question[] = [
 for (const q of QUESTIONS) {
   const hint = AI_HINTS[q.id];
   if (hint !== undefined) q.aiHint = hint;
+}
+
+/** 入力画面で、広めの欄にしたい質問（名前・場所・自由な書き込み）。ほかの欄は、中身の長さから、画面側で幅を決める（Field.tsx） */
+const WIDE_FIELDS = [
+  'siteName', 'customerNameForTitleBlock', 'poleName', 'cabinetName', 'ugsCabinetName', 'earthingNotes',
+  'drawingName', 'linkName', 'areaName', 'generatorPlace', 'areaDetail',
+];
+for (const q of QUESTIONS) {
+  if (WIDE_FIELDS.includes(q.id) && q.size === undefined) q.size = 'l';
 }
 
 /** 質問定義の既定値（エリアごとの入力でも、まだ触っていない質問に使う） */
