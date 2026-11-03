@@ -40,8 +40,7 @@ export function fieldSize(q: Question, show: (s: string) => string): FieldSize {
     size = ph === '' ? 'm' : w <= 9.5 ? 's' : w <= 18 ? 'm' : 'l';
   }
   else {
-    const asButtons = !q.allowFreeInput && !q.dropdown && opts.length <= 3 && widest <= 14;
-    if (asButtons) {
+    if (asButtons(q, show)) {
       // 押しボタン：並べた長さで決める（字数＋ボタンの余白）
       const total = opts.reduce((a, n) => a + n + 3, 0);
       size = total <= 12 ? 's' : total <= 22 ? 'm' : 'l';
@@ -60,6 +59,17 @@ export function fieldSize(q: Question, show: (s: string) => string): FieldSize {
   else if (label > 20) size = atLeast(size, 'm');
   else if (label > 14) size = atLeast(size, 's');
   return size;
+}
+
+/**
+ * 押しボタンで並べるか。選択肢が3つ以下で短いもの、または、4つで、どれもごく短い（6字まで。例：100A／200A／300A／400A）もの。
+ * それ以外（5つ以上、4つで長いもの）は、プルダウン
+ */
+function asButtons(q: Question, show: (s: string) => string): boolean {
+  if (q.allowFreeInput || q.dropdown) return false;
+  const lens = (q.options ?? []).map((o) => show(o.label).length);
+  const widest = Math.max(0, ...lens);
+  return (lens.length <= 3 && widest <= 14) || (lens.length === 4 && widest <= 6);
 }
 
 /** 選択肢が3つ以下で短ければ押しボタン、それ以外はプルダウンにする */
@@ -87,11 +97,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
         {q.unit && <span className="unit">（{tx(q.unit)}）</span>}
       </label>
 
-      {q.type === 'select' &&
-      !q.allowFreeInput &&
-      !q.dropdown &&
-      (q.options?.length ?? 0) <= 3 &&
-      (q.options ?? []).every((o) => tx(o.label).length <= 14) ? (
+      {q.type === 'select' && asButtons(q, tx) ? (
         <div className="radio-row" id={fieldKey}>
           {q.options?.map((o) => (
             <button

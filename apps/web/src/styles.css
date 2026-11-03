@@ -30,6 +30,10 @@
   /* 表示の設定（settings.tsx が書き換える） */
   --text-scale: 1.1; /* settings.tsx の BASE_TEXT_SCALE と同じ値（読み込み直後の見た目をそろえるため） */
   --ui-scale: 1;
+  /* ボタン・入力欄・タブは、「画面全体の大きさ」を小さくしても、100%のときの85%より小さくしない。
+     画面全体を縮める（zoom）と、ボタンも同じ割合で縮むので、85%に届かないぶんだけ、ボタン側を大きく作っておく（実際に見える大きさが 85% になる） */
+  --ctl-k: max(1, calc(0.85 / var(--ui-scale)));
+  --ctl-scale: calc(var(--text-scale) * var(--ctl-k));
   --weight: 400;
   --weight-strong: 600;
 
@@ -92,7 +96,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .form-head h2 { margin: 0; font-size: calc(18px * var(--text-scale)); }
 .toggle { display: inline-flex; gap: calc(10px * var(--text-scale)); align-items: center; min-height: calc(34px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2);
   background: var(--panel); border: 1px solid var(--control-border); border-radius: 2px; padding: 6px 11px; cursor: pointer; }
-.toggle input { margin: 0; width: calc(20px * var(--text-scale)); height: calc(20px * var(--text-scale)); min-height: 0; accent-color: var(--accent); }
+.toggle input { margin: 0; width: calc(20px * var(--ctl-scale)); height: calc(20px * var(--ctl-scale)); min-height: 0; accent-color: var(--accent); }
 
 section.group { background: var(--panel); border: 1px solid var(--rule); margin-bottom: 16px; scroll-margin-top: 16px; }
 section.group > header { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--rule-soft); }
@@ -119,7 +123,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .field .help { font-size: calc(11px * var(--text-scale)); color: var(--muted); }
 .field .share { font-size: calc(11px * var(--text-scale)); color: var(--muted); }
 .radio-row { display: flex; flex-wrap: wrap; gap: var(--gap, 10px); }
-.radio-row button { padding: 6px 12px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px; cursor: pointer; font-size: calc(13px * var(--text-scale)); }
+.radio-row button { padding: 6px 12px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px; cursor: pointer; font-size: calc(13px * var(--ctl-scale)); }
 .radio-row button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
 
 /* ---- 右：構成プレビュー ---- */
@@ -142,7 +146,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
   border-bottom: 1px solid var(--rule); position: sticky; top: 0; z-index: 10; }
 .tabbar strong { font-size: calc(14px * var(--text-scale)); margin-right: 12px; }
 .tabbar button { padding: 6px 14px; background: transparent; border: 1px solid transparent; border-radius: 2px;
-  cursor: pointer; font-size: calc(13px * var(--text-scale)); color: var(--ink-2); }
+  cursor: pointer; font-size: calc(13px * var(--ctl-scale)); color: var(--ink-2); }
 .tabbar button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
 
 /* ---- エディタ ---- */
@@ -158,7 +162,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
   max-height: max(45%, 110px); overflow-y: auto; overscroll-behavior: contain; }
 .tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .tools button { padding: 6px 12px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px;
-  cursor: pointer; font-size: calc(12.5px * var(--text-scale)); }
+  cursor: pointer; font-size: calc(12.5px * var(--ctl-scale)); }
 .tools button:hover:not(:disabled) { border-color: var(--accent); }
 .tools button:disabled { color: var(--muted); cursor: default; }
 .tools .sep { width: 1px; height: 20px; background: var(--rule); margin: 0 4px; }
@@ -249,9 +253,9 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 .thumbs img { width: 100%; height: 90px; object-fit: contain; background: var(--paper); border: 1px solid var(--rule-soft); }
 .thumbs .pdf-thumb { width: 100%; height: 90px; display: flex; align-items: center; justify-content: center; background: var(--paper); border: 1px solid var(--rule-soft); color: var(--muted); font-weight: 700; letter-spacing: 0.1em; }
 .thumbs figcaption { font-size: calc(11px * var(--text-scale)); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.thumbs button { font-size: calc(11px * var(--text-scale)); padding: 3px; background: var(--field); border: 1px solid var(--rule); cursor: pointer; }
+.thumbs button { font-size: calc(11px * var(--ctl-scale)); padding: 3px; background: var(--field); border: 1px solid var(--rule); cursor: pointer; }
 button.primary { padding: 9px 18px; background: var(--accent-soft); border: 1px solid var(--accent);
-  border-radius: 2px; cursor: pointer; font-size: calc(13.5px * var(--text-scale)); }
+  border-radius: 2px; cursor: pointer; font-size: calc(13.5px * var(--ctl-scale)); }
 button.primary:disabled { background: var(--paper); border-color: var(--rule); color: var(--muted); cursor: default; }
 .err { margin-top: 12px; padding: 10px 12px; background: var(--need-soft); color: var(--need); font-size: calc(12.5px * var(--text-scale)); }
 .err small { color: var(--ink-2); }
@@ -289,7 +293,7 @@ table.picked tr.uncertain { background: var(--accent-soft); }
 /* ---- 案件の帯 ---- */
 .projectbar { position: relative; display: flex; align-items: center; gap: var(--gap, 10px); flex-wrap: wrap;
   padding: 7px 16px; background: var(--paper); border-bottom: 1px solid var(--rule); font-size: calc(12.5px * var(--text-scale)); }
-.projectbar button { padding: 5px 11px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px; cursor: pointer; font-size: calc(12.5px * var(--text-scale)); }
+.projectbar button { padding: 5px 11px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px; cursor: pointer; font-size: calc(12.5px * var(--ctl-scale)); }
 .projectbar button:disabled { color: var(--muted); cursor: default; }
 .projectbar button.need-save { background: var(--accent-soft); border-color: var(--accent); }
 .projectbar .picker { font-weight: 600; }
@@ -318,7 +322,7 @@ table.picked tr.uncertain { background: var(--accent-soft); }
   font-size: calc(12.5px * var(--text-scale)); display: flex; align-items: center; gap: var(--gap, 10px); flex-wrap: wrap; }
 .bar-lock .warn { color: var(--need); }
 .bar-lock button { padding: 4px 11px; background: var(--field); border: 1px solid var(--accent); border-radius: 2px;
-  cursor: pointer; font-size: calc(12.5px * var(--text-scale)); }
+  cursor: pointer; font-size: calc(12.5px * var(--ctl-scale)); }
 /* 中身の並びを変えずに、入力欄とボタンだけまとめて止める */
 .shield { display: contents; }
 .shield .canvas, .shield .canvas-wrap { pointer-events: none; }
@@ -403,19 +407,19 @@ table.users .you { color: var(--muted); font-size: calc(11px * var(--text-scale)
 .add-user { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 16px; align-items: end; }
 .add-user label { display: flex; flex-direction: column; gap: 4px; font-size: calc(12px * var(--text-scale)); color: var(--muted); }
 .add-user input, .add-user select { padding: 8px 10px; border: 1px solid var(--control-border);
-  border-radius: 2px; background: var(--field); font-size: calc(13px * var(--text-scale)); }
+  border-radius: 2px; background: var(--field); font-size: calc(13px * var(--ctl-scale)); }
 .add-user .role-help { grid-column: 1 / -1; margin: 0; }
 .add-user button { grid-column: 1 / -1; justify-self: start; }
 
 /* ---- ボタンの共通の形（押し間違いを防ぐため、最低限の大きさを決める） ---- */
 .btn { min-width: 72px; padding: 7px 14px; background: var(--field); border: 1px solid var(--control-border);
-  border-radius: 2px; cursor: pointer; font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; }
+  border-radius: 2px; cursor: pointer; font-size: calc(12.5px * var(--ctl-scale)); line-height: 1.4; }
 .btn:hover:not(:disabled) { border-color: var(--accent); }
 .btn:disabled { color: var(--muted); cursor: default; background: var(--alt); }
 .btn.primary { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
 
 /* ---- 図面の道具立て：大きさを揃え、押し間違いを防ぐ ---- */
-.tools .btn, .tools button { min-width: 84px; padding: 7px 14px; font-size: calc(12.5px * var(--text-scale)); }
+.tools .btn, .tools button { min-width: 84px; padding: 7px 14px; font-size: calc(12.5px * var(--ctl-scale)); }
 .tools { gap: var(--gap, 10px); }
 .tools .sep { width: 1px; align-self: stretch; background: var(--rule); margin: 0 calc(6px * var(--text-scale)); }
 
@@ -424,22 +428,22 @@ table.users .you { color: var(--muted); font-size: calc(11px * var(--text-scale)
 /* ボタン・入力欄の高さと余白を全画面で揃え、押し間違いを防ぐ。          */
 /* 大きさは「文字の大きさ」の設定について回る。                          */
 /* ------------------------------------------------------------------ */
-:root { --control-h: calc(38px * var(--text-scale)); --control-pad: calc(8px * var(--text-scale)) calc(16px * var(--text-scale)); --gap: calc(10px * var(--text-scale)); }
+:root { --control-h: calc(38px * var(--ctl-scale)); --control-pad: calc(8px * var(--ctl-scale)) calc(16px * var(--ctl-scale)); --gap: calc(10px * var(--text-scale)); }
 /* 指で押す端末（タブレット・スマホ）では、押す部分を44px以上にする */
-@media (pointer: coarse) { :root { --control-h: max(44px, calc(38px * var(--text-scale))); } }
+@media (pointer: coarse) { :root { --control-h: max(44px, calc(38px * var(--ctl-scale))); } }
 
 button, .btn, input, select, textarea {
   min-height: var(--control-h);
   border-radius: 3px;
 }
 button, .btn {
-  min-width: calc(84px * var(--text-scale));
+  min-width: calc(84px * var(--ctl-scale));
   padding: var(--control-pad);
   background: var(--field);
   border: 1px solid var(--control-border);
   color: var(--ink);
   cursor: pointer;
-  font-size: calc(13px * var(--text-scale));
+  font-size: calc(13px * var(--ctl-scale));
   line-height: 1.4;
 }
 button:hover:not(:disabled), .btn:hover:not(:disabled) { border-color: var(--accent); }
@@ -448,23 +452,23 @@ button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visi
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
 input, select, textarea {
-  padding: calc(6px * var(--text-scale)) calc(10px * var(--text-scale));
+  padding: calc(6px * var(--ctl-scale)) calc(10px * var(--ctl-scale));
   background: var(--field);
   border: 1px solid var(--control-border);
-  font-size: calc(13.5px * var(--text-scale));
+  font-size: calc(13.5px * var(--ctl-scale));
 }
-textarea { min-height: calc(60px * var(--text-scale)); line-height: 1.6; }
+textarea { min-height: calc(60px * var(--ctl-scale)); line-height: 1.6; }
 
 /* 幅を詰めてよい・形が違うもの */
 .palette button, .picker-menu li > button, .picker-menu .del, .thumbs button, .pw-eye,
 .tabbar .icon-btn, .panel-toggle, .chip {
   min-width: 0;
 }
-.palette button { padding: calc(6px * var(--text-scale)) 2px; border-color: var(--rule-soft); min-height: 0; }
+.palette button { padding: calc(6px * var(--ctl-scale)) 2px; border-color: var(--rule-soft); min-height: 0; }
 .picker-menu li > button:first-child { border: 0; background: transparent; }
-.thumbs button { padding: calc(4px * var(--text-scale)); min-height: calc(32px * var(--text-scale)); }
+.thumbs button { padding: calc(4px * var(--ctl-scale)); min-height: calc(32px * var(--ctl-scale)); }
 .pw-eye { width: calc(46px * var(--text-scale)); }
-.radio-row button { min-width: calc(64px * var(--text-scale)); }
+.radio-row button { min-width: calc(64px * var(--ctl-scale)); }
 button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   background: var(--accent-soft); border-color: var(--accent); color: var(--ink);
 }
@@ -474,7 +478,7 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 .btn.danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
 .btn.danger:disabled { color: var(--muted); border-color: var(--rule); }
 /* 隣のボタンと間違えて押さないよう、消すボタンの両側は、少し広くあける */
-.tools .btn.danger, .row-actions .btn.danger { margin-inline: calc(6px * var(--text-scale)); }
+.tools .btn.danger, .row-actions .btn.danger { margin-inline: calc(6px * var(--ctl-scale)); }
 
 /* ------------------------------------------------------------------ */
 /* 上の帯：タブと、右端の社名・設定・ログアウト（㉙）                    */
@@ -485,7 +489,7 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 .tabbar > .tabbar-right { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: var(--gap, 10px); margin-left: auto; flex: 0 1 auto; max-width: 100%; }
 .tabbar .who { font-size: calc(12px * var(--text-scale)); color: var(--ink-2); white-space: nowrap; display: inline-flex; align-items: center; }
 /* 歯車の下に「設定」の文字を付ける。枠の高さは変えない（マークと文字を縦に並べる） */
-.tabbar .icon-btn { padding: 0 calc(12px * var(--text-scale)); font-size: calc(11px * var(--text-scale));
+.tabbar .icon-btn { padding: 0 calc(12px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale));
   line-height: 1.15; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
 .tabbar > * { flex: 0 0 auto; }
 
@@ -497,15 +501,15 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   /* 右側（使い方・設定・利用者の管理・氏名・ログアウト）は、2段目に、全部を1行で並べる（3段目に、ログアウトだけ回さない）。
      ボタンの余白を詰め、氏名は、足りなければ「…」で省く。幅が足りないほど大きい設定のときだけ、折り返す */
   .tabbar > .tabbar-right { flex: 1 1 100%; margin-left: 0; justify-content: space-between; gap: calc(2px * var(--text-scale)); }
-  .tabbar-right > button { min-width: 0; padding-left: calc(7px * var(--text-scale)); padding-right: calc(7px * var(--text-scale)); font-size: calc(12px * var(--text-scale)); white-space: nowrap; }
-  .tabbar-right > button.icon-btn { padding-left: calc(6px * var(--text-scale)); padding-right: calc(6px * var(--text-scale)); font-size: calc(10.5px * var(--text-scale)); }
+  .tabbar-right > button { min-width: 0; padding-left: calc(7px * var(--ctl-scale)); padding-right: calc(7px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); white-space: nowrap; }
+  .tabbar-right > button.icon-btn { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(10.5px * var(--ctl-scale)); }
   .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
   .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 /* さらに狭い画面（幅400以下。小さめのスマホ）：文字と余白を、もう少し詰める */
 @media (max-width: 400px) {
-  .tabbar-right > button { padding-left: calc(4px * var(--text-scale)); padding-right: calc(4px * var(--text-scale)); font-size: calc(11px * var(--text-scale)); }
-  .tabbar-right > button.icon-btn { padding-left: calc(3px * var(--text-scale)); padding-right: calc(3px * var(--text-scale)); font-size: calc(10px * var(--text-scale)); }
+  .tabbar-right > button { padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
+  .tabbar-right > button.icon-btn { padding-left: calc(3px * var(--ctl-scale)); padding-right: calc(3px * var(--ctl-scale)); font-size: calc(10px * var(--ctl-scale)); }
   .tabbar .who { font-size: calc(11px * var(--text-scale)); }
 }
 
@@ -527,8 +531,8 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 .app.no-nav { grid-template-columns: 1fr 300px; }
 .app.no-preview { grid-template-columns: 220px 1fr; }
 .app.no-nav.no-preview { grid-template-columns: 1fr; }
-.panel-toggle { padding: calc(4px * var(--text-scale)) calc(10px * var(--text-scale));
-  font-size: calc(11.5px * var(--text-scale)); min-height: calc(34px * var(--text-scale)); background: transparent; border-color: transparent; color: var(--muted); }
+.panel-toggle { padding: calc(4px * var(--ctl-scale)) calc(10px * var(--ctl-scale));
+  font-size: calc(11.5px * var(--ctl-scale)); min-height: calc(34px * var(--ctl-scale)); background: transparent; border-color: transparent; color: var(--muted); }
 .panel-toggle:hover { color: var(--ink); background: var(--alt); border-color: var(--rule); }
 .panel-bar { display: flex; gap: var(--gap, 10px); align-items: center; justify-content: space-between;
   padding: calc(5px * var(--text-scale)) calc(14px * var(--text-scale));
@@ -556,12 +560,12 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .settings-row > .lbl { font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
 .seg { display: inline-flex; flex-wrap: wrap; gap: var(--gap, 10px); }
 .size-row { display: flex; gap: 10px; align-items: center; }
-.size-row input[type="range"] { flex: 1; min-width: 140px; min-height: 0; height: calc(28px * var(--text-scale)); padding: 0; background: transparent; border: 0; accent-color: var(--accent); }
+.size-row input[type="range"] { flex: 1; min-width: 140px; min-height: 0; height: calc(28px * var(--ctl-scale)); padding: 0; background: transparent; border: 0; accent-color: var(--accent); }
 .size-row .val { font-size: calc(12px * var(--text-scale)); color: var(--muted); min-width: 4em; text-align: right; font-variant-numeric: tabular-nums; }
 .sample { margin: 2px 0 0; padding: calc(10px * var(--text-scale)) calc(12px * var(--text-scale));
   background: var(--alt); border: 1px solid var(--rule-soft); border-radius: 3px; }
 .switch { display: inline-flex; gap: calc(10px * var(--text-scale)); align-items: center; font-size: calc(12.5px * var(--text-scale)); cursor: pointer; min-height: calc(34px * var(--text-scale)); }
-.switch input { min-height: 0; width: calc(20px * var(--text-scale)); height: calc(20px * var(--text-scale)); accent-color: var(--accent); }
+.switch input { min-height: 0; width: calc(20px * var(--ctl-scale)); height: calc(20px * var(--ctl-scale)); accent-color: var(--accent); }
 
 /* 中身の面は、帯の残り全部を使う */
 .shell > .body > *, .shell > .body > .shield > * { flex: 1 1 auto; min-height: 0; }
@@ -579,7 +583,7 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .joblist .trash { margin-top: 28px; border-top: 1px solid var(--rule); padding-top: 12px; }
 .joblist .trash summary { cursor: pointer; font-weight: 600; font-size: calc(14px * var(--text-scale)); padding: 4px 0; }
 .joblist .trash .hint { margin: 8px 0 10px; }
-.seg .btn { min-width: calc(66px * var(--text-scale)); }
+.seg .btn { min-width: calc(66px * var(--ctl-scale)); }
 .settings-row { align-items: start; }
 .settings-row > .lbl { padding-top: calc(8px * var(--text-scale)); }
 .switch.wide { margin: 2px 0 14px; }
@@ -604,10 +608,10 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
   gap: calc(10px * var(--text-scale)); flex-wrap: wrap; }
 .login-size .lbl { font-size: calc(12px * var(--text-scale)); color: var(--muted); }
 .login-size .seg { display: inline-flex; gap: var(--gap, 10px); flex-wrap: wrap; }
-.login-size .btn { min-width: calc(48px * var(--text-scale)); padding: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); }
+.login-size .btn { min-width: calc(48px * var(--ctl-scale)); padding: calc(6px * var(--ctl-scale)) calc(10px * var(--ctl-scale)); }
 
 /* アイコンと文字を並べるボタン（縮小・拡大・戻す・進める など） */
-button.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: calc(6px * var(--text-scale)); }
+button.with-icon { display: inline-flex; align-items: center; justify-content: center; gap: calc(6px * var(--ctl-scale)); }
 button.with-icon svg { flex: 0 0 auto; }
 
 /* 絵記号は線だけの白黒。ボタンの字づらと揃える */
@@ -616,7 +620,7 @@ button.with-icon svg { flex: 0 0 auto; }
 /* 入れる・入れないだけの項目（㊶「約」を付ける など） */
 .field .check { display: inline-flex; align-items: center; gap: calc(8px * var(--text-scale));
   cursor: pointer; font-size: calc(13px * var(--text-scale)); color: var(--ink); }
-.field .check input { width: calc(18px * var(--text-scale)); height: calc(18px * var(--text-scale));
+.field .check input { width: calc(18px * var(--ctl-scale)); height: calc(18px * var(--ctl-scale));
   min-height: 0; margin: 0; accent-color: var(--accent); cursor: pointer; }
 
 /* 用紙のまま見るとき（印刷の見た目の確認） */
@@ -624,7 +628,7 @@ button.with-icon svg { flex: 0 0 auto; }
   height: 100%; max-width: 100%; flex: 0 0 auto; }
 .sheet-view svg { display: block; width: 100%; height: 100%; }
 .paper-pick { display: inline-flex; gap: var(--gap, 10px); align-items: center; }
-.paper-pick .btn { min-width: calc(50px * var(--text-scale)); }
+.paper-pick .btn { min-width: calc(50px * var(--ctl-scale)); }
 /* 印刷では、用紙の大きさに合わせて図面を出す（寸法は Editor が差し込む） */
 @media print { .print-root svg { display: block; } }
 
@@ -666,11 +670,11 @@ button.with-icon svg { flex: 0 0 auto; }
 /* 図面一覧の「開く」「消す」：押し間違いを防ぐため、間隔を広げ、「開く」は2倍・「消す」は半分の幅にする（標準の幅は84） */
 /* 一覧：左から「開く」・名前・更新日時・（「消す」は右端）。「開く」は、名前のすぐ左に小さく置き、「消す」と離す */
 .joblist .jobs .c-act { width: calc(84px * var(--text-scale)); white-space: nowrap; }
-.joblist .jobs .c-act .btn { min-width: 0; width: 100%; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
+.joblist .jobs .c-act .btn { min-width: 0; width: 100%; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
 .joblist .jobs .c-dup { width: calc(150px * var(--text-scale)); text-align: right; white-space: nowrap; }
-.joblist .jobs .c-dup .btn { min-width: 0; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
+.joblist .jobs .c-dup .btn { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
 .joblist .jobs .c-del { width: calc(76px * var(--text-scale)); text-align: right; white-space: nowrap; }
-.joblist .jobs .c-del .btn { min-width: 0; padding-left: calc(10px * var(--text-scale)); padding-right: calc(10px * var(--text-scale)); }
+.joblist .jobs .c-del .btn { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
 /* 狭い画面（スマートフォン）では、表をやめて、1つの案件を1枚のカードにする（名前・日時・ボタンを縦に並べる） */
 @media (max-width: 640px) {
   /* 検索欄は1段目いっぱいに、件数と「案件を追加」は2段目に */
@@ -698,7 +702,7 @@ button.with-icon svg { flex: 0 0 auto; }
   .joblist .jobs .c-dup { order: 5; grid-column: 1 / -1; width: auto; text-align: left; margin-top: calc(6px * var(--text-scale)); }
   /* 「開く」は左に、「消す」は右端に。間を広くあけて、押し間違いを防ぐ */
   .joblist .jobs .c-act { justify-self: start; }
-  .joblist .jobs .c-act .btn { width: auto; min-width: calc(128px * var(--text-scale)); }
+  .joblist .jobs .c-act .btn { width: auto; min-width: calc(128px * var(--ctl-scale)); }
   .joblist .jobs .c-del { justify-self: end; }
 }
 
@@ -717,7 +721,7 @@ button.with-icon svg { flex: 0 0 auto; }
 
 /* ---- アプリ内の確認・入力の窓（Dialogs.tsx）。ほかの窓（設定・利用者の管理など）の上に重ねる ---- */
 .dialog-back { z-index: 300; }
-.dialog-input-row { display: flex; gap: var(--gap, 10px); align-items: stretch; margin-top: calc(6px * var(--text-scale)); }
+.dialog-input-row { display: flex; gap: var(--gap, 10px); align-items: stretch; margin-top: calc(6px * var(--ctl-scale)); }
 .dialog-input-row input { flex: 1 1 auto; min-width: 0; }
 
 /* ---- スマートフォン（幅の狭い画面）：設備を入力する画面は、1列にする ---- */
@@ -797,8 +801,8 @@ button.with-icon svg { flex: 0 0 auto; }
 .wire-kinds { display: flex; gap: calc(4px * var(--text-scale)); }
 .wire-kinds .line-kind { flex: 1 1 0; min-width: 0; padding: calc(5px * var(--text-scale)) calc(6px * var(--text-scale)); display: inline-flex; align-items: center; justify-content: center; }
 .wire-kinds .line-kind svg { display: block; width: calc(44px * var(--text-scale)); height: calc(10px * var(--text-scale)); }
-.tool-select { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
-.tool-select select { min-width: 0; width: auto; padding-right: calc(24px * var(--text-scale)); }
+.tool-select { display: inline-flex; align-items: center; gap: calc(6px * var(--ctl-scale)); font-size: calc(12.5px * var(--ctl-scale)); color: var(--ink-2); }
+.tool-select select { min-width: 0; width: auto; padding-right: calc(24px * var(--ctl-scale)); }
 
 /* 枠の端・角をつかんで大きさを変える（外箱・エリアの区分枠） */
 .canvas .grip { fill: #fff; stroke: var(--draw-accent); stroke-width: 1.5; }
@@ -826,9 +830,9 @@ main.form {
   --fw-s: calc(128px * var(--text-scale));
   --fw-m: calc(180px * var(--text-scale));
   --fw-l: calc(260px * var(--text-scale));
-  --form-h: calc(30px * var(--text-scale));
+  --form-h: calc(30px * var(--ctl-scale));
 }
-@media (pointer: coarse) { main.form { --form-h: max(40px, calc(30px * var(--text-scale))); } }
+@media (pointer: coarse) { main.form { --form-h: max(40px, calc(30px * var(--ctl-scale))); } }
 main.form .fields {
   display: flex; flex-wrap: wrap; align-items: flex-start;
   gap: calc(8px * var(--text-scale)) calc(12px * var(--text-scale));
@@ -842,11 +846,11 @@ main.form .field[data-size="m"] { --fw: var(--fw-m); }
 main.form .field[data-size="l"] { --fw: var(--fw-l); }
 main.form .field label { font-size: calc(12px * var(--text-scale)); line-height: 1.35; }
 main.form .field input[type="text"], main.form .field input[type="number"], main.form .field input[type="date"], main.form .field select {
-  min-height: var(--form-h); padding: calc(2px * var(--text-scale)) calc(8px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale));
+  min-height: var(--form-h); padding: calc(2px * var(--ctl-scale)) calc(8px * var(--ctl-scale)); font-size: calc(12.5px * var(--ctl-scale));
 }
 main.form .radio-row { gap: calc(5px * var(--text-scale)); }
 main.form .radio-row button {
-  min-width: 0; min-height: var(--form-h); padding: calc(2px * var(--text-scale)) calc(8px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale));
+  min-width: 0; min-height: var(--form-h); padding: calc(2px * var(--ctl-scale)) calc(8px * var(--ctl-scale)); font-size: calc(12.5px * var(--ctl-scale));
 }
 main.form .field .help {
   font-size: calc(10.5px * var(--text-scale)); line-height: 1.35;
@@ -860,13 +864,13 @@ main.form .repeat-block > .fields { padding: calc(10px * var(--text-scale)) calc
 /* ---- スマホ（幅700以下）：案件の帯（図面一覧・図面名称・名称を変更・保存）を、1行にする ---- */
 @media (max-width: 700px) {
   .projectbar { gap: calc(4px * var(--text-scale)); padding-left: calc(8px * var(--text-scale)); padding-right: calc(8px * var(--text-scale)); }
-  .projectbar button { min-width: 0; flex: 0 0 auto; white-space: nowrap; padding: calc(4px * var(--text-scale)) calc(8px * var(--text-scale)); font-size: calc(12px * var(--text-scale)); }
+  .projectbar button { min-width: 0; flex: 0 0 auto; white-space: nowrap; padding: calc(4px * var(--ctl-scale)) calc(8px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
   /* 図面の名前は、残った幅いっぱいに出し、足りなければ「…」で省く（ボタンを押しのけない）。ボタンだけで幅を使い切るほど大きい設定のときだけ、次の行に折り返す */
   .projectbar .jobname { flex: 1 1 0; min-width: 3em; max-width: none; margin: 0; font-size: calc(12.5px * var(--text-scale)); }
   /* 保存の状態の文字は、1行に収めるため、スマホでは出さない（保存ボタンの色と、ツールチップで分かる） */
   .projectbar .saved { display: none; }
 }
 @media (max-width: 400px) {
-  .projectbar button { padding-left: calc(6px * var(--text-scale)); padding-right: calc(6px * var(--text-scale)); font-size: calc(11px * var(--text-scale)); }
+  .projectbar button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
   .projectbar .jobname { font-size: calc(11.5px * var(--text-scale)); }
 }
