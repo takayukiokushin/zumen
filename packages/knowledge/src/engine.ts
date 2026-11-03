@@ -434,6 +434,22 @@ export function withDerived(rawAnswers: Answers): Answers {
     );
   }
 
+  /*
+   * LBSに付くPF（パワーヒューズ）の本数（「PF×3」の行）。
+   *   変圧器の手前：電灯回路（単相3線）は×2、動力回路は×3。電灯でも、V結線のときは×3。
+   *                 電灯・動力（V結線など）も×3。用途がまだ入っていないときは、決められないので、書かない
+   *   コンデンサの手前：×3（三相に、1本ずつ）
+   * 入力はさせず、用途と結線方式から自動で決める
+   */
+  const trUsageNow = String(answers.trUsage ?? '').trim();
+  if (trUsageNow) {
+    const lightOnly = trUsageNow === '電灯' && answers.trConnection !== 'tr-vv';
+    d.trPfCountLine = `PF×${lightOnly ? 2 : 3}`;
+  } else {
+    d.trPfCountLine = '';
+  }
+  d.capPfCountLine = 'PF×3';
+
   // 変圧器の容量表記（V結線は2台分を別行にする）
   const phase = String(answers.trConnection ?? '').startsWith('tr-1p') || answers.trConnection === 'tr-vv' ? '1φ' : '3φ';
   const mixedV = answers.trConnection === 'tr-vv' && answers.trUsage === '電灯・動力';

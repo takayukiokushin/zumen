@@ -769,7 +769,7 @@ export const TRANSFORMER: Placement[] = [
     kind: 'parallel',
     row: ROW.lbs,
     when: { key: 'trHasLbs', eq: 'yes' },
-    labelTemplate: ['LBS', '{trLbsRatingLine}', '{trPfLine}'],
+    labelTemplate: ['LBS', '{trLbsRatingLine}', '{trPfCountLine}', '{trPfLine}'],
     repeatCountKey: 'transformerCount',
   },
   {
@@ -836,7 +836,7 @@ export const EXTRAS: Placement[] = [
     kind: 'parallel',
     row: ROW.lbs,
     when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'capHasLbs', eq: 'yes' }] },
-    labelTemplate: ['LBS', '{capLbsRatingLine}', '{capPfLine}'],
+    labelTemplate: ['LBS', '{capLbsRatingLine}', '{capPfCountLine}', '{capPfLine}'],
     repeatCountKey: 'capacitorCount',
   },
   {
