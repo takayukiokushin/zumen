@@ -210,7 +210,6 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     {p.lock && p.lock.userId !== meId && (
                       <b className="editing">　{t('project.editingBy', { user: p.lock.userName })}</b>
                     )}
-                    {p.file_count > 0 && <span className="when">　{t('project.photos', { n: p.file_count })}</span>}
                   </td>
                   <td className="when c-info">{new Date(p.updated_at).toLocaleString(lang)}</td>
                   <td className="c-dup">
@@ -268,7 +267,6 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       </td>
                       <td className="c-name">
                         <span className="name">{p.name}</span>
-                        {p.fileCount > 0 && <span className="when">　{t('project.photos', { n: p.fileCount })}</span>}
                       </td>
                       <td className="when c-info">
                         {new Date(p.updatedAt).toLocaleString(lang)}
@@ -307,7 +305,6 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     </td>
                     <td className="c-name">
                       <span className="name">{p.name}</span>
-                      {p.fileCount > 0 && <span className="when">　{t('project.photos', { n: p.fileCount })}</span>}
                     </td>
                     <td className="when c-info" data-label={t('project.trashDeleted')}>
                       {new Date(p.deletedAt).toLocaleString(lang)}

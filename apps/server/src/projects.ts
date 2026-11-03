@@ -34,6 +34,8 @@ interface ProjectRow {
   drawing: string | null;
   locked_by: string | null;
   locked_at: string | null;
+  /** スケッチ・PDFを読み取った案件なら 1 */
+  sketch_read: number;
 }
 
 /** 誰かが編集中であることの印 */
@@ -85,6 +87,23 @@ function visibleTo(user: User): { where: string; args: string[] } {
     : { where: "(p.owner IS NULL OR p.owner NOT IN (SELECT id FROM users WHERE role = 'sandbox'))", args: [] };
 }
 
+/**
+ * その案件の写真・PDF（読み取りに使ったもの）を、データベースとディスクから消す。消した枚数を返す。
+ * 読み取りに使った画像は、図面を作って「保存」を押したあとは要らないので、残さない。
+ */
+function removeProjectFiles(projectId: string): number {
+  const rows = db.prepare('SELECT id FROM project_files WHERE project_id = ?').all(projectId) as { id: string }[];
+  db.prepare('DELETE FROM project_files WHERE project_id = ?').run(projectId);
+  for (const f of rows) {
+    try {
+      unlinkSync(resolve(FILES_DIR, f.id));
+    } catch {
+      // ファイルが既に無くても、データベースから消せていれば問題ない
+    }
+  }
+  return rows.length;
+}
+
 /** ごみ箱に入れてから期限を過ぎた案件を、写真ごと完全に消す。消した件数を返す */
 export function purgeExpiredTrash(): number {
   const cutoff = new Date(Date.now() - TRASH_MS).toISOString();
@@ -92,14 +111,7 @@ export function purgeExpiredTrash(): number {
     id: string;
   }[];
   for (const { id } of old) {
-    for (const f of db.prepare('SELECT id FROM project_files WHERE project_id = ?').all(id) as { id: string }[]) {
-      try {
-        unlinkSync(resolve(FILES_DIR, f.id));
-      } catch {
-        // ファイルが既に無くても消せていれば問題ない
-      }
-    }
-    db.prepare('DELETE FROM project_files WHERE project_id = ?').run(id);
+    removeProjectFiles(id);
     db.prepare('DELETE FROM projects WHERE id = ?').run(id);
   }
   return old.length;
@@ -203,8 +215,8 @@ projects.post('/practice/copy', async (c) => {
   const t = now();
   const name = `（練習）${src.name}`;
   db.prepare(
-    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, name, t, t, user.id, src.answers, src.drawing, user.id);
+    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner, sketch_read) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, t, t, user.id, src.answers, src.drawing, user.id, src.sketch_read ?? 0);
 
   // 写真も別のファイルとしてコピーする（コピー側を消しても、もとの写真は残る）
   const files = db
@@ -322,6 +334,8 @@ projects.get('/:id', (c) => {
     answers: JSON.parse(row.answers),
     drawing: row.drawing ? JSON.parse(row.drawing) : null,
     files,
+    // 写真は保存したときに消すので、「読み取った案件か」は、写真の有無とは別に覚えている
+    sketchRead: row.sketch_read === 1 || files.some((f) => { const m = (f as { media_type: string }).media_type; return m.startsWith('image/') || m === 'application/pdf'; }),
     lock: currentLock(row.id),
   });
 });
@@ -342,7 +356,7 @@ projects.put('/:id', async (c) => {
   takeLock(id, user.id);
 
   const body = (await c.req.json().catch(() => null)) as
-    | { name?: string; answers?: unknown; drawing?: unknown; baseUpdatedAt?: string; force?: boolean }
+    | { name?: string; answers?: unknown; drawing?: unknown; sketchRead?: boolean; baseUpdatedAt?: string; force?: boolean }
     | null;
   if (!body) return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
 
@@ -386,6 +400,11 @@ projects.put('/:id', async (c) => {
     args.push(body.drawing === null ? null : JSON.stringify(body.drawing));
   }
   db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
+  // 「保存」を押したら、読み取りに使った写真・PDFは消す（図面の元になる内容は、回答と図面として、いま保存した）。
+  // 「読み取った案件か」の印は、写真が無くなっても残す
+  let removed = 0;
+  if (body.answers !== undefined) removed = removeProjectFiles(id);
+  if (removed > 0 || body.sketchRead === true) db.prepare('UPDATE projects SET sketch_read = 1 WHERE id = ?').run(id);
   return c.json({ ok: true, updatedAt: args[0] });
 });
 

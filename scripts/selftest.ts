@@ -438,13 +438,14 @@ try {
   say('\n■ 案件の削除とごみ箱');
   {
     const mine = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: 'ごみ箱の試験' }) })).json()) as { id: string };
+    await call(a, `/api/projects/${mine.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '消す前の内容' } }) });
+    // 写真は「保存」を押すと消えるので、保存のあとに入れる（保存前の写真が、ごみ箱でどう扱われるかを見る）
     const photo = (await (
       await call(a, `/api/projects/${mine.id}/files`, {
         method: 'POST',
         body: JSON.stringify({ fileName: 'a.png', mediaType: 'image/png', data: Buffer.from('dummy-image').toString('base64') }),
       })
     ).json()) as { id: string };
-    await call(a, `/api/projects/${mine.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '消す前の内容' } }) });
     await call(a, `/api/projects/${mine.id}/lock`, { method: 'DELETE' });
 
     const names = async (c: string) =>
@@ -749,6 +750,38 @@ try {
 
   /* ---------- 8. 現地写真 ---------- */
   say('\n■ 現地写真');
+
+  // 読み取りに使った写真・PDFは、「保存」を押したときに消える（読み取った印は残る）
+  {
+    const pj = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '写真を消す試験' }) })).json()) as { id: string };
+    const up = async (type: string) =>
+      (await (await call(a, `/api/projects/${pj.id}/files`, { method: 'POST', body: JSON.stringify({ fileName: 'x', mediaType: type, data: Buffer.from('dummy').toString('base64') }) })).json()) as { id: string };
+    const p1 = await up('image/png');
+    const p2 = await up('application/pdf');
+    const detail = async () => (await (await call(a, `/api/projects/${pj.id}`)).json()) as { files: unknown[]; sketchRead: boolean };
+    let d0 = await detail();
+    check('保存する前は、写真・PDFが預かられている', d0.files.length === 2 && d0.sketchRead === true);
+    await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ name: '写真を消す試験（名前だけ変更）' }) });
+    d0 = await detail();
+    check('名前だけの保存では、写真は消えない', d0.files.length === 2);
+    const sv = await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ name: '写真を消す試験', answers: { siteName: '保存した' }, drawing: null }) });
+    check('保存できる', sv.ok, `${sv.status}`);
+    const d1 = await detail();
+    check('「保存」を押すと、写真もPDFも消える（写真・PDFとも同じ扱い）', d1.files.length === 0);
+    check('写真・PDFのファイルも、ディスクから消えている', !existsSync(join(dataDir, 'files', p1.id)) && !existsSync(join(dataDir, 'files', p2.id)));
+    check('写真が無くなっても、「読み取った案件」の印は残る', d1.sketchRead === true);
+    // 画面が「読み取った」と伝えれば、写真が一度も入っていなくても、印は付く
+    const pk = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '印だけの試験' }) })).json()) as { id: string };
+    const before = (await (await call(a, `/api/projects/${pk.id}`)).json()) as { sketchRead: boolean };
+    await call(a, `/api/projects/${pk.id}`, { method: 'PUT', body: JSON.stringify({ answers: {}, sketchRead: true }) });
+    const after = (await (await call(a, `/api/projects/${pk.id}`)).json()) as { sketchRead: boolean };
+    check('読み取っていない案件は、印が付いていない', before.sketchRead === false);
+    check('画面から「読み取った」と伝えて保存すると、印が付く', after.sketchRead === true);
+    // 保存したあとに、あとから届いた写真は、次の保存で消える
+    const late = await up('image/jpeg');
+    await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '保存した' } }) });
+    check('保存のあとに届いた写真も、次の保存で消える', (await detail()).files.length === 0 && !existsSync(join(dataDir, 'files', late.id)));
+  }
   // 1×1の小さなPNG
   const png =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';

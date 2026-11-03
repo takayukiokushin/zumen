@@ -83,6 +83,8 @@ addColumnIfMissing('projects', 'owner', 'TEXT');
 // 消した日時と、消した人。入っている案件は「ごみ箱」にあり、一覧には出ない（一定期間は戻せる）
 addColumnIfMissing('projects', 'deleted_at', 'TEXT');
 addColumnIfMissing('projects', 'deleted_by', 'TEXT');
+// スケッチ・PDFを読み取った案件か（読み取りに使った写真は、保存したときに消すので、写真の有無とは別に覚える）
+addColumnIfMissing('projects', 'sketch_read', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'member'");
 
 /**

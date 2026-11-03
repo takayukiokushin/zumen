@@ -60,7 +60,7 @@ export function App() {
   const [showNav, setShowNav] = useState(false);
   /**
    * この案件で、スケッチの読み取りを行ったか。
-   * 読み取りに使った写真は案件に残してあるので、案件を開くときは、写真があるかで分かる。
+   * 読み取りに使った写真は、「保存」を押したときに消えるので、印を別に保存してある（案件を開くときは、その印で分かる）。
    * 読み取りを実行した直後も、ここを「はい」にする
    */
   const [sketchRead, setSketchRead] = useState(false);
@@ -191,7 +191,7 @@ export function App() {
       setProjectName(p.name);
       setAnswers(p.answers ?? {});
       setDrawing(p.drawing);
-      setSketchRead(p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf'));
+      setSketchRead(p.sketchRead ?? p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf'));
       setDirty(false);
       setSavedAt(null);
       setError(null);
@@ -246,6 +246,8 @@ export function App() {
         name: projectName,
         answers,
         drawing,
+        // 読み取った案件か（写真は、この保存のときに消えるので、印だけ残す）
+        ...(sketchRead ? { sketchRead: true } : {}),
         ...(baseUpdatedAt ? { baseUpdatedAt } : {}),
         ...(force ? { force: true } : {}),
       });

@@ -112,6 +112,8 @@ export interface ProjectDetail {
   answers: Answers;
   drawing: Doc | null;
   files: { id: string; file_name: string; media_type: string; size: number }[];
+  /** スケッチ・PDFを読み取った案件か（写真は保存したときに消すので、写真の有無とは別に持つ） */
+  sketchRead?: boolean;
   lock: Lock | null;
 }
 
@@ -172,7 +174,7 @@ export const api = {
    */
   saveProject: (
     id: string,
-    patch: { name?: string; answers?: Answers; drawing?: Doc | null; baseUpdatedAt?: string; force?: boolean },
+    patch: { name?: string; answers?: Answers; drawing?: Doc | null; sketchRead?: boolean; baseUpdatedAt?: string; force?: boolean },
   ) =>
     call<{ ok: true; updatedAt: string }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
   /** 消す。本当には消えず、ごみ箱へ入る（30日間は戻せる） */

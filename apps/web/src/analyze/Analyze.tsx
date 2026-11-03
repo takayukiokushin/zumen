@@ -99,7 +99,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
       ok = true;
       onAnalyzed?.();
       setRunId((n) => n + 1);
-      // 読み取りに使った写真は案件に残しておく（後から見返せるように）
+      // 読み取りに使った写真は、「保存」を押すまで預かり、保存したときに消える（サーバー側）
       for (const img of images) {
         await api
           .uploadFile(projectId, { fileName: img.file.name, mediaType: img.mediaType, data: img.data })
