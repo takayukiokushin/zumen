@@ -372,6 +372,18 @@ export function App() {
     return () => clearInterval(timer);
   }, []);
 
+  /**
+   * ブラウザのタブの名前。複数のタブを開いたとき、どの案件のどの画面かが分かるように、「案件名 – 画面名」にする。
+   * 案件を開いていないとき（ログイン・図面一覧）は、案件名が無いので、アプリの名前を添える（タブの小さな絵でも、アプリだと分かる）
+   */
+  const screenKey = { analyze: 'title.analyze', voice: 'title.voice', hearing: 'title.hearing', drawing: 'title.drawing' } as const;
+  useEffect(() => {
+    if (user === undefined) return;
+    if (user === null) document.title = `${t('login.submit')} – ${t('app.name')}`;
+    else if (showList || !projectId) document.title = `${t('project.list')} – ${t('app.name')}`;
+    else document.title = `${projectName || t('project.untitled')} – ${t(screenKey[tab])}`;
+  }, [user, showList, projectId, projectName, tab, lang, t]);
+
   if (user === undefined) return <p className="booting">…</p>;
   if (user === null) return <Login onDone={setUser} />;
 
