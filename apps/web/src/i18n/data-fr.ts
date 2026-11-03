@@ -431,6 +431,7 @@ const data: Record<string, string> = {
   "制御装置の種類": "Type de dispositif de commande",
   "GRはZCTが入る。DGRはZCTに加え零相電圧が必要なので、PASの中にZPDも描く。": "Le GR comporte un ZCT. Le DGR nécessite, en plus du ZCT, une tension homopolaire ; un ZPD est donc aussi dessiné à l’intérieur du PAS.",
   "零相電圧検出装置（PAS・PGS内蔵用）": "Détecteur de tension homopolaire (intégré au PAS/PGS)",
+  "零相電圧検出装置（PAS・PGS内蔵用・LAと接地を共用）": "Détecteur de tension homopolaire (intégré au PAS/PGS ; mise à la terre partagée avec le LA)",
   "VT内蔵": "VT intégré",
   "LA内蔵": "LA intégré",
   "区分開閉器（地上キャビネット用）": "Interrupteur de section (pour armoire au sol)",

@@ -281,6 +281,9 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.pasBuiltinText = builtin.length ? `${builtin.join(',')}内蔵型` : '';
   // 内蔵機器が入ると枠の中が窮屈になるので、入るときは枠を少し広げた図記号を使う
   d.pasSymbol = builtin.length ? 'pas-builtin' : 'pas';
+  // DGRのときにPAS・PGSの中へ入れるZPD。外箱に出す接地の記号は、最大1つまで。
+  // LAも入るときは、LAの接地を使い、ZPDの接地は描かない（ZPDの縦線を、外箱まで伸ばす）
+  d.pasZpdSymbol = answers.pasBuiltinLa === 'yes' ? 'zpd-pas-boxed' : 'zpd-pas';
 
   // PASの定格（例: 7200V300A）。片方しか分からないときは分かる方だけ書く
   d.pasRatingText = [

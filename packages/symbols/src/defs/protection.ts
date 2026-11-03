@@ -168,6 +168,37 @@ export const protectionSymbols: SymbolDef[] = [
     note: 'DGR方式のPAS・PGSに、ZCTやVTと同じく、枠の中に入れる。',
   },
   {
+    // PAS・PGSの中に、LAも一緒に入っているときのZPD。接地の記号は描かず（接地は、LAの下のものを、共用する）、
+    // ZPDの下の縦線を、そのまま、PAS・PGSの外箱（枠の下の線）まで伸ばして、外箱につなぐ。
+    // 外箱の下の線は、スロットの位置（枠の下端の 28 上）にあるので、縦線の長さは 28 で、枠をはみ出さない
+    id: 'zpd-pas-boxed',
+    abbr: 'ZPD',
+    nameJa: '零相電圧検出装置（PAS・PGS内蔵用・LAと接地を共用）',
+    nameFormal: 'ゼロポテンシャルデバイス（ユーザー呼称）',
+    category: 'protection',
+    tags: ['PAS', 'PGS', 'DGR', '零相電圧', '内蔵', 'LA'],
+    altOf: 'zpd',
+    optional: true,
+    box: { w: 40, h: 28 },
+    shapes: [
+      vline(30, 0, 11),
+      rect(1, 6, 36, 16),
+      hline(11, 24, 36),
+      hline(15, 24, 36),
+      vline(30, 15, 28),
+      hline(13, 18, 40),
+      circle(9, 13, CONTACT_R),
+      circle(14, 13, CONTACT_R),
+    ],
+    ports: [
+      { id: 'in', x: 30, y: 0, dir: 'up', role: 'line' },
+      { id: 'sec', x: 40, y: 13, dir: 'right', role: 'control', label: 'DGRへ' },
+    ],
+    status: 'confirmed',
+    statusNote: 'LAが一緒に入るときは、接地の記号を描かず、下の縦線を外箱へつないだ。',
+    note: 'PAS・PGSの外箱に出す接地の記号は、最大1つ。LAとZPDが両方あるときは、LAのものだけを描く。',
+  },
+  {
     id: 'earth',
     abbr: 'E',
     nameJa: '接地',

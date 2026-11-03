@@ -431,6 +431,7 @@ const data: Record<string, string> = {
   "制御装置の種類": "Control unit type",
   "GRはZCTが入る。DGRはZCTに加え零相電圧が必要なので、PASの中にZPDも描く。": "A GR includes a ZCT. A DGR needs zero-sequence voltage in addition to the ZCT, so a ZPD is also drawn inside the PAS.",
   "零相電圧検出装置（PAS・PGS内蔵用）": "Zero-phase voltage detector (for built-in use in PAS/PGS)",
+  "零相電圧検出装置（PAS・PGS内蔵用・LAと接地を共用）": "Zero-phase voltage detector (for built-in use in PAS/PGS; shares its earth with the LA)",
   "VT内蔵": "VT built in",
   "LA内蔵": "LA built in",
   "区分開閉器（地上キャビネット用）": "Sectionalizing switch (for ground cabinet)",

@@ -2188,7 +2188,7 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
     const d = fromLayout(layout(buildComposition(a), a));
     const syms = d.items.filter((it): it is DocSymbol => it.kind === 'symbol');
     const pas = syms.find((s) => s.id === 'pas')!;
-    const zpd = syms.find((s) => s.parent === 'pas' && s.symbolId === 'zpd-pas');
+    const zpd = syms.find((s) => s.parent === 'pas' && s.symbolId.startsWith('zpd-pas'));
     if (!want) {
       if (zpd) fail(`${name}：ZPDが入っています`);
       else console.log(`  ${name}：ZPDは入らない`);
@@ -2211,13 +2211,24 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
       // 記号の絵が占める範囲（接地記号が枠の外へ出る部分は、別に見る）
       return zx0 < o.x + b.w && zx1 > o.x && zy0 < o.y + b.h && zy1 > o.y && !(o.symbolId === 'zct');
     });
+    const withLa = syms.some((s) => s.parent === 'pas' && s.symbolId === 'la');
     const earthY = zpd.y + 32; // 接地記号の1本目
     const vt = others.find((o) => o.symbolId === 'vt');
     const la = others.find((o) => o.symbolId === 'la');
     const problems: string[] = [];
     if (!sizeOk) problems.push(`PASの大きさが変わっています（${pb.w}×${pb.h}）`);
     if (zy1 > frameBottom || zx1 > frameRight) problems.push('ZPDの枠が、PASの枠から、はみ出しています');
-    if (earthY < frameBottom + 3) problems.push(`接地記号が、枠の外に出ていません（枠の下 ${frameBottom}、接地 ${earthY}）`);
+    if (withLa) {
+      // LAも入るとき：接地記号はLAの1つだけ。ZPDは、縦線を枠の下の線まで伸ばす（はみ出さない）
+      if (zpd.symbolId !== 'zpd-pas-boxed') problems.push('LAがあるのに、ZPDの接地記号が残っています');
+      const stemEnd = zpd.y + 28;
+      if (Math.abs(stemEnd - frameBottom) > 0.01) problems.push(`ZPDの縦線が、枠の下の線まで届いていません（線の端 ${stemEnd}、枠の下 ${frameBottom}）`);
+      const earths = d.items.filter((it) => it.kind === 'symbol' && it.parent === 'pas' && ['la', 'zpd-pas'].includes(it.symbolId)).length;
+      if (earths !== 1) problems.push(`外箱の接地記号が ${earths}個あります（最大1つ）`);
+    } else {
+      if (zpd.symbolId !== 'zpd-pas') problems.push('LAが無いのに、ZPDの接地記号が無くなっています');
+      if (earthY < frameBottom + 3) problems.push(`接地記号が、枠の外に出ていません（枠の下 ${frameBottom}、接地 ${earthY}）`);
+    }
     if (vt && zy0 < vt.y + 30) problems.push('ZPDが、VTの下に入っていません');
     if (la && zx0 < la.x + 41) problems.push('ZPDが、LAの右横に入っていません');
     if (hit.length) problems.push(`ZPDが、${hit.map((o) => o.symbolId).join('・')} と重なっています`);
@@ -2230,7 +2241,7 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
     const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
     if (issues.length) problems.push(`図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);
     if (problems.length) fail(`${name}：${problems.join('、')}`);
-    else console.log(`  ${name}：ZPDが、VTの下・LAの右横に入り、接地記号は枠の外。PASの大きさは そのまま`);
+    else console.log(`  ${name}：ZPDが、VTの下・LAの右横に入る。${withLa ? '接地記号はLAの1つだけ（ZPDの縦線は枠まで伸びる）' : '接地記号は枠の外'}。PASの大きさは そのまま`);
   }
 }
 

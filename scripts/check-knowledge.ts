@@ -265,7 +265,9 @@ console.log('\n■ PASの内蔵機器');
     ['GR・LAのみ', 'gr', 'no', 'yes', ['zct', 'la']],
     // DGRのときは、零相電圧を得るZPDも、PAS・PGSの中に入る（GR・SOGなしでは入らない）
     ['DGR・VTのみ', 'dgr', 'yes', 'no', ['zct', 'vt', 'zpd-pas']],
-    ['DGR・VTとLA', 'dgr', 'yes', 'yes', ['zct', 'vt', 'la', 'zpd-pas']],
+    // LAも入るときは、外箱の接地は最大1つなので、接地記号の無いZPD（LAの接地を使う）
+    ['DGR・VTとLA', 'dgr', 'yes', 'yes', ['zct', 'vt', 'la', 'zpd-pas-boxed']],
+    ['DGR・VTなし・LAのみ', 'dgr', 'no', 'yes', ['zct', 'la', 'zpd-pas-boxed']],
     ['DGR・VTなし・LAなし', 'dgr', 'no', 'no', ['zct', 'zpd-pas']],
   ];
   for (const [name, control, vt, la, want] of cases) {

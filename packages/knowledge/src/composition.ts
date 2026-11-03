@@ -269,7 +269,8 @@ export const UPSTREAM: Placement[] = [
   {
     // DGRのときは、零相電圧を得るZPDも、PAS・PGSの枠の中に入れる（枠の大きさは変えず、ZPDのほうを小さくして収める）
     role: 'pas-zpd',
-    symbolId: 'zpd-pas',
+    // LAも入るときは、接地記号の無いほう（engine の pasZpdSymbol）
+    symbolId: '{pasZpdSymbol}',
     kind: 'inside',
     parent: 'pas',
     slot: 'zpd',
