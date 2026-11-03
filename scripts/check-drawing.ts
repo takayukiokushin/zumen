@@ -2276,6 +2276,19 @@ console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
     if (problems.length) fail(`${name}：${problems.join('、')}`);
     else console.log(`  ${name}：PCS ${pcs.length}枠に、真下のPVが1つずつ（線でつながる）`);
   }
+  // PVの容量（kW）は任意。入れたものだけ、PVの下に「100kW」と書く（空欄なら「PV」だけ）
+  {
+    const a: Answers = { ...answers, transformerCount: 3, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '4', pcsToTr1: 2, pcsToTr2: 2, hasGenerator: 'no', hasCapacitor: 'no', pvKw1: '100', pvKw2: '75kW' };
+    const pvs = layout(buildComposition(a), a).symbols.filter((x) => x.symbolId === 'pv').map((x) => x.label.join('|'));
+    const b: Answers = { ...a, pvKw1: undefined as never, pvKw2: '' };
+    const pvs2 = layout(buildComposition(b), b).symbols.filter((x) => x.symbolId === 'pv').map((x) => x.label.join('|'));
+    if (pvs.join(',') !== 'PV|100kW,PV|75kW') fail(`PVの容量の文字が違います（${pvs.join(' / ')}）`);
+    else if (pvs2.join(',') !== 'PV,PV') fail(`PVの容量が空欄のとき、「PV」だけになっていません（${pvs2.join(' / ')}）`);
+    else console.log(`  PVの容量（任意）：入れると「${pvs.join('」「')}」、空欄なら「PV」だけ`);
+    const d = fromLayout(layout(buildComposition(a), a));
+    const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
+    if (issues.length) fail(`PVの容量を入れたとき、図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);
+  }
 }
 
 /* ---------- 31. キュービクルの外枠も動かせる ---------- */

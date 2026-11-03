@@ -809,7 +809,7 @@ export const FEEDERS: Placement[] = Array.from({ length: 8 }, (_, t): Placement[
     symbolId: 'pv',
     kind: 'feeder' as const,
     when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }] },
-    labelTemplate: ['PV'],
+    labelTemplate: ['PV', `{pvKwText${t + 1}}`],
     props: { transformer: `pcsTrNo${t + 1}` },
     laneBase: 200 + t,
   },

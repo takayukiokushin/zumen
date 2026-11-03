@@ -1592,6 +1592,21 @@ export const QUESTIONS: Question[] = [
     help: t === 0 ? 'どの変圧器にも入れなければ、全部1台目の変圧器につながる' : undefined,
   })),
 
+  // PCSの枠の真下に描くPV（太陽電池パネル）の容量。任意。変圧器ごとの枠に1つずつなので、容量の種類ごとには繰り返さず、1回だけ聞く
+  ...Array.from({ length: 8 }, (_, t) => ({
+    id: `pvKw${t + 1}`,
+    group: 'pv' as const,
+    label: `${t + 1}台目の変圧器につなぐPCSの下の、PVの容量`,
+    type: 'number' as const,
+    unit: 'kW',
+    shared: true,
+    showIf: { all: [{ key: 'transformerCount', gt: Math.max(0, t) }] },
+    ask: 'always' as const,
+    help: t === 0
+      ? '任意。入れると、PCSの枠の真下のPVの下に「PV」と並べて、「100kW」のように書く。空欄なら「PV」だけ。変圧器が1台のときは、この1つだけ'
+      : '任意。空欄なら「PV」だけ書く',
+  })),
+
   /* ---------------- 表題欄 ---------------- */
   {
     id: 'drawingName',

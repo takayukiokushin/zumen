@@ -348,6 +348,9 @@ export function withDerived(rawAnswers: Answers): Answers {
   for (let t = 0; t < 8; t++) {
     d[`pcsAtTr${t + 1}`] = perTransformer[t]?.join('\n') ?? '';
     d[`pcsTrNo${t + 1}`] = String(t + 1);
+    // PCSの枠の真下のPVの容量（任意）。入れてあれば「100kW」と書く。空欄なら書かない
+    const pvKw = String(answers[`pvKw${t + 1}`] ?? '').trim();
+    d[`pvKwText${t + 1}`] = pvKw ? (/kw$/i.test(pvKw) ? pvKw : `${pvKw}kW`) : '';
   }
   /*
    * 変圧器の記号。結線方式がまだ入っていないときは、円の中が空のものを使う。
