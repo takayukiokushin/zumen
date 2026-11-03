@@ -13,6 +13,8 @@ import { chooseSheet, issueLabel, tidyDrawing } from './inspect.ts';
 import { SHRINK, scaleLayout } from './layoutScale.ts';
 import type { Issue, IssueKind } from './inspect.ts';
 import { Rich } from '../i18n/Rich.tsx';
+import { WireKindWindow } from './WireKindWindow.tsx';
+import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setWireKind, tidyDoc } from './doc.ts';
@@ -84,6 +86,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   const [mode, setMode] = useState<'select' | 'wire'>('select');
   /** 線を引くときの種類（false＝実線、true＝点線）。埋設ケーブル・TCなどは点線 */
   const [wireDashed, setWireDashed] = useState(false);
+  /** 「線を引く」の、実線・点線の窓の位置。動かした位置を覚えておく（次に開くときも、同じ位置） */
+  const [wireWinPos, setWireWinPos] = useState<Pos | null>(null);
+  const canvasWrapRef = useRef<HTMLDivElement>(null);
   /** 用紙のまま（図枠つき）で見るか。印刷の見た目をそのまま確かめられる */
   const [sheetView, setSheetView] = useState(false);
   /** スマホ（幅の狭い画面）で、ほかの操作のボタン列・記号パレットを開いているか */
@@ -308,40 +313,18 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
               >
                 {t('editor.addNote')}
               </button>
-              <span className="wire-tool sec">
-                <button
-                  type="button"
-                  className={mode === 'wire' ? 'on' : undefined}
-                  aria-pressed={mode === 'wire'}
-                  disabled={sheetView}
-                  onClick={() => {
-                    setMode((m) => (m === 'wire' ? 'select' : 'wire'));
-                    setSelection([]);
-                  }}
-                >
-                  {t('editor.drawWire')}
-                </button>
-                {/* 線を引くモードのあいだだけ、線の種類（実線・点線）を選べる */}
-                {mode === 'wire' && !sheetView && (
-                  <span className="wire-kinds" role="group" aria-label={t('editor.lineKind')}>
-                    {([false, true] as const).map((dashed) => (
-                      <button
-                        key={String(dashed)}
-                        type="button"
-                        className="line-kind"
-                        aria-pressed={wireDashed === dashed}
-                        title={t(dashed ? 'editor.lineDashed' : 'editor.lineSolid')}
-                        aria-label={t(dashed ? 'editor.lineDashed' : 'editor.lineSolid')}
-                        onClick={() => setWireDashed(dashed)}
-                      >
-                        <svg width="44" height="10" viewBox="0 0 44 10" aria-hidden="true">
-                          <line x1="2" y1="5" x2="42" y2="5" stroke="currentColor" strokeWidth="2" strokeDasharray={dashed ? '6 4' : undefined} />
-                        </svg>
-                      </button>
-                    ))}
-                  </span>
-                )}
-              </span>
+              <button
+                type="button"
+                className={`sec${mode === 'wire' ? ' on' : ''}`}
+                aria-pressed={mode === 'wire'}
+                disabled={sheetView}
+                onClick={() => {
+                  setMode((m) => (m === 'wire' ? 'select' : 'wire'));
+                  setSelection([]);
+                }}
+              >
+                {t('editor.drawWire')}
+              </button>
             </div>
           </div>
 
@@ -546,8 +529,23 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
         .print-root svg { width: 100%; height: 100%; }`}</style>
       <div className="print-root" aria-hidden="true" dangerouslySetInnerHTML={{ __html: sheetSvg }} />
 
+      {/* 「線を引く」のあいだだけ、図面の上に出す、線の種類の窓（道具の並びは、広げない） */}
+      {mode === 'wire' && !sheetView && (
+        <WireKindWindow
+          dashed={wireDashed}
+          onChange={setWireDashed}
+          onClose={() => {
+            setMode('select');
+            setSelection([]);
+          }}
+          pos={wireWinPos}
+          onPos={setWireWinPos}
+          anchor={canvasWrapRef}
+        />
+      )}
+
       <div className="editor-body">
-        <div className="canvas-wrap">
+        <div className="canvas-wrap" ref={canvasWrapRef}>
           {sheetView ? (
             <div
               className="sheet-view"

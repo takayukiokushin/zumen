@@ -770,8 +770,7 @@ button.with-icon svg { flex: 0 0 auto; }
 .editor-bar > .tools { flex: 1 1 100%; }
 .zoom-group { margin-left: auto; }
 .tool-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--gap, 10px); }
-/* 「線を引く」の下に出す、線の種類（実線・点線）の見本 */
-.wire-tool { display: inline-flex; flex-direction: column; align-items: stretch; gap: calc(4px * var(--text-scale)); }
+/* 線の種類（実線・点線）の見本ボタン */
 .wire-kinds { display: flex; gap: calc(4px * var(--text-scale)); }
 .wire-kinds .line-kind { flex: 1 1 0; min-width: 0; padding: calc(5px * var(--text-scale)) calc(6px * var(--text-scale)); display: inline-flex; align-items: center; justify-content: center; }
 .wire-kinds .line-kind svg { display: block; width: calc(44px * var(--text-scale)); height: calc(10px * var(--text-scale)); }
@@ -782,3 +781,12 @@ button.with-icon svg { flex: 0 0 auto; }
 .canvas .grip { fill: #fff; stroke: var(--draw-accent); stroke-width: 1.5; }
 .canvas .grip:hover { fill: var(--draw-accent-soft); }
 .canvas .grip-edge { stroke: transparent; fill: none; }
+
+/* 「線を引く」のあいだ、図面の上に重ねて出す、線の種類の窓（上の帯をつかんで動かせる） */
+.wire-window { position: fixed; z-index: 60; background: var(--panel); color: var(--ink); border: 1px solid var(--control-border); border-radius: 4px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28); min-width: calc(150px * var(--text-scale)); touch-action: none; }
+.wire-window-bar { display: flex; align-items: center; gap: calc(6px * var(--text-scale)); padding: calc(3px * var(--text-scale)) calc(6px * var(--text-scale)); background: var(--accent-soft); border-bottom: 1px solid var(--control-border); border-radius: 4px 4px 0 0; cursor: move; user-select: none; }
+.wire-window-title { font-size: calc(12px * var(--text-scale)); color: var(--ink-2); }
+.wire-window-close { padding: 0 calc(7px * var(--text-scale)); min-width: calc(24px * var(--text-scale)); line-height: 1.4; font-size: calc(16px * var(--text-scale)); cursor: pointer; }
+.wire-window-body { display: flex; flex-direction: column; gap: calc(4px * var(--text-scale)); padding: calc(8px * var(--text-scale)); }
+.wire-window-body .line-kind { display: flex; align-items: center; justify-content: flex-start; gap: calc(8px * var(--text-scale)); padding: calc(5px * var(--text-scale)) calc(8px * var(--text-scale)); text-align: left; }
+.wire-window-body .line-kind svg { flex: 0 0 auto; width: calc(44px * var(--text-scale)); height: calc(10px * var(--text-scale)); }

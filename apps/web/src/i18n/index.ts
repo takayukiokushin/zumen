@@ -517,6 +517,9 @@ const ja = {
   'editor.layoutShrinkHelp': '記号どうしのすきまと、図面全体の横幅・縦幅を、少し縮めます（記号や文字の大きさは変わりません）。押すたびに、さらに縮みます。「操作を戻す」で戻せます',
   'editor.layoutExpandHelp': '記号どうしのすきまと、図面全体の横幅・縦幅を、少し広げます（記号や文字の大きさは変わりません）。押すたびに、さらに広がります。「操作を戻す」で戻せます',
   'editor.layoutLimit': 'これ以上、縮められません（これ以上縮めると、記号や文字が重なってしまいます）。',
+  'editor.wireWindowClose': '閉じる（線を引くのも、終わります）',
+  'editor.wireWindowDrag': 'この帯をつかんで動かすと、窓を動かせます',
+  'editor.lineDashedShort': '点線',
 } as const;
 
 export type Key = keyof typeof ja;
@@ -1016,6 +1019,9 @@ const en: Dict = {
   'editor.layoutShrinkHelp': 'Slightly shrinks the gaps between symbols and the overall width and height (symbol and text sizes do not change). It shrinks further each time you press it. You can undo it with “Undo”.',
   'editor.layoutExpandHelp': 'Slightly widens the gaps between symbols and the overall width and height (symbol and text sizes do not change). It widens further each time you press it. You can undo it with “Undo”.',
   'editor.layoutLimit': 'It cannot be shrunk any further (shrinking more would make symbols or text overlap).',
+  'editor.wireWindowClose': 'Close (also ends drawing lines)',
+  'editor.wireWindowDrag': 'Grab this bar and drag to move the window',
+  'editor.lineDashedShort': 'Dashed',
 };
 
 const fr: Dict = {
@@ -1513,6 +1519,9 @@ const fr: Dict = {
   'editor.layoutShrinkHelp': 'Réduit légèrement les espaces entre les symboles ainsi que la largeur et la hauteur totales (la taille des symboles et du texte ne change pas). La disposition se réduit davantage à chaque clic. Vous pouvez annuler avec « Annuler ».',
   'editor.layoutExpandHelp': 'Élargit légèrement les espaces entre les symboles ainsi que la largeur et la hauteur totales (la taille des symboles et du texte ne change pas). La disposition s’élargit davantage à chaque clic. Vous pouvez annuler avec « Annuler ».',
   'editor.layoutLimit': 'Impossible de réduire davantage (les symboles ou le texte se chevaucheraient).',
+  'editor.wireWindowClose': 'Fermer (met aussi fin au tracé des lignes)',
+  'editor.wireWindowDrag': 'Saisissez cette barre et faites glisser pour déplacer la fenêtre',
+  'editor.lineDashedShort': 'Pointillé',
 };
 
 const zh: Dict = {
@@ -2006,6 +2015,9 @@ const zh: Dict = {
   'editor.layoutShrinkHelp': '略微缩小符号之间的间隔以及图纸整体的宽度和高度（符号和文字的大小不变）。每按一次就再缩小一点。可用“撤销操作”还原。',
   'editor.layoutExpandHelp': '略微扩大符号之间的间隔以及图纸整体的宽度和高度（符号和文字的大小不变）。每按一次就再扩大一点。可用“撤销操作”还原。',
   'editor.layoutLimit': '无法再缩小（再缩小符号或文字就会重叠）。',
+  'editor.wireWindowClose': '关闭（同时结束画线）',
+  'editor.wireWindowDrag': '按住此栏拖动，可移动窗口',
+  'editor.lineDashedShort': '虚线',
 };
 
 const ko: Dict = {
@@ -2501,6 +2513,9 @@ const ko: Dict = {
   'editor.layoutShrinkHelp': '기호 사이의 간격과 도면 전체의 가로·세로 크기를 조금 줄입니다(기호와 글자 크기는 바뀌지 않습니다). 누를 때마다 더 줄어듭니다. “작업 되돌리기”로 되돌릴 수 있습니다.',
   'editor.layoutExpandHelp': '기호 사이의 간격과 도면 전체의 가로·세로 크기를 조금 넓힙니다(기호와 글자 크기는 바뀌지 않습니다). 누를 때마다 더 넓어집니다. “작업 되돌리기”로 되돌릴 수 있습니다.',
   'editor.layoutLimit': '더 이상 줄일 수 없습니다(더 줄이면 기호나 글자가 겹칩니다).',
+  'editor.wireWindowClose': '닫기(선 긋기도 끝납니다)',
+  'editor.wireWindowDrag': '이 막대를 잡고 끌면 창을 옮길 수 있습니다',
+  'editor.lineDashedShort': '점선',
 };
 
 const DICTS: Record<Lang, Dict> = { ja, en, fr, zh, ko };
