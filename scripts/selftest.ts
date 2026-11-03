@@ -267,7 +267,7 @@ try {
   const noCookie = await fetch(`${base}/api/projects`);
   check('ログインせずには案件を見られない', noCookie.status === 401, `${noCookie.status}`);
 
-  // 使っている間は、ログインの期限が延びる（開いたまま10日を超えても、保存できるように）
+  // 使っている間は、ログインの期限が延びる（開いたまま30日を超えても、保存できるように）
   {
     const c = await login('tester1');
     const rawToken = c.split('=')[1] ?? '';
@@ -283,7 +283,7 @@ try {
       86400_000;
     sdb.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(new Date(Date.now() + 2 * 86400_000).toISOString(), token);
     const used = await call(c, '/api/projects');
-    check('使うと、ログインの期限が10日先まで延びる', used.status === 200 && left() > 9.9, `残り${left().toFixed(1)}日`);
+    check('使うと、ログインの期限が30日先まで延びる', used.status === 200 && left() > 29.9, `残り${left().toFixed(1)}日`);
     check('延ばしたことが、ブラウザにも伝わる', (used.headers.get('set-cookie') ?? '').includes('zumen_session='));
     sdb.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(new Date(Date.now() - 1000).toISOString(), token);
     const late = await call(c, '/api/projects');

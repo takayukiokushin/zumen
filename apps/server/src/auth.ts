@@ -9,9 +9,9 @@ import { isHttps } from './security.ts';
 const COOKIE = 'zumen_session';
 /**
  * ログインが続く日数。使わずに、これを過ぎたら入れ直してもらう。
- * 使っている間は延びていく（開いたまま編集していれば、10日を超えても切れない）
+ * 使っている間は延びていく（開いたまま編集していれば、30日を超えても切れない）
  */
-const SESSION_DAYS = 10;
+const SESSION_DAYS = 30;
 /** 延ばすのは、残りがこれだけ減ったとき。毎回の書き込みを避けるため（1時間に1回まで） */
 const RENEW_AFTER_MS = 60 * 60_000;
 
