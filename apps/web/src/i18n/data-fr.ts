@@ -381,6 +381,8 @@ const data: Record<string, string> = {
   "図面には「30A」のように、記号なしで書く": "Le schéma l’indique sans symbole, par exemple 「30A」.",
   "PCのヒューズの定格電流": "Courant nominal du fusible du PC",
   "図面には「F:10A」のように、先頭にF:を付けて書く": "Le schéma l’indique avec le préfixe F:, par exemple 「F:10A」.",
+  "LBS本体の定格電圧": "Tension assignée du LBS lui-même",
+  "ふつうは7200V。図面には「7200V 200A」のように、定格電流と並べて書く": "Généralement 7200V. Elle s’écrit avec le courant assigné, par exemple « 7200V 200A »",
   "LBS本体の定格電流": "Courant nominal du corps du LBS",
   "ふつうは200A。図面には「200A」のように、記号なしで書く": "En général 200A. Le schéma l’indique sans symbole, par exemple 「200A」.",
   "パワーヒューズ（PF）の定格電流（G）": "Courant nominal du fusible de puissance (PF) (G)",

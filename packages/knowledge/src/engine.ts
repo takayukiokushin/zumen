@@ -413,7 +413,7 @@ export function withDerived(rawAnswers: Answers): Answers {
 
   // PC・LBSの定格の書き方
   //   PC  … 1行目「30A」／2行目「F:10A」
-  //   LBS … 1行目「200A」／2行目「G50A T30A 40kA」（半角スペース区切り）
+  //   LBS … 1行目「LBS」／2行目「7200V 200A」／（3行目 PF×本数）／最後「G40A T30A 40kA」（半角スペース区切り）
   const pfLine = (g: Value, kind: Value, amp: Value, ka: Value): string => {
     const parts: string[] = [];
     if (g) parts.push(`G${g}`);
@@ -424,7 +424,8 @@ export function withDerived(rawAnswers: Answers): Answers {
   for (const prefix of ['tr', 'cap'] as const) {
     // 定格を入れていないときは、せめて記号名を出す
     d[`${prefix}PcHead`] = answers[`${prefix}PcRating`] || 'PC';
-    d[`${prefix}LbsHead`] = answers[`${prefix}LbsRating`] || 'LBS';
+    // LBSの2行目：「7200V 200A」（定格電圧と定格電流。入れてあるものだけ）
+    d[`${prefix}LbsRatingLine`] = [answers[`${prefix}LbsVoltage`] ? `${answers[`${prefix}LbsVoltage`]}V` : '', answers[`${prefix}LbsRating`] ? String(answers[`${prefix}LbsRating`]) : ''].filter(Boolean).join(' ');
     d[`${prefix}PfLine`] = pfLine(
       answers[`${prefix}PfG`],
       answers[`${prefix}PfLoad`],
@@ -654,8 +655,11 @@ export function viewAt(answers: Answers, index: number): Answers {
   const out: Answers = { ...answers, unitNo: index + 1 };
   for (const id of PER_UNIT_QUESTION_IDS) {
     const v = answers[indexedKey(id, index)];
-    if (v === undefined) delete out[id];
-    else out[id] = v;
+    if (v !== undefined) out[id] = v;
+    // まだ答えていない質問は、1件目の答えは引き継がず、質問の既定値で見る（画面にも、既定値が出ているため。
+    // 既定値が無ければ、未回答）。既定値を見ないと、画面に「200A」「T」「40kA」と出ているのに、2件目以降の図面に出なかった
+    else if (QUESTION_DEFAULTS[id] !== undefined) out[id] = QUESTION_DEFAULTS[id]!;
+    else delete out[id];
   }
   return out;
 }

@@ -381,6 +381,8 @@ const data: Record<string, string> = {
   "図面には「30A」のように、記号なしで書く": "The drawing shows it without a unit symbol, like 「30A」",
   "PCのヒューズの定格電流": "Rated current of the PC fuse",
   "図面には「F:10A」のように、先頭にF:を付けて書く": "The drawing shows it with F: at the front, like 「F:10A」",
+  "LBS本体の定格電圧": "Rated voltage of the LBS itself",
+  "ふつうは7200V。図面には「7200V 200A」のように、定格電流と並べて書く": "Usually 7200V. It is written together with the rated current, like “7200V 200A”",
   "LBS本体の定格電流": "Rated current of the LBS body",
   "ふつうは200A。図面には「200A」のように、記号なしで書く": "Normally 200A. The drawing shows it without a unit symbol, like 「200A」",
   "パワーヒューズ（PF）の定格電流（G）": "Rated current (G) of the power fuse (PF)",

@@ -744,6 +744,12 @@ console.log('\n■ 変圧器ごとのPC・LBS（1台目は無し、2台目だけ
   if (lbs.length !== 1 || pc.length !== 1) fail(`図面に出るPC・LBSの数が違います（LBS ${lbs.length}・PC ${pc.length}）`);
   else if (!lbs[0]!.label.join('|').includes('300A') || !pc[0]!.label.join('|').includes('50A|F:12.5A')) fail(`図面の文字が違います（${lbs[0]!.label.join('|')} / ${pc[0]!.label.join('|')}）`);
   else console.log(`  図面：LBS（2台目だけ）${lbs[0]!.label.join('|')} ／ PC（3台目だけ）${pc[0]!.label.join('|')}`);
+  // 画面に出ている既定値（LBS本体の電圧・電流、PFの負荷側 T、短絡電流 40kA）は、2台目以降も、図面に出る。
+  // 以前は、2台目以降では、既定値が図面に出ず、「LBS／G30A」だけになっていた
+  const dflt: Answers = { ...QUESTION_DEFAULTS, ...answers, transformerCount: 2, trHasLbs: 'yes', trHasLbs__2: 'yes', trPfG: '20A', trPfLoadAmp: '10A', trPfG__2: '30A', trPfLoadAmp__2: '20A' };
+  const lbsLabels = buildComposition(dflt).filter((i) => i.role === 'tr-lbs').map((i) => i.label.join('/'));
+  if (lbsLabels.join(' | ') !== 'LBS/7200V 200A/G20A T10A 40kA | LBS/7200V 200A/G30A T20A 40kA') fail(`LBSの表記が違います（${lbsLabels.join(' | ')}）`);
+  else console.log(`  LBSの表記（1台目・2台目とも同じ形）：${lbsLabels.join(' ／ ')}`);
   // コンデンサも同じ（1台目は無し、2台目だけLBSあり）
   const ac: Answers = { ...answers, hasCapacitor: 'yes', capacitorCount: 2, capHasPc: 'no', capHasLbs: 'no', capHasPc__2: 'no', capHasLbs__2: 'yes', capLbsRating__2: '200A' };
   const capIds = (n: number) => visibleQuestions(viewAt(ac, n), {}).filter((q) => q.group === 'compensation').map((q) => q.id);

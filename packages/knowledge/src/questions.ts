@@ -266,6 +266,12 @@ function breakerRatings(
       help: '図面には「F:10A」のように、先頭にF:を付けて書く',
     },
     {
+      id: P('LbsVoltage'), group, label: 'LBS本体の定格電圧', type: 'select',
+      options: [{ value: '7200', label: '7200V' }, { value: '6600', label: '6600V' }],
+      allowFreeInput: true, defaultValue: '7200', showIf: hasLbs, ask: 'always',
+      help: 'ふつうは7200V。図面には「7200V 200A」のように、定格電流と並べて書く',
+    },
+    {
       id: P('LbsRating'), group, label: 'LBS本体の定格電流', type: 'select',
       options: LBS_RATINGS, allowFreeInput: true, defaultValue: '200A',
       showIf: hasLbs, ask: 'always',
