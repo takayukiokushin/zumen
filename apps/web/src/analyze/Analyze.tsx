@@ -10,7 +10,6 @@ import { Rich } from '../i18n/Rich.tsx';
 interface Props {
   answers: Answers;
   /** 読み取りに使った写真を案件に残すため */
-  projectId: string;
   onApply: (patch: Answers) => void;
   /** 読み取りを実行して、結果が出たときに知らせる（ヒアリング画面の表示を切り替えるため） */
   onAnalyzed?: () => void;
@@ -42,7 +41,7 @@ function toBase64(file: File): Promise<string> {
  * 読み取り結果はそのまま採用せず、必ずこの画面で人が選んでから反映する
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
-export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onGoToHearing }: Props) {
+export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing }: Props) {
   const t = useT();
   const [images, setImages] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
@@ -99,12 +98,7 @@ export function Analyze({ answers, projectId, onApply, onAnalyzed, onStatus, onG
       ok = true;
       onAnalyzed?.();
       setRunId((n) => n + 1);
-      // 読み取りに使った写真は、「保存」を押すまで預かり、保存したときに消える（サーバー側）
-      for (const img of images) {
-        await api
-          .uploadFile(projectId, { fileName: img.file.name, mediaType: img.mediaType, data: img.data })
-          .catch(() => undefined);
-      }
+      // 読み取りに使った写真・PDFは、サーバーには預けない（この画面の中で確認に使うだけ。画面を閉じれば消える）
     } catch (e) {
       setError(e instanceof Error ? e.message : t('an.err.fail'));
     } finally {

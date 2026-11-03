@@ -1,4 +1,4 @@
-import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Hono } from 'hono';
 import { FILES_DIR, db, now } from './db.ts';
@@ -102,6 +102,51 @@ function removeProjectFiles(projectId: string): number {
     }
   }
   return rows.length;
+}
+
+export interface PhotoPurgeResult {
+  /** 写真・PDFがある案件の数（ごみ箱の中も含む） */
+  projects: number;
+  /** 写真・PDFの数 */
+  files: number;
+  bytes: number;
+  /** データベースに記録が無いのに、ディスクに残っていたファイルの数 */
+  orphans: number;
+}
+
+/**
+ * 保存されている写真・PDFを、全部の案件から消す（案件の回答・図面は、そのまま）。
+ * 以前の版が預かっていた写真を、まとめて片付けるためのもの。「読み取った案件」の印は、消す前に付けておく。
+ * execute が false のときは、消さずに、何が消えるかだけ数える。
+ */
+export function purgeAllPhotos(execute: boolean): PhotoPurgeResult {
+  const rows = db.prepare('SELECT id, project_id, size FROM project_files').all() as {
+    id: string;
+    project_id: string;
+    size: number;
+  }[];
+  const projectIds = [...new Set(rows.map((r) => r.project_id))];
+  const known = new Set(rows.map((r) => r.id));
+  let orphanNames: string[] = [];
+  try {
+    orphanNames = readdirSync(FILES_DIR).filter((n) => !known.has(n) && statSync(resolve(FILES_DIR, n)).isFile());
+  } catch {
+    // フォルダが無ければ、残っているファイルも無い
+  }
+  if (execute) {
+    for (const pid of projectIds) {
+      db.prepare('UPDATE projects SET sketch_read = 1 WHERE id = ?').run(pid);
+      removeProjectFiles(pid);
+    }
+    for (const n of orphanNames) {
+      try {
+        unlinkSync(resolve(FILES_DIR, n));
+      } catch {
+        // 消せなければ、次の機会に
+      }
+    }
+  }
+  return { projects: projectIds.length, files: rows.length, bytes: rows.reduce((n, r) => n + r.size, 0), orphans: orphanNames.length };
 }
 
 /** ごみ箱に入れてから期限を過ぎた案件を、写真ごと完全に消す。消した件数を返す */

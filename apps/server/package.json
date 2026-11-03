@@ -11,6 +11,7 @@
     "user:remove": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts remove",
     "user:list": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts list",
     "backup": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts backup",
+    "photos:purge": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts purge-photos",
     "apikey": "node --experimental-strip-types --disable-warning=ExperimentalWarning src/cli.ts apikey"
   },
   "dependencies": {

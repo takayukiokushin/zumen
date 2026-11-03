@@ -478,7 +478,6 @@ export function App() {
               <Analyze
                 key={projectId}
                 answers={effective}
-                projectId={projectId}
                 onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
                 onAnalyzed={() => setSketchRead(true)}
                 onStatus={setAnalyzeStatus}

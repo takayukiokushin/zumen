@@ -214,7 +214,4 @@ export const api = {
     call<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}/unlock`, { method: 'POST' }),
   removeUser: (id: string) =>
     call<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-
-  uploadFile: (projectId: string, file: { fileName: string; mediaType: string; data: string }) =>
-    call<{ id: string }>(`/api/projects/${projectId}/files`, { method: 'POST', body: JSON.stringify(file) }),
 };

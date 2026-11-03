@@ -3,6 +3,7 @@ import './env.ts';
 import { createUser, deleteUser, listUsers, ROLE_LABEL, ROLES, setPassword } from './auth.ts';
 import type { Role } from './auth.ts';
 import { backup, sourceDir } from './backup.ts';
+import { purgeAllPhotos } from './projects.ts';
 import { checkPassword } from './password-policy.ts';
 import { checkApiKey, explainApiError } from './apikey.ts';
 
@@ -14,6 +15,8 @@ import { checkApiKey, explainApiError } from './apikey.ts';
  *   pnpm --filter @zumen/server user:remove <ID>
  *   pnpm --filter @zumen/server user:list
  *   pnpm --filter @zumen/server backup <保存先フォルダ>
+ *   pnpm --filter @zumen/server photos:purge          （消えるものを数えるだけ）
+ *   pnpm --filter @zumen/server photos:purge --yes    （写真・PDFを全部消す）
  *   pnpm --filter @zumen/server apikey
  */
 const [command, ...args] = process.argv.slice(2);
@@ -73,6 +76,23 @@ try {
       console.log(`  案件のデータ: ${(r.bytes / 1024).toFixed(0)}KB / 写真: ${r.fileCount}枚`);
       break;
     }
+    case 'purge-photos': {
+      const execute = args.includes('--yes');
+      const r = purgeAllPhotos(execute);
+      const mb = (r.bytes / 1024 / 1024).toFixed(1);
+      if (!execute) {
+        console.log(`消える写真・PDF: ${r.files}枚（${mb}MB）／ ${r.projects}件の案件／ 持ち主の分からないファイル ${r.orphans}個`);
+        if (r.files + r.orphans === 0) console.log('消すものはありません。');
+        else {
+          console.log('まだ何も消していません。消すときは、先に控え（backup）を作ってから、--yes を付けて、もう一度実行してください。');
+          console.log('（案件の回答・図面は消えません。消えるのは、読み取りに使った写真・PDFだけです）');
+        }
+      } else {
+        console.log(`写真・PDFを消しました: ${r.files}枚（${mb}MB）／ ${r.projects}件の案件／ 持ち主の分からないファイル ${r.orphans}個`);
+        console.log('案件の回答・図面は、そのままです。');
+      }
+      break;
+    }
     case 'apikey': {
       try {
         await checkApiKey();
@@ -84,7 +104,7 @@ try {
     }
     default:
       console.log(
-        '使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / remove <ID> / list / backup <保存先> / apikey',
+        '使い方: add <ID> <名前> <パスワード> / passwd <ID> <パスワード> / remove <ID> / list / backup <保存先> / purge-photos [--yes] / apikey',
       );
       process.exit(1);
   }

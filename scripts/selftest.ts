@@ -10,7 +10,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import type { ChildProcess } from 'node:child_process';
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -829,6 +829,31 @@ try {
       ng('控えから案件を読み出せる', e instanceof Error ? e.message : String(e));
     }
     check('控えに写真が入っている', readdirSync(join(latest, 'files')).length > 0);
+  }
+
+  /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
+  say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
+  {
+    const pj = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '一括削除の試験' }) })).json()) as { id: string };
+    const ids: string[] = [];
+    for (const type of ['image/png', 'application/pdf']) {
+      const r = (await (await call(a, `/api/projects/${pj.id}/files`, { method: 'POST', body: JSON.stringify({ fileName: 'x', mediaType: type, data: Buffer.from('dummy-purge').toString('base64') }) })).json()) as { id: string };
+      ids.push(r.id);
+    }
+    // 持ち主の分からないファイル（記録が無いのに残っているもの）
+    writeFileSync(join(dataDir, 'files', 'orphan-test-file'), 'x');
+    const dry = await runNode(['apps/server/src/cli.ts', 'purge-photos'], env);
+    check('数えるだけのときは、何も消さない', dry.code === 0 && ids.every((id) => existsSync(join(dataDir, 'files', id))) && existsSync(join(dataDir, 'files', 'orphan-test-file')), dry.out.trim().split('\n')[0]);
+    check('数えた結果に、枚数が出る', /消える写真・PDF: \d+枚/.test(dry.out));
+    const run = await runNode(['apps/server/src/cli.ts', 'purge-photos', '--yes'], env);
+    check('--yes を付けると、消せる', run.code === 0, run.out.trim().split('\n')[0]);
+    check('写真・PDFのファイルが消えている', ids.every((id) => !existsSync(join(dataDir, 'files', id))));
+    check('持ち主の分からないファイルも消えている', !existsSync(join(dataDir, 'files', 'orphan-test-file')));
+    const after = (await (await call(a, `/api/projects/${pj.id}`)).json()) as { files: unknown[]; sketchRead: boolean; name: string };
+    check('案件は残り、写真の記録だけ無い', after.name === '一括削除の試験' && after.files.length === 0);
+    check('「読み取った案件」の印は残る', after.sketchRead === true);
+    const again = await runNode(['apps/server/src/cli.ts', 'purge-photos'], env);
+    check('もう一度数えると、消すものは無い', /消すものはありません/.test(again.out));
   }
 
   /* ---------- 10. 作図 ---------- */
