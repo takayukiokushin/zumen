@@ -16,6 +16,7 @@ import type { Tab } from './TabBar.tsx';
 import { UserAdmin } from './projects/UserAdmin.tsx';
 import { SettingsPanel } from './settings/SettingsPanel.tsx';
 import { isNarrowScreen } from './settings/settings.tsx';
+import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { HelpPanel } from './help/HelpPanel.tsx';
 import { helpSeen, markHelpSeen } from './help/seen.ts';
 import { useDialogs } from './Dialogs.tsx';
@@ -419,6 +420,8 @@ export function App() {
 
       <div className="body">
         <Shield readOnly={readOnly && !listing}>
+          {/* いま開いている画面の中でエラーが起きても、白くならない。入力内容・図面は、この外（App）が持っているので消えない */}
+          <ErrorBoundary scope="screen" resetKey={`${listing ? 'list' : tab}:${projectId ?? ''}`}>
           {listing ? (
             <JobList
               meId={user.id}
@@ -472,9 +475,11 @@ export function App() {
               </div>
             </KeepScroll>
           )}
+          </ErrorBoundary>
           {/* スケッチ読み取り：別のタブ・図面一覧を見ているあいだは、見えないだけで、作ったまま（読み取りも、画像も、結果も、消えない） */}
           {projectId && (
             <div className="analyze-keep" hidden={listing || tab !== 'analyze'}>
+              <ErrorBoundary scope="screen" resetKey={projectId}>
               <Analyze
                 key={projectId}
                 answers={effective}
@@ -483,6 +488,7 @@ export function App() {
                 onStatus={setAnalyzeStatus}
                 onGoToHearing={() => setTab('hearing')}
               />
+              </ErrorBoundary>
             </div>
           )}
         </Shield>
