@@ -520,6 +520,7 @@ const ja = {
   'editor.wireWindowClose': '閉じる（線を引くのも、終わります）',
   'editor.wireWindowDrag': 'この帯をつかんで動かすと、窓を動かせます',
   'editor.lineDashedShort': '点線',
+  'insp.openGap': 'つながっていません。向かい合う線（や接続点）が、横にずれていて、自動ではつなげませんでした。位置を揃えてから、もう一度「結線を整える」を押してください',
 } as const;
 
 export type Key = keyof typeof ja;
@@ -1022,6 +1023,7 @@ const en: Dict = {
   'editor.wireWindowClose': 'Close (also ends drawing lines)',
   'editor.wireWindowDrag': 'Grab this bar and drag to move the window',
   'editor.lineDashedShort': 'Dashed',
+  'insp.openGap': 'Not connected. The facing lines (or connection points) are offset sideways, so they could not be joined automatically. Align them, then press “Tidy connections” again',
 };
 
 const fr: Dict = {
@@ -1522,6 +1524,7 @@ const fr: Dict = {
   'editor.wireWindowClose': 'Fermer (met aussi fin au tracé des lignes)',
   'editor.wireWindowDrag': 'Saisissez cette barre et faites glisser pour déplacer la fenêtre',
   'editor.lineDashedShort': 'Pointillé',
+  'insp.openGap': 'Non relié. Les traits (ou points de connexion) en vis-à-vis sont décalés latéralement et n’ont pas pu être reliés automatiquement. Alignez-les, puis appuyez de nouveau sur « Remettre les liaisons d’aplomb »',
 };
 
 const zh: Dict = {
@@ -2018,6 +2021,7 @@ const zh: Dict = {
   'editor.wireWindowClose': '关闭（同时结束画线）',
   'editor.wireWindowDrag': '按住此栏拖动，可移动窗口',
   'editor.lineDashedShort': '虚线',
+  'insp.openGap': '未连接。相对的线（或接点）横向错开，无法自动连接。请先对齐位置，再按一次“整理接线”',
 };
 
 const ko: Dict = {
@@ -2516,6 +2520,7 @@ const ko: Dict = {
   'editor.wireWindowClose': '닫기(선 긋기도 끝납니다)',
   'editor.wireWindowDrag': '이 막대를 잡고 끌면 창을 옮길 수 있습니다',
   'editor.lineDashedShort': '점선',
+  'insp.openGap': '연결되어 있지 않습니다. 마주 보는 선(또는 접속점)이 옆으로 어긋나 있어 자동으로 연결하지 못했습니다. 위치를 맞춘 뒤 다시 「결선 정리」를 누르세요',
 };
 
 const DICTS: Record<Lang, Dict> = { ja, en, fr, zh, ko };

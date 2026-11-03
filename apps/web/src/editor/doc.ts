@@ -223,7 +223,7 @@ export interface Doc {
    * 記号を消して空いた、縦の範囲（記号と文字が占めていた高さ）。
    * 「結線を整える」で、ここに残った余白を詰めるのに使う（詰めたら、ここから外す）
    */
-  vacated?: { y0: number; y1: number }[];
+  vacated?: { y0: number; y1: number; x0?: number; x1?: number }[];
   /** 自動で作った図面の控え。手で直した内容を取り出す基準になる */
   base?: Baseline;
   /** 手で直した内容の記録（作り直すたびに更新する）。対象の機器がいまの入力に無いものも、ここに残る */
@@ -252,6 +252,11 @@ export const defOf = (it: { symbolId: string; w?: number; h?: number }): SymbolD
 
 let seq = 0;
 const nextId = (prefix: string) => `${prefix}-${++seq}`;
+
+/** 接続点どうしをつなぐ、まっすぐな線を1本作る（「結線を整える」が、つなぎ忘れの隙間を埋めるのに使う） */
+export function makeWire(x1: number, y1: number, x2: number, y2: number, at1: Anchor, at2: Anchor): DocWire {
+  return { kind: 'wire', id: nextId('wire'), x1, y1, x2, y2, at1, at2 };
+}
 
 /** 自動レイアウトの結果を、編集できる形に取り込む */
 export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
@@ -325,7 +330,7 @@ function portAt(doc: Doc, a: Anchor | undefined): { x: number; y: number } | nul
  * 接続点から、線が出ていく向き（記号を回していれば、回したあとの向き）。
  * 上＝(0,-1)、下＝(0,1)、左＝(-1,0)、右＝(1,0)。無ければ null
  */
-function outwardOf(doc: Doc, a: Anchor | undefined): { dx: number; dy: number } | null {
+export function outwardOf(doc: Doc, a: Anchor | undefined): { dx: number; dy: number } | null {
   if (!a) return null;
   const it = doc.items.find((i) => i.id === a.item);
   if (!it || it.kind !== 'symbol') return null;
@@ -846,7 +851,7 @@ export const addWire = (
 export const removeItem = (doc: Doc, id: string): Doc => {
   const gone = new Set(groupOf(doc, id));
   // 消す記号（と文字）が占めていた高さを覚えておく。あとで、ここに残った余白を詰める
-  const freed: { y0: number; y1: number }[] = [];
+  const freed: { y0: number; y1: number; x0: number; x1: number }[] = [];
   for (const it of doc.items) {
     if (it.kind !== 'symbol' || !gone.has(it.id)) continue;
     const rb = rotatedBox(defOf(it).box, it.rotate);
@@ -857,7 +862,7 @@ export const removeItem = (doc: Doc, id: string): Doc => {
       y0 = Math.min(y0, r.y0);
       y1 = Math.max(y1, r.y1);
     }
-    freed.push({ y0, y1 });
+    freed.push({ y0, y1, x0: it.x + rb.dx, x1: it.x + rb.dx + rb.w });
   }
   return {
     ...doc,

@@ -1921,6 +1921,55 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
     if (ok2.doc.items.filter((it) => it.kind === 'wire').length !== 1) fail('向かい合う2本（相手が1つ）が、1本につながっていません');
     else console.log('  向かい合う2本（相手が1つ）は、1本につながる');
   }
+  // LBS → VCS → SR → SC と並んだ列で、VCS を消したとき、LBS と SR を、まっすぐな線でつなぐ
+  // （線まで消した場合も、片側の線だけ消した場合も）。つなぐ相手が横にずれているときは、つながずに、場所を知らせる
+  {
+    const ac: Answers = {
+      ...answers, transformerCount: 2, feederCount: 0, hasCapacitor: 'yes', capacitorCount: 2,
+      capHasPc: 'yes', capHasLbs: 'yes', capHasVcs: 'yes', hasReactor: 'yes', hasPv: 'no', hasGenerator: 'no',
+    };
+    const col = fromLayout(layout(buildComposition(ac), ac));
+    const wiresOf = (d: Doc, id: string) =>
+      d.items.filter((w): w is DocWire => w.kind === 'wire' && (w.at1?.item === id || w.at2?.item === id));
+    const joined = (d: Doc, up: string, down: string) =>
+      d.items.some((w) => w.kind === 'wire' && [w.at1?.item, w.at2?.item].includes(up) && [w.at1?.item, w.at2?.item].includes(down) && (w.x1 === w.x2));
+    if (!col.items.some((i) => i.id === 'cap-vcs-1' && i.kind === 'symbol')) fail('試験の前提：コンデンサの列に VCS がありません');
+    else {
+      const vcsWires = wiresOf(col, 'cap-vcs-1');
+      const drop = (d: Doc, ids: string[]): Doc => ({ ...d, items: d.items.filter((i) => !ids.includes(i.id)) });
+      const lower = [...vcsWires].sort((p, q) => Math.max(q.y1, q.y2) - Math.max(p.y1, p.y2))[0]!;
+      const cases: [string, Doc][] = [
+        ['VCSだけ消す', removeItem(col, 'cap-vcs-1')],
+        ['VCSと、その両側の線を消す', drop(removeItem(col, 'cap-vcs-1'), vcsWires.map((w) => w.id))],
+        ['VCSと、下側の線だけ消す', drop(removeItem(col, 'cap-vcs-1'), [lower.id])],
+      ];
+      for (const [name, cut] of cases) {
+        const r = tidyDrawing(cut, 'A3', 'landscape');
+        const left = r.issues.filter((i) => i.kind === 'floating').length;
+        if (!joined(r.doc, 'cap-lbs-1', 'reactor-1')) fail(`${name}：LBS と SR が、まっすぐな線でつながっていません`);
+        else if (left > 0) fail(`${name}：つながっていない所が ${left}件 残りました`);
+        else if (r.doc.items.filter((i) => i.kind === 'wire' && i.at1 && i.at2).some((w) => w.kind === 'wire' && w.x1 !== w.x2 && w.y1 !== w.y2)) fail(`${name}：斜めの線ができました`);
+        else console.log(`  ${name}：LBS と SR が、まっすぐ1本でつながる`);
+      }
+      // 横にずれていて、まっすぐには、つなげないとき：勝手につながず、場所を知らせる
+      const off = removeItem(moveItem(col, 'reactor-1', 30, 0), 'cap-vcs-1');
+      const r = tidyDrawing(off, 'A3', 'landscape');
+      const notes = r.issues.filter((i) => i.kind === 'floating' && i.message.includes('ずれて'));
+      if (joined(r.doc, 'cap-lbs-1', 'reactor-1')) fail('横にずれているのに、斜めの線でつないでしまいました');
+      else if (notes.length === 0) fail('横にずれてつなげないとき、場所の知らせが出ていません');
+      else console.log(`  横にずれているとき：つながずに、${notes.length}か所に「ずれている」と知らせる`);
+      // 手で位置を揃えれば（SRを元の位置へ戻す）、もう一度の「整える」でつながる
+      const r2 = tidyDrawing(moveItem(r.doc, 'reactor-1', -30, 0), 'A3', 'landscape');
+      if (!joined(r2.doc, 'cap-lbs-1', 'reactor-1')) fail('位置を揃えたのに、LBS と SR がつながっていません');
+      else console.log('  位置を揃えて、もう一度整えると、LBS と SR がつながる');
+    }
+    // もともと線のない（つなぐつもりのない）接続点を、勝手につながない：消していない図面は、整えても、線の本数が増えない
+    const n0 = col.items.filter((i) => i.kind === 'wire').length;
+    const keep = tidyDrawing(col, 'A3', 'landscape');
+    const n1 = keep.doc.items.filter((i) => i.kind === 'wire').length;
+    if (n1 > n0) fail(`何も消していない図面で、線が ${n1 - n0}本 増えました`);
+    else console.log('  何も消していない図面は、整えても、線が増えない');
+  }
 }
 
 /* ---------- 28. 記号を消したあと、「結線を整える」で余白を詰める ---------- */

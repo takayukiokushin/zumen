@@ -4,7 +4,7 @@ import type { Key } from '../i18n/index.ts';
 import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
-import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, moveItem, nearestPort, portsOf } from './doc.ts';
+import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf } from './doc.ts';
 
 /**
  * 図面全体を見まわして、おかしなところを直す。
@@ -336,6 +336,147 @@ function bridgeBrokenWires(doc: Doc): { doc: Doc; fixed: number; unsure: { x: nu
   const ends = freeEnds(cur);
   const unsure = ends.filter((e) => bridgeCandidates(cur, e, ends).length > 0).map((e) => ({ x: e.x, y: e.y }));
   return { doc: cur, fixed, unsure };
+}
+
+
+/** つなぎ忘れの隙間を、向かい合う接続点を見つけてつなぐときの、いちばん長い隙間 */
+const GAP_REACH = 200;
+/** 「つなぎ忘れかもしれない」と、場所を知らせる、横（縦）のずれの上限（これより大きくずれたものは、別の回路とみなす） */
+const GAP_NOTE_SKEW = 80;
+
+/** つながり先を探す相手（線を引き出せる口）。接続点か、行き止まりの線の端 */
+interface Source {
+  /** 接続点のとき */
+  port?: { item: string; port: string };
+  /** 線の端のとき */
+  end?: FreeEnd;
+  x: number;
+  y: number;
+  /** 線が出ていく向き */
+  dx: number;
+  dy: number;
+}
+
+/** どの線もつながっていない接続点（親子の内蔵品・重ねて描く印は数えない） */
+function openPortSources(doc: Doc): Source[] {
+  const wires = wiresOf(doc);
+  const out: Source[] = [];
+  for (const it of symbolsOf(doc)) {
+    if (it.parent || getSymbol(it.symbolId).overlay) continue;
+    for (const p of portsOf(it)) {
+      const used = wires.some(
+        (w) =>
+          (w.at1?.item === it.id && w.at1.port === p.id) ||
+          (w.at2?.item === it.id && w.at2.port === p.id) ||
+          Math.hypot(w.x1 - p.x, w.y1 - p.y) <= TOUCH ||
+          Math.hypot(w.x2 - p.x, w.y2 - p.y) <= TOUCH,
+      );
+      if (used) continue;
+      const o = outwardOf(doc, { item: it.id, port: p.id });
+      if (!o) continue;
+      out.push({ port: { item: it.id, port: p.id }, x: p.x, y: p.y, dx: o.dx, dy: o.dy });
+    }
+  }
+  return out;
+}
+
+/** b は、a から見て、まっすぐ前にあるか（向かい合っていて、ずれが off 以内、間に記号が無い） */
+function faces(doc: Doc, a: Source, b: Source, reach: number, off: number, minOff = 0): boolean {
+  if (a.dx !== -b.dx || a.dy !== -b.dy) return false;
+  const ahead = (b.x - a.x) * a.dx + (b.y - a.y) * a.dy;
+  if (ahead < 0.5 || ahead > reach) return false;
+  const gap = a.dx !== 0 ? Math.abs(b.y - a.y) : Math.abs(b.x - a.x);
+  if (gap > off || gap < minOff) return false;
+  const probe: DocWire = { kind: 'wire', id: '', x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+  return !symbolsOf(doc).some((s) => segmentEntersBox(probe, symbolBox(s)));
+}
+
+/**
+ * 0.5 つなぎ忘れの隙間を、向かい合う相手とつなぐ。
+ *
+ * 記号を消したり、線を消したりしたあと、上の機器の出口と、下の機器の入口が、線もなく離れてしまうことがある。
+ * 向かい合う2つの接続点（どちらにも線がつながっていない）、または、行き止まりの線の端と接続点が、
+ * 同じ直線の上にあって、間に記号が無く、相手がほかに無いときだけ、まっすぐな線でつなぐ。
+ * 相手が2つ以上ある・直線の上に無い（ずれている）ときは、勝手につながない。
+ */
+function connectOpenGaps(doc: Doc): { doc: Doc; fixed: number } {
+  let cur = doc;
+  let fixed = 0;
+  for (let guard = 0; guard < 100; guard++) {
+    const sources: Source[] = [...openPortSources(cur), ...freeEnds(cur).map((e): Source => ({ end: e, x: e.x, y: e.y, dx: e.dx, dy: e.dy }))];
+    let pair: [Source, Source] | null = null;
+    for (const a of sources) {
+      if (!a.port && !a.end) continue;
+      const mine = sources.filter((b) => b !== a && faces(cur, a, b, GAP_REACH, BRIDGE_SKEW));
+      if (mine.length !== 1) continue;
+      const b = mine[0]!;
+      // 行き止まりの線の端どうしは、別の処理（途切れた線のつなぎ直し）で扱う
+      if (a.end && b.end) continue;
+      const theirs = sources.filter((c) => c !== b && faces(cur, b, c, GAP_REACH, BRIDGE_SKEW));
+      if (theirs.length === 1 && theirs[0] === a) {
+        pair = [a, b];
+        break;
+      }
+    }
+    if (!pair) break;
+    const [a, b] = pair;
+    if (a.port && b.port) {
+      cur = { ...cur, items: [...cur.items, makeWire(a.x, a.y, b.x, b.y, a.port, b.port)] };
+    } else {
+      const e = (a.end ?? b.end)!;
+      const p = (a.port ?? b.port)!;
+      const to = a.port ? a : b;
+      cur = {
+        ...cur,
+        items: cur.items.map((it) => {
+          if (it.id !== e.wire.id || it.kind !== 'wire') return it;
+          const w: DocWire = { ...it, orphan: undefined };
+          if (e.end === 1) {
+            w.x1 = to.x;
+            w.y1 = to.y;
+            w.at1 = p;
+          } else {
+            w.x2 = to.x;
+            w.y2 = to.y;
+            w.at2 = p;
+          }
+          return w;
+        }),
+      };
+    }
+    fixed++;
+  }
+  return { doc: cur, fixed };
+}
+
+/**
+ * つなぎ忘れかもしれないが、位置がずれていて、自動ではつなげないところ。
+ * 向かい合う接続点（または行き止まりの線の端）が、少しずれて、まっすぐ前に並んでいる。
+ * 場所を知らせて、位置を揃えてもらう（揃えれば、もう一度の「整える」でつながる）。
+ */
+function openGaps(doc: Doc): { x: number; y: number; end?: FreeEnd; port?: { item: string; port: string } }[] {
+  const ports = openPortSources(doc);
+  const ends = freeEnds(doc).map((e): Source => ({ end: e, x: e.x, y: e.y, dx: e.dx, dy: e.dy }));
+  const out: { x: number; y: number; end?: FreeEnd; port?: { item: string; port: string } }[] = [];
+  // 記号を消した跡（Doc.vacated）をまたぐ隙間だけ数える（もともと開いている接続点は、いくらでもあるので）
+  const vacated = doc.vacated ?? [];
+  for (const a of [...ports, ...ends]) {
+    // 行き止まりの線の端は、相手が接続点のとき。接続点どうしは、双方が向かい合っているときだけ（一方だけ数える）
+    const others = a.end ? ports : ports.filter((p) => p !== a);
+    const hit = others.find((b) => faces(doc, a, b, GAP_REACH, GAP_NOTE_SKEW, BRIDGE_SKEW + 0.01));
+    if (!hit) continue;
+    if (!a.end) {
+      if (a.dx < 0 || a.dy < 0) continue;
+      const lo = Math.min(a.y, hit.y) - 1;
+      const hi = Math.max(a.y, hit.y) + 1;
+      // 消した記号の真上・真下に並んでいた接続点だけ（横に離れた別の回路は、数えない）
+      const m = 12;
+      const inline = (x: number, v: { x0?: number; x1?: number }) => v.x0 === undefined || v.x1 === undefined || (x >= v.x0 - m && x <= v.x1 + m);
+      if (!vacated.some((v) => v.y0 <= hi && v.y1 >= lo && inline(a.x, v) && inline(hit.x, v))) continue;
+    }
+    out.push({ x: a.x, y: a.y, ...(a.end ? { end: a.end } : { port: a.port! }) });
+  }
+  return out;
 }
 
 /**
@@ -1026,6 +1167,11 @@ export function tidyDrawing(
   next = applyAnchors(br.doc);
   fixed.floating += br.fixed;
 
+  // 線もなく離れてしまった、向かい合う接続点（や、行き止まりの線の端と接続点）を、まっすぐな線でつなぐ
+  const og = connectOpenGaps(next);
+  next = applyAnchors(og.doc);
+  fixed.floating += og.fixed;
+
   const b = attachFloatingEnds(next);
   next = applyAnchors(b.doc);
   fixed.floating += b.fixed;
@@ -1040,9 +1186,12 @@ export function tidyDrawing(
   fixed.floating += b2.fixed;
 
   // 消した記号につながっていた線のうち、つなぎ直せずに行き止まりになったものを消す
-  const dead = dropDeadEnds(next, bridgeBrokenWires(next).unsure);
+  const dead = dropDeadEnds(next, [...bridgeBrokenWires(next).unsure, ...openGaps(next).filter((g) => g.end).map((g) => ({ x: g.x, y: g.y }))]);
   next = dead.doc;
   fixed.stray += dead.removed;
+
+  // 位置がずれていて、自動ではつなげなかった隙間（余白を詰めると座標が動くので、いまのうちに、どの接続点かを控える）
+  const portNotes = openGaps(next).filter((g) => g.port);
 
   // 消した記号の跡に残った余白を詰める（つなぎ直しのあと。記号と文字を、まとめて上へ動かす）
   const gap = closeVacatedBands(next);
@@ -1070,11 +1219,20 @@ export function tidyDrawing(
 
   // 直したあと、もう一度調べ直す。つなぐ相手が一つに決まらなかった端は、その旨を説明に書く
   const unsure = bridgeBrokenWires(next).unsure;
+  const gaps = openGaps(next).filter((g) => g.end);
   const issues = inspectDrawing(next, paper, orientation, titleH).map((i) =>
     i.kind === 'floating' && unsure.some((u) => Math.hypot(u.x - i.x, u.y - i.y) < 1)
       ? { ...i, message: tr('insp.ambiguous') }
-      : i,
+      : i.kind === 'floating' && gaps.some((g) => g.end && Math.hypot(g.x - i.x, g.y - i.y) < 1)
+        ? { ...i, message: tr('insp.openGap') }
+        : i,
   );
+  // 線の端が無く、接続点どうしが、ずれて向かい合っているところは、場所だけを知らせる
+  for (const g of portNotes) {
+    const it = next.items.find((i) => i.id === g.port!.item);
+    const p = it && it.kind === 'symbol' ? portsOf(it).find((q) => q.id === g.port!.port) : undefined;
+    if (p) issues.push({ kind: 'floating', message: tr('insp.openGap'), x: p.x, y: p.y });
+  }
   return { doc: next, fixed, issues };
 }
 
