@@ -3,7 +3,7 @@ import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
-import { assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd } from './doc.ts';
+import { assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
 
 interface Props {
@@ -24,6 +24,8 @@ interface Props {
   zoom: number;
   /** 2本指で拡大縮小したとき（指で操作する端末用） */
   onZoom?: (zoom: number) => void;
+  /** 枠の端・角をつかんで、大きさを変え終わったとき（左上の位置と大きさ） */
+  onResizeEnd?: (id: string, rect: { x: number; y: number; w: number; h: number }) => void;
   /** 「結線を整える」で直しきれなかったところ。赤い印で知らせる */
   issues?: Issue[];
 }
@@ -54,11 +56,23 @@ interface Drag {
   guideY?: number;
 }
 
+/** 端・角をつかんで大きさを変えている最中の状態 */
+interface Resize {
+  id: string;
+  /** つかんだ場所。h＝横（l 左端／r 右端）、v＝縦（t 上端／b 下端） */
+  h: 'l' | 'r' | null;
+  v: 't' | 'b' | null;
+  /** つかむ前の範囲と、いまの範囲 */
+  from: { x: number; y: number; w: number; h: number };
+  rect: { x: number; y: number; w: number; h: number };
+}
+
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, mode, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [resize, setResize] = useState<Resize | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
   /** 何も無いところからドラッグして、範囲で選んでいる最中。表示用の枠（図面の座標）と、動いたか・追加選択か */
   const [band, setBand] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
@@ -136,7 +150,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
         stop(e);
       } else if (n > 2 || ignored.current.has(e.pointerId)) {
         stop(e);
-      } else if (latest.current.mode === 'select' && !(e.target as Element).closest?.('g.item')) {
+      } else if (latest.current.mode === 'select' && !(e.target as Element).closest?.('g.item, .grip, .grip-edge')) {
         // 1本指で、記号でないところ：なぞれば画面が動く。ちょんと触れただけなら、離したときに選択を外す
         pan.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
       }
@@ -231,7 +245,9 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   }, []);
 
   // 表示用の図面。動かしている最中も、結線をつないだまま見せる
-  const view = !drag
+  const view = resize
+    ? setItemRect(doc, resize.id, resize.rect)
+    : !drag
     ? doc
     : drag.end
       ? moveWireEnd(doc, drag.id, drag.end, drag.dx, drag.dy)
@@ -304,6 +320,31 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       // Alt（Mac は option）キーを押している間は、吸い付けない（わざとずらしたり、突き抜けたりしたいとき）
       setHint(e.altKey ? null : wireStart ? assistWireNew(doc, wireStart.x, wireStart.y, p.x, p.y, undefined, snapRange()) : assistPoint(doc, p.x, p.y, undefined, snapRange()));
     }
+    if (resize && start.current) {
+      const p = toDrawing(e);
+      const item = doc.items.find((i) => i.id === resize.id);
+      const info = item ? resizeInfoOf(item) : null;
+      if (!info) return;
+      const dx = p.x - start.current.x;
+      const dy = p.y - start.current.y;
+      const f = resize.from;
+      let { x, y, w, h } = f;
+      // つかんだ端だけが動く。反対側の端は動かさない。大きさは、変えられる範囲に収めて、刻みに合わせる
+      if (resize.h && info.w2) {
+        const r = info.w2;
+        const raw = resize.h === 'r' ? f.w + dx : f.w - dx;
+        w = Math.max(r.min, Math.min(r.max, Math.round(raw / r.step) * r.step));
+        if (resize.h === 'l') x = f.x + f.w - w;
+      }
+      if (resize.v && info.h2) {
+        const r = info.h2;
+        const raw = resize.v === 'b' ? f.h + dy : f.h - dy;
+        h = Math.max(r.min, Math.min(r.max, Math.round(raw / r.step) * r.step));
+        if (resize.v === 't') y = f.y + f.h - h;
+      }
+      setResize({ ...resize, rect: { x, y, w, h } });
+      return;
+    }
     if (!drag || !start.current) return;
     const p = toDrawing(e);
     const rawDx = p.x - start.current.x;
@@ -332,6 +373,13 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       } else if (!bd.additive) {
         onSelect([]);
       }
+      return;
+    }
+    if (resize) {
+      const { from, rect, id } = resize;
+      setResize(null);
+      start.current = null;
+      if (from.x !== rect.x || from.y !== rect.y || from.w !== rect.w || from.h !== rect.h) onResizeEnd?.(id, rect);
       return;
     }
     if (drag && (Math.abs(drag.dx) > 0.01 || Math.abs(drag.dy) > 0.01)) {
@@ -561,6 +609,81 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             />
           );
         })}
+
+        {/* 枠の端・角をつかんで、大きさを変える（外箱・エリアの区分枠）。端＝その向きだけ、角＝横と縦を同時に */}
+        {selectedId && mode === 'select' && (() => {
+          const it = view.items.find((i) => i.id === selectedId);
+          const info = it ? resizeInfoOf(it) : null;
+          if (!it || !info) return null;
+          const m = svgRef.current?.getScreenCTM();
+          const scale = m && m.a > 0 ? m.a : 1;
+          const px = (n: number) => n / scale;
+          const { x, y, w, h } = info;
+          const grip = px(9);
+          const hit = px(12);
+          const cursorOf = (hh: 'l' | 'r' | null, vv: 't' | 'b' | null) =>
+            hh && vv ? (hh === vv.replace('t', 'l').replace('b', 'r') ? 'nwse-resize' : 'nesw-resize') : hh ? 'ew-resize' : 'ns-resize';
+          const start0 = (e: React.PointerEvent, hh: 'l' | 'r' | null, vv: 't' | 'b' | null) => {
+            e.stopPropagation();
+            (e.target as Element).setPointerCapture?.(e.pointerId);
+            start.current = toDrawing(e);
+            setResize({ id: it.id, h: hh, v: vv, from: { x, y, w, h }, rect: { x, y, w, h } });
+          };
+          const canW = !!info.w2;
+          const canH = !!info.h2;
+          const edges: { key: string; hh: 'l' | 'r' | null; vv: 't' | 'b' | null; x1: number; y1: number; x2: number; y2: number }[] = [];
+          if (canW) {
+            edges.push({ key: 'l', hh: 'l', vv: null, x1: x, y1: y, x2: x, y2: y + h });
+            edges.push({ key: 'r', hh: 'r', vv: null, x1: x + w, y1: y, x2: x + w, y2: y + h });
+          }
+          if (canH) {
+            edges.push({ key: 't', hh: null, vv: 't', x1: x, y1: y, x2: x + w, y2: y });
+            edges.push({ key: 'b', hh: null, vv: 'b', x1: x, y1: y + h, x2: x + w, y2: y + h });
+          }
+          const pts: { key: string; hh: 'l' | 'r' | null; vv: 't' | 'b' | null; cx: number; cy: number }[] = [];
+          if (canW) {
+            pts.push({ key: 'l', hh: 'l', vv: null, cx: x, cy: y + h / 2 });
+            pts.push({ key: 'r', hh: 'r', vv: null, cx: x + w, cy: y + h / 2 });
+          }
+          if (canH) {
+            pts.push({ key: 't', hh: null, vv: 't', cx: x + w / 2, cy: y });
+            pts.push({ key: 'b', hh: null, vv: 'b', cx: x + w / 2, cy: y + h });
+          }
+          if (canW && canH) {
+            for (const hh of ['l', 'r'] as const) for (const vv of ['t', 'b'] as const) pts.push({ key: hh + vv, hh, vv, cx: hh === 'l' ? x : x + w, cy: vv === 't' ? y : y + h });
+          }
+          return (
+            <g className="resize-grips">
+              {edges.map((ed) => (
+                <line
+                  key={`e-${ed.key}`}
+                  className="grip-edge"
+                  x1={ed.x1}
+                  y1={ed.y1}
+                  x2={ed.x2}
+                  y2={ed.y2}
+                  strokeWidth={hit}
+                  style={{ cursor: cursorOf(ed.hh, ed.vv) }}
+                  onPointerDown={(e) => start0(e, ed.hh, ed.vv)}
+                />
+              ))}
+              {pts.map((pt) => (
+                <rect
+                  key={`g-${pt.key}`}
+                  className="grip"
+                  data-grip={pt.key}
+                  x={pt.cx - grip / 2}
+                  y={pt.cy - grip / 2}
+                  width={grip}
+                  height={grip}
+                  strokeWidth={px(1.5)}
+                  style={{ cursor: cursorOf(pt.hh, pt.vv) }}
+                  onPointerDown={(e) => start0(e, pt.hh, pt.vv)}
+                />
+              ))}
+            </g>
+          );
+        })()}
 
         {/* 範囲で選んでいる最中の枠 */}
         {band && <rect className="band" x={band.x0} y={band.y0} width={band.x1 - band.x0} height={band.y1 - band.y0} pointerEvents="none" />}

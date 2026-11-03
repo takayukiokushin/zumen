@@ -30,7 +30,8 @@ import {
   itemBounds,
   setWireKind,
   addSymbol,
-  setSymbolSize,
+  setItemRect,
+  resizeInfoOf,
 } from '../apps/web/src/editor/doc.ts';
 type PlacedSymbolLike = ReturnType<typeof layout>['symbols'][number];
 const portAbs = (s: PlacedSymbolLike, id: string) => {
@@ -2387,55 +2388,70 @@ console.log('\n■ 客柱・電柱の記号');
   else console.log('  電柱：これまでどおり（引下線あり）');
 }
 
-/* ---------- 外箱・エリアの区分枠：幅・高さを変えられる ---------- */
-console.log('\n■ 外箱・区分枠の大きさ');
+/* ---------- 外箱・エリアの区分枠：端・角をつかんで、幅・高さを変えられる ---------- */
+console.log('\n■ 外箱・区分枠の大きさ（端・角をつかんで変える）');
 {
   const box0 = addSymbol({ items: [] } as unknown as Doc, 'enclosure-cubicle', 50, 50);
   const area0 = addSymbol({ items: [] } as unknown as Doc, 'substation-area', 50, 50);
   const getS = (d: Doc, id: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === id)!;
+  const infoOf = (d: Doc, id: string) => resizeInfoOf(getS(d, id))!;
   const defBox = getSymbolDef('enclosure-cubicle').box;
   const defArea = getSymbolDef('substation-area').box;
-  // 外箱：幅だけ変えられる
-  const wide = setSymbolSize(box0.doc, box0.id, { w: 300, h: 999 });
-  const wideSym = getS(wide, box0.id);
-  const wideBounds = itemBounds(wideSym);
-  if (wideSym.w !== 300 || wideSym.h !== undefined) fail(`外箱：幅だけが変わるはずが、幅 ${wideSym.w}・高さ ${wideSym.h} になりました`);
-  else if (wideBounds.x1 - wideBounds.x0 !== 300 || wideBounds.y1 - wideBounds.y0 !== defBox.h) fail('外箱：変えたあとの占める範囲が、幅300・もとの高さになっていません');
-  else if (wideBounds.x0 !== itemBounds(getS(box0.doc, box0.id)).x0 || wideBounds.y0 !== itemBounds(getS(box0.doc, box0.id)).y0) fail('外箱：大きさを変えたとき、左上の位置が動きました');
-  else console.log('  外箱：幅300にできる（高さは変わらない・左上は動かない）');
-  const sized = sizedSymbol(getSymbolDef('enclosure-cubicle'), { w: 300 });
-  const rightLine = sized.shapes.some((sh) => sh.k === 'line' && sh.x1 === 300 && sh.x2 === 300);
-  if (!rightLine) fail('外箱：右端の縦線が、幅300の位置に来ていません');
+  const b0 = infoOf(box0.doc, box0.id);
+  const a0 = infoOf(area0.doc, area0.id);
+  // 外箱：幅だけ変えられる（高さの向きは、つかめない）
+  if (!b0.w2 || b0.h2) fail('外箱：幅だけが変えられる記号のはずです');
+  else console.log('  外箱：幅だけ変えられる（つかめるのは、左右の端）');
+  if (!a0.w2 || !a0.h2) fail('区分枠：幅も高さも変えられる記号のはずです');
+  else console.log('  区分枠：幅も高さも変えられる（左右・上下の端と、4つの角）');
+  // 右端をつかんで広げる：左上は動かない
+  const right = setItemRect(box0.doc, box0.id, { x: b0.x, y: b0.y, w: 300, h: 999 });
+  const rInfo = infoOf(right, box0.id);
+  if (rInfo.w !== 300 || rInfo.h !== defBox.h || rInfo.x !== b0.x || rInfo.y !== b0.y) fail(`外箱：右端をつかんで幅300にしたとき、左上・高さが変わりました（${JSON.stringify(rInfo)}）`);
+  else console.log('  右端をつかんで広げる：幅だけ変わり、左上は動かない');
+  // 左端をつかんで広げる：右端が動かない（左上の位置が左へずれる）
+  const leftRect = { x: b0.x - (300 - b0.w), y: b0.y, w: 300, h: b0.h };
+  const left = infoOf(setItemRect(box0.doc, box0.id, leftRect), box0.id);
+  if (left.x + left.w !== b0.x + b0.w || left.w !== 300) fail('外箱：左端をつかんで広げたとき、右端が動きました');
+  else console.log('  左端をつかんで広げる：右端は動かない');
   // 範囲の外は、範囲に収まる
-  const tiny = getS(setSymbolSize(box0.doc, box0.id, { w: 1 }), box0.id);
-  const huge = getS(setSymbolSize(box0.doc, box0.id, { w: 99999 }), box0.id);
   const r = getSymbolDef('enclosure-cubicle').resizable!.w!;
+  const tiny = infoOf(setItemRect(box0.doc, box0.id, { x: b0.x, y: b0.y, w: 1, h: b0.h }), box0.id);
+  const huge = infoOf(setItemRect(box0.doc, box0.id, { x: b0.x, y: b0.y, w: 99999, h: b0.h }), box0.id);
   if (tiny.w !== r.min || huge.w !== r.max) fail(`外箱：範囲の外の値が収まりません（${tiny.w}／${huge.w}）`);
   else console.log(`  外箱：幅は ${r.min}〜${r.max} に収まる`);
-  // 区分枠：幅も高さも変えられる
-  const area1 = getS(setSymbolSize(setSymbolSize(area0.doc, area0.id, { w: 400 }), area0.id, { h: 250 }), area0.id);
-  const ab = itemBounds(area1);
-  if (ab.x1 - ab.x0 !== 400 || ab.y1 - ab.y0 !== 250) fail(`区分枠：幅400・高さ250になっていません（${ab.x1 - ab.x0}×${ab.y1 - ab.y0}）`);
-  else console.log('  区分枠：幅400・高さ250にできる（片方ずつ変えても、もう片方は保たれる）');
-  // もとの大きさに戻せば、記号定義の大きさ（余計な値を持たない）
-  const back = getS(setSymbolSize(setSymbolSize(area0.doc, area0.id, { w: 400, h: 250 }), area0.id, { w: defArea.w, h: defArea.h }), area0.id);
+  // 角をつかむ：幅と高さが同時に変わる
+  const corner = setItemRect(area0.doc, area0.id, { x: a0.x, y: a0.y, w: 400, h: 250 });
+  const ab = itemBounds(getS(corner, area0.id));
+  if (ab.x1 - ab.x0 !== 400 || ab.y1 - ab.y0 !== 250) fail(`区分枠：角をつかんで 400×250 にできません（${ab.x1 - ab.x0}×${ab.y1 - ab.y0}）`);
+  else console.log('  角をつかんで広げる：幅400・高さ250が同時に変わる');
+  // 左上の角：反対側（右下）の角が動かない
+  const tl = infoOf(setItemRect(area0.doc, area0.id, { x: a0.x - 100, y: a0.y - 60, w: a0.w + 100, h: a0.h + 60 }), area0.id);
+  if (tl.x + tl.w !== a0.x + a0.w || tl.y + tl.h !== a0.y + a0.h) fail('区分枠：左上の角をつかんだとき、右下の角が動きました');
+  else console.log('  左上の角をつかんで広げる：右下の角は動かない');
+  // もとの大きさに戻せば、大きさの値を持たない
+  const back = getS(setItemRect(corner, area0.id, { x: a0.x, y: a0.y, w: defArea.w, h: defArea.h }), area0.id);
   if (back.w !== undefined || back.h !== undefined) fail('区分枠：もとの大きさに戻しても、大きさの値が残っています');
-  else console.log('  区分枠：もとの大きさに戻すと、大きさの値は残らない');
-  // 大きさを変えられない記号は、そのまま
+  else console.log('  もとの大きさに戻すと、大きさの値は残らない');
+  // 大きさを変えられない記号・回した記号は、つかめない
   const pas0 = addSymbol({ items: [] } as unknown as Doc, 'pas', 0, 0);
-  if (getS(setSymbolSize(pas0.doc, pas0.id, { w: 300 }), pas0.id).w !== undefined) fail('PASの大きさが変わってしまいました（変えられない記号です）');
+  if (resizeInfoOf(getS(pas0.doc, pas0.id))) fail('PASが、大きさを変えられる記号になっています');
+  const turned: DocSymbol = { ...getS(box0.doc, box0.id), rotate: 90 };
+  if (resizeInfoOf(turned)) fail('回した外箱が、つかんで大きさを変えられる扱いになっています（回していないものだけのはず）');
+  else console.log('  変えられない記号・回した記号は、つかめない');
   // 手で直した内容として保存され、作り直しても残る
   const gen7 = (a: Answers, tag: string) => fromLayout(layout(buildComposition(a), a), tag);
   const g7 = gen7({ ...answers, mainBreakerForm: 'cb' } as Answers, 'sz1');
   const withBox = addSymbol(g7, 'enclosure-cubicle', 400, 500);
-  const resized: Doc = { ...setSymbolSize(withBox.doc, withBox.id, { w: 320 }), edited: true };
+  const wi = infoOf(withBox.doc, withBox.id);
+  const resized: Doc = { ...setItemRect(withBox.doc, withBox.id, { x: wi.x, y: wi.y, w: 320, h: wi.h }), edited: true };
   const g8 = gen7({ ...answers, mainBreakerForm: 'cb' } as Answers, 'sz2');
   const rebuilt = rebuildWithOverrides(g8, resized).doc;
   const kept = rebuilt.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.symbolId === 'enclosure-cubicle' && !g8.items.some((g) => g.id === i.id));
   if (!kept || kept.w !== 320) fail(`外箱：手で変えた幅が、作り直したあとに残っていません（${kept?.w}）`);
   else console.log('  手で変えた幅は、入力内容を変えて図面を作り直しても、残る');
   // 印刷・PDFの図にも、変えた大きさで出る
-  const svgOut = buildSheetSvg(setSymbolSize(box0.doc, box0.id, { w: 300 }), { site: '確認', name: '確認' } as never);
+  const svgOut = buildSheetSvg(right, { site: '確認', name: '確認' } as never);
   if (!svgOut.includes('300')) fail('印刷用の図に、変えた幅が出ていません');
   else console.log('  印刷用の図にも、変えた幅で出る');
 }

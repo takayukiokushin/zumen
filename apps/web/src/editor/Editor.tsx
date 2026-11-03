@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CATEGORY_LABEL, SYMBOLS, clampSize, getSymbol, labelFields, symbolToSvg } from '@zumen/symbols';
+import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
@@ -13,7 +13,7 @@ import { ISSUE_LABEL, chooseSheet, tidyDrawing } from './inspect.ts';
 import type { Issue } from './inspect.ts';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, setLabelValue, setSymbolSize, setWireKind, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setWireKind, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -513,6 +513,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             onSelect={setSelection}
             onMoveEnd={(ids, dx, dy) => apply(ids.length === 1 ? moveItem(doc, ids[0]!, dx, dy) : moveItems(doc, ids, dx, dy))}
             onWireEnd={(id, end, dx, dy) => apply(moveWireEnd(doc, id, end, dx, dy))}
+            onResizeEnd={(id, rect) => apply(setItemRect(doc, id, rect))}
             onAddWire={(x1, y1, x2, y2, opts) => {
               const { doc: next, id } = addWire(doc, x1, y1, x2, y2, { ...opts, dashed: wireDashed });
               apply(next);
@@ -567,64 +568,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                   <p className="hint">
                     {getSymbol(selectedSymbol.symbolId).nameJa}
                   </p>
-                  {/* 外箱・エリアの区分枠：幅（と高さ）を変えられる */}
-                  {(() => {
-                    const def = getSymbol(selectedSymbol.symbolId);
-                    if (!def.resizable) return null;
-                    const now = clampSize(def, selectedSymbol);
-                    const rows = [
-                      { key: 'w' as const, label: t('editor.sizeW'), range: def.resizable.w, value: now.w },
-                      { key: 'h' as const, label: t('editor.sizeH'), range: def.resizable.h, value: now.h },
-                    ].filter((r) => r.range);
-                    return (
-                      <div className="size-edit" role="group" aria-label={t('editor.size')}>
-                        <label className="lbl">{t('editor.size')}</label>
-                        {rows.map((r) => (
-                          <div className="size-row" key={r.key}>
-                            <span className="size-name">{r.label}</span>
-                            <button
-                              type="button"
-                              disabled={sheetView || r.value <= r.range!.min}
-                              aria-label={`${r.label}：${t('editor.sizeSmaller')}`}
-                              title={t('editor.sizeSmaller')}
-                              onClick={() => apply(setSymbolSize(doc, selectedSymbol.id, { [r.key]: r.value - r.range!.step }))}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              key={`${selectedSymbol.id}-${r.key}-${r.value}`}
-                              defaultValue={r.value}
-                              min={r.range!.min}
-                              max={r.range!.max}
-                              step={r.range!.step}
-                              disabled={sheetView}
-                              aria-label={r.label}
-                              onBlur={(e) => {
-                                const v = Number(e.target.value);
-                                if (Number.isFinite(v) && v !== r.value) apply(setSymbolSize(doc, selectedSymbol.id, { [r.key]: v }));
-                                else e.target.value = String(r.value);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                              }}
-                            />
-                            <button
-                              type="button"
-                              disabled={sheetView || r.value >= r.range!.max}
-                              aria-label={`${r.label}：${t('editor.sizeLarger')}`}
-                              title={t('editor.sizeLarger')}
-                              onClick={() => apply(setSymbolSize(doc, selectedSymbol.id, { [r.key]: r.value + r.range!.step }))}
-                            >
-                              ＋
-                            </button>
-                          </div>
-                        ))}
-                        <p className="hint">{t('editor.sizeNote')}</p>
-                      </div>
-                    );
-                  })()}
+                  {/* 外箱・エリアの区分枠：端や角をつかんで、大きさを変えられる */}
+                  {resizeInfoOf(selectedSymbol) && <p className="hint">{t('editor.resizeHint')}</p>}
                   {(() => {
                     const def = getSymbol(selectedSymbol.symbolId);
                     const fields = labelFields(def);

@@ -1,5 +1,5 @@
 import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sizedSymbol } from '@zumen/symbols';
-import type { SymbolDef } from '@zumen/symbols';
+import type { SizeRange, SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
 
@@ -980,22 +980,47 @@ export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Do
   return { doc: { ...doc, items: [...doc.items, { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start' }] }, id };
 };
 
+/** 図面の上で、端や角をつかんで大きさを変えられる要素の、いまの範囲と、変えられる向き・範囲 */
+export interface ResizeInfo {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** 幅を変えられるか／高さを変えられるか */
+  w2: SizeRange | null;
+  h2: SizeRange | null;
+}
+
 /**
- * 大きさを変えられる記号（外箱・エリアの区分枠）の、幅・高さを変える。
- * 変えられる範囲に収める。変えられない記号・向きは、そのまま。
- * 左上の位置は動かさない（右・下へ広がる）
+ * つかんで大きさを変えられる要素なら、その情報を返す（変えられなければ null）。
+ * 記号は、回していない（0°）ものだけ。回していると、つかむ向きが分かりにくいので、変えられない
  */
-export const setSymbolSize = (doc: Doc, id: string, size: { w?: number; h?: number }): Doc => ({
+export function resizeInfoOf(it: DocItem): ResizeInfo | null {
+  if (it.kind !== 'symbol') return null;
+  const def = getSymbol(it.symbolId);
+  if (!def.resizable || (it.rotate % 360) !== 0) return null;
+  const now = clampSize(def, it);
+  return { x: it.x, y: it.y, w: now.w, h: now.h, w2: def.resizable.w ?? null, h2: def.resizable.h ?? null };
+}
+
+/**
+ * つかんで変えた結果（左上の位置と大きさ）を、図面に入れる。大きさは、変えられる範囲に収める。
+ * 変えられない向きは、そのまま。もとの大きさと同じなら、大きさの値は持たない
+ */
+export const setItemRect = (doc: Doc, id: string, rect: { x: number; y: number; w: number; h: number }): Doc => ({
   ...doc,
   items: doc.items.map((it) => {
     if (it.kind !== 'symbol' || it.id !== id) return it;
+    const info = resizeInfoOf(it);
+    if (!info) return it;
     const def = getSymbol(it.symbolId);
-    if (!def.resizable) return it;
-    const now = clampSize(def, it);
-    const next = clampSize(def, { w: size.w ?? now.w, h: size.h ?? now.h });
+    const next = clampSize(def, { w: info.w2 ? rect.w : info.w, h: info.h2 ? rect.h : info.h });
     const { w: _w, h: _h, ...rest } = it;
     return {
       ...rest,
+      // 右端・下端をつかんだときは、左上は動かさない。左端・上端をつかんだときは、反対側を動かさない
+      x: info.w2 ? rect.x : it.x,
+      y: info.h2 ? rect.y : it.y,
       ...(next.w !== def.box.w ? { w: next.w } : {}),
       ...(next.h !== def.box.h ? { h: next.h } : {}),
     };

@@ -778,9 +778,7 @@ button.with-icon svg { flex: 0 0 auto; }
 .tool-select { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
 .tool-select select { min-width: 0; width: auto; padding-right: calc(24px * var(--text-scale)); }
 
-/* 大きさの調整（外箱・エリアの区分枠） */
-.size-edit { margin: calc(8px * var(--text-scale)) 0; }
-.size-row { display: flex; align-items: center; gap: calc(6px * var(--text-scale)); margin: calc(4px * var(--text-scale)) 0; }
-.size-row .size-name { min-width: 3em; color: var(--ink-2); }
-.size-row input[type=number] { flex: 1 1 0; min-width: 0; width: 100%; text-align: center; }
-.size-row button { min-width: calc(36px * var(--text-scale)); padding: calc(4px * var(--text-scale)) calc(8px * var(--text-scale)); }
+/* 枠の端・角をつかんで大きさを変える（外箱・エリアの区分枠） */
+.canvas .grip { fill: #fff; stroke: var(--draw-accent); stroke-width: 1.5; }
+.canvas .grip:hover { fill: var(--draw-accent-soft); }
+.canvas .grip-edge { stroke: transparent; fill: none; }
