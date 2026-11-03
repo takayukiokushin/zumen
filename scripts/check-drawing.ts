@@ -2261,6 +2261,30 @@ console.log('\n■ 送り出し側のケーブルの端末（分岐する位置�
     else if (inspectDrawing(fromLayout(d4), 'A3', 'landscape').some((i) => i.kind === 'overlap' || i.kind === 'floating' || i.kind === 'through')) fail('4か所：図面の点検で、問題が見つかりました');
     else console.log('  4か所（同じ位置から3本）：端末3個。線は交わらず、重ならない');
   }
+  // 送り先名称（回路名称）：送り出し側の端末の近くに、名称だけを書く。太さ・長さは、受け側のみ
+  {
+    const named: Answers = { ...a3base, 'a2:linkName': '第2変電所', 'a3:linkName': '○○工場 受変電室（出先）', 'a2:linkCableCrossSection': '38', 'a2:linkCableLength': 30 };
+    const dn = layout(buildComposition(named), named);
+    const h2 = dn.symbols.find((x) => x.id === 'cable-head-send');
+    const h3 = dn.symbols.find((x) => x.id === 'cable-head-send-3');
+    if (!h2 || !h3) fail('送り先名称：端末が2個描かれていません');
+    else if (h2.label.join('') !== '第2変電所' || h3.label.join('') !== '○○工場 受変電室（出先）') fail(`送り先名称が、端末の文字になっていません（${h2.label.join('/')}・${h3.label.join('/')}）`);
+    else if (h2.label.length !== 1) fail('送り先名称が、1行になっていません');
+    else if (dn.texts?.some((t) => t.lines.some((l) => l.includes('第2変電所') || l.includes('○○工場')))) fail('送り先名称が、受け側の文字にも書かれています（送り出し側のみのはず）');
+    else if (!dn.texts?.some((t) => t.lines.some((l) => /38mm2/.test(l)))) fail('太さ・長さの文字が、受け側から消えています');
+    else if (findLabelCollisions(dn).length > 0) fail('送り先名称を入れたら、文字が重なりました');
+    else if (cross(dn) > 0) fail('送り先名称を入れたら、線が交わりました');
+    else if (inspectDrawing(fromLayout(dn), 'A3', 'landscape').some((i) => i.kind === 'overlap' || i.kind === 'floating' || i.kind === 'through')) fail('送り先名称を入れたら、図面の点検で問題が見つかりました');
+    else console.log('  送り先名称：送り出し側の端末の近くに、名称だけを1行で書く（太さ・長さは、受け側のみ）。長い名称でも、重ならない');
+    // 空白のとき・ふつうの線のとき・空白だけのとき：何も書かない
+    for (const [nm, extra] of [['空白', { 'a2:linkName': '' }], ['空白だけ', { 'a2:linkName': '   ' }], ['ふつうの線', { 'a2:linkName': 'テスト', 'a2:linkCable': 'no' }]] as [string, Answers][]) {
+      const a = { ...a3base, ...extra };
+      const d = layout(buildComposition(a), a);
+      const h = d.symbols.find((x) => x.id === 'cable-head-send');
+      if (h && h.label.length > 0) fail(`送り先名称が${nm}のとき、端末に文字が書かれています（${h.label.join('/')}）`);
+    }
+    console.log('  送り先名称が空白・空白だけ・ふつうの線のとき：何も書かない');
+  }
   // ふつうの線でつなぐとき：端末は描かない
   const aw: Answers = { ...base2, 'a2:linkCable': 'no' };
   if (layout(buildComposition(aw), aw).symbols.some((s) => /cable-head-send/.test(s.id))) fail('ケーブルでつながないのに、送り出し側に端末が描かれています');

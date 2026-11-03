@@ -605,6 +605,8 @@ export interface PlacedItem {
     cable: boolean;
     /** ケーブルの線を点線（埋設）で描くか */
     dashed: boolean;
+    /** 送り先名称（回路名称）。送り出し側のケーブル端末の近くに書く。無ければ空 */
+    name: string[];
   };
   note?: string;
 }
@@ -796,6 +798,8 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
                 tap: String(view.linkTap ?? 'bus'),
                 cable: view.linkCable !== 'no',
                 dashed: view.linkCable !== 'no' && view.linkCableInstallation === 'buried',
+                // 送り先名称は、ケーブルの端末があるときだけ（端末の近くに書くため）。空白だけなら、書かない
+                name: view.linkCable !== 'no' && String(view.linkName ?? '').trim() !== '' ? [String(view.linkName).trim()] : [],
               },
             }
           : {}),

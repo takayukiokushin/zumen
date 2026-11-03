@@ -36,7 +36,7 @@ const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!).sort
  * 元の文からそのまま写した日本語（図面に印刷される例の「中電柱：」「猪子山（分）81」など）は、残してよい。
  */
 /** 図面に印刷される日本語の例そのもの（入力欄の例）。訳さず、そのまま出す */
-const SAME_OK = new Set(['第2変電所 / 第2電気室 / 第3キュービクル']);
+const SAME_OK = new Set(['第2変電所 / 第2電気室 / 第3キュービクル', '第2変電所 / ○○出先']);
 
 function wrongScript(lang: string, text: string, source: string): string | null {
   if (text === source && SAME_OK.has(source)) return null;

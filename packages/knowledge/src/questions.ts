@@ -1767,6 +1767,17 @@ export const QUESTIONS: Question[] = [
     ask: 'always',
     help: '不明な場合は空欄にする',
   },
+  {
+    // 任意。どこの変電所・出先へ送られているかが分かるように、送り出し側のケーブル端末の近くに書く（太さ・長さは、受け側に書く）
+    id: 'linkName',
+    group: 'link',
+    label: '送り先名称（回路名称）',
+    type: 'text',
+    placeholder: '第2変電所 / ○○出先',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+    help: '必要なときだけ入力する（任意）。図面では、送り出し側（電源側）のケーブル端末の近くに書く。太さ・長さは、これまでどおり、受け側に書く',
+  },
 
   // PC・LBSの定格電流とヒューズ（変圧器の手前／コンデンサの手前）
   ...breakerRatings('tr', 'transformer', { key: 'transformerCount', gt: 0 }, 'T'),

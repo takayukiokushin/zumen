@@ -1227,7 +1227,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
    * 間にほかのエリアがあっても、その上を通るので、エリアの中を横切らない。
    * 同じ位置から出る線は、1本の縦線（幹）を共有し、高さごとに横へ分かれる。
    */
-  type LinkInfo = { n: number; from: number; sx: number; sy: number; label: string[]; dashed: boolean; cable: boolean };
+  type LinkInfo = { n: number; from: number; sx: number; sy: number; label: string[]; dashed: boolean; cable: boolean; /** 送り先名称（送り出し側の端末の近くに書く） */ name: string[] };
   const linkInfos: LinkInfo[] = [];
   for (const part of parts) {
     const link = part.link?.link;
@@ -1247,7 +1247,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     // 位置が決まらないときは、高圧母線の右端（母線が無ければ、主回路の末端）から出る
     const sy = (y ?? (t.bus ? t.bus.y : t.end)) + dys[link.from]!;
     const sx = y !== undefined ? 0 : t.bus ? t.bus.x : 0;
-    linkInfos.push({ n: part.n, from: link.from, sx, sy, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false });
+    linkInfos.push({ n: part.n, from: link.from, sx, sy, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
   }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
   type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 同じ位置から出るケーブルの線の中での順番（0＝いちばん近いエリアへ）と、本数 */ gi: number; gn: number };
@@ -1298,7 +1298,14 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   const stackedArea = (area: number): boolean => sendoutsOf(area).length > 0 || trunks.some((x) => x.from === area && x.cable);
 
   /** 送り出しの開閉器の縦の並び（DS・VCB・ZCT・端末）の、すきまの左の端からの位置と、右へ伸びる幅（DGR・TCがあると広い） */
-  const stackW = (area: number) => (groundOf(area) ? STACK_W_GROUND : STACK_W);
+  const stackW = (area: number) => {
+    const base = groundOf(area) ? STACK_W_GROUND : STACK_W;
+    // 送り先名称が長いときは、端末の右に書く名称が入る広さにする（縦の線にかからないように）
+    const head = getSymbol('cable-head');
+    const names = trunks.filter((x) => x.from === area && x.cable).flatMap((x) => x.links.flatMap((l) => (l.name.length > 0 ? [labelWidth(l.name)] : [])));
+    const need = names.length > 0 ? head.box.w + LABEL_GAP + Math.max(...names) + 14 : 0;
+    return Math.max(base, need);
+  };
   /** エリアの手前（左）のすきまの広さ。そのエリアの左のエリアから出る線の幹と、送り出しの開閉器の並びが入る広さ */
   const gapBefore = (p: number): number => {
     const mine = trunks.filter((x) => x.from === p - 1);
@@ -1422,6 +1429,10 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         };
         symbols.push(sym);
         ext(sym.x, sym.y, sym.x + d0.box.w, sym.y + d0.box.h);
+        if (label.length > 0) {
+          const lr = labelRect(sym.labelAt, label);
+          ext(lr.x0, lr.y0, lr.x1, lr.y1);
+        }
         y = sym.y + op.y;
         ext(xs, entryY, xs, y);
         return sym;
@@ -1442,7 +1453,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       // 送り出し側のケーブルの端末：頂点が下（ケーブル側）を向く、ふつうの向き
       if (tr.cable) {
         const hid0 = `${tr.from === 0 ? '' : `a${tr.from + 1}:`}cable-head-send${sfx}`;
-        stackPut(hid0, hid0, 'cable-head', []);
+        stackPut(hid0, hid0, 'cable-head', tr.links[0]!.name);
       }
       if (zctPos === 'cable') putZct();
       // 外側の線は、内側の線の並びの下を通って、右へ出る。端末のあとを、その分、下へ延ばす（ここから先が、ケーブル）
