@@ -997,3 +997,12 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 :where(html[data-uw~="700"]) .login-lang .btn { padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); font-size: calc(11.5px * var(--ctl-scale)); }
 /* 狭いスマホでは、ログインの枠の左右の余白を詰めて、ボタンの幅を確保する */
 :where(html[data-uw~="400"]) .login .panel { padding-left: 20px; padding-right: 20px; }
+
+/* ---- ログイン画面：ID欄・パスワード欄・目のボタン・ログインのボタンの高さを、そろえる ---- */
+/*   （これまでは、目のボタンに上の余白（16px）が付いていて、パスワードの行だけ高くなっていた） */
+.login { --login-h: calc(40px * var(--ctl-scale)); }
+@media (pointer: coarse) { .login { --login-h: max(44px, calc(40px * var(--ctl-scale))); } }
+.login input, .login .pw-eye, .login button[type="submit"] { box-sizing: border-box; height: var(--login-h); }
+.login .pw-eye { margin-top: 0; padding: 0; width: var(--login-h); display: inline-flex; align-items: center; justify-content: center; }
+/* 言葉・文字の大きさのボタンにも、「ログイン」ボタン用の上の余白（16px）が付いていたので、外す（名前と同じ高さに並ぶ） */
+.login .seg button { margin-top: 0; }
