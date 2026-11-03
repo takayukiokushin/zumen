@@ -2385,6 +2385,26 @@ console.log('\n■ 客柱・電柱の記号');
   else console.log('  電柱：これまでどおり（引下線あり）');
 }
 
+/* ---------- PGS：開閉器・遮断器の分類にある。形はPASと同じ ---------- */
+console.log('\n■ PGS（編集画面の記号）');
+{
+  const pas = getSymbolDef('pas');
+  const pgs = getSymbolDef('pgs');
+  const same = (k: 'shapes' | 'ports' | 'slots' | 'box' | 'fields') => JSON.stringify(pas[k]) === JSON.stringify(pgs[k]);
+  if (pgs.abbr !== 'PGS') fail('PGSの記号の名前が「PGS」ではありません');
+  else if (pgs.category !== 'switchgear') fail('PGSが、開閉器・遮断器の分類に入っていません');
+  else if (!(['shapes', 'ports', 'slots', 'box', 'fields'] as const).every(same)) fail('PGSの形・接続点・内蔵の置き場・大きさ・入力欄が、PASと違います');
+  else if (!pgs.labelLines?.[0]?.includes('PGS') && pgs.labelLines?.[0] !== '{abbr}') console.log('  （文字の雛形：' + pgs.labelLines?.join('/') + '）');
+  else console.log('  PGS：開閉器・遮断器の分類／形・接続点・内蔵の置き場・入力欄はPASと同じ');
+  const d1 = addSymbol({ items: [] } as unknown as Doc, 'pgs', 0, 0).doc;
+  const lab = d1.items.find((i): i is DocSymbol => i.kind === 'symbol')!.label;
+  if (lab[0] !== 'PGS') fail(`PGSを足した直後の1行目が「${lab[0]}」です（PGSのはず）`);
+  else console.log(`  PGSを足すと、図面に「${lab.join(' / ')}」と書かれる`);
+  // PASからPGSへ差し替えても、内蔵品（ZCT・VT・LA）の置き場が合う
+  const slotIds = (d: typeof pas) => (d.slots ?? []).map((q) => q.id).join(',');
+  if (slotIds(pas) !== slotIds(pgs)) fail('PASとPGSで、内蔵品の置き場が違います');
+}
+
 /* ---------- 上向きのケーブルヘッド（CH） ---------- */
 console.log('\n■ 上向きのCH');
 {

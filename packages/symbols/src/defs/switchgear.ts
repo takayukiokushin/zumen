@@ -364,6 +364,12 @@ export const switchgearSymbols: SymbolDef[] = [
     nameJa: '区分開閉器（地上キャビネット用）',
     tags: ['区分開閉器', '地上', 'キャビネット', 'GR', 'DGR'],
   }),
+  // PGS（電柱上の区分開閉器）。図記号・構造・定格はPASと同じで、名前だけPGS
+  pasDef('pgs', { l: 0, r: 0, t: 0, b: 0 }, undefined, {
+    abbr: 'PGS',
+    nameJa: '区分開閉器（PGS）',
+    tags: ['区分開閉器', '電柱上', 'PGS', 'GR', 'DGR'],
+  }),
   // 内蔵機器（LA・VT）を入れるとき用。枠を少しだけ広げてある（とくに左）
   pasDef('pas-builtin', { l: 8, r: 2, t: 4, b: 12 }, 'pas'),
 ];
