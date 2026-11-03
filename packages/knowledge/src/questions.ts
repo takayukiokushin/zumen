@@ -1385,6 +1385,8 @@ export const QUESTIONS: Question[] = [
     label: 'このコンデンサに直列リアクトルは入りますか？',
     type: 'select',
     options: YES_NO,
+    // 標準は「なし」。2台目以降も、答えるまでは「なし」（未入力のままにしない）。図面は、「なし」も未入力も、リアクトルを描かない
+    defaultValue: 'no',
     showIf: { key: 'hasCapacitor', eq: 'yes' },
     ask: 'ai-uncertain',
     help: 'リアクトルの有無はコンデンサごとに決まる。台数分それぞれ答える',
@@ -1823,7 +1825,6 @@ export const NEW_PROJECT_ANSWERS: Record<string, Value> = {
   transformerCount: '2',
   trUsage: '電灯',
   trUsage__2: '動力',
-  // 進相設備：高圧コンデンサ1台、リアクトルなし
+  // 進相設備：高圧コンデンサ1台（リアクトルは、質問の既定値の「なし」）
   hasCapacitor: 'yes',
-  hasReactor: 'no',
 };

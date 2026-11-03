@@ -749,6 +749,12 @@ console.log('\n■ 変圧器ごとのPC・LBS（1台目は無し、2台目だけ
   const capIds = (n: number) => visibleQuestions(viewAt(ac, n), {}).filter((q) => q.group === 'compensation').map((q) => q.id);
   if (capIds(0).includes('capLbsRating') || !capIds(1).includes('capLbsRating') || !capIds(1).includes('capPfG')) fail('コンデンサ：1台目なし・2台目LBSありのとき、2台目にだけ、LBSの定格の欄が出ていません');
   else console.log('  コンデンサ：1台目なし・2台目LBSあり → 2台目にだけ、LBSの定格・ヒューズの入力欄が出る');
+  // 直列リアクトルは、標準が「なし」（2台目以降も、未入力のままにしない）。答えていなくても、リアクトルは描かない
+  const q = QUESTIONS.find((x) => x.id === 'hasReactor');
+  const noRe = buildComposition({ ...answers, hasCapacitor: 'yes', capacitorCount: 3, hasReactor: 'yes', hasReactor__2: undefined as never }).filter((i) => i.role === 'reactor').length;
+  if (q?.defaultValue !== 'no') fail('直列リアクトルの標準が「なし」になっていません');
+  else if (noRe !== 1) fail(`答えていない2台目以降に、リアクトルが描かれています（${noRe}個）`);
+  else console.log('  直列リアクトル：標準は「なし」。答えていない2台目以降には、リアクトルを描かない');
 }
 
 console.log('\n■ 受電設備エリア：高圧マンション（電柱上構成）');
