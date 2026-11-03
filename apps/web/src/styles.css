@@ -922,3 +922,23 @@ main.form .field[data-kind="buttons"] .radio-row button { flex: 0 0 auto; white-
 .seg, .paper-pick, .login-size .seg { flex-wrap: wrap; row-gap: calc(4px * var(--ctl-scale)); }
 .seg { gap: calc(5px * var(--ctl-scale)); }
 @media (max-width: 700px) { .seg { gap: calc(3px * var(--ctl-scale)); } }
+
+/* ------------------------------------------------------------------ */
+/* 項目7：同じ行に並んだ入力欄・ボタンの、縦の位置をそろえる（「設備を入力して作成」の画面だけ） */
+/*   - 行の中で、名前（ラベル）が1行の欄と2行の欄があっても、入力欄・ボタンは同じ高さに並ぶ（空いた分は、名前の上に出る）。
+       チェックの箱（名前が空）も同じ。
+     - 説明文の枠は、いつも同じ高さ（マウスのある端末は1行、タッチの端末は2行）。説明文のない欄にも、その枠を空けておく。
+       そうしないと、説明文のある欄とない欄で、入力欄の高さがずれる。 */
+/* ------------------------------------------------------------------ */
+main.form { --help-lines: 1; --help-h: calc(var(--help-lines) * 1.35 * 10.5px * var(--text-scale)); }
+@media (hover: none) { main.form { --help-lines: 2; } }
+main.form .fields { align-items: stretch; }
+main.form .field > label:first-child { flex: 1 1 auto; align-items: last baseline; }
+main.form .field .help { margin: 0; min-height: var(--help-h); }
+main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { content: ""; display: block; height: var(--help-h); }
+
+/* スマホ（幅700以下）：1段目の4つのタブは、文字が2行・3行に折れるものがあっても、同じ高さ・同じ位置にそろえる（項目7） */
+@media (max-width: 700px) {
+  .tabbar { align-items: stretch; }
+  .tabbar .tab-wrap button { height: 100%; }
+}
