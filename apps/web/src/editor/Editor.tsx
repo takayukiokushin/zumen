@@ -10,6 +10,7 @@ import { useT, useTx } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
 import { UndoIcon, ZoomIcon } from '../icons.tsx';
 import { chooseSheet, issueLabel, tidyDrawing } from './inspect.ts';
+import { SHRINK, scaleLayout } from './layoutScale.ts';
 import type { Issue, IssueKind } from './inspect.ts';
 import { Rich } from '../i18n/Rich.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
@@ -91,6 +92,8 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
   /** 「結線を整える」で直しきれなかったところ */
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
+  /** 「レイアウトを縮小」で、これ以上縮められないときの知らせ */
+  const [layoutNote, setLayoutNote] = useState<string | null>(null);
   /** 入力内容が変わって、手で直した図面を作り直したときの知らせ（「操作を戻す」で元に戻せる） */
   const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; lost: boolean } | null>(null);
   /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
@@ -374,6 +377,40 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
               >
                 {t('editor.tidy')}
               </button>
+              <button
+                type="button"
+                className="btn"
+                title={t('editor.layoutShrinkHelp')}
+                disabled={sheetView}
+                onClick={() => {
+                  const r = scaleLayout(doc, SHRINK);
+                  setTidyNote(null);
+                  setIssues(null);
+                  if (!r.changed) {
+                    setLayoutNote(t('editor.layoutLimit'));
+                    return;
+                  }
+                  setLayoutNote(null);
+                  apply(r.doc);
+                }}
+              >
+                {t('editor.layoutShrink')}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                title={t('editor.layoutExpandHelp')}
+                disabled={sheetView}
+                onClick={() => {
+                  const r = scaleLayout(doc, 1 / SHRINK);
+                  setTidyNote(null);
+                  setIssues(null);
+                  setLayoutNote(null);
+                  if (r.changed) apply(r.doc);
+                }}
+              >
+                {t('editor.layoutExpand')}
+              </button>
             </div>
           </div>
 
@@ -444,6 +481,15 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
             <span className="hint">{t('editor.rebuiltUndo2')}</span>
           )}
           <button type="button" className="btn" onClick={() => setRebuiltNote(null)}>
+            {t('common.close')}
+          </button>
+        </p>
+      )}
+
+      {layoutNote && (
+        <p className="tidy-note" role="status">
+          <b>{layoutNote}</b>
+          <button type="button" className="btn" onClick={() => setLayoutNote(null)}>
             {t('common.close')}
           </button>
         </p>

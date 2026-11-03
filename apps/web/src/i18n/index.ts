@@ -512,6 +512,11 @@ const ja = {
   'comp.kind.free': '単独',
   'comp.kind.parallel': '母線から分岐',
   'comp.kind.beside-left': '左に添える',
+  'editor.layoutShrink': 'レイアウトを縮小',
+  'editor.layoutExpand': 'レイアウトを拡大',
+  'editor.layoutShrinkHelp': '記号どうしのすきまと、図面全体の横幅・縦幅を、少し縮めます（記号や文字の大きさは変わりません）。押すたびに、さらに縮みます。「操作を戻す」で戻せます',
+  'editor.layoutExpandHelp': '記号どうしのすきまと、図面全体の横幅・縦幅を、少し広げます（記号や文字の大きさは変わりません）。押すたびに、さらに広がります。「操作を戻す」で戻せます',
+  'editor.layoutLimit': 'これ以上、縮められません（これ以上縮めると、記号や文字が重なってしまいます）。',
 } as const;
 
 export type Key = keyof typeof ja;
@@ -1006,6 +1011,11 @@ const en: Dict = {
   'comp.kind.free': 'Standalone',
   'comp.kind.parallel': 'Branch from bus',
   'comp.kind.beside-left': 'Beside (left)',
+  'editor.layoutShrink': 'Shrink layout',
+  'editor.layoutExpand': 'Expand layout',
+  'editor.layoutShrinkHelp': 'Slightly shrinks the gaps between symbols and the overall width and height (symbol and text sizes do not change). It shrinks further each time you press it. You can undo it with “Undo”.',
+  'editor.layoutExpandHelp': 'Slightly widens the gaps between symbols and the overall width and height (symbol and text sizes do not change). It widens further each time you press it. You can undo it with “Undo”.',
+  'editor.layoutLimit': 'It cannot be shrunk any further (shrinking more would make symbols or text overlap).',
 };
 
 const fr: Dict = {
@@ -1498,6 +1508,11 @@ const fr: Dict = {
   'comp.kind.free': 'Isolé',
   'comp.kind.parallel': 'Dérivation du jeu de barres',
   'comp.kind.beside-left': 'À gauche',
+  'editor.layoutShrink': 'Réduire la disposition',
+  'editor.layoutExpand': 'Agrandir la disposition',
+  'editor.layoutShrinkHelp': 'Réduit légèrement les espaces entre les symboles ainsi que la largeur et la hauteur totales (la taille des symboles et du texte ne change pas). La disposition se réduit davantage à chaque clic. Vous pouvez annuler avec « Annuler ».',
+  'editor.layoutExpandHelp': 'Élargit légèrement les espaces entre les symboles ainsi que la largeur et la hauteur totales (la taille des symboles et du texte ne change pas). La disposition s’élargit davantage à chaque clic. Vous pouvez annuler avec « Annuler ».',
+  'editor.layoutLimit': 'Impossible de réduire davantage (les symboles ou le texte se chevaucheraient).',
 };
 
 const zh: Dict = {
@@ -1986,6 +2001,11 @@ const zh: Dict = {
   'comp.kind.free': '独立',
   'comp.kind.parallel': '母线分支',
   'comp.kind.beside-left': '放在左侧',
+  'editor.layoutShrink': '缩小布局',
+  'editor.layoutExpand': '扩大布局',
+  'editor.layoutShrinkHelp': '略微缩小符号之间的间隔以及图纸整体的宽度和高度（符号和文字的大小不变）。每按一次就再缩小一点。可用“撤销操作”还原。',
+  'editor.layoutExpandHelp': '略微扩大符号之间的间隔以及图纸整体的宽度和高度（符号和文字的大小不变）。每按一次就再扩大一点。可用“撤销操作”还原。',
+  'editor.layoutLimit': '无法再缩小（再缩小符号或文字就会重叠）。',
 };
 
 const ko: Dict = {
@@ -2476,6 +2496,11 @@ const ko: Dict = {
   'comp.kind.free': '단독',
   'comp.kind.parallel': '모선 분기',
   'comp.kind.beside-left': '왼쪽에 배치',
+  'editor.layoutShrink': '레이아웃 축소',
+  'editor.layoutExpand': '레이아웃 확대',
+  'editor.layoutShrinkHelp': '기호 사이의 간격과 도면 전체의 가로·세로 크기를 조금 줄입니다(기호와 글자 크기는 바뀌지 않습니다). 누를 때마다 더 줄어듭니다. “작업 되돌리기”로 되돌릴 수 있습니다.',
+  'editor.layoutExpandHelp': '기호 사이의 간격과 도면 전체의 가로·세로 크기를 조금 넓힙니다(기호와 글자 크기는 바뀌지 않습니다). 누를 때마다 더 넓어집니다. “작업 되돌리기”로 되돌릴 수 있습니다.',
+  'editor.layoutLimit': '더 이상 줄일 수 없습니다(더 줄이면 기호나 글자가 겹칩니다).',
 };
 
 const DICTS: Record<Lang, Dict> = { ja, en, fr, zh, ko };

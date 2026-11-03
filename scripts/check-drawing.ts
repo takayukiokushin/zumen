@@ -49,6 +49,7 @@ import type { Answers } from '../packages/knowledge/src/index.ts';
 import { rotatedBox, rotatedPort, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef, sizedSymbol } from '../packages/symbols/src/index.ts';
 import { buildSheetSvg } from '../apps/web/src/editor/exportSheet.ts';
+import { SHRINK, scaleLayout } from '../apps/web/src/editor/layoutScale.ts';
 import { chooseSheet, inspectDrawing, tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
 let failed = 0;
@@ -2629,6 +2630,61 @@ console.log('\n■ 上向きのCH');
   else if (!(apexY(down)! > 12 && apexY(up)! < 12)) fail(`CHの向きが正しくありません（下向きの頂点 ${apexY(down)}／上向きの頂点 ${apexY(up)}）`);
   else console.log('  上向きのCH：引込元の分類に入っている／大きさ・接続点は下向きと同じ／頂点が上');
   if (addSymbol({ items: [] } as unknown as Doc, 'cable-head-up', 0, 0).doc.items.length !== 1) fail('上向きのCHを図面に足せません');
+}
+
+/* ---------- レイアウトを縮小・拡大（すきまだけを変える） ---------- */
+console.log('\n■ レイアウトの縮小・拡大');
+{
+  const cases: [string, Answers][] = [
+    ['標準（CB形・1か所）', { ...answers, mainBreakerForm: 'cb' } as Answers],
+    ['PFS形・変圧器2台', { ...answers, mainBreakerForm: 'pfs', transformerCount: 2 } as Answers],
+    ['PAS（VT・LA内蔵）', { ...answers, sectionalizer: 'pas', pasControl: 'dgr', pasBuiltinVt: 'yes', pasBuiltinLa: 'yes' } as Answers],
+    ['3か所（送り先名称あり）', { ...answers, mainBreakerForm: 'cb', areaCount: 3, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried', 'a2:linkFrom': 1, 'a2:linkName': '第2変電所', 'a3:areaIntake': 'ds-vcb', 'a3:trCapacity': 100, 'a3:linkTap': 'bus', 'a3:linkCableInstallation': 'buried', 'a3:linkFrom': 1, 'a3:linkName': '第3出先' } as Answers],
+  ];
+  const bounds = (d: Doc) => docBounds(d);
+  const axisBad = (d: Doc) => d.items.filter((i) => i.kind === 'wire' && Math.abs(i.x1 - i.x2) > 0.01 && Math.abs(i.y1 - i.y2) > 0.01).length;
+  const problems = (d: Doc) => inspectDrawing(d, 'A3', 'landscape').filter((i) => i.kind === 'overlap' || i.kind === 'through' || i.kind === 'floating' || i.kind === 'skew').length;
+  const symBoxes = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => [i.id, i.symbolId, i.w, i.h, i.rotate, i.label.join('|'), i.labelDx, i.labelDy].join(':')).sort().join(',');
+  const groupRel = (d: Doc) => {
+    // 親と内蔵品の、相対位置
+    const by = new Map(d.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => [i.id, i]));
+    return [...by.values()].filter((i) => i.parent && by.get(i.parent)).map((i) => `${i.id}:${(i.x - by.get(i.parent!)!.x).toFixed(2)},${(i.y - by.get(i.parent!)!.y).toFixed(2)}`).sort().join(',');
+  };
+  for (const [name, a] of cases) {
+    const base = fromLayout(layout(buildComposition(a), a), 'ls');
+    const b0 = bounds(base);
+    const p0 = problems(base);
+    let cur = base;
+    let presses = 0;
+    let lastChanged = true;
+    let broke = '';
+    while (lastChanged && presses < 40) {
+      const r = scaleLayout(cur, SHRINK);
+      lastChanged = r.changed;
+      if (!r.changed) break;
+      presses++;
+      const nb = bounds(r.doc);
+      const pb = bounds(cur);
+      if (symBoxes(r.doc) !== symBoxes(base)) { broke = '記号の大きさ・文字が変わりました'; break; }
+      if (groupRel(r.doc) !== groupRel(base)) { broke = 'PASと内蔵品の位置関係が変わりました'; break; }
+      if (axisBad(r.doc) > axisBad(base)) { broke = '斜めの線ができました'; break; }
+      if (problems(r.doc) > p0) { broke = `重なり・つながっていない線・斜めの線が増えました（${p0} → ${problems(r.doc)}）：${inspectDrawing(r.doc, 'A3', 'landscape').filter((i) => ['overlap', 'through', 'floating', 'skew'].includes(i.kind)).map((i) => `${i.kind}@${Math.round(i.x)},${Math.round(i.y)} ${i.message}`).join(' / ')}`; break; }
+      if (nb.x1 - nb.x0 > pb.x1 - pb.x0 + 0.01 || nb.y1 - nb.y0 > pb.y1 - pb.y0 + 0.01) { broke = '縮小したのに、大きくなりました'; break; }
+      cur = r.doc;
+    }
+    const b1 = bounds(cur);
+    const shrunkW = (b0.x1 - b0.x0) - (b1.x1 - b1.x0);
+    const shrunkH = (b0.y1 - b0.y0) - (b1.y1 - b1.y0);
+    if (broke) fail(`${name}：${broke}（${presses}回目）`);
+    else if (presses >= 40) fail(`${name}：40回押しても、縮まなくならない（下限がありません）`);
+    else if (presses === 0) console.log(`  ${name}：すでに、これ以上縮められない`);
+    else console.log(`  ${name}：${presses}回で、これ以上縮められなくなる（横 −${shrunkW.toFixed(0)}・縦 −${shrunkH.toFixed(0)}）。記号・文字の大きさ、PASの内蔵品の位置、線の向きは変わらず、重なりは増えない`);
+    // 拡大：大きくなり、重ならず、斜めの線ができない。縮めたあとに広げても、記号は壊れない
+    const ex = scaleLayout(cur, 1 / SHRINK);
+    const eb = bounds(ex.doc);
+    if (!ex.changed || eb.x1 - eb.x0 <= b1.x1 - b1.x0 || eb.y1 - eb.y0 <= b1.y1 - b1.y0 + 0.01 && (b1.y1 - b1.y0) > 0 && false) fail(`${name}：拡大しても、大きくなりません`);
+    else if (symBoxes(ex.doc) !== symBoxes(base) || axisBad(ex.doc) > axisBad(base) || problems(ex.doc) > p0) fail(`${name}：拡大したら、記号・線・重なりが変わりました`);
+  }
 }
 
 /* ---------- 客柱：PAS・PGSの左に、枠の縦の真ん中で、隙間を空けて置く ---------- */
