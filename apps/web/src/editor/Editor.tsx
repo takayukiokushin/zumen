@@ -400,22 +400,6 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
             <div className="tool-row">
-              {/* 縦・横は、印刷プレビューのときだけ出す（プレビューを開かないと、見た目が変わらないため） */}
-              {sheetView && (
-                <span className="paper-pick" role="group" title={t('editor.orientation.help')}>
-                  {(['portrait', 'landscape'] as Orientation[]).map((o) => (
-                    <button
-                      key={o}
-                      type="button"
-                      className="btn"
-                      aria-pressed={orientation === o}
-                      onClick={() => applyAuto({ ...doc, orientation: o })}
-                    >
-                      {o === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
-                    </button>
-                  ))}
-                </span>
-              )}
               <button
                 type="button"
                 className="btn"
@@ -520,6 +504,20 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
       {sheetView && (
         <p className="preview-note" role="status">
           <span>{t('editor.sheetNoEdit')}</span>
+          {/* 縦・横は、印刷プレビューのときだけ出す。上のボタンの列に入れると、出たときに列が折り返して、ボタンがずれるので、プレビュー中の帯に置く */}
+          <span className="paper-pick" role="group" title={t('editor.orientation.help')}>
+            {(['portrait', 'landscape'] as Orientation[]).map((o) => (
+              <button
+                key={o}
+                type="button"
+                className="btn"
+                aria-pressed={orientation === o}
+                onClick={() => applyAuto({ ...doc, orientation: o })}
+              >
+                {o === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
+              </button>
+            ))}
+          </span>
           <button type="button" className="btn" onClick={() => setSheetView(false)}>
             {t('editor.sheetClose')}
           </button>
