@@ -38,18 +38,37 @@ function loadPageSize(): number {
   return 50;
 }
 
-/** 名前の中の、探した言葉のところを目立たせる */
+/** 探した言葉のところを目立たせる（言葉が空白で区切られていれば、どの言葉のところも） */
 function Highlight({ text, needle }: { text: string; needle: string }) {
-  if (!needle) return <>{text}</>;
-  const at = text.toLowerCase().indexOf(needle.toLowerCase());
-  if (at < 0) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, at)}
-      <mark className="hit">{text.slice(at, at + needle.length)}</mark>
-      {text.slice(at + needle.length)}
-    </>
-  );
+  const terms = needle.toLowerCase().split(/[\s　]+/).filter(Boolean);
+  if (terms.length === 0) return <>{text}</>;
+  const lower = text.toLowerCase();
+  // 目立たせる範囲を集めて、重なるものは、ひとつにつなぐ
+  const spans: [number, number][] = [];
+  for (const w of terms) {
+    for (let at = lower.indexOf(w); at >= 0; at = lower.indexOf(w, at + w.length)) spans.push([at, at + w.length]);
+  }
+  if (spans.length === 0) return <>{text}</>;
+  spans.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const s of spans) {
+    const last = merged[merged.length - 1];
+    if (last && s[0] <= last[1]) last[1] = Math.max(last[1], s[1]);
+    else merged.push([s[0], s[1]]);
+  }
+  const out: React.ReactNode[] = [];
+  let pos = 0;
+  merged.forEach(([a, b], i) => {
+    if (a > pos) out.push(text.slice(pos, a));
+    out.push(
+      <mark key={i} className="hit">
+        {text.slice(a, b)}
+      </mark>,
+    );
+    pos = b;
+  });
+  if (pos < text.length) out.push(text.slice(pos));
+  return <>{out}</>;
 }
 
 export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Props) {
@@ -291,6 +310,21 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     </span>
                     {p.lock && p.lock.userId !== meId && (
                       <b className="editing">　{t('project.editingBy', { user: p.lock.userName })}</b>
+                    )}
+                    {/* 事業場名称・お客様番号があれば、名前の下に小さく添える（探して見つかった理由が分かる） */}
+                    {(p.site_name || p.customer_no) && (
+                      <span className="sub">
+                        {p.site_name && (
+                          <span>
+                            {t('project.siteLabel')}：<Highlight text={p.site_name} needle={query} />
+                          </span>
+                        )}
+                        {p.customer_no && (
+                          <span>
+                            {t('project.customerNoLabel')}：<Highlight text={p.customer_no} needle={query} />
+                          </span>
+                        )}
+                      </span>
                     )}
                   </td>
                   <td className="when c-info">{new Date(p.updated_at).toLocaleString(lang)}</td>

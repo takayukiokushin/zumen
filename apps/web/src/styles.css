@@ -1058,3 +1058,6 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 @supports not selector(::-webkit-scrollbar) {
   @media (pointer: fine) { * { scrollbar-width: auto; scrollbar-color: var(--muted) var(--rule-soft); } }
 }
+
+/* 図面一覧：名前の下に添える、事業場名称・お客様番号 */
+.joblist .jobs .c-name .sub { display: flex; flex-wrap: wrap; gap: 0 calc(14px * var(--text-scale)); margin-top: calc(2px * var(--text-scale)); font-size: calc(11.5px * var(--text-scale)); color: var(--muted); }

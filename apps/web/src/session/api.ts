@@ -81,6 +81,9 @@ export interface ProjectSummary {
   created_at: string;
   updated_at: string;
   updated_by: string | null;
+  /** 回答の事業場名称・お客様番号（一覧に添えて出す。無ければ null） */
+  site_name?: string | null;
+  customer_no?: string | null;
   file_count: number;
   lock: Lock | null;
 }

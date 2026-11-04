@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
  * データはサーバー側にだけ置き、利用者の端末には残さない。
  */
 import { DATA_DIR, FILES_DIR } from './data-dir.ts';
+import { searchFields } from './search.ts';
 export { DATA_DIR, FILES_DIR };
 
 mkdirSync(FILES_DIR, { recursive: true });
@@ -94,16 +95,39 @@ addColumnIfMissing('projects', 'deleted_at', 'TEXT');
 addColumnIfMissing('projects', 'deleted_by', 'TEXT');
 // スケッチ・PDFを読み取った案件か（読み取りに使った写真は、保存したときに消すので、写真の有無とは別に覚える）
 addColumnIfMissing('projects', 'sketch_read', 'INTEGER NOT NULL DEFAULT 0');
+// 図面一覧に出す事業場名称・お客様番号と、探すための文字（案件名・事業場名称・お客様番号を、整えてひとつにしたもの）
+addColumnIfMissing('projects', 'site_name', 'TEXT');
+addColumnIfMissing('projects', 'customer_no', 'TEXT');
+addColumnIfMissing('projects', 'search_text', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'member'");
+
+const userVersion = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 
 /**
  * ログインの印の保存の形を変えた（user_version 1）。古い形のものは使えないので、一度だけ捨てる
  * （全員、もう一度ログインすることになる。案件のデータには影響しない）。
  */
-const userVersion = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
 if (userVersion < 1) {
   db.exec('DELETE FROM sessions');
-  db.exec('PRAGMA user_version = 1');
 }
+
+/** 回答の中の事業場名称・お客様番号を、探すための列に写す（user_version 2。以前からある案件の分を、一度だけ） */
+if (userVersion < 2) {
+  const rows = db.prepare('SELECT id, name, answers FROM projects').all() as { id: string; name: string; answers: string }[];
+  const upd = db.prepare('UPDATE projects SET site_name = ?, customer_no = ?, search_text = ? WHERE id = ?');
+  db.exec('BEGIN');
+  for (const r of rows) {
+    let a: unknown = {};
+    try {
+      a = JSON.parse(r.answers);
+    } catch {
+      // 壊れた回答は、空として扱う
+    }
+    const f = searchFields(r.name, a);
+    upd.run(f.site, f.no, f.text, r.id);
+  }
+  db.exec('COMMIT');
+}
+if (userVersion < 2) db.exec('PRAGMA user_version = 2');
 
 export const now = (): string => new Date().toISOString();

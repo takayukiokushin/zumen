@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { Hono } from 'hono';
 import { FILES_DIR, db, now } from './db.ts';
 import { readBody, text } from './input.ts';
+import { searchFields, searchTerms } from './search.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
@@ -202,13 +203,28 @@ export function purgeExpiredTrash(): number {
 export const projects = new Hono<{ Variables: { user: User } }>();
 projects.use('*', requireAuth);
 
+/** 案件名・回答が変わったら、一覧に出す事業場名称・お客様番号と、探すための文字を、作り直す */
+function refreshSearch(id: string): void {
+  const r = db.prepare('SELECT name, answers FROM projects WHERE id = ?').get(id) as { name: string; answers: string } | undefined;
+  if (!r) return;
+  let a: unknown = {};
+  try {
+    a = JSON.parse(r.answers);
+  } catch {
+    // 壊れた回答は、空として扱う
+  }
+  const f = searchFields(r.name, a);
+  db.prepare('UPDATE projects SET site_name = ?, customer_no = ?, search_text = ? WHERE id = ?').run(f.site, f.no, f.text, id);
+}
+
 /** 一覧で、1回に返せる件数の上限 */
 const LIST_MAX = 200;
 const LIST_DEFAULT = 50;
 
 /**
  * 一覧（中身は返さない）。
- *   q      … 名前の一部（大文字・小文字は区別しない）。サーバー側で絞るので、件数が増えても速い
+ *   q      … 探す言葉。案件名・事業場名称・お客様番号のどれかに含まれるもの（空白で区切ると、全部の言葉を含むもの）。
+ *            大文字・小文字、全角・半角は区別しない。サーバー側で絞るので、件数が増えても速い
  *   limit  … 1回に返す件数（1〜200。省略すると、50件。limit も offset も省くと、全件を返す＝古い画面との互換）
  *   offset … 何件目から返すか（「さらに表示」で、続きをもらうのに使う）
  * 新しい順（更新日）。total は、絞り込んだあとの全件数。
@@ -220,14 +236,15 @@ projects.get('/', (c) => {
   const paged = c.req.query('limit') !== undefined || c.req.query('offset') !== undefined;
   const limit = Math.min(LIST_MAX, Math.max(1, Math.floor(Number(c.req.query('limit'))) || LIST_DEFAULT));
   const offset = Math.max(0, Math.floor(Number(c.req.query('offset'))) || 0);
-  // LIKE の特別な文字（% _ \）は、ふつうの文字として探す
-  const like = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
-  const where = `WHERE p.deleted_at IS NULL AND ${visible}${q ? " AND p.name LIKE ? ESCAPE '\\'" : ''}`;
-  const whereArgs = q ? [...args, like] : args;
+  // 探す言葉を、空白で区切って、全部を含むものを探す。LIKE の特別な文字（% _ \）は、ふつうの文字として探す
+  const terms = searchTerms(q);
+  const likes = terms.map((w) => `%${w.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`);
+  const where = `WHERE p.deleted_at IS NULL AND ${visible}${likes.map(() => " AND p.search_text LIKE ? ESCAPE '\\'").join('')}`;
+  const whereArgs = [...args, ...likes];
   const total = Number((db.prepare(`SELECT COUNT(*) AS n FROM projects p ${where}`).get(...whereArgs) as { n: number }).n);
   const rows = db
     .prepare(
-      `SELECT p.id, p.name, p.created_at, p.updated_at, p.updated_by,
+      `SELECT p.id, p.name, p.created_at, p.updated_at, p.updated_by, p.site_name, p.customer_no,
               (SELECT COUNT(*) FROM project_files f WHERE f.project_id = p.id) AS file_count
        FROM projects p ${where} ORDER BY p.updated_at DESC, p.id${paged ? ' LIMIT ? OFFSET ?' : ''}`,
     )
@@ -335,6 +352,7 @@ projects.post('/practice/copy', async (c) => {
       // もとの写真のデータが無いものは、コピーしない
     }
   }
+  refreshSearch(id);
   takeLock(id, user.id);
   return c.json({ id, name, updatedAt: t }, 201);
 });
@@ -388,6 +406,7 @@ projects.post('/:id/duplicate', (c) => {
   db.prepare(
     'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
   ).run(id, name, t, t, user.id, JSON.stringify(clearForDuplicate(answers as never)), withoutHandwrittenMemos(src.drawing), user.id);
+  refreshSearch(id);
   takeLock(id, user.id);
   return c.json({ id, name, updatedAt: t }, 201);
 });
@@ -419,6 +438,7 @@ projects.post('/', async (c) => {
   db.prepare(
     'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, owner) VALUES (?, ?, ?, ?, ?, ?, ?)',
   ).run(id, name, t, t, c.get('user').id, JSON.stringify(initial), c.get('user').id);
+  refreshSearch(id);
   takeLock(id, c.get('user').id);
   return c.json({ id, updatedAt: t }, 201);
 });
@@ -509,6 +529,8 @@ projects.put('/:id', async (c) => {
     args.push(body.drawing === null ? null : JSON.stringify(body.drawing));
   }
   db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
+  // 案件名・回答が変わったので、一覧の検索用の文字も、作り直す
+  refreshSearch(id);
   // 「保存」を押したら、読み取りに使った写真・PDFは消す（図面の元になる内容は、回答と図面として、いま保存した）。
   // 「読み取った案件か」の印は、写真が無くなっても残す
   let removed = 0;

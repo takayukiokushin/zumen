@@ -10,7 +10,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import type { ChildProcess } from 'node:child_process';
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -864,6 +864,46 @@ try {
     check('見つからないときは、0件', none.total === 0 && none.projects.length === 0);
     const other = (await (await call(b, '/api/projects?limit=200')).json()) as L;
     check('他の人（標準のアカウント）にも、同じ案件が見える（共有）', other.total >= 7);
+  }
+
+  /* ---------- 7b2. 検索：案件名・事業場名称・お客様番号 ---------- */
+  say('\n■ 検索（案件名・事業場名称・お客様番号）');
+  {
+    type L = { projects: { id: string; name: string; site_name: string | null; customer_no: string | null }[]; total: number };
+    const find = async (q: string) => (await (await call(a, `/api/projects?limit=50&q=${encodeURIComponent(q)}`)).json()) as L;
+    const mk = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: 'ＡＢＣビル改修', answers: { siteName: 'Ｘ工場　第二棟', customerNo: 'No-９９９' } }) })).json()) as { id: string };
+    check('案件名で見つかる', (await find('ビル改修')).projects.some((p) => p.id === mk.id));
+    check('事業場名称でも見つかる', (await find('第二棟')).projects.some((p) => p.id === mk.id));
+    check('お客様番号でも見つかる', (await find('999')).projects.some((p) => p.id === mk.id));
+    check('全角・半角、大文字・小文字の違いは、同じものとして探せる（abc→ＡＢＣ、999→９９９）', (await find('abc')).projects.some((p) => p.id === mk.id) && (await find('no-999')).projects.some((p) => p.id === mk.id));
+    check('空白で区切ると、すべての言葉を含むものだけが見つかる', (await find('abc 第二棟 999')).total === 1 && (await find('abc zzz存在しない')).total === 0);
+    const hit = (await find('999')).projects.find((p) => p.id === mk.id)!;
+    check('一覧に、事業場名称・お客様番号も返る', hit.site_name === 'Ｘ工場　第二棟' && hit.customer_no === 'No-９９９', `${hit.site_name} / ${hit.customer_no}`);
+    await call(a, `/api/projects/${mk.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '別の工場', customerNo: 'K-100' } }) });
+    check('保存して番号が変わると、新しい番号で見つかり、古い番号では見つからない', (await find('k-100')).projects.some((p) => p.id === mk.id) && !(await find('999')).projects.some((p) => p.id === mk.id));
+    await call(a, `/api/projects/${mk.id}`, { method: 'PUT', body: JSON.stringify({ name: '名前を変えた案件' }) });
+    check('名前を変えると、新しい名前で見つかる（事業場名称・番号は、そのまま）', (await find('名前を変えた')).projects.some((p) => p.id === mk.id) && (await find('k-100')).projects.some((p) => p.id === mk.id) && !(await find('ビル改修')).projects.some((p) => p.id === mk.id));
+    await call(a, `/api/projects/${mk.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '別の工場' } }) });
+    check('お客様番号を消すと、その番号では見つからない', !(await find('k-100')).projects.some((p) => p.id === mk.id));
+    const dup = (await (await call(a, `/api/projects/${mk.id}/duplicate`, { method: 'POST' })).json()) as { id: string };
+    const dl = await find('別の工場');
+    check('複製した案件は、事業場名称が空になるので、複製元だけが見つかる', dl.projects.some((p) => p.id === mk.id) && !dl.projects.some((p) => p.id === dup.id));
+    check('数字や記号（%・_）だけを探しても、全部には一致しない', (await find('%')).total <= 1);
+    // 以前からある案件（探すための列が空）も、更新のとき、一度だけ写される
+    const old = mkdtempSync(join(tmpdir(), 'zumen-mig-'));
+    mkdirSync(join(old, 'files'), { recursive: true });
+    const odb = new DatabaseSync(join(old, 'zumen.db'));
+    odb.exec(`CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT, answers TEXT NOT NULL DEFAULT '{}', drawing TEXT, locked_by TEXT, locked_at TEXT, owner TEXT);`);
+    odb.prepare("INSERT INTO projects (id, name, created_at, updated_at, answers) VALUES ('old1', '古い案件', '2026-01-01', '2026-01-01', ?)").run(JSON.stringify({ siteName: '古い工場', customerNo: 'OLD-7' }));
+    odb.exec('PRAGMA user_version = 1');
+    odb.close();
+    const mig = await runNode(['apps/server/src/cli.ts', 'list'], { ...env, DATA_DIR: old });
+    const odb2 = new DatabaseSync(join(old, 'zumen.db'));
+    const row = odb2.prepare('SELECT site_name, customer_no, search_text FROM projects WHERE id = ?').get('old1') as { site_name: string; customer_no: string; search_text: string };
+    const ver = (odb2.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+    odb2.close();
+    rmSync(old, { recursive: true, force: true });
+    check('以前からある案件にも、事業場名称・お客様番号・探すための文字が、更新のときに写される', mig.code === 0 && row.site_name === '古い工場' && row.customer_no === 'OLD-7' && row.search_text.includes('old-7') && ver === 2, `${row.site_name}/${row.customer_no}/v${ver}`);
   }
 
   /* ---------- 7c. 案件名は必須 ---------- */
