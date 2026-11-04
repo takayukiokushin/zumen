@@ -72,6 +72,7 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_projects_updated ON projects(updated_at);
   CREATE INDEX IF NOT EXISTS idx_files_project ON project_files(project_id);
 `);
 

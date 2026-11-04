@@ -1006,3 +1006,9 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .login .pw-eye { margin-top: 0; padding: 0; width: var(--login-h); display: inline-flex; align-items: center; justify-content: center; }
 /* 言葉・文字の大きさのボタンにも、「ログイン」ボタン用の上の余白（16px）が付いていたので、外す（名前と同じ高さに並ぶ） */
 .login .seg button { margin-top: 0; }
+
+/* ---- 図面一覧：1回に出す件数・続きを出すボタン ---- */
+.joblist .page-size { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin: calc(8px * var(--text-scale)) 0; }
+.joblist .page-size .lbl { font-size: calc(12px * var(--text-scale)); color: var(--muted); }
+.joblist .more-row { display: flex; align-items: center; flex-wrap: wrap; gap: calc(12px * var(--text-scale)); margin: calc(12px * var(--text-scale)) 0 0; }
+.joblist .more-row .hint { margin: 0; }

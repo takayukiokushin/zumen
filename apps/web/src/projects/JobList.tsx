@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../session/api.ts';
 import type { PracticeSource, ProjectSummary, Role, TrashItem } from '../session/api.ts';
 import { useDialogs } from '../Dialogs.tsx';
@@ -25,6 +25,19 @@ interface Props {
   canLeave: () => Promise<boolean>;
 }
 
+/** 1回に出す件数の選択肢。選んだ件数は、このブラウザに覚えさせる */
+const PAGE_SIZES = [25, 50, 100, 200] as const;
+const PAGE_SIZE_KEY = 'zumen.listSize';
+function loadPageSize(): number {
+  try {
+    const v = Number(localStorage.getItem(PAGE_SIZE_KEY));
+    if ((PAGE_SIZES as readonly number[]).includes(v)) return v;
+  } catch {
+    // 覚えていなくても使える
+  }
+  return 50;
+}
+
 /** 名前の中の、探した言葉のところを目立たせる */
 function Highlight({ text, needle }: { text: string; needle: string }) {
   if (!needle) return <>{text}</>;
@@ -43,8 +56,17 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   const t = useT();
   const { ask, input } = useDialogs();
   const lang = useLang();
+  /** いま画面に出している案件（先頭から、続きを足していく） */
   const [list, setList] = useState<ProjectSummary[] | null>(null);
+  /** 探した言葉で絞ったあとの、全部の件数（画面に出ているのは、このうちの先頭から） */
+  const [total, setTotal] = useState(0);
+  /** 入力欄の言葉。少し待ってから、サーバーに尋ねる（1文字ごとに尋ねない） */
   const [q, setQ] = useState('');
+  const [query, setQuery] = useState('');
+  const [pageSize, setPageSize] = useState(loadPageSize);
+  const [loadingMore, setLoadingMore] = useState(false);
+  /** 古い返事が、新しい返事を上書きしないための番号 */
+  const seq = useRef(0);
   const [error, setError] = useState<string | null>(null);
   /** ごみ箱（消してから30日以内の案件） */
   const [trash, setTrash] = useState<TrashItem[]>([]);
@@ -54,25 +76,65 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   /** 練習用のアカウントがコピーできる、本番の案件 */
   const [sources, setSources] = useState<PracticeSource[]>([]);
 
-  const reload = () =>
-    Promise.all([api.listProjects(), api.listTrash(), role === 'sandbox' ? api.listPracticeSources() : Promise.resolve({ projects: [] })])
+  /** 先頭から出し直す（探す言葉・件数を変えたとき、消した・戻したあと） */
+  const reload = () => {
+    const mine = ++seq.current;
+    return Promise.all([
+      api.listProjects({ q: query, limit: pageSize, offset: 0 }),
+      api.listTrash(),
+      role === 'sandbox' ? api.listPracticeSources() : Promise.resolve({ projects: [] }),
+    ])
       .then(([l, tr, src]) => {
+        if (mine !== seq.current) return;
         setList(l.projects);
+        setTotal(l.total);
         setTrash(tr.projects);
         setSources(src.projects);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t('err.loadProjects')));
+      .catch((e) => {
+        if (mine === seq.current) setError(e instanceof Error ? e.message : t('err.loadProjects'));
+      });
+  };
 
+  // 探す言葉を入れてから 0.3 秒たったら、サーバーに尋ねる
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(q.trim()), q.trim() === query ? 0 : 300);
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  // 探す言葉・1回の件数が変わったら、先頭から出し直す
   useEffect(() => {
     void reload();
-  }, []);
+  }, [query, pageSize]);
 
-  const shown = useMemo(() => {
-    if (!list) return null;
-    const needle = q.trim().toLowerCase();
-    if (!needle) return list;
-    return list.filter((p) => p.name.toLowerCase().includes(needle));
-  }, [list, q]);
+  /** 続きを足す（いまの件数ぶん） */
+  const loadMore = async () => {
+    if (!list || loadingMore) return;
+    const mine = seq.current;
+    setLoadingMore(true);
+    try {
+      const l = await api.listProjects({ q: query, limit: pageSize, offset: list.length });
+      if (mine !== seq.current) return;
+      setList((cur) => {
+        const have = new Set((cur ?? []).map((p) => p.id));
+        return [...(cur ?? []), ...l.projects.filter((p) => !have.has(p.id))];
+      });
+      setTotal(l.total);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('err.loadProjects'));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const chooseSize = (n: number) => {
+    setPageSize(n);
+    try {
+      localStorage.setItem(PAGE_SIZE_KEY, String(n));
+    } catch {
+      // 覚えられなくても、この画面では使える
+    }
+  };
 
   const create = async () => {
     // 名前を聞く前に確かめる（入力した名前が無駄にならないように）
@@ -145,12 +207,22 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
             aria-label={t('project.search')}
             autoComplete="off"
           />
-          <span className="count">
-            {shown ? `${shown.length}${t('project.count')}` : ''}
-          </span>
+          <span className="count">{list ? `${total}${t('project.count')}` : ''}</span>
           <button type="button" className="btn primary" onClick={() => void create()}>
             ＋ {t('project.new')}
           </button>
+        </div>
+
+        <div className="page-size" role="group" aria-label={t('project.pageSize')}>
+          <span className="lbl">{t('project.pageSize')}</span>
+          <div className="seg">
+            {PAGE_SIZES.map((n) => (
+              <button key={n} type="button" className="btn" aria-pressed={pageSize === n} onClick={() => chooseSize(n)}>
+                {n}
+                {t('project.count')}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && <p className="err">{error}</p>}
@@ -166,13 +238,14 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
           </p>
         )}
 
-        {shown === null ? (
+        {list === null ? (
           <p className="hint">{t('common.loading')}</p>
-        ) : list && list.length === 0 ? (
+        ) : total === 0 && query === '' ? (
           <p className="hint">{t('project.none')}</p>
-        ) : shown.length === 0 ? (
+        ) : total === 0 ? (
           <p className="hint">{t('project.noMatch')}</p>
         ) : (
+          <>
           <table className="jobs">
             <thead>
               <tr>
@@ -184,7 +257,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
               </tr>
             </thead>
             <tbody>
-              {shown.map((p) => (
+              {list.map((p) => (
                 <tr key={p.id} className={`has-del${p.id === currentId ? ' current' : ''}`}>
                   {/* 「開く」は、名前のすぐ左に。「消す」は、右端に離して置く（押し間違いを防ぐ） */}
                   <td className="c-act">
@@ -205,7 +278,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                   </td>
                   <td className="c-name">
                     <span className="name">
-                      <Highlight text={p.name} needle={q.trim()} />
+                      <Highlight text={p.name} needle={query} />
                     </span>
                     {p.lock && p.lock.userId !== meId && (
                       <b className="editing">　{t('project.editingBy', { user: p.lock.userName })}</b>
@@ -238,6 +311,16 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
               ))}
             </tbody>
           </table>
+          {/* 件数が多いときは、先頭から出して、続きは「さらに表示」で足す */}
+          <p className="more-row">
+            <span className="hint">{t('project.shownOf', { total, shown: list.length })}</span>
+            {list.length < total && (
+              <button type="button" className="btn" disabled={loadingMore} onClick={() => void loadMore()}>
+                {loadingMore ? t('common.loading') : t('project.more', { n: Math.min(pageSize, total - list.length) })}
+              </button>
+            )}
+          </p>
+          </>
         )}
 
         {role === 'sandbox' && (

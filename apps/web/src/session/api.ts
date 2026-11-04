@@ -192,7 +192,15 @@ export const api = {
     call<{ user: User }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId, password }) }),
   logout: () => call<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
 
-  listProjects: () => call<{ projects: ProjectSummary[] }>('/api/projects'),
+  /** 案件の一覧。q：名前の一部、limit：1回の件数、offset：何件目から（サーバー側で絞る） */
+  listProjects: (opts: { q?: string; limit?: number; offset?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (opts.q) p.set('q', opts.q);
+    if (opts.limit !== undefined) p.set('limit', String(opts.limit));
+    if (opts.offset !== undefined) p.set('offset', String(opts.offset));
+    const qs = p.toString();
+    return call<{ projects: ProjectSummary[]; total: number }>(`/api/projects${qs ? `?${qs}` : ''}`);
+  },
   /** answers：最初から入れておく回答（例：図面の名称を、事業場名称の初期値にする） */
   createProject: (name: string, answers?: Answers) =>
     call<{ id: string; updatedAt: string }>('/api/projects', { method: 'POST', body: JSON.stringify({ name, ...(answers ? { answers } : {}) }) }),

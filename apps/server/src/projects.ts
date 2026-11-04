@@ -202,20 +202,39 @@ export function purgeExpiredTrash(): number {
 export const projects = new Hono<{ Variables: { user: User } }>();
 projects.use('*', requireAuth);
 
-/** 一覧（中身は返さない） */
+/** 一覧で、1回に返せる件数の上限 */
+const LIST_MAX = 200;
+const LIST_DEFAULT = 50;
+
+/**
+ * 一覧（中身は返さない）。
+ *   q      … 名前の一部（大文字・小文字は区別しない）。サーバー側で絞るので、件数が増えても速い
+ *   limit  … 1回に返す件数（1〜200。省略すると、50件。limit も offset も省くと、全件を返す＝古い画面との互換）
+ *   offset … 何件目から返すか（「さらに表示」で、続きをもらうのに使う）
+ * 新しい順（更新日）。total は、絞り込んだあとの全件数。
+ */
 projects.get('/', (c) => {
   const user = c.get('user');
   const { where: visible, args } = visibleTo(user);
-  const where = `WHERE p.deleted_at IS NULL AND ${visible}`;
+  const q = (c.req.query('q') ?? '').trim();
+  const paged = c.req.query('limit') !== undefined || c.req.query('offset') !== undefined;
+  const limit = Math.min(LIST_MAX, Math.max(1, Math.floor(Number(c.req.query('limit'))) || LIST_DEFAULT));
+  const offset = Math.max(0, Math.floor(Number(c.req.query('offset'))) || 0);
+  // LIKE の特別な文字（% _ \）は、ふつうの文字として探す
+  const like = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+  const where = `WHERE p.deleted_at IS NULL AND ${visible}${q ? " AND p.name LIKE ? ESCAPE '\\'" : ''}`;
+  const whereArgs = q ? [...args, like] : args;
+  const total = Number((db.prepare(`SELECT COUNT(*) AS n FROM projects p ${where}`).get(...whereArgs) as { n: number }).n);
   const rows = db
     .prepare(
       `SELECT p.id, p.name, p.created_at, p.updated_at, p.updated_by,
               (SELECT COUNT(*) FROM project_files f WHERE f.project_id = p.id) AS file_count
-       FROM projects p ${where} ORDER BY p.updated_at DESC`,
+       FROM projects p ${where} ORDER BY p.updated_at DESC, p.id${paged ? ' LIMIT ? OFFSET ?' : ''}`,
     )
-    .all(...args) as { id: string }[];
+    .all(...whereArgs, ...(paged ? [limit, offset] : [])) as { id: string }[];
   return c.json({
     projects: rows.map((r) => ({ ...r, lock: currentLock(r.id) })),
+    total,
   });
 });
 

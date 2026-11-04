@@ -836,6 +836,36 @@ try {
     check('極端に大きな通信は、読み込む前に断る', r !== null && r.status === 413, `${r?.status}`);
   }
 
+  /* ---------- 7b. 案件の一覧：件数を区切って出す・サーバー側で探す ---------- */
+  say('\n■ 案件の一覧（件数の区切り・検索）');
+  {
+    const names = ['一覧試験-01', '一覧試験-02', '一覧試験-03', '一覧試験-04', '一覧試験-05', '一覧試験_下線', '100%完了の一覧試験'];
+    for (const n of names) await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: n }) });
+    type L = { projects: { id: string; name: string; lock: unknown }[]; total: number };
+    const list = async (qs: string) => (await (await call(a, `/api/projects${qs}`)).json()) as L;
+    const all = await list('');
+    check('limit も offset も省くと、全件を返す（古い画面との互換）', all.projects.length === all.total && all.total >= names.length, `${all.projects.length}/${all.total}`);
+    const found = await list('?q=' + encodeURIComponent('一覧試験') + '&limit=3&offset=0');
+    check('名前の一部で、サーバー側で絞れる（全体の件数が返る）', found.total === 7 && found.projects.length === 3 && found.projects.every((p) => p.name.includes('一覧試験')), `${found.total}件中${found.projects.length}件`);
+    const next = await list('?q=' + encodeURIComponent('一覧試験') + '&limit=3&offset=3');
+    const last = await list('?q=' + encodeURIComponent('一覧試験') + '&limit=3&offset=6');
+    const ids = [...found.projects, ...next.projects, ...last.projects].map((p) => p.id);
+    check('続き（offset）を足すと、重複も抜けもなく、全部そろう', next.projects.length === 3 && last.projects.length === 1 && new Set(ids).size === 7, `${ids.length}件`);
+    check('新しい順に並ぶ（作った順の逆）', found.projects[0]!.name.includes('100%完了') && found.projects[1]!.name.includes('下線'), found.projects.map((p) => p.name).join(' / '));
+    const pct = await list('?q=' + encodeURIComponent('%') + '&limit=50');
+    check('「%」は、ふつうの文字として探す（全部に一致しない）', pct.total === 1 && pct.projects[0]!.name.includes('100%'), `${pct.total}件`);
+    const under = await list('?q=' + encodeURIComponent('_下') + '&limit=50');
+    check('「_」も、ふつうの文字として探す', under.total === 1, `${under.total}件`);
+    const big = await list('?limit=999');
+    check('件数の上限は200件', big.projects.length <= 200);
+    const bad = await list('?limit=abc&offset=-5');
+    check('件数・開始位置が文字や負の数でも、エラーにならない（標準の50件）', bad.projects.length <= 50 && bad.total >= 7);
+    const none = await list('?q=' + encodeURIComponent('存在しない名前zzz') + '&limit=25');
+    check('見つからないときは、0件', none.total === 0 && none.projects.length === 0);
+    const other = (await (await call(b, '/api/projects?limit=200')).json()) as L;
+    check('他の人（標準のアカウント）にも、同じ案件が見える（共有）', other.total >= 7);
+  }
+
   /* ---------- 8a. 想定外の形の入力（数字・配列・空など）でも、エラーにしない ---------- */
   say('\n■ 想定外の形の入力');
   {
