@@ -867,9 +867,12 @@ main.form {
   --form-h: calc(30px * var(--ctl-scale));
 }
 @media (pointer: coarse) { main.form { --form-h: max(40px, calc(30px * var(--ctl-scale))); } }
+/* 入力欄どうしのすき間は、入力欄の幅（main.form の幅。画面全体の大きさの設定も、ここに効く）に合わせて、自動で決める。
+     広いほど広く（最大：横 34、縦 22）、狭くなったら、押しやすさ・見やすさの下限（横 12、縦 9）まで詰める。 */
 main.form .fields {
   display: flex; flex-wrap: wrap; align-items: flex-start;
-  gap: calc(8px * var(--text-scale)) calc(12px * var(--text-scale));
+  row-gap: clamp(calc(9px * var(--text-scale)), 1.5cqw, calc(22px * var(--text-scale)));
+  column-gap: clamp(calc(12px * var(--text-scale)), 2.4cqw, calc(34px * var(--text-scale)));
   padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale));
 }
 main.form .subgroup .fields { padding-top: calc(6px * var(--text-scale)); padding-bottom: calc(10px * var(--text-scale)); }
@@ -981,7 +984,7 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 
 /* ------------------------------------------------------------------ */
 /* 項目8：入力欄の幅（main.form の幅）に合わせて、並びを自動で変える */
-/*   - 広い（960px 以上）：ゆったり並べる。説明文は3行まで全文を出す（長い説明文の欄は、幅を広げて、3行に収まるようにする）。
+/*   - 広い（960px 以上）：ゆったり並べる（すき間は、幅に合わせて自動で広がる）。説明文は3行まで全文を出す（長い説明文の欄は、幅を広げて、3行に収まるようにする）。
        それより長い説明文だけ、3行で切って、全文は、マウスを載せると出る。
      - ふつう（640〜960px）：いまの並び（すき間を詰め、説明文は1行）。
      - 狭い（640px 以下）：欄は幅いっぱい、ボタンは幅を分け合う（項目5）。 */
@@ -989,8 +992,6 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 @container (min-width: 960px) {
   main.form .fields {
     --help-lines: 3;
-    column-gap: calc(18px * var(--text-scale));
-    row-gap: calc(12px * var(--text-scale));
   }
   main.form .field[data-helpw="m"] { --fw-help: calc(210px * var(--text-scale)); }
   main.form .field[data-helpw="l"] { --fw-help: calc(320px * var(--text-scale)); }
