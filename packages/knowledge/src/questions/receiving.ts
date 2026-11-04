@@ -133,7 +133,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     type: 'select',
     options: [
       { value: 'pole', label: '電柱上' },
-      { value: 'indoor', label: '電気設備内（キュービクル／電気室）', share: '約30%' },
+      { value: 'indoor', label: '電気設備内（キュービクル／電気室）' },
     ],
     defaultValue: 'pole',
     ask: 'ai-uncertain',

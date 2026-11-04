@@ -103,7 +103,7 @@ export const SITE_QUESTIONS: Question[] = [
     type: 'select',
     options: [
       { value: 'coincident', label: 'はい（3点一致）' },
-      { value: 'split', label: 'いいえ（3点不一致）', share: '約1%' },
+      { value: 'split', label: 'いいえ（3点不一致）' },
     ],
     defaultValue: 'coincident',
     ask: 'ai-uncertain',
