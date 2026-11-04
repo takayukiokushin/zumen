@@ -30,6 +30,8 @@ jobs:
         run: pnpm catalog
       - name: ナレッジベース（質問定義・構成ルール）の検証
         run: pnpm check
+      - name: 自己診断（サーバーを実際に動かして、ログイン・保存・控え・エラーの受け皿などを確かめる）
+        run: pnpm selftest
       - name: 検証用の作図テストを生成
         run: pnpm sample
       - name: 生成物が最新か確認
