@@ -42,15 +42,17 @@
   --draw-accent-soft: #f4ead0;
 }
 
-/* ---- 暗い画面 ---- */
+/* ---- 暗い画面 ----
+   入力欄の枠（--control-border）・補助の文字（--muted）・区切り線（--rule）を、背景は変えずに、少し明るくして、見分けやすくしている（第12弾 項目8）。
+   以前：枠 #6b7773／補助の文字 #98a39f／区切り線 #3a4240。明るい画面は、変えていない */
 :root[data-theme="dark"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
-  --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #98a39f; --rule: #3a4240;
-  --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #6b7773; --ok: #85c7a0; --ok-soft: #1f3228;
+  --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #a8b2ae; --rule: #48524f;
+  --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
   --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
-    --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #98a39f; --rule: #3a4240;
-    --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #6b7773; --ok: #85c7a0; --ok-soft: #1f3228;
+    --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #a8b2ae; --rule: #48524f;
+    --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
     --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
 }
 
