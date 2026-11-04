@@ -696,18 +696,30 @@ button.with-icon svg { flex: 0 0 auto; }
   :where(html[data-uw~="640"]) .joblist .jobs td { display: block; padding: 0; border: 0; }
   :where(html[data-uw~="640"]) .joblist .jobs td.when { white-space: normal; }
   :where(html[data-uw~="640"]) .joblist .jobs td[data-label]::before { content: attr(data-label) "："; }
-  /* カード：1行目は名前、次に日時、最後に、ボタン（左に「開く」、右に「消す」）。「開く」と「消す」は、横いっぱいに離れる */
+  /* カード：1行目は名前、次に日時、最後に、ボタンを横一列（左から「開く」「複製して新規作成」「消す」）。
+     「消す」は右端に離し、間に「複製して新規作成」を挟んで、押し間違いを防ぐ。幅が足りないときは、文字と余白を詰める */
   :where(html[data-uw~="640"]) .joblist .jobs tr { grid-template-columns: 1fr auto; align-items: center; }
   :where(html[data-uw~="640"]) .joblist .jobs .c-name { grid-column: 1 / -1; order: 1; }
   :where(html[data-uw~="640"]) .joblist .jobs .c-info { grid-column: 1 / -1; order: 2; }
-  :where(html[data-uw~="640"]) .joblist .jobs .c-act { grid-column: 1 / -1; order: 3; width: auto; margin-top: calc(6px * var(--text-scale)); }
-  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act { grid-column: 1; }
-  :where(html[data-uw~="640"]) .joblist .jobs .c-del { order: 4; grid-column: 2; width: auto; margin-top: calc(6px * var(--text-scale)); }
-  :where(html[data-uw~="640"]) .joblist .jobs .c-dup { order: 5; grid-column: 1 / -1; width: auto; text-align: left; margin-top: calc(6px * var(--text-scale)); }
-  /* 「開く」は左に、「消す」は右端に。間を広くあけて、押し間違いを防ぐ */
-  :where(html[data-uw~="640"]) .joblist .jobs .c-act { justify-self: start; }
+  :where(html[data-uw~="640"]) .joblist .jobs .c-act { grid-column: 1 / -1; order: 3; width: auto; margin-top: calc(6px * var(--text-scale)); justify-self: start; }
   :where(html[data-uw~="640"]) .joblist .jobs .c-act .btn { width: auto; min-width: calc(128px * var(--ctl-scale)); }
-  :where(html[data-uw~="640"]) .joblist .jobs .c-del { justify-self: end; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: calc(6px * var(--text-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act { grid-column: 1; justify-self: stretch; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act .btn { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup { order: 4; grid-column: 2; width: auto; text-align: center; margin-top: calc(6px * var(--text-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn { width: 100%; min-width: 0; white-space: nowrap; padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del { order: 5; grid-column: 3; width: auto; margin-top: calc(6px * var(--text-scale)); justify-self: stretch; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del .btn { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr:not(.has-del) .c-del { order: 4; grid-column: 2; width: auto; margin-top: calc(6px * var(--text-scale)); justify-self: end; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr:not(.has-del) .c-dup { order: 5; grid-column: 1 / -1; width: auto; text-align: left; margin-top: calc(6px * var(--text-scale)); }
+  /* 大きな文字の設定などで、どうしても足りないときだけ、「複製して新規作成」の文字が折り返す（3つのボタンは、同じ高さに伸びて、横一列のまま） */
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del { align-items: stretch; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del { display: flex; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act .btn, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del .btn { flex: 1 1 auto; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn { white-space: normal; line-height: 1.25; }
+  /* とても狭いとき（幅400以下）：文字を、もう少し小さくする */
+  :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-dup .btn { font-size: calc(11px * var(--ctl-scale)); padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); }
+  :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-act .btn, :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-del .btn { padding-left: calc(8px * var(--ctl-scale)); padding-right: calc(8px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
 
 
 /* 受電設備エリアが2か所以上のとき：エリアごとの大きなまとまり */
