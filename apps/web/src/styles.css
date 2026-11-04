@@ -1008,7 +1008,9 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .login .seg button { margin-top: 0; }
 
 /* ---- 図面一覧：1回に出す件数・続きを出すボタン ---- */
-.joblist .page-size { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin: calc(8px * var(--text-scale)) 0; }
+.joblist .list-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: calc(6px * var(--text-scale)) calc(16px * var(--text-scale)); margin-bottom: calc(4px * var(--text-scale)); }
+.joblist .list-head h2 { margin: 0; }
+.joblist .page-size { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin-left: auto; }
 .joblist .page-size .lbl { font-size: calc(12px * var(--text-scale)); color: var(--muted); }
 .joblist .more-row { display: flex; align-items: center; flex-wrap: wrap; gap: calc(12px * var(--text-scale)); margin: calc(12px * var(--text-scale)) 0 0; }
 .joblist .more-row .hint { margin: 0; }

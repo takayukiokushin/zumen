@@ -195,7 +195,22 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   return (
     <div className="analyze joblist">
       <div className="panel">
-        <h2>{t('project.list')}</h2>
+        {/* 見出しと同じ行の右端に、表示件数を置く（「案件を追加」から離して、押し間違いを防ぐ） */}
+        <div className="list-head">
+          <h2>{t('project.list')}</h2>
+          <div className="page-size" role="group" aria-label={t('project.pageSize')}>
+            <span className="lbl">{t('project.pageSize')}</span>
+            <div className="seg">
+              {PAGE_SIZES.map((n) => (
+                <button key={n} type="button" className="btn" aria-pressed={pageSize === n} onClick={() => chooseSize(n)}>
+                  {n}
+                  {t('project.count')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
         <p className="hint">{t('project.searchHint')}</p>
 
         <div className="search-row">
@@ -211,18 +226,6 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
           <button type="button" className="btn primary" onClick={() => void create()}>
             ＋ {t('project.new')}
           </button>
-        </div>
-
-        <div className="page-size" role="group" aria-label={t('project.pageSize')}>
-          <span className="lbl">{t('project.pageSize')}</span>
-          <div className="seg">
-            {PAGE_SIZES.map((n) => (
-              <button key={n} type="button" className="btn" aria-pressed={pageSize === n} onClick={() => chooseSize(n)}>
-                {n}
-                {t('project.count')}
-              </button>
-            ))}
-          </div>
         </div>
 
         {error && <p className="err">{error}</p>}
