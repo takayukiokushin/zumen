@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Question } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
-import { evaluate, limitCountText } from '@zumen/knowledge';
+import { evaluate, limitCountText, MAX_TEXT_LENGTH } from '@zumen/knowledge';
 import { useT, useTx } from './i18n/useT.ts';
 import { useSettings } from './settings/settings.tsx';
 
@@ -151,6 +151,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
           {free && (
             <input
               type="text"
+              maxLength={MAX_TEXT_LENGTH}
               aria-label={t('field.otherValue', { label: tx(q.label) })}
               placeholder={t('field.otherPlaceholder')}
               value={q.options?.some((o) => o.value === String(current)) ? '' : String(current)}
@@ -176,7 +177,11 @@ export function Field({ question: question, fieldKey, value, onChange, context }
           type="number"
           value={current === '' ? '' : String(current)}
           placeholder={q.placeholder ? tx(q.placeholder) : undefined}
-          onChange={(e) => set(e.target.value === '' ? undefined : Number(e.target.value))}
+          // 数の欄も、文字数は 100 まで（type="number" には maxLength が効かないので、ここで止める）
+          onChange={(e) => {
+            if (e.target.value.length > MAX_TEXT_LENGTH) return;
+            set(e.target.value === '' ? undefined : Number(e.target.value));
+          }}
         />
       ) : q.type === 'date' ? (
         <input id={fieldKey} type="date" value={String(current)} onChange={(e) => set(e.target.value || undefined)} />
@@ -184,6 +189,7 @@ export function Field({ question: question, fieldKey, value, onChange, context }
         <input
           id={fieldKey}
           type="text"
+          maxLength={MAX_TEXT_LENGTH}
           value={String(current)}
           placeholder={q.placeholder ? tx(q.placeholder) : undefined}
           // 自動で入る欄（autoValue）は、空にしたことを覚える（空に戻すと、また自動で入ってしまうため）

@@ -216,6 +216,16 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     const blank = await call(a, `/api/projects/${ok.id}`, { method: 'PUT', body: JSON.stringify({ name: '   ' }) });
     check('名前を空にして保存しようとしても、受け付けない', blank.status === 400 && ((await blank.json()) as { error?: string }).error?.includes('案件名を入力してください') === true, `${blank.status}`);
     check('受け付けなかったときは、もとの名前のまま', (await detail()).name === '名前つきの案件');
+    // 案件名は、100文字まで（画面の入力欄と同じ。サーバーも受け付けない）
+    const longName = 'あ'.repeat(101);
+    const mkLong = await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: longName }) });
+    const mkLongMsg = ((await mkLong.json().catch(() => ({}))) as { error?: string }).error ?? '';
+    check('案件を作るとき、101文字の名前は受け付けない', mkLong.status === 400 && mkLongMsg.includes('100文字'), `${mkLong.status} ${mkLongMsg}`);
+    const renLong = await call(a, `/api/projects/${ok.id}`, { method: 'PUT', body: JSON.stringify({ name: longName }) });
+    check('名前を101文字にして保存しようとしても、受け付けない', renLong.status === 400 && ((await renLong.json()) as { error?: string }).error?.includes('100文字') === true, `${renLong.status}`);
+    const ren100 = await call(a, `/api/projects/${ok.id}`, { method: 'PUT', body: JSON.stringify({ name: 'い'.repeat(100) }) });
+    check('100文字ちょうどの名前は、保存できる', ren100.ok && (await detail()).name === 'い'.repeat(100), `${ren100.status}`);
+    await call(a, `/api/projects/${ok.id}`, { method: 'PUT', body: JSON.stringify({ name: '名前つきの案件' }) });
     const keep = await call(a, `/api/projects/${ok.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: 'x' } }) });
     check('名前を送らない保存は、これまでどおりできる', keep.ok, `${keep.status}`);
   }

@@ -49,6 +49,7 @@ export const fr: Dict = {
   'project.siteRequired': 'Veuillez saisir le nom du site. Il se trouve sous « Client et site » dans l’écran de saisie des équipements (votre travail est enregistré).',
   'project.nameRequired': 'Veuillez saisir le nom de l’affaire.',
   'srv.projectNameRequired': 'Veuillez saisir le nom de l’affaire.',
+  'srv.projectNameTooLong': 'Le nom de l’affaire peut compter jusqu’à 100 caractères. Raccourcissez-le, puis réessayez.',
   'project.pager': 'Navigation entre les pages',
   'project.range': '{total} au total (affichage de {from} à {to})',
   'project.pageOf': 'Page {page} sur {pages}',

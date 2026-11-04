@@ -8,6 +8,7 @@ import { EyeIcon, EyeOffIcon } from '../icons.tsx';
 import { useSettings } from '../settings/settings.tsx';
 import { APP_VERSION } from '../version.ts';
 import type { User } from './api.ts';
+import { MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
 /** 残り時間を「29分40秒」の形にする */
 function formatLeft(sec: number): string {
@@ -77,6 +78,7 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
         <input
           id="login-id"
           value={userId}
+          maxLength={MAX_TEXT_LENGTH}
           autoComplete="username"
           disabled={locked}
           onChange={(e) => setUserId(e.target.value)}

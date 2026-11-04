@@ -49,6 +49,7 @@ export const zh: Dict = {
   'project.siteRequired': '请输入事业场名称。位于“设备输入”界面的“客户·现场”中（已保存）。',
   'project.nameRequired': '请输入项目名称。',
   'srv.projectNameRequired': '请输入项目名称。',
+  'srv.projectNameTooLong': '项目名称最多100个字符。请缩短后再试一次。',
   'project.pager': '翻页',
   'project.range': '共 {total} 件（显示第 {from}–{to} 件）',
   'project.pageOf': '第 {page}/{pages} 页',

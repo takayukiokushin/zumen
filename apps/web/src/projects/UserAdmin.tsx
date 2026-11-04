@@ -3,6 +3,7 @@ import { api } from '../session/api.ts';
 import type { Role, User } from '../session/api.ts';
 import { useDialogs } from '../Dialogs.tsx';
 import { useT } from '../i18n/useT.ts';
+import { MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
 /**
  * 利用者の管理。管理用のアカウントでログインしたときだけ開ける。
@@ -155,6 +156,7 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
               {t('users.id')}
               <input
                 value={id}
+                maxLength={MAX_TEXT_LENGTH}
                 onChange={(e) => setId(e.target.value)}
                 placeholder="eigyo"
                 autoComplete="off"
@@ -162,12 +164,13 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
             </label>
             <label>
               {t('users.name')}
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('users.namePlaceholder')} />
+              <input value={name} maxLength={MAX_TEXT_LENGTH} onChange={(e) => setName(e.target.value)} placeholder={t('users.namePlaceholder')} />
             </label>
             <label>
               {t('users.password')}
               <input
                 value={password}
+                maxLength={MAX_TEXT_LENGTH}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('users.passwordHint')}
                 autoComplete="new-password"

@@ -50,6 +50,7 @@ export const ja = {
   'project.siteRequired': '事業場名称を入力してください。「設備を入力して作成」の「お客様・現場」にあります（保存はできています）。',
   'project.nameRequired': '案件名を入力してください。',
   'srv.projectNameRequired': '案件名を入力してください。',
+  'srv.projectNameTooLong': '案件名は100文字までです。短くしてから、もう一度お試しください。',
   'project.pager': 'ページの切り替え',
   'project.range': '全{total}件（{from}〜{to}件目を表示）',
   'project.pageOf': '{page}/{pages}ページ',

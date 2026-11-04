@@ -49,6 +49,7 @@ export const en: Dict = {
   'project.siteRequired': 'Please enter the site name. It is under “Customer & site” on the equipment input screen (your work has been saved).',
   'project.nameRequired': 'Please enter a job name.',
   'srv.projectNameRequired': 'Please enter a job name.',
+  'srv.projectNameTooLong': 'A job name can be up to 100 characters. Please shorten it and try again.',
   'project.pager': 'Page navigation',
   'project.range': '{total} in total (showing {from}–{to})',
   'project.pageOf': 'Page {page} of {pages}',

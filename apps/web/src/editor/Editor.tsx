@@ -3,7 +3,7 @@ import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@z
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
-import { buildComposition, resolveDrawingName } from '@zumen/knowledge';
+import { buildComposition, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
@@ -644,6 +644,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                                   ) : (
                                     <input
                                       type="text"
+                                      maxLength={MAX_TEXT_LENGTH}
                                       inputMode={f.type === 'number' ? 'decimal' : undefined}
                                       list={f.type === 'select' ? listId : undefined}
                                       value={values[f.key] ?? ''}
@@ -676,6 +677,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                   <label className="lbl">{t('editor.labelText')}</label>
                   <textarea
                     rows={4}
+                    maxLength={MAX_TEXT_LENGTH}
                     value={selectedSymbol.label.join('\n')}
                     onChange={(e) => apply(setLabel(doc, selectedSymbol.id, e.target.value.split('\n')))}
                   />
@@ -685,6 +687,7 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                   <label className="lbl">{t('editor.note')}</label>
                   <textarea
                     rows={3}
+                    maxLength={MAX_TEXT_LENGTH}
                     value={selected.lines.join('\n')}
                     onChange={(e) => apply(setLabel(doc, selected.id, e.target.value.split('\n')))}
                   />

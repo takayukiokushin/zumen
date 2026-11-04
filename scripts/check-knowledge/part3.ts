@@ -2,7 +2,7 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { countOf, limitCountText, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields } from '../../packages/knowledge/src/index.ts';
+import { areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
@@ -619,12 +619,26 @@ console.log('\n■ 想定外の値（大きすぎる台数・名前の表にな�
   ok(countOf('1e999') === MAX_COUNT && countOf(99999) === MAX_COUNT && countOf(Infinity) === MAX_COUNT, '大きすぎる件数は、上限（50）にするはず');
   ok(countOf('abc') === 1 && countOf(undefined) === 1 && countOf(NaN) === 1 && countOf(-3) === 1 && countOf(2.9) === 2, '数でない・負の件数は 1、小数は切り捨てるはず');
   ok(countOf('abc', 0) === 0 && countOf(-3, 0) === 0, '0 から数える項目は、数でないものを 0 にするはず');
-  // 入力欄：数字だけが大きすぎるときは上限に。全角も同じ。数字でないものはそのまま
-  ok(limitCountText('transformerCount', '100000') === String(MAX_COUNT), '変圧器の台数に 100000 を打つと、50 になるはず');
-  ok(limitCountText('transformerCount', '１２３４５') === String(MAX_COUNT), '全角の大きな数も、50 になるはず');
+  // 項目ごとの上限：エリア 30・変圧器 100・コンデンサ 100・PCS 100（ほかは 50）
+  ok(maxCountOf('areaCount') === 30 && maxCountOf('transformerCount') === 100 && maxCountOf('capacitorCount') === 100 && maxCountOf('pcsCount') === 100, '上限は、エリア30・変圧器100・コンデンサ100・PCS100のはず');
+  ok(maxCountOf('vtSetCount') === MAX_COUNT && maxCountOf('generatorCount') === MAX_COUNT && maxCountOf('constructor') === MAX_COUNT, 'ほかの件数の上限は、50のはず');
+  // 入力欄：数字だけが大きすぎるときは、その項目の上限に。全角も同じ。数字でないものはそのまま
+  ok(limitCountText('transformerCount', '100000') === '100' && limitCountText('transformerCount', '101') === '100' && limitCountText('transformerCount', '100') === '100', '変圧器の台数は、100 までのはず');
+  ok(limitCountText('transformerCount', '１２３４５') === '100', '全角の大きな数も、上限になるはず');
   ok(limitCountText('transformerCount', '7') === '7', '7 は、そのまま');
-  ok(limitCountText('pcsCount', '300') === '300' && limitCountText('pcsCount', '99999') === '9999', 'PCS の台数は、数百台まで書けて、9999 が上限');
+  ok(limitCountText('capacitorCount', '300') === '100' && limitCountText('pcsCount', '300') === '100' && limitCountText('areaCount', '31') === '30' && limitCountText('areaCount', '30') === '30', 'コンデンサ・PCS は 100、エリアは 30 までのはず');
+  ok(limitCountText('generatorCount', '51') === String(MAX_COUNT), 'ほかの台数は、50 までのはず');
   ok(limitCountText('transformerCount', 'abc') === 'abc', '数字でないものは、そのまま');
+  // 上限どおりに、組み立てる（変圧器100台・コンデンサ100台・エリア30か所）
+  const lim: Answers = { sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', mainBreakerForm: 'cb', trConnection: 'tr-3p-dy', trCapacity: 300, transformerCount: 2, hasCapacitor: 'yes', capacitorCount: 2, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: 2 };
+  const tr = (n: unknown) => buildComposition({ ...lim, transformerCount: n } as Answers).filter((i) => i.role === 'transformer').length;
+  const cap = (n: unknown) => buildComposition({ ...lim, capacitorCount: n } as Answers).filter((i) => i.role === 'capacitor').length;
+  ok(tr(100) === 100 && tr(101) === 100 && tr(99999) === 100 && tr(3) === 3, `変圧器の台数 100 → ${tr(100)}台、101 → ${tr(101)}台、99999 → ${tr(99999)}台（100台まで）`);
+  ok(cap(100) === 100 && cap(500) === 100, `コンデンサの台数 100 → ${cap(100)}台、500 → ${cap(500)}台（100台まで）`);
+  const pcsText = (n: unknown) => String(buildComposition({ ...lim, pcsCount: n } as Answers).map((i) => (i.label ?? []).join('')).join('|'));
+  ok(pcsText(300).includes('×100台') && !pcsText(300).includes('×300台') && pcsText('1e999').includes('×100台') && !/Infinity/.test(pcsText('1e999')), 'PCS の台数は、100台まで（300 → ×100台、1e999 → Infinity と書かない）');
+  const areaCount = (n: unknown) => areaCountOf({ ...answers, areaCount: n } as Answers);
+  ok(areaCount(30) === 30 && areaCount(31) === 30 && areaCount(99999) === 30 && areaCount(2) === 2, 'エリアは 30 か所までのはず');
   // 大きな件数でも、すぐ組み立てて、配置できる
   for (const [k, v] of [['transformerCount', '1e999'], ['areaCount', 99999], ['generatorCount', 1e9], ['vtSetCount', 99999], ['ctSetCount', 99999], ['relayCount', 99999], ['pvGroupCount', Infinity]] as [string, unknown][]) {
     const a = { ...answers, [k]: v } as Answers;
@@ -644,5 +658,5 @@ console.log('\n■ 想定外の値（大きすぎる台数・名前の表にな�
       fail(`${k} に「${v}」を入れると、組み立てが止まります：${String((e as Error).message).slice(0, 80)}`);
     }
   }
-  if (state.failed === 0) console.log('  件数は 0〜50 に収まる／大きな台数・エリア数でも、すぐ終わる／constructor などの文字を入れても、落ちず、おかしな文字も出ない');
+  if (state.failed === 0) console.log('  件数は上限におさまる（エリア30・変圧器100・コンデンサ100・PCS100、ほか50）／大きな台数・エリア数でも、すぐ終わる／constructor などの文字を入れても、落ちず、おかしな文字も出ない');
 }

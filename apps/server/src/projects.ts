@@ -7,11 +7,13 @@ import { searchFields, searchTerms } from './search.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
-import { clearForDuplicate } from '@zumen/knowledge';
+import { clearForDuplicate, MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
 /** 案件（プロジェクト）の保存・呼び出し。ヒアリング回答・図面・現地写真を一式で扱う */
 
 /** 現地写真の上限（1枚あたり） */
+/** 案件名が長すぎるときの知らせ（上限は MAX_TEXT_LENGTH ＝ 100文字） */
+const NAME_TOO_LONG = '案件名は100文字までです。短くしてから、もう一度お試しください。';
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
 /** PDF（スキャンした図面など）は、写真より大きくなりやすいので、上限を広げる */
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
@@ -443,6 +445,7 @@ projects.post('/', async (c) => {
   const answers = body.answers;
   // 案件名は必須。空のままでは作らない
   if (!name) return c.json({ error: '案件名を入力してください。' }, 400);
+  if (name.length > MAX_TEXT_LENGTH) return c.json({ error: NAME_TOO_LONG }, 400);
   const id = newId();
   const t = now();
   // 最初から入れておく回答（図面の名称を事業場名称の初期値にするなど）。オブジェクト以外は無視する
@@ -533,6 +536,7 @@ projects.put('/:id', async (c) => {
   if (typeof body.name === 'string') {
     // 案件名は必須。空のままでは変えさせない
     if (!body.name.trim()) return c.json({ error: '案件名を入力してください。' }, 400);
+    if (body.name.trim().length > MAX_TEXT_LENGTH) return c.json({ error: NAME_TOO_LONG }, 400);
     sets.push('name = ?');
     args.push(body.name.trim());
   }

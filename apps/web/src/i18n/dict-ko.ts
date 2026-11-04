@@ -49,6 +49,7 @@ export const ko: Dict = {
   'project.siteRequired': '사업장 명칭을 입력해 주세요. “설비 입력” 화면의 “고객·현장”에 있습니다(저장은 되었습니다).',
   'project.nameRequired': '건 이름을 입력해 주세요.',
   'srv.projectNameRequired': '건 이름을 입력해 주세요.',
+  'srv.projectNameTooLong': '건 이름은 100자까지입니다. 줄인 뒤 다시 시도해 주세요.',
   'project.pager': '페이지 이동',
   'project.range': '전체 {total}건({from}~{to}번째 표시)',
   'project.pageOf': '{page}/{pages} 페이지',

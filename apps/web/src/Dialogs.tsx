@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useT } from './i18n/useT.ts';
+import { MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
 /**
  * ブラウザ標準の確認画面・入力画面（window.confirm / window.prompt）の代わり。
@@ -225,6 +226,7 @@ function InputDialog({ opts, onResult }: { opts: InputOptions; onResult: (v: str
             <input
               ref={inputRef}
               type={opts.secret && !shown ? 'password' : 'text'}
+              maxLength={MAX_TEXT_LENGTH}
               value={value}
               placeholder={opts.placeholder}
               autoComplete="off"

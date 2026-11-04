@@ -3,6 +3,7 @@ import { api } from '../session/api.ts';
 import type { PracticeSource, ProjectSummary, Role, TrashItem } from '../session/api.ts';
 import { useDialogs } from '../Dialogs.tsx';
 import { useLang, useT } from '../i18n/useT.ts';
+import { MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
 /**
  * 案件の一覧（㉚）。名前の一部を入れて絞り込める。
@@ -268,8 +269,8 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            // 長すぎる文字を送ると、サーバーが受け付けない（通信の上限）。探す言葉は、これで十分
-            maxLength={200}
+            // ほかの入力欄と同じく、100文字まで（長すぎる文字を送ると、サーバーが受け付けない）
+            maxLength={MAX_TEXT_LENGTH}
             placeholder={t('project.search')}
             aria-label={t('project.search')}
             autoComplete="off"

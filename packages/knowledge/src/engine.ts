@@ -1,5 +1,5 @@
 import type { Answers, Value } from './condition.ts';
-import { countOf } from './counts.ts';
+import { countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
 import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
@@ -121,7 +121,7 @@ function autoFillView(answers: Answers): Answers {
   for (const q of QUESTIONS) {
     if (!q.autoValue) continue;
     const group = QUESTION_GROUPS.find((g) => g.id === q.group);
-    const units = group?.repeatCountKey && !q.shared ? countOf(answers[group.repeatCountKey]) : 1;
+    const units = group?.repeatCountKey && !q.shared ? countOf(answers[group.repeatCountKey], 1, maxCountOf(group.repeatCountKey)) : 1;
     for (let i = 0; i < units; i++) {
       const key = indexedKey(q.id, i);
       if (out[key] !== undefined) continue;
@@ -315,9 +315,8 @@ export function withDerived(rawAnswers: Answers): Answers {
   const pcs: string[] = [];
   for (let i = 0; i < groups; i++) {
     const kw = answers[indexedKey('pcsCapacity', i)];
-    const rawN = answers[indexedKey('pcsCount', i)] ?? 1;
-    // 「1e999」のように、数として読めない大きさの文字が入っていたら、1台として書く（「Infinity台」と書かない）
-    const n = typeof rawN === 'string' && Number.isFinite(Number(rawN)) === false && /^[\d.e+-]+$/i.test(rawN) ? 1 : rawN;
+    // PCS の台数は、1〜100（数として読めない・大きすぎるものは、1台・100台。「Infinity台」などと書かない）
+    const n = countOf(answers[indexedKey('pcsCount', i)] ?? 1, 1, maxCountOf('pcsCount'));
     if (kw === undefined || kw === null || kw === '') continue;
     pcs.push(`${kw}kW×${n}台`);
   }
@@ -329,12 +328,12 @@ export function withDerived(rawAnswers: Answers): Answers {
    * それを変圧器ごとに集め直して「50kW×2台」「5kW×1台」の行にする。
    * どの変圧器にも入れていない種類は、ぜんぶ1台目の変圧器につないだものとして扱う。
    */
-  const trCount = countOf(answers.transformerCount);
+  const trCount = countOf(answers.transformerCount, 1, maxCountOf('transformerCount'));
   const perTransformer: string[][] = Array.from({ length: trCount }, () => []);
   for (let i = 0; i < groups; i++) {
     const kw = answers[indexedKey('pcsCapacity', i)];
     if (kw === undefined || kw === null || kw === '') continue;
-    const total = Math.max(0, Number(answers[indexedKey('pcsCount', i)] ?? 1));
+    const total = countOf(answers[indexedKey('pcsCount', i)] ?? 1, 0, maxCountOf('pcsCount'));
     const share: number[] = [];
     let assigned = 0;
     for (let t = 0; t < trCount; t++) {
@@ -529,7 +528,7 @@ const DRAWING_NAME_TAIL = '高圧受電設備単線結線図';
  * - まだ形態が入力されていない →「キュービクル式高圧受電設備単線結線図」（これまでと同じ）
  */
 export function drawingNameFromForm(answers: Answers): string {
-  const count = countOf(answers.areaCount);
+  const count = countOf(answers.areaCount, 1, maxCountOf('areaCount'));
   const kinds = new Set<string>();
   for (let i = 0; i < count; i++) {
     const kind = pickOwn(FORM_KIND, String(answers[indexedKey('areaForm', i)]));
@@ -708,7 +707,7 @@ const AREA_KEY = /^a\d+:/;
 
 /** エリアの数（1以上） */
 export function areaCountOf(answers: Answers): number {
-  return countOf(answers.areaCount);
+  return countOf(answers.areaCount, 1, maxCountOf('areaCount'));
 }
 
 /** エリアごとに答える質問のID（繰り返しの件数の質問も含む） */
@@ -868,7 +867,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
 
   for (const run of runs) {
     const countKey = run[0]!.repeatCountKey;
-    const count = countKey ? countOf(answers[countKey], run.some((p) => p.zeroOk) ? 0 : 1) : 1;
+    const count = countKey ? countOf(answers[countKey], run.some((p) => p.zeroOk) ? 0 : 1, maxCountOf(countKey)) : 1;
     const isParallel = run.some((p) => p.kind === 'parallel');
     const laneBase = parallelLane;
     if (isParallel) parallelLane += count;
