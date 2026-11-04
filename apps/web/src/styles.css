@@ -211,7 +211,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
   /* 用紙の指定は Editor が差し込む（A4/A3・縦横を選べるため） */
   html, body, #root { margin: 0; padding: 0; height: auto; background: #fff; zoom: 1; }
   .tabbar, .projectbar, .bar-error, .bar-lock, .editor-bar, .editor-body, .app,
-  .mode-hint, .preview-note, .stale-note, .panel-bar, .modal-back { display: none !important; }
+  .mode-hint, .preview-note, .stale-note, .panel-bar, .modal-back, .heavy-toast { display: none !important; }
   .shell, .shell > .body { display: block; height: auto; overflow: visible; }
   .editor { display: block; height: auto; container-type: normal; }
   .print-root { display: block; }
@@ -1096,3 +1096,17 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .joblist .sort-row { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin: calc(6px * var(--text-scale)) 0; }
 .joblist .sort-row label { font-size: calc(12px * var(--text-scale)); color: var(--muted); }
 .joblist .sort-row select { min-height: calc(32px * var(--ctl-scale)); font-size: calc(12.5px * var(--ctl-scale)); max-width: 100%; }
+
+/* ------------------------------------------------------------------ */
+/* 時間のかかる図面の処理（結線を整える など）の、「しばらくお待ちください」の吹き出し */
+/*   画面の中央に出す。吹き出しの外は、クリックが通る（そのまま、ほかのタブに移ったり、入力したりできる）。 */
+/* ------------------------------------------------------------------ */
+.heavy-toast { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; pointer-events: none; }
+.heavy-bubble { display: flex; align-items: center; gap: calc(14px * var(--text-scale)); max-width: min(520px, 100%); padding: calc(16px * var(--text-scale)) calc(20px * var(--text-scale));
+  background: var(--panel); color: var(--ink); border: 2px solid var(--accent); border-radius: 10px; box-shadow: 0 8px 28px var(--shade); pointer-events: none; }
+.heavy-bubble:not(.running) { pointer-events: auto; }
+.heavy-text { display: flex; flex-direction: column; gap: calc(4px * var(--text-scale)); font-size: calc(14px * var(--text-scale)); line-height: 1.5; }
+.heavy-text > span { font-size: calc(12px * var(--text-scale)); color: var(--ink-2); }
+.heavy-spin { flex: 0 0 auto; width: calc(26px * var(--text-scale)); height: calc(26px * var(--text-scale)); border: 3px solid var(--rule); border-top-color: var(--accent); border-radius: 50%; animation: heavy-spin 0.9s linear infinite; }
+@keyframes heavy-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .heavy-spin { animation-duration: 3s; } }

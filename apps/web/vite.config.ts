@@ -15,6 +15,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version),
     __BUILD_DATE__: JSON.stringify(builtOn),
   },
+  // 時間のかかる図面の処理は、別の流れ（Web Worker）で動かす（src/editor/heavy.ts）
+  worker: { format: 'es' },
   server: {
     host: '127.0.0.1',
     port: 5173,

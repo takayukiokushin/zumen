@@ -8,6 +8,7 @@ import { HearingForm } from './HearingForm.tsx';
 import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
+import { useHeavyJob } from './editor/useHeavyJob.tsx';
 import { Analyze } from './analyze/Analyze.tsx';
 import { Voice } from './voice/Voice.tsx';
 import { JobList } from './projects/JobList.tsx';
@@ -101,6 +102,23 @@ export function App() {
   const [projectName, setProjectName] = useState('');
   const [answers, setAnswers] = useState<Answers>({});
   const [drawing, setDrawing] = useState<Doc | null>(null);
+  /**
+   * 図面や入力が変わるたびに増える数。時間のかかる図面の処理（結線を整える など）が終わったとき、
+   * 動かし始めたときと違っていたら、古い図面に上書きしないよう、結果を使わない
+   */
+  const docVersion = useRef(0);
+  useEffect(() => {
+    docVersion.current++;
+  }, [answers, projectId]);
+  /** 時間のかかる処理（結線を整える・縮小・拡大）。ほかの画面に移っても続き、終わったら画面の中央の吹き出しで知らせる */
+  const heavyJob = useHeavyJob({
+    getVersion: () => docVersion.current,
+    // 図面の画面を閉じているあいだに終わったとき：図面に反映する（図面の画面での反映と同じ印の付け方）
+    applyAway: (req, next) => {
+      setDrawing({ ...next, edited: req.kind === 'tidy' ? req.doc.edited : true, basis: req.doc.basis });
+      setDirty(true);
+    },
+  });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -560,9 +578,11 @@ export function App() {
               answers={effective}
               initialDoc={drawing}
               onDocChange={(doc) => {
+                docVersion.current++;
                 setDrawing(doc);
                 setDirty(true);
               }}
+              heavy={heavyJob.api}
             />
           ) : tab === 'voice' ? (
             <Voice
@@ -614,6 +634,8 @@ export function App() {
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       {usersOpen && <UserAdmin me={user} onClose={() => setUsersOpen(false)} />}
+      {/* 時間のかかる図面の処理の、「しばらくお待ちください」の吹き出し（画面の中央。操作をじゃましない） */}
+      {heavyJob.toast}
     </div>
   );
 }

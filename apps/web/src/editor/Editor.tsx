@@ -9,8 +9,9 @@ import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
 import { UndoIcon, ZoomIcon } from '../icons.tsx';
-import { chooseSheet, issueLabel, tidyDrawing } from './inspect.ts';
-import { SHRINK, scaleLayout } from './layoutScale.ts';
+import { chooseSheet, issueLabel } from './inspect.ts';
+import type { HeavyApi } from './useHeavyJob.tsx';
+import type { HeavyKind, HeavyRequest, HeavyResult } from './heavy.ts';
 import type { Issue, IssueKind } from './inspect.ts';
 import { Rich } from '../i18n/Rich.tsx';
 import { WireKindWindow } from './WireKindWindow.tsx';
@@ -50,9 +51,11 @@ interface EditorProps {
   initialDoc?: Doc | null;
   /** 図面が変わったときに知らせる（保存のため） */
   onDocChange?: (doc: Doc) => void;
+  /** 時間のかかる処理（結線を整える・縮小・拡大）を、別の流れで動かす窓口（App が持つ。ほかの画面に移っても、続く） */
+  heavy: HeavyApi;
 }
 
-export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
+export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps) {
   const t = useT();
   const tx = useTx();
   const composition = useMemo(() => buildComposition(answers), [answers]);
@@ -173,6 +176,43 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
     setSelection([]);
     return { ...report, lost: legacy };
   };
+
+  /** 時間のかかる処理（結線を整える・縮小・拡大）を、別の流れで始める。押したらすぐ、画面の中央に「しばらくお待ちください」が出る */
+  const startHeavy = (kind: HeavyKind) => heavy.start({ kind, doc, paper, orientation, titleH });
+
+  /**
+   * 処理が終わったときの、図面への反映と知らせ（この画面を開いているとき）。
+   * ほかの画面を見ているあいだに終わったときは、App が図面に反映して、吹き出しで知らせる（useHeavyJob.tsx）。
+   */
+  const onHeavyDone = (_req: HeavyRequest, res: HeavyResult) => {
+    if (res.kind === 'tidy') {
+      const r = res.result;
+      applyAuto(r.doc);
+      const done = Object.entries(r.fixed)
+        .filter(([, n]) => n > 0)
+        .map(([k, n]) => t('editor.issueCount', { label: issueLabel(k as IssueKind), n }));
+      setIssues(r.issues);
+      setTidyNote(done.length > 0 ? t('editor.tidyDone', { list: done.join(' / ') }) : t('editor.tidyNone'));
+    } else if (res.kind === 'shrink') {
+      setTidyNote(null);
+      setIssues(null);
+      if (!res.result.changed) {
+        setLayoutNote(t('editor.layoutLimit'));
+        return;
+      }
+      setLayoutNote(null);
+      apply(res.result.doc);
+    } else {
+      setTidyNote(null);
+      setIssues(null);
+      setLayoutNote(null);
+      if (res.result.changed) apply(res.result.doc);
+    }
+  };
+  useEffect(() => {
+    heavy.bind(onHeavyDone);
+    return () => heavy.bind(null);
+  });
 
   /**
    * 入力内容が変わったら、ボタンを押さなくても、自動で図面に反映する。
@@ -343,20 +383,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                 type="button"
                 className="btn sec"
                 title={t('editor.tidy.help')}
-                disabled={sheetView}
-                onClick={() => {
-                  const r = tidyDrawing(doc, paper, orientation, titleH);
-                  applyAuto(r.doc);
-                  const done = Object.entries(r.fixed)
-                    .filter(([, n]) => n > 0)
-                    .map(([k, n]) => t('editor.issueCount', { label: issueLabel(k as IssueKind), n }));
-                  setIssues(r.issues);
-                  setTidyNote(
-                    done.length > 0
-                      ? t('editor.tidyDone', { list: done.join(' / ') })
-                      : t('editor.tidyNone'),
-                  );
-                }}
+                disabled={sheetView || heavy.busy !== null}
+                aria-busy={heavy.busy === 'tidy'}
+                onClick={() => startHeavy('tidy')}
               >
                 {t('editor.tidy')}
               </button>
@@ -364,18 +393,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                 type="button"
                 className="btn"
                 title={t('editor.layoutShrinkHelp')}
-                disabled={sheetView}
-                onClick={() => {
-                  const r = scaleLayout(doc, SHRINK);
-                  setTidyNote(null);
-                  setIssues(null);
-                  if (!r.changed) {
-                    setLayoutNote(t('editor.layoutLimit'));
-                    return;
-                  }
-                  setLayoutNote(null);
-                  apply(r.doc);
-                }}
+                disabled={sheetView || heavy.busy !== null}
+                aria-busy={heavy.busy === 'shrink'}
+                onClick={() => startHeavy('shrink')}
               >
                 {t('editor.layoutShrink')}
               </button>
@@ -383,14 +403,9 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
                 type="button"
                 className="btn"
                 title={t('editor.layoutExpandHelp')}
-                disabled={sheetView}
-                onClick={() => {
-                  const r = scaleLayout(doc, 1 / SHRINK);
-                  setTidyNote(null);
-                  setIssues(null);
-                  setLayoutNote(null);
-                  if (r.changed) apply(r.doc);
-                }}
+                disabled={sheetView || heavy.busy !== null}
+                aria-busy={heavy.busy === 'expand'}
+                onClick={() => startHeavy('expand')}
               >
                 {t('editor.layoutExpand')}
               </button>
