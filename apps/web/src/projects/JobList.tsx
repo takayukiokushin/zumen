@@ -139,8 +139,14 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   const create = async () => {
     // 名前を聞く前に確かめる（入力した名前が無駄にならないように）
     if (!(await canLeave())) return;
-    const name = await input({ title: t('project.new'), message: [t('project.newName')], defaultValue: q.trim() || t('project.newDefault') });
-    if (name !== null) onNew(name, name.trim() !== '' && name.trim() !== t('project.newDefault'));
+    const name = await input({
+      title: t('project.new'),
+      message: [t('project.newName')],
+      defaultValue: q.trim() || t('project.newDefault'),
+      // 案件名は必須。空のままでは作らせない
+      validate: (v) => (v.trim() === '' ? t('project.nameRequired') : null),
+    });
+    if (name !== null) onNew(name.trim(), name.trim() !== t('project.newDefault'));
   };
 
   const remove = async (p: ProjectSummary) => {

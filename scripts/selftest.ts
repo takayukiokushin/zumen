@@ -866,6 +866,24 @@ try {
     check('他の人（標準のアカウント）にも、同じ案件が見える（共有）', other.total >= 7);
   }
 
+  /* ---------- 7c. 案件名は必須 ---------- */
+  say('\n■ 案件名は必須');
+  {
+    for (const [label, body] of [['空の名前', { name: '' }], ['空白だけの名前', { name: '   　' }], ['名前なし', {}]] as [string, object][]) {
+      const r = await call(a, '/api/projects', { method: 'POST', body: JSON.stringify(body) });
+      const msg = ((await r.json().catch(() => ({}))) as { error?: string }).error ?? '';
+      check(`案件を作るとき、${label}は受け付けない`, r.status === 400 && msg.includes('案件名を入力してください'), `${r.status} ${msg}`);
+    }
+    const ok = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '  名前つきの案件  ' }) })).json()) as { id: string };
+    const detail = async () => (await (await call(a, `/api/projects/${ok.id}`)).json()) as { name: string };
+    check('名前があれば作れる（前後の空白は取る）', (await detail()).name === '名前つきの案件');
+    const blank = await call(a, `/api/projects/${ok.id}`, { method: 'PUT', body: JSON.stringify({ name: '   ' }) });
+    check('名前を空にして保存しようとしても、受け付けない', blank.status === 400 && ((await blank.json()) as { error?: string }).error?.includes('案件名を入力してください') === true, `${blank.status}`);
+    check('受け付けなかったときは、もとの名前のまま', (await detail()).name === '名前つきの案件');
+    const keep = await call(a, `/api/projects/${ok.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: 'x' } }) });
+    check('名前を送らない保存は、これまでどおりできる', keep.ok, `${keep.status}`);
+  }
+
   /* ---------- 8a. 想定外の形の入力（数字・配列・空など）でも、エラーにしない ---------- */
   say('\n■ 想定外の形の入力');
   {

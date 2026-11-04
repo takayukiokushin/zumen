@@ -66,7 +66,13 @@ export function ProjectBar({
             type="button"
             disabled={readOnly}
             onClick={() => {
-              void input({ title: t('project.rename'), message: [t('project.name')], defaultValue: projectName }).then((name) => {
+              void input({
+                title: t('project.rename'),
+                message: [t('project.name')],
+                defaultValue: projectName,
+                // 案件名は必須。空のままでは変えさせない
+                validate: (v) => (v.trim() === '' ? t('project.nameRequired') : null),
+              }).then((name) => {
                 if (name) onRename(name);
               });
             }}

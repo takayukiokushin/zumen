@@ -32,6 +32,8 @@ export interface InputOptions {
   cancelLabel?: string;
   /** パスワードなど、画面に見せたくない入力。「表示する」ボタンで確かめられる */
   secret?: boolean;
+  /** 決定を押したときの確認。問題があれば、その文を返す（窓は閉じず、入力欄の下に出す）。問題なければ null */
+  validate?: (value: string) => string | null;
 }
 
 interface Ctx {
@@ -178,6 +180,7 @@ function InputDialog({ opts, onResult }: { opts: InputOptions; onResult: (v: str
   const t = useT();
   const [value, setValue] = useState(opts.defaultValue ?? '');
   const [shown, setShown] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cancel = () => onResult(null);
   const boxRef = useRef<HTMLFormElement>(null);
@@ -198,6 +201,13 @@ function InputDialog({ opts, onResult }: { opts: InputOptions; onResult: (v: str
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
+          // 入力に問題があれば、窓は閉じずに、直す点を知らせる
+          const msg = opts.validate ? opts.validate(value) : null;
+          if (msg) {
+            setProblem(msg);
+            inputRef.current?.focus();
+            return;
+          }
           onResult(value);
         }}
         style={{ maxWidth: 520 }}
@@ -220,7 +230,10 @@ function InputDialog({ opts, onResult }: { opts: InputOptions; onResult: (v: str
               autoComplete="off"
               spellCheck={false}
               aria-label={opts.title}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setProblem(null);
+              }}
             />
             {opts.secret && (
               <button type="button" className="btn" aria-pressed={shown} onClick={() => setShown((s) => !s)}>
@@ -228,6 +241,11 @@ function InputDialog({ opts, onResult }: { opts: InputOptions; onResult: (v: str
               </button>
             )}
           </div>
+          {problem && (
+            <p className="err" role="alert">
+              {problem}
+            </p>
+          )}
         </section>
         <div className="confirm-actions">
           <button type="button" className="btn" onClick={cancel}>
