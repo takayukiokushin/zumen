@@ -3,6 +3,7 @@ import { api } from './api.ts';
 import { useDialogKeys } from '../Dialogs.tsx';
 import { useT } from '../i18n/useT.ts';
 import { EyeIcon, EyeOffIcon } from '../icons.tsx';
+import { MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
 /**
  * ログインの有効期限が切れたときの「もう一度ログインする窓」。
@@ -57,6 +58,7 @@ export function Relogin({ userId, userName, onDone }: { userId: string; userName
             <input
               id="relogin-pw"
               ref={inputRef}
+              maxLength={MAX_TEXT_LENGTH}
               type={show ? 'text' : 'password'}
               value={password}
               autoComplete="current-password"

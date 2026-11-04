@@ -2,11 +2,13 @@
  * パスワードの条件。新しく決めるとき・変えるときだけ確かめる
  * （すでに登録してあるパスワードでのログインには、影響しない）。
  *
- * - 10文字以上
+ * - 10文字以上、100文字まで
  * - IDと同じ、または、IDを含むもの
  * - よくあるパスワード・推測されやすいもの（同じ文字の繰り返し・数字や文字の連番・キーボードの並び など）
  */
 export const MIN_PASSWORD = 10;
+/** パスワードの長さの上限（ほかの入力欄の文字数の上限と同じ） */
+export const MAX_PASSWORD = 100;
 
 /** よく使われる、または、このアプリ・会社名・年号から推測されやすい言葉。小文字にして、含んでいたら断る */
 const WEAK_WORDS = [
@@ -44,6 +46,7 @@ function isRepeating(p: string): boolean {
 /** 条件に合っていれば null。合っていなければ、利用者に見せる説明を返す */
 export function checkPassword(password: string, userId: string): string | null {
   if ([...password].length < MIN_PASSWORD) return `パスワードは${MIN_PASSWORD}文字以上にしてください。`;
+  if ([...password].length > MAX_PASSWORD) return `パスワードは${MAX_PASSWORD}文字までにしてください。`;
   const lower = password.toLowerCase();
   const id = userId.trim().toLowerCase();
   if (id && (lower === id || (id.length >= 3 && lower.includes(id)))) {

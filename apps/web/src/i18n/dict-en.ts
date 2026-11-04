@@ -291,6 +291,7 @@ export const en: Dict = {
   'srv.imageNotFound': 'The image was not found. It seems to have been deleted already. Please check the job screen again.',
   'srv.imageDataMissing': 'The image data was not found. Sorry for the trouble; please add the image again.',
   'srv.pwMin': 'The password must be at least {n} characters.',
+  'srv.pwMax': 'A password can be up to {n} characters. Please shorten it.',
   'srv.pwSameId': 'A password that is the same as the ID, or contains the ID, cannot be used. Please choose a different password.',
   'srv.pwRepeat': 'A password that is easy to guess, such as repeated characters, cannot be used. Please choose a different password.',
   'srv.pwRun': 'A password containing a sequence such as “123456”, “abcdef” or “qwerty” cannot be used. Please choose a different password.',

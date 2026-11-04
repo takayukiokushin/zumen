@@ -292,6 +292,7 @@ export const fr: Dict = {
   'srv.imageNotFound': 'Image introuvable. Elle semble avoir déjà été supprimée. Vérifiez de nouveau l’écran de l’affaire.',
   'srv.imageDataMissing': 'Les données de l’image sont introuvables. Désolé du désagrément : veuillez ajouter de nouveau l’image.',
   'srv.pwMin': 'Le mot de passe doit comporter au moins {n} caractères.',
+  'srv.pwMax': 'Le mot de passe peut compter jusqu’à {n} caractères. Raccourcissez-le.',
   'srv.pwSameId': 'Le mot de passe ne peut pas être identique à l’identifiant ni le contenir. Choisissez-en un autre.',
   'srv.pwRepeat': 'Les mots de passe faciles à deviner, comme la répétition d’un même caractère, sont refusés. Choisissez-en un autre.',
   'srv.pwRun': 'Les mots de passe contenant une suite comme « 123456 », « abcdef » ou « qwerty » sont refusés. Choisissez-en un autre.',

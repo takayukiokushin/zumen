@@ -89,6 +89,7 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
           <input
             id="login-pw"
             type={showPassword ? 'text' : 'password'}
+            maxLength={MAX_TEXT_LENGTH}
             value={password}
             autoComplete="current-password"
             disabled={locked}

@@ -288,6 +288,7 @@ export const zh: Dict = {
   'srv.imageNotFound': '找不到图片。似乎已被删除。请重新查看项目页面。',
   'srv.imageDataMissing': '找不到图片数据。给您添麻烦了，请重新添加图片。',
   'srv.pwMin': '密码请设置为 {n} 个字符以上。',
+  'srv.pwMax': '密码最多{n}个字符。请缩短后再设置。',
   'srv.pwSameId': '不能使用与 ID 相同或包含 ID 的密码。请换一个密码。',
   'srv.pwRepeat': '不能使用重复同一字符等容易被猜到的密码。请换一个密码。',
   'srv.pwRun': '不能使用含有“123456”“abcdef”“qwerty”这类连续排列的密码。请换一个密码。',

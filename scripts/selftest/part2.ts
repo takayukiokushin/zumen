@@ -346,6 +346,14 @@ export async function part2(c: Awaited<ReturnType<typeof part1>>) {
     body: JSON.stringify({ id: 'mijikai', name: '短い', password: 'abc', role: 'member' }),
   });
   check('短すぎるパスワードは断る', shortPw.status === 400, `${shortPw.status}`);
+  // 長すぎるパスワード（101文字）は断る。100文字ちょうどは通る
+  const mkPw = (pw: string, id: string) => call(kanri, '/api/admin/users', { method: 'POST', body: JSON.stringify({ id, name: '長い', password: pw, role: 'member' }) });
+  const longPw = await mkPw('Kx9#mQ2$vL'.repeat(10) + 'a', 'nagai101');
+  const longPwMsg = ((await longPw.json().catch(() => ({}))) as { error?: string }).error ?? '';
+  check('長すぎる（101文字の）パスワードは断る', longPw.status === 400 && longPwMsg.includes('100文字'), `${longPw.status} ${longPwMsg}`);
+  const okPw = await mkPw('Kx9#mQ2$vL'.repeat(10), 'nagai100');
+  check('100文字ちょうどのパスワードは、受け付ける', okPw.status === 201, `${okPw.status}`);
+  await call(kanri, '/api/admin/users/nagai100', { method: 'DELETE' });
   {
     const tryPw = (id: string, password: string) =>
       call(kanri, '/api/admin/users', { method: 'POST', body: JSON.stringify({ id, name: '試験', password, role: 'member' }) });
