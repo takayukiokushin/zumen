@@ -107,6 +107,8 @@ export function App() {
   /** 保存していない入力を、自動で控えた時刻（下書き）。保存したら消す */
   const [draftAt, setDraftAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** 保存はできたが、入れ忘れがあるときの注意（例：事業場名称が空）。入れたら消える */
+  const [warning, setWarning] = useState<string | null>(null);
   /** 他の人が編集中のときの、その人の情報。閲覧のみになる */
   const [lockedBy, setLockedBy] = useState<Lock | null>(null);
   const readOnly = lockedBy !== null;
@@ -246,6 +248,7 @@ export function App() {
       setDraftAt(base ? base.savedAt : null);
       setSavedAt(null);
       setError(null);
+      setWarning(null);
       setStale(null);
       setBaseUpdatedAt(base ? (base.baseUpdatedAt ?? p.updatedAt) : p.updatedAt);
       setShowList(false);
@@ -279,6 +282,7 @@ export function App() {
       setDirty(false);
       setDraftAt(null);
       setError(null);
+      setWarning(null);
       setStale(null);
       setBaseUpdatedAt(updatedAt);
       setLockedBy(null);
@@ -308,6 +312,8 @@ export function App() {
       setStale(null);
       setDirty(false);
       setDraftAt(null);
+      // 事業場名称は必須。空のまま保存したときは、保存はできるが、入れるよう知らせる
+      setWarning(String(effective.siteName ?? '').trim() === '' ? t('project.siteRequired') : null);
       return true;
     } catch (e) {
       if (e instanceof StaleError) {
@@ -336,6 +342,11 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [canCloseListWithEsc]);
+
+  // 事業場名称を入れたら、「入力してください」の注意は、すぐ消す
+  useEffect(() => {
+    if (warning && String(effective.siteName ?? '').trim() !== '') setWarning(null);
+  }, [warning, effective.siteName]);
 
   /**
    * 保存していない入力を、20秒ごとに、サーバーへ自動で控える（下書き）。
@@ -457,6 +468,11 @@ export function App() {
       )}
 
       {error && <p className="bar-error">{error}</p>}
+      {warning && !error && !listing && (
+        <p className="bar-warn" role="status">
+          {warning}
+        </p>
+      )}
 
       {stale && !listing && (
         <p className="bar-lock">
