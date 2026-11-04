@@ -565,6 +565,15 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .seg { display: inline-flex; flex-wrap: wrap; gap: var(--gap, 10px); }
 .size-row { display: flex; gap: 10px; align-items: center; }
 .size-row input[type="range"] { flex: 1; min-width: 140px; min-height: 0; height: calc(28px * var(--ctl-scale)); padding: 0; background: transparent; border: 0; accent-color: var(--accent); }
+/* 幅がせまいとき（例：画面全体を160%にしたスマホ）は、つまみの棒を1行目いっぱいに出し、「−」「+」と％は、その下の行に回す
+   （棒が、点のように縮んでしまわないように） */
+.size-settings { container-type: inline-size; }
+@container (max-width: 300px) {
+  .size-row { flex-wrap: wrap; }
+  .size-row input[type="range"] { order: -1; flex: 1 1 100%; }
+  .size-row .val { margin-left: auto; }
+}
+.size-row .step-btn { flex: 0 0 auto; min-width: calc(40px * var(--ctl-scale)); padding-left: 0; padding-right: 0; font-size: calc(18px * var(--ctl-scale)); line-height: 1; font-weight: 700; }
 .size-row .val { font-size: calc(12px * var(--text-scale)); color: var(--muted); min-width: 4em; text-align: right; font-variant-numeric: tabular-nums; }
 .sample { margin: 2px 0 0; padding: calc(10px * var(--text-scale)) calc(12px * var(--text-scale));
   background: var(--alt); border: 1px solid var(--rule-soft); border-radius: 3px; }

@@ -86,6 +86,8 @@ export const zh: Dict = {
   'settings.theme.auto': '跟随设备',
   'settings.textSize': '文字大小',
   'settings.uiSize': '整体大小',
+  'settings.sizeDown': '缩小10%',
+  'settings.sizeUp': '放大10%',
   'settings.bold': '文字加粗',
   'settings.hideHelp': '隐藏输入栏下方的说明文字',
   'settings.hideHelpNote': '隐藏设备输入界面中输入栏下方的说明文字。适合熟练的用户。隐藏时，将鼠标放在项目名称上即可看到说明。',

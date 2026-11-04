@@ -35,11 +35,24 @@ function SizeRow({
   value: number;
   onChange: (v: number) => void;
 }) {
+  const t = useT();
   const i = indexOf(steps, value);
+  // 「−」「+」は、段階を1つ動かす（10%）。いちばん下・いちばん上では、押せない
+  const move = (d: number) => onChange(steps[Math.min(steps.length - 1, Math.max(0, i + d))]!);
   return (
-    <div className="settings-row">
+    <div className="settings-row size-settings">
       <span className="lbl">{label}</span>
       <div className="size-row">
+        <button
+          type="button"
+          className="btn step-btn"
+          aria-label={`${label}: ${t('settings.sizeDown')}`}
+          title={t('settings.sizeDown')}
+          disabled={i <= 0}
+          onClick={() => move(-1)}
+        >
+          −
+        </button>
         <input
           type="range"
           min={0}
@@ -49,6 +62,16 @@ function SizeRow({
           aria-label={label}
           onChange={(e) => onChange(steps[Number(e.target.value)]!)}
         />
+        <button
+          type="button"
+          className="btn step-btn"
+          aria-label={`${label}: ${t('settings.sizeUp')}`}
+          title={t('settings.sizeUp')}
+          disabled={i >= steps.length - 1}
+          onClick={() => move(1)}
+        >
+          +
+        </button>
         <span className="val">{Math.round(value * 100)}%</span>
       </div>
     </div>

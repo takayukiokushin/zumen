@@ -86,6 +86,8 @@ export const ko: Dict = {
   'settings.theme.auto': '기기에 맞춤',
   'settings.textSize': '글자 크기',
   'settings.uiSize': '화면 전체 크기',
+  'settings.sizeDown': '10% 줄이기',
+  'settings.sizeUp': '10% 키우기',
   'settings.bold': '글자를 굵게',
   'settings.hideHelp': '입력란 아래의 설명문 숨기기',
   'settings.hideHelpNote': '설비 입력 화면의 입력란 아래에 있는 설명문을 숨깁니다. 익숙한 분을 위한 설정입니다. 숨긴 상태에서도 항목 이름 위에 마우스를 올리면 설명이 나옵니다.',

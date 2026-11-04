@@ -86,6 +86,8 @@ export const en: Dict = {
   'settings.theme.auto': 'Match this device',
   'settings.textSize': 'Text size',
   'settings.uiSize': 'Overall size',
+  'settings.sizeDown': 'Decrease by 10%',
+  'settings.sizeUp': 'Increase by 10%',
   'settings.bold': 'Bold text',
   'settings.hideHelp': 'Hide the help text under input fields',
   'settings.hideHelpNote': 'Hides the help text under the fields on the equipment input screen. For experienced users. While hidden, hover over a field name to see the help.',

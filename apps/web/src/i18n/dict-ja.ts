@@ -87,6 +87,8 @@ export const ja = {
   'settings.theme.auto': '端末に合わせる',
   'settings.textSize': '文字の大きさ',
   'settings.uiSize': '画面全体の大きさ',
+  'settings.sizeDown': '10%小さくする',
+  'settings.sizeUp': '10%大きくする',
   'settings.bold': '文字を太くする',
   'settings.hideHelp': '入力欄の下の説明文を隠す',
   'settings.hideHelpNote': '「設備を入力して作成」の、入力欄の下の説明文を隠します。慣れた方向けです。隠しているときも、名前の上にマウスを載せると、説明が出ます。',

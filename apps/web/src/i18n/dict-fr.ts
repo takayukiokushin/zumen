@@ -86,6 +86,8 @@ export const fr: Dict = {
   'settings.theme.auto': 'Comme l’appareil',
   'settings.textSize': 'Taille du texte',
   'settings.uiSize': 'Taille générale',
+  'settings.sizeDown': 'Réduire de 10 %',
+  'settings.sizeUp': 'Augmenter de 10 %',
   'settings.bold': 'Texte en gras',
   'settings.hideHelp': 'Masquer les textes d’aide sous les champs',
   'settings.hideHelpNote': 'Masque les textes d’aide sous les champs de l’écran de saisie des équipements. Pour les utilisateurs expérimentés. Quand ils sont masqués, survolez le nom d’un champ pour voir l’aide.',
