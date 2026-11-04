@@ -68,6 +68,10 @@ export const zh: Dict = {
   'project.empty': '请从上方的“选择项目”打开项目，或新建一个项目。',
 
   'settings.title': '显示设置',
+  'settings.tab.basic': '基本设置',
+  'settings.tab.detail': '详细设置',
+  'settings.detailEmpty': '详细设置的项目将列在这里。目前还没有。',
+  'settings.tabs': '设置的类别',
   'settings.lang': '界面语言',
   'settings.langNote': '图纸上印刷的文字（图纸预览以及打印/PDF）保持日文。',
   'settings.langRef': '<b>日语以外的语言均为参考译文。</b>尚未经过专业译员审核。涉及安全的内容（图纸、规则、问题），请以日语界面为准。',

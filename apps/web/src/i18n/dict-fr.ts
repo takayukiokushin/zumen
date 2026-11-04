@@ -68,6 +68,10 @@ export const fr: Dict = {
   'project.empty': 'Ouvrez une affaire depuis « Choisir une affaire », ou créez-en une.',
 
   'settings.title': 'Affichage',
+  'settings.tab.basic': 'Général',
+  'settings.tab.detail': 'Avancé',
+  'settings.detailEmpty': "Les options avancées seront listées ici. Il n'y en a pas encore.",
+  'settings.tabs': 'Types de réglages',
   'settings.lang': 'Langue',
   'settings.langNote': 'Les textes imprimés sur le schéma (aperçu du schéma, impression et PDF) restent en japonais.',
   'settings.langRef': '<b>Les langues autres que le japonais sont des traductions indicatives.</b> Elles n’ont pas été relues par un traducteur professionnel. Pour tout ce qui touche à la sécurité (plans, règles, questions), vérifiez l’écran en japonais.',

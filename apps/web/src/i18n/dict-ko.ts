@@ -68,6 +68,10 @@ export const ko: Dict = {
   'project.empty': '위의 「건을 고르기」에서 건을 열거나, 새 건을 만드세요.',
 
   'settings.title': '화면 설정',
+  'settings.tab.basic': '기본 설정',
+  'settings.tab.detail': '세부 설정',
+  'settings.detailEmpty': '세부 설정 항목이 여기에 표시됩니다. 지금은 아직 없습니다.',
+  'settings.tabs': '설정 종류',
   'settings.lang': '화면 언어',
   'settings.langNote': '도면에 인쇄되는 글자(도면 미리보기와 인쇄·PDF)는 일본어 그대로입니다.',
   'settings.langRef': '<b>일본어 이외의 언어는 참고용 번역입니다.</b> 전문 번역가의 검수를 받지 않았습니다. 안전과 관련된 내용(도면, 규칙, 질문)은 일본어 화면에서 확인해 주세요.',

@@ -69,6 +69,10 @@ export const ja = {
   'project.empty': '上の「案件を選ぶ」から案件を開くか、新しい案件をつくってください。',
 
   'settings.title': '表示の設定',
+  'settings.tab.basic': '基本設定',
+  'settings.tab.detail': '細かな設定',
+  'settings.detailEmpty': '細かな設定の項目は、ここに並びます。いまは、まだありません。',
+  'settings.tabs': '設定の種類',
   'settings.lang': '画面の言葉',
   'settings.langNote': '図面に印刷される文字（図面のプレビューと、印刷・PDF）は、日本語のままです。',
   'settings.langRef': '<b>日本語以外の言葉は、参考訳です。</b>専門の翻訳者の確認を受けていません。安全に関わる内容（図面・規則・質問）は、日本語の画面で確かめてください。',

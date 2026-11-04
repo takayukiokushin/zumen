@@ -55,8 +55,12 @@ function SizeRow({
   );
 }
 
+type SettingsTab = 'basic' | 'detail';
+
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const t = useT();
+  // 開くたびに「基本設定」から始める
+  const [tab, setTab] = useState<SettingsTab>('basic');
   const { settings, set, reset } = useSettings();
   useEscapeToClose(onClose);
 
@@ -85,23 +89,41 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </button>
         </header>
 
-        <section>
-          <div className="settings-row">
-            <span className="lbl">{t('settings.lang')}</span>
-            <div className="seg">
-              {LANGS.map((l: Lang) => (
-                <button
-                  key={l}
-                  type="button"
-                  className="btn"
-                  aria-pressed={settings.lang === l}
-                  lang={l}
-                  onClick={() => set('lang', l)}
-                >
-                  {LANG_LABEL[l]}
-                </button>
-              ))}
-            </div>
+        <div className="settings-tabs" role="tablist" aria-label={t('settings.tabs')}>
+          {(['basic', 'detail'] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`settings-tab-${id}`}
+              aria-selected={tab === id}
+              aria-controls={`settings-panel-${id}`}
+              onClick={() => setTab(id)}
+            >
+              {t(id === 'basic' ? 'settings.tab.basic' : 'settings.tab.detail')}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'basic' && (
+          <div role="tabpanel" id="settings-panel-basic" aria-labelledby="settings-tab-basic">
+            <section>
+              <div className="settings-row">
+                <span className="lbl">{t('settings.lang')}</span>
+                <div className="seg">
+                  {LANGS.map((l: Lang) => (
+                    <button
+                      key={l}
+                      type="button"
+                      className="btn"
+                      aria-pressed={settings.lang === l}
+                      lang={l}
+                      onClick={() => set('lang', l)}
+                    >
+                      {LANG_LABEL[l]}
+                    </button>
+                  ))}
+                </div>
           </div>
           <p className="hint">{t('settings.langNote')}</p>
           {/* 日本語以外は、専門の翻訳者の確認を受けていない参考訳であることを、言葉を選ぶところに出す */}
@@ -152,6 +174,16 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <p className="hint">{t('settings.sizeNote')}</p>
           <p className="sample">{t('settings.preview')}</p>
         </section>
+          </div>
+        )}
+
+        {tab === 'detail' && (
+          <div role="tabpanel" id="settings-panel-detail" aria-labelledby="settings-tab-detail">
+            <section>
+              <p className="hint">{t('settings.detailEmpty')}</p>
+            </section>
+          </div>
+        )}
 
         <section>
           <button type="button" className="btn" onClick={reset}>
