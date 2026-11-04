@@ -9,6 +9,10 @@ import type { Lang } from '../i18n/index.ts';
 
 export type Theme = 'light' | 'dark' | 'auto';
 
+/** スクロールバー（上下に動かす棒）の太さ。細め＝以前の太さ、標準＝それより少し太い（初期値） */
+export type ScrollbarSize = 'thin' | 'normal' | 'thick' | 'xthick';
+export const SCROLLBAR_SIZES: ScrollbarSize[] = ['thin', 'normal', 'thick', 'xthick'];
+
 export interface Settings {
   /** 画面の言葉。記号名と質問文は日本語のまま */
   lang: Lang;
@@ -22,6 +26,8 @@ export interface Settings {
   bold: boolean;
   /** 入力欄の下の説明文を隠す（名前の上にマウスを載せると、説明が出る）。慣れた人向け */
   hideHelp: boolean;
+  /** スクロールバーの太さ（マウスのある端末だけで効く） */
+  scrollbar: ScrollbarSize;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -31,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiScale: 1,
   bold: false,
   hideHelp: false,
+  scrollbar: 'normal',
 };
 
 /** 文字・画面の大きさの選べる段階。％で見せる */
@@ -65,6 +72,7 @@ function load(): Settings {
       uiScale: typeof v.uiScale === 'number' ? snapToStep(UI_STEPS, v.uiScale) : 1,
       bold: v.bold === true,
       hideHelp: v.hideHelp === true,
+      scrollbar: SCROLLBAR_SIZES.includes(v.scrollbar as ScrollbarSize) ? (v.scrollbar as ScrollbarSize) : DEFAULT_SETTINGS.scrollbar,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -131,6 +139,7 @@ function applyToDocument(s: Settings): void {
   applyWidth(s.uiScale);
   el.dataset.theme = s.theme;
   el.dataset.bold = s.bold ? 'on' : 'off';
+  el.dataset.sb = s.scrollbar;
   zoomMode ??= detectZoomMode();
   el.dataset.zoom = zoomMode;
   el.style.setProperty('--text-scale', String(s.textScale * BASE_TEXT_SCALE));

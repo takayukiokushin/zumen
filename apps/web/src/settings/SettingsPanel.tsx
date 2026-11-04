@@ -6,7 +6,7 @@ import { Rich } from '../i18n/Rich.tsx';
 import { api } from '../session/api.ts';
 import { APP_VERSION, BUILD_DATE } from '../version.ts';
 import { useEscapeToClose } from '../useEscapeToClose.ts';
-import { TEXT_STEPS, UI_STEPS, useSettings } from './settings.tsx';
+import { SCROLLBAR_SIZES, TEXT_STEPS, UI_STEPS, useSettings } from './settings.tsx';
 import type { Theme } from './settings.tsx';
 
 /**
@@ -180,7 +180,23 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         {tab === 'detail' && (
           <div role="tabpanel" id="settings-panel-detail" aria-labelledby="settings-tab-detail">
             <section>
-              <p className="hint">{t('settings.detailEmpty')}</p>
+              <div className="settings-row">
+                <span className="lbl">{t('settings.scrollbar')}</span>
+                <div className="seg">
+                  {SCROLLBAR_SIZES.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className="btn"
+                      aria-pressed={settings.scrollbar === v}
+                      onClick={() => set('scrollbar', v)}
+                    >
+                      {t(`settings.scrollbar.${v}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="hint">{t('settings.scrollbarNote')}</p>
             </section>
           </div>
         )}

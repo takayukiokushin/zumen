@@ -1052,17 +1052,28 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
      マウスのある端末（パソコン）では、太めの棒を、いつも出す（掴んで上下に動かせる。棒の外を押すと、1画面ぶん動く）。
      タッチ端末（スマホ・タブレット）は、これまでどおり。 */
 /* ------------------------------------------------------------------ */
+/* 太さは、設定の「スクロールバーの太さ」で決まる（html の data-sb）。
+   細め＝以前の太さ（16px）／標準＝初期値（20px）／太め（26px）／極太（34px）。棒の内側の余白も、太さに合わせて少し増やす */
+:root { --sb-size: 20px; --sb-pad: 3px; }
+:root[data-sb="thin"] { --sb-size: 16px; --sb-pad: 3px; }
+:root[data-sb="normal"] { --sb-size: 20px; --sb-pad: 3px; }
+:root[data-sb="thick"] { --sb-size: 26px; --sb-pad: 4px; }
+:root[data-sb="xthick"] { --sb-size: 34px; --sb-pad: 5px; }
 @media (pointer: fine) {
-  *::-webkit-scrollbar { width: 16px; height: 16px; }
+  *::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
   *::-webkit-scrollbar-track { background: var(--rule-soft); }
-  *::-webkit-scrollbar-thumb { background: var(--muted); border: 3px solid var(--rule-soft); border-radius: 8px; min-height: 48px; min-width: 48px; }
+  *::-webkit-scrollbar-thumb { background: var(--muted); border: var(--sb-pad) solid var(--rule-soft); border-radius: calc(var(--sb-size) / 2); min-height: 48px; min-width: 48px; }
   *::-webkit-scrollbar-thumb:hover { background: var(--accent); }
   *::-webkit-scrollbar-thumb:active { background: var(--accent-text, var(--accent)); }
   *::-webkit-scrollbar-corner { background: var(--rule-soft); }
 }
-/* Firefox など（::-webkit-scrollbar が使えないもの）は、標準の指定で、色と太さを付ける */
+/* Firefox など（::-webkit-scrollbar が使えないもの）は、標準の指定で、色と太さを付ける。
+   太さは「細め」と「それ以外」の2通りだけ（Firefox は、段階を細かく指定できない） */
 @supports not selector(::-webkit-scrollbar) {
-  @media (pointer: fine) { * { scrollbar-width: auto; scrollbar-color: var(--muted) var(--rule-soft); } }
+  @media (pointer: fine) {
+    * { scrollbar-width: auto; scrollbar-color: var(--muted) var(--rule-soft); }
+    :root[data-sb="thin"] * { scrollbar-width: thin; }
+  }
 }
 
 /* 図面一覧：名前の下に添える、事業場名称・お客様番号 */
