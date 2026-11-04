@@ -1037,5 +1037,5 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 :where(html[data-uw~="700"]) .joblist .pager-ctl select { flex: 1 1 0; min-width: 0; }
 :where(html[data-uw~="700"]) .joblist .pager-ctl .btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; padding-left: calc(8px * var(--ctl-scale)); padding-right: calc(8px * var(--ctl-scale)); }
 
-/* 保存はできたが、入れ忘れがあるときの注意（例：事業場名称が空）。エラー（赤）ではなく、注意の色 */
-.bar-warn { margin: 0; padding: 8px 16px; background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink); font-size: calc(12.5px * var(--text-scale)); flex: 0 0 auto; }
+/* 保存はできたが、入れ忘れがあるときの注意（例：事業場名称が空）。ほかの帯（使い方の案内などのオレンジ）と見分けがつくよう、赤にする */
+.bar-warn { margin: 0; padding: 8px 16px; background: var(--need-soft); border-bottom: 1px solid var(--need); color: var(--need); font-size: calc(12.5px * var(--text-scale)); flex: 0 0 auto; }
