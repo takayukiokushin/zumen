@@ -1005,8 +1005,9 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .relogin .relogin-label { display: block; margin: calc(4px * var(--text-scale)) 0 calc(4px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
 .relogin .err { margin: calc(8px * var(--text-scale)) 0 0; }
 
-/* 設定の窓：スイッチ（太字・説明文を隠す）は、1つずつ、1行に */
-.switch.wide.block { display: flex; margin-bottom: calc(6px * var(--text-scale)); }
+/* 設定の窓：スイッチ（太字・説明文を隠す）は、1つずつ、1行に。
+   押して切り替わるのは、チェック欄と文字の上だけ（ラベルを横いっぱいに広げると、右の空白を押しても切り替わってしまう） */
+.switch.wide.block { display: flex; width: fit-content; max-width: 100%; margin-bottom: calc(6px * var(--text-scale)); }
 
 /* 設定：日本語以外は参考訳である旨（言葉を選ぶところの下） */
 .ref-note { border-left: 3px solid var(--accent); padding-left: calc(10px * var(--text-scale)); }
