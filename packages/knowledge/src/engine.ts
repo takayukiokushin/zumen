@@ -1,4 +1,6 @@
 import type { Answers, Value } from './condition.ts';
+import { countOf } from './counts.ts';
+import { pickOwn } from './own.ts';
 import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
@@ -119,7 +121,7 @@ function autoFillView(answers: Answers): Answers {
   for (const q of QUESTIONS) {
     if (!q.autoValue) continue;
     const group = QUESTION_GROUPS.find((g) => g.id === q.group);
-    const units = group?.repeatCountKey && !q.shared ? Math.max(1, Math.floor(Number(answers[group.repeatCountKey] ?? 1)) || 1) : 1;
+    const units = group?.repeatCountKey && !q.shared ? countOf(answers[group.repeatCountKey]) : 1;
     for (let i = 0; i < units; i++) {
       const key = indexedKey(q.id, i);
       if (out[key] !== undefined) continue;
@@ -301,19 +303,21 @@ export function withDerived(rawAnswers: Answers): Answers {
 
   // 発電機の注記（例: 非常用 500kVA 軽油）。分かっているものだけ並べる
   d.generatorText = [
-    GENERATOR_USAGE_LABEL[String(answers.generatorUsage)] ?? '',
+    pickOwn(GENERATOR_USAGE_LABEL, String(answers.generatorUsage)) ?? '',
     answers.generatorCapacity ? String(answers.generatorCapacity) : '',
-    GENERATOR_FUEL_LABEL[String(answers.generatorFuel)] ?? (answers.generatorFuel ? String(answers.generatorFuel) : ''),
+    pickOwn(GENERATOR_FUEL_LABEL, String(answers.generatorFuel)) ?? (answers.generatorFuel ? String(answers.generatorFuel) : ''),
   ]
     .filter(Boolean)
     .join(' ');
 
   // PCSの注記（例: 100kW×15台、50kW×7台）。同じ容量はまとめて書く
-  const groups = Math.max(1, Number(answers.pvGroupCount ?? 1));
+  const groups = countOf(answers.pvGroupCount);
   const pcs: string[] = [];
   for (let i = 0; i < groups; i++) {
     const kw = answers[indexedKey('pcsCapacity', i)];
-    const n = answers[indexedKey('pcsCount', i)] ?? 1;
+    const rawN = answers[indexedKey('pcsCount', i)] ?? 1;
+    // 「1e999」のように、数として読めない大きさの文字が入っていたら、1台として書く（「Infinity台」と書かない）
+    const n = typeof rawN === 'string' && Number.isFinite(Number(rawN)) === false && /^[\d.e+-]+$/i.test(rawN) ? 1 : rawN;
     if (kw === undefined || kw === null || kw === '') continue;
     pcs.push(`${kw}kW×${n}台`);
   }
@@ -325,7 +329,7 @@ export function withDerived(rawAnswers: Answers): Answers {
    * それを変圧器ごとに集め直して「50kW×2台」「5kW×1台」の行にする。
    * どの変圧器にも入れていない種類は、ぜんぶ1台目の変圧器につないだものとして扱う。
    */
-  const trCount = Math.max(1, Number(answers.transformerCount ?? 1));
+  const trCount = countOf(answers.transformerCount);
   const perTransformer: string[][] = Array.from({ length: trCount }, () => []);
   for (let i = 0; i < groups; i++) {
     const kw = answers[indexedKey('pcsCapacity', i)];
@@ -365,7 +369,7 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.pcsAssigned = answers.hasPv === 'yes' && perTransformer.some((v) => v.length > 0) ? 'yes' : 'no';
 
   // ケーブルの注記（3行目：定格電圧 断面積 長さ。長さ不明は「- m」）
-  d.cableInstallationLabel = CABLE_INSTALLATION_LABEL[String(answers.cableInstallation)] ?? '';
+  d.cableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.cableInstallation)) ?? '';
   const third = [
     answers.cableVoltage ? `${answers.cableVoltage}V` : '',
     answers.cableCrossSection ? `${answers.cableCrossSection}mm2` : '',
@@ -377,7 +381,7 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.cableSpecLine = third.join(' ');
 
   // 2か所目以降のエリアの、前のエリアからのケーブルの注記（種類・構造・断面積・長さ）
-  d.linkCableInstallationLabel = CABLE_INSTALLATION_LABEL[String(answers.linkCableInstallation)] ?? '';
+  d.linkCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.linkCableInstallation)) ?? '';
   d.linkCableSpecLine = [
     answers.linkCableCrossSection ? `${answers.linkCableCrossSection}mm2` : '',
     answers.linkCableLength === undefined || answers.linkCableLength === null || answers.linkCableLength === ''
@@ -525,10 +529,10 @@ const DRAWING_NAME_TAIL = '高圧受電設備単線結線図';
  * - まだ形態が入力されていない →「キュービクル式高圧受電設備単線結線図」（これまでと同じ）
  */
 export function drawingNameFromForm(answers: Answers): string {
-  const count = Math.max(1, Number(answers.areaCount ?? 1));
+  const count = countOf(answers.areaCount);
   const kinds = new Set<string>();
   for (let i = 0; i < count; i++) {
-    const kind = FORM_KIND[String(answers[indexedKey('areaForm', i)])];
+    const kind = pickOwn(FORM_KIND, String(answers[indexedKey('areaForm', i)]));
     if (kind !== undefined) kinds.add(kind);
   }
   if (kinds.size === 0) return `${FORM_KIND.cubicle}${DRAWING_NAME_TAIL}`;
@@ -543,12 +547,12 @@ export function resolveDrawingName(answers: Answers): string {
 }
 
 export function areaLabel(answers: Answers): string {
-  const head = AREA_FORM_LABEL[String(answers.areaForm)] ?? '受電設備';
+  const head = pickOwn(AREA_FORM_LABEL, String(answers.areaForm)) ?? '受電設備';
   // 高圧マンション（電柱上構成）の設置場所は、必ず電柱上
   const placement = answers.areaForm === 'apartment-pole' ? 'pole' : answers.areaPlacement;
   const inner = [
     answers.areaFloor,
-    AREA_PLACEMENT_LABEL[String(placement)] ?? placement,
+    pickOwn(AREA_PLACEMENT_LABEL, String(placement)) ?? placement,
     answers.areaDetail,
   ]
     .filter((v) => v !== undefined && v !== null && v !== '')
@@ -704,7 +708,7 @@ const AREA_KEY = /^a\d+:/;
 
 /** エリアの数（1以上） */
 export function areaCountOf(answers: Answers): number {
-  return Math.max(1, Math.floor(Number(answers.areaCount ?? 1)) || 1);
+  return countOf(answers.areaCount);
 }
 
 /** エリアごとに答える質問のID（繰り返しの件数の質問も含む） */
@@ -802,7 +806,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
   const form = String(withDerived(rawAnswers).mainBreakerForm ?? 'pfs');
   const first = composeChain(rawAnswers, [
     ...UPSTREAM,
-    ...(CHAIN_BY_FORM[form] ?? []),
+    ...(pickOwn(CHAIN_BY_FORM, form) ?? []),
     ...DOWNSTREAM,
     ...SENDOUT,
     ...TRANSFORMER,
@@ -864,8 +868,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
 
   for (const run of runs) {
     const countKey = run[0]!.repeatCountKey;
-    const asked = countKey ? Math.floor(Number(answers[countKey] ?? 1)) : 1;
-    const count = countKey ? Math.max(run.some((p) => p.zeroOk) ? 0 : 1, Number.isFinite(asked) ? asked : 1) : 1;
+    const count = countKey ? countOf(answers[countKey], run.some((p) => p.zeroOk) ? 0 : 1) : 1;
     const isParallel = run.some((p) => p.kind === 'parallel');
     const laneBase = parallelLane;
     if (isParallel) parallelLane += count;

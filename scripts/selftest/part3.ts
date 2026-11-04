@@ -220,6 +220,29 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     check('名前を送らない保存は、これまでどおりできる', keep.ok, `${keep.status}`);
   }
 
+  /* ---------- 7d. 回答・図面の形が違う保存と、一覧の巨大な位置指定（全体のデバッグ） ---------- */
+  say('\n■ 形の違う保存と、一覧の巨大な位置指定');
+  {
+    const pj = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '形の確認' }) })).json()) as { id: string };
+    const get = async () => (await (await call(a, `/api/projects/${pj.id}`)).json()) as { answers: unknown; drawing: unknown };
+    for (const [label, body] of [['文字', { answers: 'x' }], ['数字', { answers: 5 }], ['配列', { answers: [1, 2] }], ['真偽', { answers: true }]] as [string, object][]) {
+      const r = await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      check(`回答が「${label}」の保存は、受け付けない`, r.status === 400, `${r.status}`);
+    }
+    for (const [label, body] of [['文字', { drawing: 'x' }], ['数字', { drawing: 5 }], ['配列', { drawing: [1] }]] as [string, object][]) {
+      const r = await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      check(`図面が「${label}」の保存は、受け付けない`, r.status === 400, `${r.status}`);
+    }
+    const after = await get();
+    check('受け付けなかったあとも、案件が開けて、回答は空のまま', typeof after.answers === 'object' && after.answers !== null && !Array.isArray(after.answers) && after.drawing === null);
+    const nul = await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers: null }) });
+    check('回答が null の保存は、これまでどおり（空として）できる', nul.ok, `${nul.status}`);
+    const big = await call(a, '/api/projects?limit=5&offset=99999999999999999999');
+    const bigBody = (await big.json().catch(() => ({}))) as { projects?: unknown[] };
+    check('一覧の位置指定が巨大でも、エラーにならず、空を返す', big.status === 200 && Array.isArray(bigBody.projects) && bigBody.projects.length === 0, `${big.status}`);
+    await call(a, `/api/projects/${pj.id}`, { method: 'DELETE' });
+  }
+
   /* ---------- 8a. 想定外の形の入力（数字・配列・空など）でも、エラーにしない ---------- */
   say('\n■ 想定外の形の入力');
   {

@@ -268,6 +268,8 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            // 長すぎる文字を送ると、サーバーが受け付けない（通信の上限）。探す言葉は、これで十分
+            maxLength={200}
             placeholder={t('project.search')}
             aria-label={t('project.search')}
             autoComplete="off"

@@ -2,13 +2,14 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields } from '../../packages/knowledge/src/index.ts';
+import { countOf, limitCountText, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
 import { findSymbol as getSymbolForCheck } from '../../packages/symbols/src/index.ts';
 import { buildReview, buildSystemPrompt } from '../../packages/ai/src/index.ts';
 import { checkConsistency } from '../../packages/ai/src/review.ts';
+import { layout } from '../../packages/layout/src/index.ts';
 import { fail, state } from './common.ts';
 import { answers } from './part1.ts';
 
@@ -609,4 +610,39 @@ console.log('\n■ 読み取りの指示文：現場で決まっていること'
   }
   if (!(AI_HINTS.hasZpd ?? '').includes('PASの中にZPDが描かれていても、それを理由に yes にしないでください')) fail('hasZpd：AIへの説明に、PASの中のZPDとは別の機器であることが入っていません');
   if (state.failed === 0) console.log(`  ${must.length}項目すべて、指示文に入っている（太陽光＝ZPD・OVGR必須、RPR・読み取れない機器は質問、書いてある文字のまま、用途の書き方の揺れ、写真の向き、小数点、範囲の長さ、CUT、MCB・MCCB、LBSの項目、PFの本数）`);
+}
+
+console.log('\n■ 想定外の値（大きすぎる台数・名前の表にない文字）でも、固まらず、おかしな文字を出さない（全体のデバッグ）');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  // 件数の読み方：0〜50 の整数。数でないものは、最小の値
+  ok(countOf('1e999') === MAX_COUNT && countOf(99999) === MAX_COUNT && countOf(Infinity) === MAX_COUNT, '大きすぎる件数は、上限（50）にするはず');
+  ok(countOf('abc') === 1 && countOf(undefined) === 1 && countOf(NaN) === 1 && countOf(-3) === 1 && countOf(2.9) === 2, '数でない・負の件数は 1、小数は切り捨てるはず');
+  ok(countOf('abc', 0) === 0 && countOf(-3, 0) === 0, '0 から数える項目は、数でないものを 0 にするはず');
+  // 入力欄：数字だけが大きすぎるときは上限に。全角も同じ。数字でないものはそのまま
+  ok(limitCountText('transformerCount', '100000') === String(MAX_COUNT), '変圧器の台数に 100000 を打つと、50 になるはず');
+  ok(limitCountText('transformerCount', '１２３４５') === String(MAX_COUNT), '全角の大きな数も、50 になるはず');
+  ok(limitCountText('transformerCount', '7') === '7', '7 は、そのまま');
+  ok(limitCountText('pcsCount', '300') === '300' && limitCountText('pcsCount', '99999') === '9999', 'PCS の台数は、数百台まで書けて、9999 が上限');
+  ok(limitCountText('transformerCount', 'abc') === 'abc', '数字でないものは、そのまま');
+  // 大きな件数でも、すぐ組み立てて、配置できる
+  for (const [k, v] of [['transformerCount', '1e999'], ['areaCount', 99999], ['generatorCount', 1e9], ['vtSetCount', 99999], ['ctSetCount', 99999], ['relayCount', 99999], ['pvGroupCount', Infinity]] as [string, unknown][]) {
+    const a = { ...answers, [k]: v } as Answers;
+    const t0 = performance.now();
+    const d = layout(buildComposition(a), a);
+    const ms = performance.now() - t0;
+    ok(d.symbols.length > 0 && ms < 5000, `${k} に大きな値（${String(v)}）を入れても、5秒以内に組み立てるはず（${Math.round(ms)}ms）`);
+  }
+  // 名前の表にない文字（constructor など）：落ちず、関数の中身も文字に出さない
+  for (const [k, v] of [['mainBreakerForm', 'constructor'], ['mainBreakerForm', '__proto__'], ['cableInstallation', 'toString'], ['linkCableInstallation', 'hasOwnProperty'], ['areaForm', 'valueOf'], ['areaPlacement', 'constructor'], ['generatorUsage', '__proto__'], ['generatorFuel', 'constructor']] as [string, string][]) {
+    const a = { ...answers, [k]: v } as Answers;
+    try {
+      const d = layout(buildComposition(a), a);
+      const text = JSON.stringify(d);
+      ok(!/function |\[native code\]|\[object /.test(text), `${k} に「${v}」を入れると、図面に、関数の中身のような文字が出ています`);
+    } catch (e) {
+      fail(`${k} に「${v}」を入れると、組み立てが止まります：${String((e as Error).message).slice(0, 80)}`);
+    }
+  }
+  if (state.failed === 0) console.log('  件数は 0〜50 に収まる／大きな台数・エリア数でも、すぐ終わる／constructor などの文字を入れても、落ちず、おかしな文字も出ない');
 }

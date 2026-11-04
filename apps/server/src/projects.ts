@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from '
 import { resolve } from 'node:path';
 import { Hono } from 'hono';
 import { FILES_DIR, db, now } from './db.ts';
-import { readBody, text } from './input.ts';
+import { isPlainObject, parseObject, readBody, text } from './input.ts';
 import { searchFields, searchTerms } from './search.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
@@ -126,8 +126,8 @@ function draftOf(projectId: string, userId: string) {
     return {
       savedAt: d.saved_at,
       name: d.name,
-      answers: JSON.parse(d.answers),
-      drawing: d.drawing ? JSON.parse(d.drawing) : null,
+      answers: parseObject(d.answers, {}),
+      drawing: parseObject(d.drawing, null),
       sketchRead: d.sketch_read === 1,
       baseUpdatedAt: d.base_updated_at,
     };
@@ -246,7 +246,7 @@ projects.get('/', (c) => {
   const q = (c.req.query('q') ?? '').trim();
   const paged = c.req.query('limit') !== undefined || c.req.query('offset') !== undefined;
   const limit = Math.min(LIST_MAX, Math.max(1, Math.floor(Number(c.req.query('limit'))) || LIST_DEFAULT));
-  const offset = Math.max(0, Math.floor(Number(c.req.query('offset'))) || 0);
+  const offset = Math.min(1_000_000_000, Math.max(0, Math.floor(Number(c.req.query('offset'))) || 0));
   // 探す言葉を、空白で区切って、全部を含むものを探す。LIKE の特別な文字（% _ \）は、ふつうの文字として探す
   const terms = searchTerms(q);
   const likes = terms.map((w) => `%${w.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`);
@@ -468,8 +468,8 @@ projects.get('/:id', (c) => {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     updatedBy: row.updated_by,
-    answers: JSON.parse(row.answers),
-    drawing: row.drawing ? JSON.parse(row.drawing) : null,
+    answers: parseObject(row.answers, {}),
+    drawing: parseObject(row.drawing, null),
     files,
     // 保存していない入力を、自動で控えたもの（書いた本人にだけ返す）
     draft: draftOf(row.id, c.get('user').id),
@@ -498,6 +498,10 @@ projects.put('/:id', async (c) => {
     | { name?: string; answers?: unknown; drawing?: unknown; sketchRead?: boolean; baseUpdatedAt?: string; force?: boolean }
     | null;
   if (!body) return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
+  // 回答と図面は、「項目名と値の組」の形で届く。ほかの形（文字・数字・配列）は、保存すると、案件が開けなくなるので受け付けない
+  if ((body.answers != null && !isPlainObject(body.answers)) || (body.drawing != null && !isPlainObject(body.drawing))) {
+    return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
+  }
 
   // 同じ人が別の端末や別の画面で保存していたら、そのまま上書きしない。
   // 「読み込んだ（または最後に保存した）時点の更新時刻」と、いまの更新時刻が違えば、あいだに誰かが保存している。

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { areaCountOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
+import { areaCountOf, countOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, Question, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 import { useT, useTx } from './i18n/useT.ts';
@@ -87,7 +87,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     const keyOf = (id: string, unit: number) => (group.perArea ? areaKey(indexedKey(id, unit), area) : indexedKey(id, unit));
 
     const countKey = group.repeatCountKey;
-    const count = countKey ? Math.max(1, Number(view[countKey] ?? 1)) : 1;
+    const count = countKey ? countOf(view[countKey]) : 1;
     // 件数そのものと、件数に関わらず1回だけ聞く質問は、繰り返しの外に出す
     const leading = groupQuestions.filter((q) => q.id === countKey || q.shared);
     const repeated = leadOnly ? [] : groupQuestions.filter((q) => q.id !== countKey && !q.shared);

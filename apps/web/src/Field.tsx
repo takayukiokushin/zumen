@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Question } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
-import { evaluate } from '@zumen/knowledge';
+import { evaluate, limitCountText } from '@zumen/knowledge';
 import { useT, useTx } from './i18n/useT.ts';
 import { useSettings } from './settings/settings.tsx';
 
@@ -154,7 +154,8 @@ export function Field({ question: question, fieldKey, value, onChange, context }
               aria-label={t('field.otherValue', { label: tx(q.label) })}
               placeholder={t('field.otherPlaceholder')}
               value={q.options?.some((o) => o.value === String(current)) ? '' : String(current)}
-              onChange={(e) => set(e.target.value || undefined)}
+              // 台数の欄に、大きすぎる数を打つと、その数だけ繰り返して組み立てて、画面が固まる。上限におさめる
+              onChange={(e) => set(e.target.value ? (/Count$/.test(q.id) ? limitCountText(q.id, e.target.value) : e.target.value) : undefined)}
             />
           )}
         </>
