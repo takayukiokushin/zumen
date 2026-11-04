@@ -400,19 +400,22 @@ export function Editor({ answers, initialDoc, onDocChange }: EditorProps) {
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
             <div className="tool-row">
-              <span className="paper-pick" role="group" title={t('editor.orientation.help')}>
-                {(['portrait', 'landscape'] as Orientation[]).map((o) => (
-                  <button
-                    key={o}
-                    type="button"
-                    className="btn"
-                    aria-pressed={orientation === o}
-                    onClick={() => applyAuto({ ...doc, orientation: o })}
-                  >
-                    {o === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
-                  </button>
-                ))}
-              </span>
+              {/* 縦・横は、印刷プレビューのときだけ出す（プレビューを開かないと、見た目が変わらないため） */}
+              {sheetView && (
+                <span className="paper-pick" role="group" title={t('editor.orientation.help')}>
+                  {(['portrait', 'landscape'] as Orientation[]).map((o) => (
+                    <button
+                      key={o}
+                      type="button"
+                      className="btn"
+                      aria-pressed={orientation === o}
+                      onClick={() => applyAuto({ ...doc, orientation: o })}
+                    >
+                      {o === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
+                    </button>
+                  ))}
+                </span>
+              )}
               <button
                 type="button"
                 className="btn"
