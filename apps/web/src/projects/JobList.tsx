@@ -64,7 +64,9 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   const [pageSize, setPageSize] = useState(loadPageSize);
-  const [loadingMore, setLoadingMore] = useState(false);
+  /** いま何ページ目か（1から） */
+  const [page, setPage] = useState(1);
+  const topRef = useRef<HTMLDivElement>(null);
   /** 古い返事が、新しい返事を上書きしないための番号 */
   const seq = useRef(0);
   const [error, setError] = useState<string | null>(null);
@@ -80,12 +82,17 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   const reload = () => {
     const mine = ++seq.current;
     return Promise.all([
-      api.listProjects({ q: query, limit: pageSize, offset: 0 }),
+      api.listProjects({ q: query, limit: pageSize, offset: (page - 1) * pageSize }),
       api.listTrash(),
       role === 'sandbox' ? api.listPracticeSources() : Promise.resolve({ projects: [] }),
     ])
       .then(([l, tr, src]) => {
         if (mine !== seq.current) return;
+        // 消したあとなどで、いまのページに何も無くなったら、最後のページに戻る
+        if (l.projects.length === 0 && l.total > 0 && page > 1) {
+          setPage(Math.max(1, Math.ceil(l.total / pageSize)));
+          return;
+        }
         setList(l.projects);
         setTotal(l.total);
         setTrash(tr.projects);
@@ -96,39 +103,32 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
       });
   };
 
-  // 探す言葉を入れてから 0.3 秒たったら、サーバーに尋ねる
+  // 探す言葉を入れてから 0.3 秒たったら、サーバーに尋ねる（探す言葉が変わったら、1ページ目に戻る）
   useEffect(() => {
-    const timer = setTimeout(() => setQuery(q.trim()), q.trim() === query ? 0 : 300);
+    const next = q.trim();
+    if (next === query) return;
+    const timer = setTimeout(() => {
+      setQuery(next);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(timer);
   }, [q]);
 
-  // 探す言葉・1回の件数が変わったら、先頭から出し直す
+  // 探す言葉・1回の件数・ページが変わったら、そのページを出し直す
   useEffect(() => {
     void reload();
-  }, [query, pageSize]);
+  }, [query, pageSize, page]);
 
-  /** 続きを足す（いまの件数ぶん） */
-  const loadMore = async () => {
-    if (!list || loadingMore) return;
-    const mine = seq.current;
-    setLoadingMore(true);
-    try {
-      const l = await api.listProjects({ q: query, limit: pageSize, offset: list.length });
-      if (mine !== seq.current) return;
-      setList((cur) => {
-        const have = new Set((cur ?? []).map((p) => p.id));
-        return [...(cur ?? []), ...l.projects.filter((p) => !have.has(p.id))];
-      });
-      setTotal(l.total);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err.loadProjects'));
-    } finally {
-      setLoadingMore(false);
-    }
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  /** ページを切り替える（切り替えたら、一覧の先頭が見える位置に戻す） */
+  const goPage = (n: number) => {
+    setPage(Math.min(pages, Math.max(1, n)));
+    topRef.current?.scrollIntoView({ block: 'start' });
   };
 
   const chooseSize = (n: number) => {
     setPageSize(n);
+    setPage(1);
     try {
       localStorage.setItem(PAGE_SIZE_KEY, String(n));
     } catch {
@@ -196,7 +196,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     <div className="analyze joblist">
       <div className="panel">
         {/* 見出しと同じ行の右端に、表示件数を置く（「案件を追加」から離して、押し間違いを防ぐ） */}
-        <div className="list-head">
+        <div className="list-head" ref={topRef}>
           <h2>{t('project.list')}</h2>
           <div className="page-size" role="group" aria-label={t('project.pageSize')}>
             <span className="lbl">{t('project.pageSize')}</span>
@@ -314,15 +314,29 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
               ))}
             </tbody>
           </table>
-          {/* 件数が多いときは、先頭から出して、続きは「さらに表示」で足す */}
-          <p className="more-row">
-            <span className="hint">{t('project.shownOf', { total, shown: list.length })}</span>
-            {list.length < total && (
-              <button type="button" className="btn" disabled={loadingMore} onClick={() => void loadMore()}>
-                {loadingMore ? t('common.loading') : t('project.more', { n: Math.min(pageSize, total - list.length) })}
-              </button>
+          {/* 件数が多いときは、ページを切り替えて見る（「○/○ページ」）。表示件数は、見出しの右で選ぶ */}
+          <nav className="pager" aria-label={t('project.pager')}>
+            <span className="hint range">
+              {t('project.range', { total, from: (page - 1) * pageSize + 1, to: (page - 1) * pageSize + list.length })}
+            </span>
+            {pages > 1 && (
+              <span className="pager-ctl">
+                <button type="button" className="btn" disabled={page <= 1} onClick={() => goPage(page - 1)}>
+                  ◀ {t('project.prev')}
+                </button>
+                <select value={page} aria-label={t('project.pageOf', { page, pages })} onChange={(e) => goPage(Number(e.target.value))}>
+                  {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {t('project.pageOf', { page: n, pages })}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className="btn" disabled={page >= pages} onClick={() => goPage(page + 1)}>
+                  {t('project.next')} ▶
+                </button>
+              </span>
             )}
-          </p>
+          </nav>
           </>
         )}
 

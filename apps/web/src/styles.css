@@ -1012,5 +1012,12 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .joblist .list-head h2 { margin: 0; }
 .joblist .page-size { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin-left: auto; }
 .joblist .page-size .lbl { font-size: calc(12px * var(--text-scale)); color: var(--muted); }
-.joblist .more-row { display: flex; align-items: center; flex-wrap: wrap; gap: calc(12px * var(--text-scale)); margin: calc(12px * var(--text-scale)) 0 0; }
-.joblist .more-row .hint { margin: 0; }
+.joblist .pager { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: calc(8px * var(--text-scale)) calc(16px * var(--text-scale)); margin: calc(12px * var(--text-scale)) 0 0; }
+.joblist .pager .range { margin: 0; }
+.joblist .pager-ctl { display: flex; align-items: center; flex-wrap: wrap; gap: calc(8px * var(--text-scale)); margin-left: auto; }
+.joblist .pager-ctl select { min-height: calc(32px * var(--ctl-scale)); font-size: calc(12.5px * var(--ctl-scale)); }
+
+/* スマホ：ページ送り（前のページ・ページ選択・次のページ）を、1行に収める */
+:where(html[data-uw~="700"]) .joblist .pager-ctl { flex: 1 1 100%; flex-wrap: nowrap; gap: calc(4px * var(--text-scale)); }
+:where(html[data-uw~="700"]) .joblist .pager-ctl select { flex: 1 1 0; min-width: 0; }
+:where(html[data-uw~="700"]) .joblist .pager-ctl .btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; padding-left: calc(8px * var(--ctl-scale)); padding-right: calc(8px * var(--ctl-scale)); }
