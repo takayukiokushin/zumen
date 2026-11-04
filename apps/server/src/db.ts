@@ -99,6 +99,8 @@ addColumnIfMissing('projects', 'sketch_read', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('projects', 'site_name', 'TEXT');
 addColumnIfMissing('projects', 'customer_no', 'TEXT');
 addColumnIfMissing('projects', 'search_text', "TEXT NOT NULL DEFAULT ''");
+// 名前順に並べるための文字（ひらがな・数の大きさ順にそろえたもの）
+addColumnIfMissing('projects', 'name_sort', "TEXT NOT NULL DEFAULT ''");
 addColumnIfMissing('users', 'role', "TEXT NOT NULL DEFAULT 'member'");
 
 const userVersion = (db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
@@ -111,10 +113,10 @@ if (userVersion < 1) {
   db.exec('DELETE FROM sessions');
 }
 
-/** 回答の中の事業場名称・お客様番号を、探すための列に写す（user_version 2。以前からある案件の分を、一度だけ） */
-if (userVersion < 2) {
+/** 回答の中の事業場名称・お客様番号と、名前順の文字を、列に写す（user_version 3。以前からある案件の分を、一度だけ） */
+if (userVersion < 3) {
   const rows = db.prepare('SELECT id, name, answers FROM projects').all() as { id: string; name: string; answers: string }[];
-  const upd = db.prepare('UPDATE projects SET site_name = ?, customer_no = ?, search_text = ? WHERE id = ?');
+  const upd = db.prepare('UPDATE projects SET site_name = ?, customer_no = ?, search_text = ?, name_sort = ? WHERE id = ?');
   db.exec('BEGIN');
   for (const r of rows) {
     let a: unknown = {};
@@ -124,10 +126,10 @@ if (userVersion < 2) {
       // 壊れた回答は、空として扱う
     }
     const f = searchFields(r.name, a);
-    upd.run(f.site, f.no, f.text, r.id);
+    upd.run(f.site, f.no, f.text, f.sort, r.id);
   }
   db.exec('COMMIT');
 }
-if (userVersion < 2) db.exec('PRAGMA user_version = 2');
+if (userVersion < 3) db.exec('PRAGMA user_version = 3');
 
 export const now = (): string => new Date().toISOString();

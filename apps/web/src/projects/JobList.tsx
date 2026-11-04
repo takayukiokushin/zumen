@@ -38,6 +38,20 @@ function loadPageSize(): number {
   return 50;
 }
 
+/** 並び順の選択肢（サーバーの LIST_SORTS と同じ名前）。選んだ並び順は、このブラウザに覚えさせる */
+const SORTS = ['updated_desc', 'updated_asc', 'created_desc', 'created_asc', 'name_asc', 'name_desc'] as const;
+type Sort = (typeof SORTS)[number];
+const SORT_KEY = 'zumen.listSort';
+function loadSort(): Sort {
+  try {
+    const v = localStorage.getItem(SORT_KEY);
+    if ((SORTS as readonly string[]).includes(v ?? '')) return v as Sort;
+  } catch {
+    // 覚えていなくても使える
+  }
+  return 'updated_desc';
+}
+
 /** 探した言葉のところを目立たせる（言葉が空白で区切られていれば、どの言葉のところも） */
 function Highlight({ text, needle }: { text: string; needle: string }) {
   const terms = needle.toLowerCase().split(/[\s　]+/).filter(Boolean);
@@ -83,6 +97,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   const [pageSize, setPageSize] = useState(loadPageSize);
+  const [sort, setSort] = useState<Sort>(loadSort);
   /** いま何ページ目か（1から） */
   const [page, setPage] = useState(1);
   const topRef = useRef<HTMLDivElement>(null);
@@ -101,7 +116,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   const reload = () => {
     const mine = ++seq.current;
     return Promise.all([
-      api.listProjects({ q: query, limit: pageSize, offset: (page - 1) * pageSize }),
+      api.listProjects({ q: query, sort, limit: pageSize, offset: (page - 1) * pageSize }),
       api.listTrash(),
       role === 'sandbox' ? api.listPracticeSources() : Promise.resolve({ projects: [] }),
     ])
@@ -136,13 +151,23 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
   // 探す言葉・1回の件数・ページが変わったら、そのページを出し直す
   useEffect(() => {
     void reload();
-  }, [query, pageSize, page]);
+  }, [query, pageSize, page, sort]);
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
   /** ページを切り替える（切り替えたら、一覧の先頭が見える位置に戻す） */
   const goPage = (n: number) => {
     setPage(Math.min(pages, Math.max(1, n)));
     topRef.current?.scrollIntoView({ block: 'start' });
+  };
+
+  const chooseSort = (v: Sort) => {
+    setSort(v);
+    setPage(1);
+    try {
+      localStorage.setItem(SORT_KEY, v);
+    } catch {
+      // 覚えられなくても、この画面では使える
+    }
   };
 
   const chooseSize = (n: number) => {
@@ -251,6 +276,17 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
           <button type="button" className="btn primary" onClick={() => void create()}>
             ＋ {t('project.new')}
           </button>
+        </div>
+
+        <div className="sort-row">
+          <label htmlFor="job-sort">{t('project.sort')}</label>
+          <select id="job-sort" value={sort} onChange={(e) => chooseSort(e.target.value as Sort)}>
+            {SORTS.map((s) => (
+              <option key={s} value={s}>
+                {t(`project.sort.${s}`)}
+              </option>
+            ))}
+          </select>
         </div>
 
         {error && <p className="err">{error}</p>}

@@ -214,8 +214,18 @@ function refreshSearch(id: string): void {
     // 壊れた回答は、空として扱う
   }
   const f = searchFields(r.name, a);
-  db.prepare('UPDATE projects SET site_name = ?, customer_no = ?, search_text = ? WHERE id = ?').run(f.site, f.no, f.text, id);
+  db.prepare('UPDATE projects SET site_name = ?, customer_no = ?, search_text = ?, name_sort = ? WHERE id = ?').run(f.site, f.no, f.text, f.sort, id);
 }
+
+/** 並び順（名前→並べ方の書き方）。知らない名前が来たら、標準（更新が新しい順）にする */
+const LIST_SORTS: Record<string, string> = {
+  updated_desc: 'p.updated_at DESC',
+  updated_asc: 'p.updated_at ASC',
+  created_desc: 'p.created_at DESC',
+  created_asc: 'p.created_at ASC',
+  name_asc: 'p.name_sort ASC',
+  name_desc: 'p.name_sort DESC',
+};
 
 /** 一覧で、1回に返せる件数の上限 */
 const LIST_MAX = 200;
@@ -225,6 +235,7 @@ const LIST_DEFAULT = 50;
  * 一覧（中身は返さない）。
  *   q      … 探す言葉。案件名・事業場名称・お客様番号のどれかに含まれるもの（空白で区切ると、全部の言葉を含むもの）。
  *            大文字・小文字、全角・半角は区別しない。サーバー側で絞るので、件数が増えても速い
+ *   sort   … 並び順。updated_desc（更新が新しい順・標準）／updated_asc／created_desc（新規作成が新しい順）／created_asc／name_asc（名前順）／name_desc
  *   limit  … 1回に返す件数（1〜200。省略すると、50件。limit も offset も省くと、全件を返す＝古い画面との互換）
  *   offset … 何件目から返すか（「さらに表示」で、続きをもらうのに使う）
  * 新しい順（更新日）。total は、絞り込んだあとの全件数。
@@ -239,6 +250,7 @@ projects.get('/', (c) => {
   // 探す言葉を、空白で区切って、全部を含むものを探す。LIKE の特別な文字（% _ \）は、ふつうの文字として探す
   const terms = searchTerms(q);
   const likes = terms.map((w) => `%${w.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`);
+  const orderBy = LIST_SORTS[c.req.query('sort') ?? ''] ?? LIST_SORTS.updated_desc!;
   const where = `WHERE p.deleted_at IS NULL AND ${visible}${likes.map(() => " AND p.search_text LIKE ? ESCAPE '\\'").join('')}`;
   const whereArgs = [...args, ...likes];
   const total = Number((db.prepare(`SELECT COUNT(*) AS n FROM projects p ${where}`).get(...whereArgs) as { n: number }).n);
@@ -246,7 +258,7 @@ projects.get('/', (c) => {
     .prepare(
       `SELECT p.id, p.name, p.created_at, p.updated_at, p.updated_by, p.site_name, p.customer_no,
               (SELECT COUNT(*) FROM project_files f WHERE f.project_id = p.id) AS file_count
-       FROM projects p ${where} ORDER BY p.updated_at DESC, p.id${paged ? ' LIMIT ? OFFSET ?' : ''}`,
+       FROM projects p ${where} ORDER BY ${orderBy}, p.id${paged ? ' LIMIT ? OFFSET ?' : ''}`,
     )
     .all(...whereArgs, ...(paged ? [limit, offset] : [])) as { id: string }[];
   return c.json({

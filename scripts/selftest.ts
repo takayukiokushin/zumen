@@ -899,11 +899,43 @@ try {
     odb.close();
     const mig = await runNode(['apps/server/src/cli.ts', 'list'], { ...env, DATA_DIR: old });
     const odb2 = new DatabaseSync(join(old, 'zumen.db'));
-    const row = odb2.prepare('SELECT site_name, customer_no, search_text FROM projects WHERE id = ?').get('old1') as { site_name: string; customer_no: string; search_text: string };
+    const row = odb2.prepare('SELECT site_name, customer_no, search_text, name_sort FROM projects WHERE id = ?').get('old1') as { site_name: string; customer_no: string; search_text: string; name_sort: string };
     const ver = (odb2.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
     odb2.close();
     rmSync(old, { recursive: true, force: true });
-    check('以前からある案件にも、事業場名称・お客様番号・探すための文字が、更新のときに写される', mig.code === 0 && row.site_name === '古い工場' && row.customer_no === 'OLD-7' && row.search_text.includes('old-7') && ver === 2, `${row.site_name}/${row.customer_no}/v${ver}`);
+    check('以前からある案件にも、事業場名称・お客様番号・探すための文字・名前順の文字が、更新のときに写される', mig.code === 0 && row.site_name === '古い工場' && row.customer_no === 'OLD-7' && row.search_text.includes('old-7') && row.name_sort === '古い案件' && ver === 3, `${row.site_name}/${row.customer_no}/v${ver}`);
+  }
+
+  /* ---------- 7b3. 並び替え ---------- */
+  say('\n■ 並び替え');
+  {
+    type L = { projects: { id: string; name: string }[]; total: number };
+    const order = async (sort: string) => ((await (await call(a, `/api/projects?limit=50&sort=${sort}&q=${encodeURIComponent('並び替え試験')}`)).json()) as L).projects.map((p) => p.name.replace('並び替え試験 ', ''));
+    const names = ['ソ10', '漢', 'そ1', 'ＡＢ', 'ソ2'];
+    const ids: Record<string, string> = {};
+    for (const n of names) {
+      ids[n] = ((await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: `並び替え試験 ${n}` }) })).json()) as { id: string }).id;
+      await new Promise((r) => setTimeout(r, 15));
+    }
+    const asc = await order('name_asc');
+    check('名前順：英数字、ひらがな・カタカナ（同じ並び）、漢字の順。数字は、数の大きさの順（2→10）', asc.join(',') === 'ＡＢ,そ1,ソ2,ソ10,漢', asc.join(','));
+    check('名前の逆順', (await order('name_desc')).join(',') === [...asc].reverse().join(','));
+    check('新規作成が古い順＝作った順', (await order('created_asc')).join(',') === names.join(','), (await order('created_asc')).join(','));
+    check('新規作成が新しい順＝作った順の逆', (await order('created_desc')).join(',') === [...names].reverse().join(','));
+    await call(a, `/api/projects/${ids['そ1']}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '更新した' } }) });
+    const upd = await order('updated_desc');
+    check('更新が新しい順：いま更新したものが先頭', upd[0] === 'そ1', upd.join(','));
+    check('更新が古い順：いま更新したものが最後', (await order('updated_asc')).at(-1) === 'そ1');
+    check('新規作成の順は、更新しても変わらない', (await order('created_asc')).join(',') === names.join(','));
+    const unknown = await order('でたらめ');
+    check('知らない並び順は、標準（更新が新しい順）になり、エラーにならない', unknown[0] === 'そ1', unknown.join(','));
+    // 名前を変えると、名前順も変わる
+    await call(a, `/api/projects/${ids['漢']}`, { method: 'PUT', body: JSON.stringify({ name: '並び替え試験 あ0' }) });
+    check('名前を変えると、名前順の位置も変わる', (await order('name_asc')).join(',') === 'ＡＢ,あ0,そ1,ソ2,ソ10', (await order('name_asc')).join(','));
+    // ページをまたいでも、順番が崩れない
+    const p1 = ((await (await call(a, `/api/projects?limit=2&offset=0&sort=name_asc&q=${encodeURIComponent('並び替え試験')}`)).json()) as L).projects.map((p) => p.name);
+    const p2 = ((await (await call(a, `/api/projects?limit=2&offset=2&sort=name_asc&q=${encodeURIComponent('並び替え試験')}`)).json()) as L).projects.map((p) => p.name);
+    check('名前順のまま、ページをまたいでも、重複も抜けもない', new Set([...p1, ...p2]).size === 4 && p1[0]!.endsWith('ＡＢ'));
   }
 
   /* ---------- 7c. 案件名は必須 ---------- */

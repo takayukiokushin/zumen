@@ -196,9 +196,10 @@ export const api = {
   logout: () => call<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
 
   /** 案件の一覧。q：名前の一部、limit：1回の件数、offset：何件目から（サーバー側で絞る） */
-  listProjects: (opts: { q?: string; limit?: number; offset?: number } = {}) => {
+  listProjects: (opts: { q?: string; sort?: string; limit?: number; offset?: number } = {}) => {
     const p = new URLSearchParams();
     if (opts.q) p.set('q', opts.q);
+    if (opts.sort) p.set('sort', opts.sort);
     if (opts.limit !== undefined) p.set('limit', String(opts.limit));
     if (opts.offset !== undefined) p.set('offset', String(opts.offset));
     const qs = p.toString();

@@ -1061,3 +1061,8 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 
 /* 図面一覧：名前の下に添える、事業場名称・お客様番号 */
 .joblist .jobs .c-name .sub { display: flex; flex-wrap: wrap; gap: 0 calc(14px * var(--text-scale)); margin-top: calc(2px * var(--text-scale)); font-size: calc(11.5px * var(--text-scale)); color: var(--muted); }
+
+/* 図面一覧：並び順 */
+.joblist .sort-row { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin: calc(6px * var(--text-scale)) 0; }
+.joblist .sort-row label { font-size: calc(12px * var(--text-scale)); color: var(--muted); }
+.joblist .sort-row select { min-height: calc(32px * var(--ctl-scale)); font-size: calc(12.5px * var(--ctl-scale)); max-width: 100%; }
