@@ -1039,3 +1039,22 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 
 /* 保存はできたが、入れ忘れがあるときの注意（例：事業場名称が空）。ほかの帯（使い方の案内などのオレンジ）と見分けがつくよう、赤にする */
 .bar-warn { margin: 0; padding: 8px 16px; background: var(--need-soft); border-bottom: 1px solid var(--need); color: var(--need); font-size: calc(12.5px * var(--text-scale)); flex: 0 0 auto; }
+
+/* ------------------------------------------------------------------ */
+/* スクロールバー（画面の右端の、上下に動かす棒）を、いつも見えるようにする */
+/*   Mac の標準の設定では、棒は、普段は隠れていて、なぞったときだけ薄く出る。掴みにくいので、
+     マウスのある端末（パソコン）では、太めの棒を、いつも出す（掴んで上下に動かせる。棒の外を押すと、1画面ぶん動く）。
+     タッチ端末（スマホ・タブレット）は、これまでどおり。 */
+/* ------------------------------------------------------------------ */
+@media (pointer: fine) {
+  *::-webkit-scrollbar { width: 16px; height: 16px; }
+  *::-webkit-scrollbar-track { background: var(--rule-soft); }
+  *::-webkit-scrollbar-thumb { background: var(--muted); border: 3px solid var(--rule-soft); border-radius: 8px; min-height: 48px; min-width: 48px; }
+  *::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  *::-webkit-scrollbar-thumb:active { background: var(--accent-text, var(--accent)); }
+  *::-webkit-scrollbar-corner { background: var(--rule-soft); }
+}
+/* Firefox など（::-webkit-scrollbar が使えないもの）は、標準の指定で、色と太さを付ける */
+@supports not selector(::-webkit-scrollbar) {
+  @media (pointer: fine) { * { scrollbar-width: auto; scrollbar-color: var(--muted) var(--rule-soft); } }
+}
