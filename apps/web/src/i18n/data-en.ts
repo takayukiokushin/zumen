@@ -37,6 +37,8 @@ const data: Record<string, string> = {
   "このエリアから、ほかのエリアへ送り出す点": "The point where this area feeds out to other areas",
   "表題欄": "Title block",
   "事業場名称": "Facility name",
+  "お客様番号": "Customer number",
+  "任意。図面一覧で探せます。": "Optional. Searchable in the drawing list.",
   "表題欄への記載名": "Name shown in the title block",
   "事業場名称と異なる書き方（略称など）をする場合に入力する": "Enter this only if you want it written differently from the facility name (e.g. an abbreviation)",
   "受電電圧": "Receiving voltage",

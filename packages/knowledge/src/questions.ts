@@ -341,6 +341,18 @@ export const QUESTIONS: Question[] = [
   /* ---------------- お客様・現場 ---------------- */
   { id: 'siteName', group: 'customer', label: '事業場名称', type: 'text', ask: 'always', required: true, manualOnly: true, clearOnDuplicate: true },
   {
+    // 図面一覧で探すための番号（任意）。図面には印刷しない。お客様ごとに違うので、複製したときは空にする
+    id: 'customerNo',
+    group: 'customer',
+    label: 'お客様番号',
+    type: 'text',
+    size: 'm',
+    ask: 'always',
+    manualOnly: true,
+    clearOnDuplicate: true,
+    help: '任意。図面一覧で探せます。',
+  },
+  {
     id: 'customerNameForTitleBlock',
     group: 'customer',
     label: '表題欄への記載名',

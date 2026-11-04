@@ -36,7 +36,7 @@ console.log('■ Claude用の指示文');
 {
   const text = buildVoiceInstruction();
   const manual = QUESTIONS.filter((q) => q.manualOnly);
-  ok(manual.map((q) => q.id).join() === 'siteName,customerNameForTitleBlock,drawingName', `手入力にする項目が違います（${manual.map((q) => q.id).join()}）`);
+  ok(manual.map((q) => q.id).join() === 'siteName,customerNo,customerNameForTitleBlock,drawingName', `手入力にする項目が違います（${manual.map((q) => q.id).join()}）`);
   // 手入力の項目は、項目の一覧に載せない（名前は、「聞かないで」という説明のために出てくる）
   for (const q of manual) ok(!text.includes(`- ${q.id}：`), `手入力の項目 ${q.id} が、項目の一覧に載っています`);
   ok(text.includes('お客様名称') || text.includes('事業場名称'), '「声に出さないでほしいもの」に、事業場名称などが書かれていません');
@@ -179,7 +179,7 @@ console.log('\n■ Claude（指示文だけを読んだもの）が実際に出�
     ok(p.ok && p.rejected.length === 0, `例${n}：取り込めない項目があります（${p.error ?? ''}${p.rejected.map((r) => `${r.key}：${r.reason}`).join('、')}）。指示文を見直してください`);
     // お客様名称は、出力のどこにも入っていない（話された名前の言葉が、文章に出てこない）
     for (const name of ['マルマル製作所', 'ばつばつエナジー', 'てすと工業']) ok(!text.includes(name), `例${n}：お客様名称（${name}）が、出力に入っています`);
-    for (const id of ['siteName', 'customerNameForTitleBlock', 'drawingName']) ok(!(id in (p.result?.answers ?? {})), `例${n}：手入力の項目 ${id} が、答えに入っています`);
+    for (const id of ['siteName', 'customerNo', 'customerNameForTitleBlock', 'drawingName']) ok(!(id in (p.result?.answers ?? {})), `例${n}：手入力の項目 ${id} が、答えに入っています`);
     // 取り込んだ答えから、構成が作れる
     // 聞き返しは、使わない（話されたことの根拠は、自信がない項目だけ）
     ok((p.result?.questions.length ?? 0) <= 3, `例${n}：questions が多すぎます`);

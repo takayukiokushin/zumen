@@ -37,6 +37,8 @@ const data: Record<string, string> = {
   "このエリアから、ほかのエリアへ送り出す点": "Point de départ de cette zone vers les autres zones",
   "表題欄": "Cartouche",
   "事業場名称": "Nom du site",
+  "お客様番号": "Numéro de client",
+  "任意。図面一覧で探せます。": "Facultatif. Permet de rechercher dans la liste.",
   "表題欄への記載名": "Nom à inscrire dans le cartouche",
   "事業場名称と異なる書き方（略称など）をする場合に入力する": "À saisir si vous voulez une écriture différente du nom du site (abréviation, etc.).",
   "受電電圧": "Tension de réception",

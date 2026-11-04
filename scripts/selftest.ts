@@ -605,7 +605,7 @@ try {
       base: { symbols: {}, wires: [], wireIds: [], textIds: ['auto-t'] },
       overrides: { moved: { vcb: { dx: 5, dy: 6 } }, removed: [], wiresRemoved: [], added: [{ kind: 'text', item: { kind: 'text', id: 'memo-t' }, at: { ndx: 0, ndy: 0 } }] },
     };
-    const srcAnswers = { siteName: '複製元の現場', drawingName: '複製元の図面', poleName: '中電柱：元の電柱', earthingNotes: 'A種10Ω', mainBreakerForm: 'cb', trCapacity: 100 };
+    const srcAnswers = { siteName: '複製元の現場', customerNo: 'C-0042', drawingName: '複製元の図面', poleName: '中電柱：元の電柱', earthingNotes: 'A種10Ω', mainBreakerForm: 'cb', trCapacity: 100 };
     await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ answers: srcAnswers, drawing }) });
     const up = await call(a, `/api/projects/${created.id}/files`, {
       method: 'POST',
@@ -616,7 +616,7 @@ try {
     check('標準のアカウントも、図面を複製して新しく作れる', r.status === 201, `${r.status}`);
     const dup = await J(r);
     const d = await J(await call(a, `/api/projects/${dup.id}`));
-    check('複製：事業場名称・図面名称・電柱名称・特記事項が空になる', d.answers.siteName === undefined && d.answers.drawingName === undefined && d.answers.poleName === undefined && d.answers.earthingNotes === undefined, JSON.stringify(d.answers));
+    check('複製：事業場名称・お客様番号・図面名称・電柱名称・特記事項が空になる', d.answers.siteName === undefined && d.answers.customerNo === undefined && d.answers.drawingName === undefined && d.answers.poleName === undefined && d.answers.earthingNotes === undefined, JSON.stringify(d.answers));
     check('複製：設備の内容は、そのまま残る', d.answers.mainBreakerForm === 'cb' && d.answers.trCapacity === 100);
     check('複製：案件の名前は「無題の案件」になる', d.name === '無題の案件', String(d.name));
     check('複製：手で足したメモは消え、自動の文字は残る', d.drawing.items.some((x: { id: string }) => x.id === 'auto-t') && !d.drawing.items.some((x: { id: string }) => x.id === 'memo-t') && d.drawing.overrides.added.length === 0);
