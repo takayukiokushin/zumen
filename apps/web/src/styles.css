@@ -707,7 +707,7 @@ button.with-icon svg { flex: 0 0 auto; }
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act { grid-column: 1; justify-self: stretch; }
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act .btn { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup { order: 4; grid-column: 2; width: auto; text-align: center; margin-top: calc(6px * var(--text-scale)); }
-  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn { width: 100%; min-width: 0; white-space: nowrap; padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn { width: auto; min-width: 0; white-space: nowrap; padding-left: calc(5px * var(--ctl-scale)); padding-right: calc(5px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del { order: 5; grid-column: 3; width: auto; margin-top: calc(6px * var(--text-scale)); justify-self: stretch; }
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del .btn { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
   :where(html[data-uw~="640"]) .joblist .jobs tr:not(.has-del) .c-del { order: 4; grid-column: 2; width: auto; margin-top: calc(6px * var(--text-scale)); justify-self: end; }
@@ -715,10 +715,13 @@ button.with-icon svg { flex: 0 0 auto; }
   /* 大きな文字の設定などで、どうしても足りないときだけ、「複製して新規作成」の文字が折り返す（3つのボタンは、同じ高さに伸びて、横一列のまま） */
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del { align-items: stretch; }
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del { display: flex; }
-  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act .btn, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del .btn { flex: 1 1 auto; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-act .btn, :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-del .btn { flex: 1 1 auto; }
+  /* 「複製して新規作成」は、文字ぎりぎりの幅にして、真ん中に置く。左右にあいた幅が、「開く」「消す」との間の余白になる（押し間違い防止） */
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup { justify-content: center; }
+  :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn { flex: 0 1 auto; }
   :where(html[data-uw~="640"]) .joblist .jobs tr.has-del .c-dup .btn { white-space: normal; line-height: 1.25; }
   /* とても狭いとき（幅400以下）：文字を、もう少し小さくする */
-  :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-dup .btn { font-size: calc(11px * var(--ctl-scale)); padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); }
+  :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-dup .btn { font-size: calc(11.5px * var(--ctl-scale)); padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); }
   :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-act .btn, :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-del .btn { padding-left: calc(8px * var(--ctl-scale)); padding-right: calc(8px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
 
 
