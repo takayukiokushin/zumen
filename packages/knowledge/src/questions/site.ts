@@ -102,7 +102,7 @@ export const SITE_QUESTIONS: Question[] = [
     label: '3点一致ですか？',
     type: 'select',
     options: [
-      { value: 'coincident', label: 'はい（3点一致）', share: '約99%' },
+      { value: 'coincident', label: 'はい（3点一致）' },
       { value: 'split', label: 'いいえ（3点不一致）', share: '約1%' },
     ],
     defaultValue: 'coincident',

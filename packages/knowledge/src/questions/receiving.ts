@@ -132,7 +132,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     label: 'VCTの位置は？',
     type: 'select',
     options: [
-      { value: 'pole', label: '電柱上', share: '約70%' },
+      { value: 'pole', label: '電柱上' },
       { value: 'indoor', label: '電気設備内（キュービクル／電気室）', share: '約30%' },
     ],
     defaultValue: 'pole',
