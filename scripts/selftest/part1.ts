@@ -138,6 +138,13 @@ export async function part1() {
     const api = await fetch(base + '/api/health');
     check('通信（API）の返事にも同じ決まりが付く', api.headers.get('x-content-type-options') === 'nosniff');
   }
+  // 画面の「版の印」：開きっぱなしの画面が、サーバーの入れ替わりに気づくために、/api/health が返す（画面が配られているときだけ）
+  {
+    const html = await (await fetch(base + '/')).text();
+    const mine = html.match(/\/assets\/(index-[\w-]+\.js)/)?.[1] ?? null;
+    const health = (await (await fetch(base + '/api/health')).json()) as { webBuild?: string | null };
+    check('サーバーが返す画面の版の印が、配っている画面と一致する', mine !== null && health.webBuild === mine, `${health.webBuild} / ${mine}`);
+  }
 
   /* ---------- 5. ログイン ---------- */
   say('\n■ ログイン');

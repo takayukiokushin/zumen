@@ -78,6 +78,13 @@ if exist "%SAFE%\.env" if not exist ".env" copy /y "%SAFE%\.env" ".env" >nul
 if exist "%SAFE%\data" if not exist "data" xcopy /e /i /y /q "%SAFE%\data" "data" >nul
 echo [4/5] APIキーと案件のデータは、そのまま残っています
 
+rem ---- 古い控えを片づける（新しい3回分だけ残す） ----
+rem   更新のたびに、データ全体の写しが増える。溜めすぎると、ディスクがいっぱいになるため。
+rem   消すのは、「年月日-時分秒」の名前のフォルダだけ。今回の控え（%SAFE%）は、必ず残る。
+set "COPIES_DIR=%USERPROFILE%\zumen-更新前の控え"
+rem   新しい順に並べて、最初の3つを飛ばし（skip=3）、残り（古いもの）を消す
+for /f "skip=3 delims=" %%D in ('dir /b /ad /o-n "%COPIES_DIR%" 2^>nul ^| findstr /r "^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]$"') do rmdir /s /q "%COPIES_DIR%\%%D" >nul 2>&1
+
 rem ---- 5. 立ち上げ直し方を案内する ----
 echo [5/5] 入れ替えが終わりました
 echo.

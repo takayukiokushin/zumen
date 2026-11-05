@@ -13,7 +13,7 @@ import { say, ok, ng, check, runNode, dataDir, backupDir } from './common.ts';
 import type { part2 } from './part2.ts';
 
 export async function part3(c: Awaited<ReturnType<typeof part2>>) {
-  const { env, base, login, call, a, b, other, created, answers, kanri } = c;
+  const { env, base, login, login2, call, a, b, other, created, answers, kanri } = c;
   /* ---------- 8. 現地写真 ---------- */
   say('\n■ 現地写真');
 
@@ -251,6 +251,51 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     const bigBody = (await big.json().catch(() => ({}))) as { projects?: unknown[] };
     check('一覧の位置指定が巨大でも、エラーにならず、空を返す', big.status === 200 && Array.isArray(bigBody.projects) && bigBody.projects.length === 0, `${big.status}`);
     await call(a, `/api/projects/${pj.id}`, { method: 'DELETE' });
+  }
+
+  /* ---------- 7e. 利用者を消したとき（標準・管理用は案件を残す／練習用は案件もいっしょに消す） ---------- */
+  say('\n■ 利用者を消したときの案件');
+  {
+    const PW = 'Kx9#mQ2$vL1';
+    const mk = (id: string, role: string) => call(kanri, '/api/admin/users', { method: 'POST', body: JSON.stringify({ id, name: id + 'さん', password: PW, role }) });
+    await mk('sakujo-m', 'member');
+    await mk('sakujo-s', 'sandbox');
+    const m = await login2('sakujo-m', PW);
+    const s2 = await login2('sakujo-s', PW);
+    const mp = (await (await call(m, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '消される人の案件' }) })).json()) as { id: string };
+    await call(m, `/api/projects/${mp.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '残る' } }) });
+    const sp = (await (await call(s2, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '消される練習の案件' }) })).json()) as { id: string };
+    await call(s2, `/api/projects/${sp.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '消える' } }) });
+    const names = async (cookie: string, q: string) => ((await (await call(cookie, `/api/projects?q=${encodeURIComponent(q)}`)).json()) as { projects: { id: string }[] }).projects.length;
+    check('消す前：標準のアカウントの案件は、ほかの人にも見える', (await names(a, '消される人の案件')) === 1);
+    check('消す前：練習用の案件は、標準・管理用には見えない', (await names(a, '消される練習の案件')) === 0 && (await names(kanri, '消される練習の案件')) === 0);
+    const d1 = await call(kanri, '/api/admin/users/sakujo-m', { method: 'DELETE' });
+    const d2 = await call(kanri, '/api/admin/users/sakujo-s', { method: 'DELETE' });
+    check('利用者（標準・練習用）を消せる', d1.ok && d2.ok, `${d1.status} ${d2.status}`);
+    check('標準のアカウントを消しても、その人の案件は残り、開ける', (await names(a, '消される人の案件')) === 1 && (await call(a, `/api/projects/${mp.id}`)).ok);
+    // その案件を、ほかの人が古い画面から保存すると、「更新した人が削除された利用者」と分かる
+    const st = await call(a, `/api/projects/${mp.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: 'x' }, baseUpdatedAt: '2000-01-01T00:00:00.000Z' }) });
+    const stBody = (await st.json().catch(() => ({}))) as { stale?: boolean; updatedByName?: string | null; updatedByRemoved?: boolean };
+    check('更新した人が消されていると、競合の知らせは、名前なし・「消された」印つき', st.status === 409 && stBody.stale === true && stBody.updatedByName === null && stBody.updatedByRemoved === true, JSON.stringify(stBody));
+    // ごみ箱：消した人が、すでに消されている利用者
+    await mk('sakujo-m2', 'member');
+    const m2 = await login2('sakujo-m2', PW);
+    const mp2 = (await (await call(m2, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '消した人がいなくなる案件' }) })).json()) as { id: string };
+    const delOk = await call(m2, `/api/projects/${mp2.id}`, { method: 'DELETE' });
+    check('（準備）自分の案件をごみ箱に入れられる', delOk.ok, `${delOk.status}`);
+    await call(kanri, '/api/admin/users/sakujo-m2', { method: 'DELETE' });
+    const trash = (await (await call(a, '/api/projects/trash')).json()) as { projects: { id: string; deletedBy: string | null; deletedByRemoved?: boolean }[] };
+    const t2 = trash.projects.find((p) => p.id === mp2.id);
+    check('ごみ箱：消した人が消されていると、名前なし・「消された」印つき', t2?.deletedBy === null && t2?.deletedByRemoved === true, JSON.stringify(t2));
+    await call(a, `/api/projects/${mp2.id}/restore`, { method: 'POST' });
+    await call(a, `/api/projects/${mp2.id}`, { method: 'DELETE' });
+    // 練習用：その人の案件も、いっしょに消える（だれにも見えない・開けない・ごみ箱にも残らない）
+    const peek = await call(kanri, `/api/projects/${sp.id}`);
+    check('練習用のアカウントを消すと、その人の案件も消える（管理用でも開けない）', peek.status === 404, `${peek.status}`);
+    check('練習用の案件は、消したあとも、ほかの人の一覧に出ない', (await names(a, '消される練習の案件')) === 0 && (await names(kanri, '消される練習の案件')) === 0);
+    const trash2 = (await (await call(kanri, '/api/projects/trash')).json()) as { projects: { id: string }[] };
+    check('練習用の案件は、ごみ箱にも残らない', !trash2.projects.some((p) => p.id === sp.id));
+    await call(a, `/api/projects/${mp.id}`, { method: 'DELETE' });
   }
 
   /* ---------- 8a. 想定外の形の入力（数字・配列・空など）でも、エラーにしない ---------- */

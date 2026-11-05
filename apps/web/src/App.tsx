@@ -9,6 +9,7 @@ import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
 import { useHeavyJob } from './editor/useHeavyJob.tsx';
+import { useNewVersion } from './session/useNewVersion.ts';
 import { Analyze } from './analyze/Analyze.tsx';
 import { Voice } from './voice/Voice.tsx';
 import { JobList } from './projects/JobList.tsx';
@@ -106,6 +107,7 @@ export function App() {
    * 図面や入力が変わるたびに増える数。時間のかかる図面の処理（結線を整える など）が終わったとき、
    * 動かし始めたときと違っていたら、古い図面に上書きしないよう、結果を使わない
    */
+  const newVersion = useNewVersion(Boolean(user));
   const docVersion = useRef(0);
   useEffect(() => {
     docVersion.current++;
@@ -336,7 +338,7 @@ export function App() {
     } catch (e) {
       if (e instanceof StaleError) {
         // 画面の内容はそのまま残し、上書きするか読み込み直すかを選んでもらう
-        setStale({ updatedAt: e.updatedAt, by: e.updatedByName });
+        setStale({ updatedAt: e.updatedAt, by: e.updatedByName ?? (e.updatedByRemoved ? t('project.userRemoved') : null) });
         return false;
       }
       if (e instanceof LockedError) setLockedBy(e.lock);
@@ -481,6 +483,29 @@ export function App() {
             }}
           >
             {t('help.firstTimeClose')}
+          </button>
+        </p>
+      )}
+
+      {newVersion && (
+        <p className="bar-update" role="status">
+          <b>{t('update.title')}</b>
+          {t('update.msg')}
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              // 保存していない変更があるときは、読み込み直すと消えることを、先に確かめる
+              if (!dirty) {
+                window.location.reload();
+                return;
+              }
+              void ask({ title: t('update.reload'), message: [t('update.reloadLose')], confirmLabel: t('update.reload') }).then((yes) => {
+                if (yes) window.location.reload();
+              });
+            }}
+          >
+            {t('update.reload')}
           </button>
         </p>
       )}

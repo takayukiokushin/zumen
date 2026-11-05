@@ -1,6 +1,6 @@
 // 何よりも先に .env を読み込む（APIキーやポートの設定がここにある）
 import './env.ts';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +40,8 @@ app.get('/api/health', (c) =>
     hasApiKey: Boolean(process.env.ANTHROPIC_API_KEY),
     userCount: listUsers().length,
     version: SERVER_VERSION,
+    // いま配っている画面の「版の印」。開きっぱなしの画面が、古くなったことに気づくために使う
+    webBuild: currentWebBuild(),
   }),
 );
 
@@ -132,6 +134,26 @@ const webDist = process.env.WEB_DIST
   ? resolve(process.env.WEB_DIST)
   : fileURLToPath(new URL('../../web/dist', import.meta.url));
 const hasWeb = existsSync(resolve(webDist, 'index.html'));
+
+/**
+ * いま配っている画面の「版の印」。画面を組み立て直すと変わる（index.html が読み込む本体のファイル名）。
+ * 画面を開きっぱなしの人に、「新しい版があります」と知らせるために、/api/health で返す。
+ * 組み立て直されたら読み直す（ファイルの更新時刻で見分ける）。画面を配っていないときは null。
+ */
+let webBuildCache: { mtime: number; id: string | null } | null = null;
+function currentWebBuild(): string | null {
+  if (!hasWeb) return null;
+  try {
+    const file = resolve(webDist, 'index.html');
+    const mtime = statSync(file).mtimeMs;
+    if (webBuildCache?.mtime === mtime) return webBuildCache.id;
+    const id = readFileSync(file, 'utf8').match(/\/assets\/(index-[\w-]+\.js)/)?.[1] ?? null;
+    webBuildCache = { mtime, id };
+    return id;
+  } catch {
+    return null;
+  }
+}
 if (hasWeb) {
   // まず実体のあるファイル（アイコン・manifest・assets）を返し、
   // 無ければ画面本体を返す（画面側で住所を見て表示を切り替えるため）。

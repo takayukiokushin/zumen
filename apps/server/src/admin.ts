@@ -4,7 +4,6 @@ import {
   adminCount,
   currentTokenKey,
   createUser,
-  deleteUser,
   listUsers,
   requireAdmin,
   ROLES,
@@ -13,6 +12,7 @@ import {
 } from './auth.ts';
 import type { Role, User } from './auth.ts';
 import { checkPassword } from './password-policy.ts';
+import { removeUser } from './user-removal.ts';
 
 /**
  * 利用者の管理。管理用のアカウントだけが使える。
@@ -74,6 +74,6 @@ admin.delete('/users/:id', (c) => {
   if (target.role === 'admin' && adminCount() <= 1) {
     return c.json({ error: '管理用のアカウントが1つも無くなってしまうため、消せません。先に、別の管理用アカウントを作ってください。' }, 400);
   }
-  deleteUser(id);
+  removeUser(id);
   return c.json({ ok: true });
 });

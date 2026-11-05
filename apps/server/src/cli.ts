@@ -1,6 +1,7 @@
 // 何よりも先に .env を読み込む
 import './env.ts';
-import { createUser, deleteUser, listUsers, ROLE_LABEL, ROLES, setPassword } from './auth.ts';
+import { createUser, listUsers, ROLE_LABEL, ROLES, setPassword } from './auth.ts';
+import { removeUser } from './user-removal.ts';
 import type { Role } from './auth.ts';
 import { backup, sourceDir } from './backup.ts';
 import { purgeAllPhotos } from './projects.ts';
@@ -53,8 +54,9 @@ try {
     case 'remove': {
       const [id] = args;
       if (!id) throw new Error('使い方: remove <ID>');
-      if (!deleteUser(id)) throw new Error(`利用者が見つかりません: ${id}`);
+      if (!removeUser(id)) throw new Error(`利用者が見つかりません: ${id}`);
       console.log(`利用者を消しました: ${id}`);
+      console.log('  この人が作った案件は残ります（練習用のアカウントのときだけ、その人の案件も、いっしょに消えます）。');
       console.log('  この人がログイン中だった場合、その場で使えなくなります。');
       break;
     }

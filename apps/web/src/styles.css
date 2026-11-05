@@ -210,7 +210,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 @media print {
   /* 用紙の指定は Editor が差し込む（A4/A3・縦横を選べるため） */
   html, body, #root { margin: 0; padding: 0; height: auto; background: #fff; zoom: 1; }
-  .tabbar, .projectbar, .bar-error, .bar-lock, .editor-bar, .editor-body, .app,
+  .tabbar, .projectbar, .bar-error, .bar-lock, .bar-update, .editor-bar, .editor-body, .app,
   .mode-hint, .preview-note, .stale-note, .panel-bar, .modal-back, .heavy-toast { display: none !important; }
   .shell, .shell > .body { display: block; height: auto; overflow: visible; }
   .editor { display: block; height: auto; container-type: normal; }
@@ -1110,3 +1110,7 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .heavy-spin { flex: 0 0 auto; width: calc(26px * var(--text-scale)); height: calc(26px * var(--text-scale)); border: 3px solid var(--rule); border-top-color: var(--accent); border-radius: 50%; animation: heavy-spin 0.9s linear infinite; }
 @keyframes heavy-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .heavy-spin { animation-duration: 3s; } }
+
+/* 画面を開きっぱなしのあいだに、サーバーが新しい版に入れ替わったときの帯（保存してから、読み込み直してもらう） */
+.bar-update { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin: 0; padding: calc(8px * var(--text-scale)) calc(16px * var(--text-scale)); background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink); font-size: calc(12.5px * var(--text-scale)); flex: 0 0 auto; }
+.shell > .bar-update { flex: 0 0 auto; }

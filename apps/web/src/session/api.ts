@@ -58,6 +58,8 @@ export class StaleError extends Error {
     message: string,
     readonly updatedAt: string,
     readonly updatedByName: string | null,
+    /** 更新した人が、すでに消されている利用者か（名前は null になる） */
+    readonly updatedByRemoved: boolean = false,
   ) {
     super(message);
     this.name = 'StaleError';
@@ -94,6 +96,8 @@ export interface PracticeSource {
   name: string;
   updatedAt: string;
   updatedBy: string | null;
+  /** 更新した人が、すでに消されている利用者か */
+  updatedByRemoved?: boolean;
   fileCount: number;
 }
 
@@ -103,6 +107,8 @@ export interface TrashItem {
   name: string;
   deletedAt: string;
   deletedBy: string | null;
+  /** 消した人が、すでに消されている利用者か */
+  deletedByRemoved?: boolean;
   /** この日時を過ぎると、完全に消える */
   purgeAt: string;
   fileCount: number;
@@ -163,18 +169,19 @@ async function call<T>(path: string, init?: RequestInit, retried = false): Promi
     if (await reauth()) return call<T>(path, init, true);
   }
   if (!res.ok) {
-    const { error, lock, remaining, lockMinutes, lockedSec, stale, updatedAt, updatedByName } = json as {
+    const { error, lock, remaining, lockMinutes, lockedSec, stale, updatedAt, updatedByName, updatedByRemoved } = json as {
       error?: string;
       lock?: Lock;
       stale?: boolean;
       updatedAt?: string;
       updatedByName?: string | null;
+      updatedByRemoved?: boolean;
       remaining?: number;
       lockMinutes?: number;
       lockedSec?: number;
     };
     const message = describeFailure(res.status, error);
-    if (res.status === 409 && stale && updatedAt) throw new StaleError(message, updatedAt, updatedByName ?? null);
+    if (res.status === 409 && stale && updatedAt) throw new StaleError(message, updatedAt, updatedByName ?? null, updatedByRemoved === true);
     if (res.status === 409) throw new LockedError(message, lock ?? null);
     if (path === '/api/auth/login') throw new LoginError(message, remaining, lockMinutes, lockedSec);
     // 中継までは届いたが、先のサーバーが答えない場合も、つながらないのと同じ扱いにする
@@ -186,7 +193,7 @@ async function call<T>(path: string, init?: RequestInit, retried = false): Promi
 
 export const api = {
   /** サーバーの状態。手書きメモの読み取りが使えるかどうかもここで分かる */
-  health: () => call<{ ok: true; hasApiKey: boolean; userCount: number; version?: string }>('/api/health'),
+  health: () => call<{ ok: true; hasApiKey: boolean; userCount: number; version?: string; webBuild?: string | null }>('/api/health'),
   me: () => call<{ user: User | null }>('/api/auth/me'),
   /** 手書きメモの読み取り。通信の失敗も、ほかの呼び出しと同じ言葉で伝える */
   analyze: (body: { images: { mediaType: string; data: string }[]; answers: Answers }) =>

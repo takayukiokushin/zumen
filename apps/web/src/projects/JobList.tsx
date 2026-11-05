@@ -449,7 +449,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       </td>
                       <td className="when c-info">
                         {new Date(p.updatedAt).toLocaleString(lang)}
-                        {p.updatedBy ? `（${p.updatedBy}）` : ''}
+                        {p.updatedBy ? `（${p.updatedBy}）` : p.updatedByRemoved ? `（${t('project.userRemoved')}）` : ''}
                       </td>
                     </tr>
                   ))}
@@ -487,7 +487,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                     </td>
                     <td className="when c-info" data-label={t('project.trashDeleted')}>
                       {new Date(p.deletedAt).toLocaleString(lang)}
-                      {p.deletedBy ? `（${p.deletedBy}）` : ''}
+                      {p.deletedBy ? `（${p.deletedBy}）` : p.deletedByRemoved ? `（${t('project.userRemoved')}）` : ''}
                     </td>
                     <td className="when c-info" data-label={t('project.trashPurge')}>{new Date(p.purgeAt).toLocaleDateString(lang)}</td>
                   </tr>

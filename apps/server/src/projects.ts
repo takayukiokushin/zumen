@@ -63,7 +63,9 @@ function currentLock(projectId: string): Lock | null {
     .get(projectId) as { locked_by: string | null; locked_at: string | null; user_name: string | null } | undefined;
   if (!row?.locked_by || !row.locked_at) return null;
   if (Date.now() - Date.parse(row.locked_at) > LOCK_TIMEOUT_MS) return null;
-  return { userId: row.locked_by, userName: row.user_name ?? row.locked_by, since: row.locked_at };
+  // 編集中の印を付けた人が、消されていたら、その人は編集していない。印は無かったことにする
+  if (row.user_name === null) return null;
+  return { userId: row.locked_by, userName: row.user_name, since: row.locked_at };
 }
 
 /**
@@ -202,6 +204,20 @@ export function purgeExpiredTrash(): number {
   return old.length;
 }
 
+/**
+ * その人が作った案件を、写真・下書きごと、完全に消す（ごみ箱には入れない）。消した件数を返す。
+ * 練習用のアカウントを消したときに使う。練習用の案件は、練習用の本人（たち）にしか見えない決まりなので、
+ * 持ち主がいなくなると、だれにも見えない・だれも消せない案件が残ってしまうため、いっしょに消す。
+ */
+export function purgeProjectsOwnedBy(userId: string): number {
+  const rows = db.prepare('SELECT id FROM projects WHERE owner = ?').all(userId) as { id: string }[];
+  for (const { id } of rows) {
+    removeProjectFiles(id);
+    db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+  }
+  return rows.length;
+}
+
 export const projects = new Hono<{ Variables: { user: User } }>();
 projects.use('*', requireAuth);
 
@@ -287,7 +303,9 @@ projects.get('/trash', (c) => {
       id: r.id,
       name: r.name,
       deletedAt: r.deleted_at,
-      deletedBy: r.deleted_by_name ?? r.deleted_by,
+      // 消した人が、すでに消されている利用者のとき：名前は null、deletedByRemoved が true（画面は「削除された利用者」と出す）
+      deletedBy: r.deleted_by_name,
+      deletedByRemoved: r.deleted_by_name === null && r.deleted_by !== null,
       purgeAt: new Date(Date.parse(r.deleted_at) + TRASH_MS).toISOString(),
       fileCount: r.file_count,
     })),
@@ -319,7 +337,8 @@ projects.get('/practice/sources', (c) => {
       id: r.id,
       name: r.name,
       updatedAt: r.updated_at,
-      updatedBy: r.updated_by_name ?? r.updated_by,
+      updatedBy: r.updated_by_name,
+      updatedByRemoved: r.updated_by_name === null && r.updated_by !== null,
       fileCount: r.file_count,
     })),
   });
@@ -514,10 +533,11 @@ projects.put('/:id', async (c) => {
       | { updated_at: string; updated_by: string | null }
       | undefined;
     if (cur && cur.updated_at !== body.baseUpdatedAt) {
+      // 更新した人の名前。その人がすでに消されている利用者なら、名前は null、byRemoved が true
       const by = cur.updated_by
-        ? ((db.prepare('SELECT name FROM users WHERE id = ?').get(cur.updated_by) as { name: string } | undefined)?.name ??
-          cur.updated_by)
+        ? ((db.prepare('SELECT name FROM users WHERE id = ?').get(cur.updated_by) as { name: string } | undefined)?.name ?? null)
         : null;
+      const byRemoved = by === null && cur.updated_by !== null;
       return c.json(
         {
           error:
@@ -525,6 +545,7 @@ projects.put('/:id', async (c) => {
           stale: true,
           updatedAt: cur.updated_at,
           updatedByName: by,
+          updatedByRemoved: byRemoved,
         },
         409,
       );

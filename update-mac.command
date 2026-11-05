@@ -94,6 +94,19 @@ if [ -f "$SAFE/.env" ] && [ ! -f "$DIR/.env" ]; then cp "$SAFE/.env" "$DIR/.env"
 if [ -d "$SAFE/data" ] && [ ! -d "$DIR/data" ]; then cp -R "$SAFE/data" "$DIR/data"; fi
 say "[4/6] APIキーと案件のデータは、そのまま残っています"
 
+# ---- 古い控えを片づける（新しい3回分だけ残す） ----
+# 更新のたびに、データ全体の写しが増える。1万件なら、1回で約300MB。溜めすぎると、ディスクがいっぱいになるため。
+# 消すのは、「年月日-時分秒」の名前のフォルダだけ（それ以外のものには触らない）。今回の控え（$SAFE）は、必ず残る。
+KEEP_COPIES=3
+COPIES_DIR="$HOME/zumen-更新前の控え"
+OLD_COPIES="$(ls -1d "$COPIES_DIR"/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] 2>/dev/null | sort -r | tail -n +$((KEEP_COPIES + 1)))"
+if [ -n "$OLD_COPIES" ]; then
+  printf '%s\n' "$OLD_COPIES" | while IFS= read -r old; do
+    [ -n "$old" ] && [ "$old" != "$SAFE" ] && rm -rf -- "$old"
+  done
+  say "      古い控えを片づけました（新しい${KEEP_COPIES}回分だけ残してあります）"
+fi
+
 # ---- 5. 必要な部品をそろえる（部品が増えていることがあるため） ----
 say "[5/6] 必要な部品をそろえています…（初回は数分かかることがあります）"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
