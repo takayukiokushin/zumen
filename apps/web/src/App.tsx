@@ -8,6 +8,7 @@ import { HearingForm } from './HearingForm.tsx';
 import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
+import { purgeOrphanCrosses } from './editor/layers.ts';
 import { useHeavyJob } from './editor/useHeavyJob.tsx';
 import { useNewVersion } from './session/useNewVersion.ts';
 import { Analyze } from './analyze/Analyze.tsx';
@@ -321,7 +322,8 @@ export function App() {
       const r = await api.saveProject(projectId, {
         name: projectName,
         answers,
-        drawing,
+        // 付けた開閉器が無くなった×印は、保存するときに、データから外す
+        drawing: drawing ? purgeOrphanCrosses(drawing) : drawing,
         // 読み取った案件か（写真は、この保存のときに消えるので、印だけ残す）
         ...(sketchRead ? { sketchRead: true } : {}),
         ...(baseUpdatedAt ? { baseUpdatedAt } : {}),

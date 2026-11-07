@@ -19,11 +19,16 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addLayer, addLayerText, canAddLayerText, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addLayer, addLayerCross, addLayerText, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
+import { CROSS_SIZE_IDS } from '@zumen/layout';
+import type { CrossSize } from '@zumen/layout';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
+
+/** ×印の大きさの、画面の言葉 */
+const CROSS_LABEL = { S: 'cross.small', M: 'cross.mid', L: 'cross.large' } as const;
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -92,7 +97,9 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
-  const [mode, setMode] = useState<'select' | 'wire'>('select');
+  const [mode, setMode] = useState<'select' | 'wire' | 'cross'>('select');
+  /** 開放の×印を付けるときの大きさ（小・中・大） */
+  const [crossSize, setCrossSize_] = useState<CrossSize>('M');
   /** 線を引くときの種類（false＝実線、true＝点線）。埋設ケーブル・TCなどは点線 */
   const [wireDashed, setWireDashed] = useState(false);
   /** 「線を引く」の、実線・点線の窓の位置。動かした位置を覚えておく（次に開くときも、同じ位置） */
@@ -141,8 +148,12 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
    */
   const layerDocItems = useMemo(() => (activeId !== null ? layerItemsAsDocItems(doc, activeId) : []), [doc, activeId]);
   const viewDoc = useMemo<Doc>(() => (layerDocItems.length > 0 ? { ...doc, items: [...doc.items, ...layerDocItems] } : doc), [doc, layerDocItems]);
+  /** レイヤーに付けた赤い×印（付けた開閉器が図面にあるもの） */
+  const layerCrosses = useMemo(() => (activeId !== null ? resolveCrosses(doc, activeId) : []), [doc, activeId]);
+  const sheetCrosses = useMemo(() => layerCrosses.map((c) => ({ x: c.x, y: c.y, size: c.size, thickness: c.thickness })), [layerCrosses]);
   /** レイヤーを選んでいるときに、触れるもの（そのレイヤーに置いたもの）の id */
-  const activeIds = useMemo(() => new Set(layerDocItems.map((i) => i.id)), [layerDocItems]);
+  const activeIds = useMemo(() => new Set([...layerDocItems.map((i) => i.id), ...layerCrosses.map((c) => c.id)]), [layerDocItems, layerCrosses]);
+  const selectedCross = locked ? (layerCrosses.find((c) => c.id === selectedId) ?? null) : null;
   const sheetTitle = {
     site: String(answers.customerNameForTitleBlock ?? answers.siteName ?? ''),
     // レイヤーを選んでいるときは、タイトルの「図面名称」の部分だけが、そのレイヤーの名前になる（事業場名などは、そのまま）
@@ -164,8 +175,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const paper: PaperSize = chosen.paper;
   const orientation: Orientation = chosen.orientation;
   const sheetSvg = useMemo(
-    () => buildSheetSvg(viewDoc, sheetTitle, paper, orientation),
-    [viewDoc, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
+    () => buildSheetSvg(viewDoc, sheetTitle, paper, orientation, sheetCrosses),
+    [viewDoc, sheetCrosses, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
   );
   /** 図面を描く台紙の縦横の比（印刷プレビューの形）。実際の用紙の大きさは、印刷の設定画面で決まる */
   const sheetMm = sheetSize(paper, orientation);
@@ -301,6 +312,30 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     setSelectedId(r.id);
   };
 
+  /** 開閉器をクリックしたとき：×印を付ける。すでに付いていれば、外す */
+  const toggleCross = (symbolId: string) => {
+    if (activeId === null) return;
+    const d0 = docRef.current;
+    const sym = d0.items.find((i) => i.kind === 'symbol' && i.id === symbolId);
+    if (!sym || sym.kind !== 'symbol' || !canMark(sym)) {
+      setLayerNote(t('cross.notSwitch'));
+      return;
+    }
+    setLayerNote(null);
+    const existing = crossOn(d0, activeId, symbolId);
+    if (existing) {
+      editLayer((d) => removeLayerItems(d, activeId, [existing.id]));
+      setSelection([]);
+      return;
+    }
+    if (!canAddLayerCross(d0, activeId)) {
+      setLayerNote(t('layer.itemLimit.cross', { n: MAX_LAYER_ITEMS_PER_KIND }));
+      return;
+    }
+    const r = addLayerCross(d0, activeId, symbolId, crossSize);
+    if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+  };
+
   const addLayerFlow = async () => {
     const name = await input({
       title: t('layer.add.title'),
@@ -417,18 +452,24 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       if (locked && activeId !== null) {
         // レイヤーを選んでいるあいだは、そのレイヤーに置いたものだけを、戻す・消す・動かす
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.key === 'Escape' && mode === 'cross' && !e.isComposing) {
+          e.preventDefault();
+          setMode('select');
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
           e.preventDefault();
           stepLayer(e.shiftKey ? 'redo' : 'undo');
         } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length > 0) {
           e.preventDefault();
           editLayer((d) => removeLayerItems(d, activeId, selection));
           setSelection([]);
-        } else if (selection.length > 0 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
+        } else if (selection.length > 0 && mode === 'select' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
           e.preventDefault();
+          // 動かせるのは文字だけ（×印は、付けた開閉器について動く）
+          const textIds = selection.filter((id) => layerDocItems.some((i) => i.id === id));
+          if (textIds.length === 0) return;
           const [ux, uy] = ARROW_MOVE[e.key]!;
           const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
-          editLayer((d) => moveLayerItems(d, activeId, selection, ux * step, uy * step), `arrow:${selection.join(',')}`);
+          editLayer((d) => moveLayerItems(d, activeId, textIds, ux * step, uy * step), `arrow:${textIds.join(',')}`);
         }
         return;
       }
@@ -468,7 +509,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode]);
+  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -562,6 +603,32 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 }}
               >
                 {t('editor.drawWire')}
+              </button>
+            </div>
+          </div>
+
+          {/* レイヤーに置く赤い印の道具。レイヤーを選んでいるときだけ使える（単線結線図では、押すと、使えないことを知らせる） */}
+          <div className="tool-group sec">
+            <span className="cap">{t('editor.group.marks')}</span>
+            <div className="tool-row">
+              <button
+                type="button"
+                className={`${locked ? '' : 'dim'}${mode === 'cross' ? ' on' : ''}`.trim()}
+                aria-pressed={mode === 'cross'}
+                aria-disabled={!locked || sheetView}
+                title={t('layer.tool.crossHelp')}
+                onClick={() => {
+                  if (sheetView) return;
+                  if (!locked) {
+                    setLayerNote(t('layer.tool.notHere'));
+                    return;
+                  }
+                  setLayerNote(null);
+                  setSelection([]);
+                  setMode((m) => (m === 'cross' ? 'select' : 'cross'));
+                }}
+              >
+                {t('layer.tool.cross')}
               </button>
             </div>
           </div>
@@ -742,6 +809,25 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         <p className="mode-hint">{t('editor.wireHint')}</p>
       )}
 
+      {mode === 'cross' && locked && !sheetView && (
+        <p className="mode-hint cross-hint">
+          <span>{t('cross.hint')}</span>
+          <span className="cross-size-pick">
+            <span className="lbl">{t('cross.size')}</span>
+            <span className="seg" role="group" aria-label={t('cross.size')}>
+              {CROSS_SIZE_IDS.map((sz) => (
+                <button key={sz} type="button" className="btn" aria-pressed={crossSize === sz} onClick={() => setCrossSize_(sz)}>
+                  {t(CROSS_LABEL[sz])}
+                </button>
+              ))}
+            </span>
+          </span>
+          <button type="button" className="btn" onClick={() => setMode('select')}>
+            {t('cross.done')}
+          </button>
+        </p>
+      )}
+
       {sheetView && (
         <p className="preview-note" role="status">
           <span>{t('editor.sheetNoEdit')}</span>
@@ -812,6 +898,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               setSelectedId(id);
             }}
             mode={mode}
+            crosses={layerCrosses}
+            onCrossClick={toggleCross}
             locked={locked}
             activeIds={activeIds}
             wireDashed={wireDashed}
@@ -852,6 +940,37 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               ))}
             </div>
           </section>
+
+          {selectedCross && activeId !== null && (
+            <section>
+              <h3>{t('editor.selected')}</h3>
+              <p className="hint">{t('cross.selected')}</p>
+              <label className="lbl">{t('cross.size')}</label>
+              <div className="seg" role="group" aria-label={t('cross.size')}>
+                {CROSS_SIZE_IDS.map((sz) => (
+                  <button
+                    key={sz}
+                    type="button"
+                    className="btn"
+                    aria-pressed={selectedCross.sizeId === sz}
+                    onClick={() => editLayer((d) => setCrossSize(d, activeId, selectedCross.id, sz))}
+                  >
+                    {t(CROSS_LABEL[sz])}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={() => {
+                  editLayer((d) => removeLayerItems(d, activeId, [selectedCross.id]));
+                  setSelection([]);
+                }}
+              >
+                {t('cross.remove')}
+              </button>
+            </section>
+          )}
 
           {selected && (
             <section>

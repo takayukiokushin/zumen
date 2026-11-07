@@ -7,6 +7,7 @@ import { addText, fromLayout, itemBounds, moveItem, removeItem, setTextStyle } f
 import type { Doc, DocSymbol, DocText } from '../../apps/web/src/editor/doc.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { chooseSheet } from '../../apps/web/src/editor/inspect.ts';
+import type { LayerText } from '../../apps/web/src/editor/layers.ts';
 import { addLayerText, canAddLayerText, layerItemsAsDocItems, layerOf, moveLayerItems, removeLayerItems, resolveText, updateLayerText } from '../../apps/web/src/editor/layers.ts';
 import { collectOverrides, rebuildWithOverrides } from '../../apps/web/src/editor/overrides.ts';
 import { buildComposition, MAX_LAYER_ITEMS_PER_KIND } from '../../packages/knowledge/src/index.ts';
@@ -68,24 +69,24 @@ console.log('\n■ テキストボックス（大きさ・太字・赤）');
   const r0 = addLayerText(d0, 'outage', sym.x + 60, sym.y + 20, '停電範囲');
   if (!r0) throw new Error('レイヤーに文字を足せません');
   const r = r0;
-  const lt = layerOf(r.doc, 'outage')!.items[0]!;
+  const lt = (layerOf(r.doc, 'outage')!.items[0] as LayerText);
   if (lt.red !== true || lt.near === undefined) fail('レイヤーの文字は、ふつう赤で、近くの機器を覚えるはずです');
   const at0 = resolveText(r.doc, lt);
   if (Math.abs(at0.x - (sym.x + 60)) > 0.001 || Math.abs(at0.y - (sym.y + 20)) > 0.001) fail(`置いた場所が合いません（${at0.x},${at0.y}）`);
   const movedSym = moveItem(r.doc, sym.id, 30, 40);
-  const at1 = resolveText(movedSym, layerOf(movedSym, 'outage')!.items[0]!);
+  const at1 = resolveText(movedSym, (layerOf(movedSym, 'outage')!.items[0] as LayerText));
   if (Math.abs(at1.x - (at0.x + 30)) > 0.001 || Math.abs(at1.y - (at0.y + 40)) > 0.001) fail(`機器を動かしても、文字が一緒に動きません（${at1.x - at0.x},${at1.y - at0.y}）`);
   const gone = removeItem(r.doc, sym.id);
-  const at2 = resolveText(gone, layerOf(gone, 'outage')!.items[0]!);
+  const at2 = resolveText(gone, (layerOf(gone, 'outage')!.items[0] as LayerText));
   if (layerOf(gone, 'outage')!.items.length !== 1 || at2.x !== at0.x || at2.y !== at0.y) fail('機器が無くなったとき、文字が消えたり、動いたりしました（最後に置いた場所に残るはずです）');
   else console.log('  レイヤーの文字：近くの機器を動かすと一緒に動く。機器が無くなっても、文字は消えず、最後に置いた場所に残る');
 
   // 6. 文字を直す・動かす・消す・上限
   const upd = updateLayerText(r.doc, 'outage', r.id, { lines: ['停電', '範囲'], size: 2.5, bold: true, red: false });
-  const u = layerOf(upd, 'outage')!.items[0]!;
+  const u = (layerOf(upd, 'outage')!.items[0] as LayerText);
   if (u.lines.length !== 2 || u.size !== 2.5 || u.bold !== true || 'red' in u) fail('レイヤーの文字の中身・大きさ・太字・色を直せません');
   const mv = moveLayerItems(r.doc, 'outage', [r.id], 10, -5);
-  const m1 = resolveText(mv, layerOf(mv, 'outage')!.items[0]!);
+  const m1 = resolveText(mv, (layerOf(mv, 'outage')!.items[0] as LayerText));
   if (Math.abs(m1.x - (at0.x + 10)) > 0.001 || Math.abs(m1.y - (at0.y - 5)) > 0.001) fail('レイヤーの文字を動かせません');
   if (layerOf(removeLayerItems(r.doc, 'outage', [r.id]), 'outage')!.items.length !== 0) fail('レイヤーの文字を消せません');
   let full = d0;

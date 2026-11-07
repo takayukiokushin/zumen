@@ -1,8 +1,9 @@
 import { FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
-import { clampTextSize } from '@zumen/layout';
+import { CROSS_SPECS, clampTextSize, rotatedPort } from '@zumen/layout';
+import type { CrossSize } from '@zumen/layout';
 import { defOf, freshId, sameName } from './doc.ts';
-import type { Doc, DocText } from './doc.ts';
+import type { Doc, DocSymbol, DocText } from './doc.ts';
 
 /**
  * 図面のレイヤー（停電範囲図・絶縁耐力試験範囲図・追加したレイヤー）。
@@ -36,8 +37,22 @@ export interface LayerText {
   ndy: number;
 }
 
-/** レイヤーに置くもの。×印・接地・枠などの種類は、これから足していく */
-export type LayerItem = LayerText;
+/**
+ * レイヤーに置いた、開放の赤い×印。
+ * 付けた開閉器（target）に付いて、その機器が動けば、一緒に動く。その機器が無くなったら、×印も消える
+ * （画面にも印刷にも出さず、保存するときに、データからも外す）。
+ */
+export interface LayerCross {
+  kind: 'cross';
+  id: string;
+  /** 付けた開閉器の id（sameName） */
+  target: string;
+  /** 大きさ（小・中・大）。形と寸法は packages/layout/src/cross.ts */
+  size: CrossSize;
+}
+
+/** レイヤーに置くもの。接地・枠などの種類は、これから足していく */
+export type LayerItem = LayerText | LayerCross;
 
 export interface Layer {
   /** 固定のレイヤーは 'outage'・'withstand'。追加したものは 'custom-1' など */
@@ -160,7 +175,7 @@ export function resolveText(doc: Doc, t: LayerText): { x: number; y: number } {
 
 /** レイヤーに置いた文字を、図面の文字として使える形にする（画面と印刷で、元の図面の文字と同じように描くため） */
 export function layerItemsAsDocItems(doc: Doc, layerId: string): DocText[] {
-  return (layerOf(doc, layerId)?.items ?? []).map((t): DocText => {
+  return (layerOf(doc, layerId)?.items ?? []).filter((t): t is LayerText => t.kind === 'text').map((t): DocText => {
     const { x, y } = resolveText(doc, t);
     return {
       kind: 'text',
@@ -190,6 +205,10 @@ export function setLayerItems(doc: Doc, layerId: string, items: LayerItem[]): Do
 export const canAddLayerText = (doc: Doc, layerId: string): boolean =>
   (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'text').length < MAX_LAYER_ITEMS_PER_KIND;
 
+/** ×印を足せるか（1つのレイヤーに置ける数には、上限がある） */
+export const canAddLayerCross = (doc: Doc, layerId: string): boolean =>
+  (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'cross').length < MAX_LAYER_ITEMS_PER_KIND;
+
 /** レイヤーに文字を足す。上限を超えるときは null。置く場所の近くの機器を覚える */
 export function addLayerText(doc: Doc, layerId: string, x: number, y: number, text: string, red = true): { doc: Doc; id: string } | null {
   if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerText(doc, layerId)) return null;
@@ -207,7 +226,7 @@ export function updateLayerText(doc: Doc, layerId: string, id: string, patch: { 
     doc,
     layerId,
     items.map((t) => {
-      if (t.id !== id) return t;
+      if (t.kind !== 'text' || t.id !== id) return t;
       const n: LayerText = { ...t };
       if (patch.lines !== undefined) n.lines = patch.lines;
       if (patch.size !== undefined) n.size = clampTextSize(patch.size);
@@ -232,7 +251,8 @@ export function moveLayerItems(doc: Doc, layerId: string, ids: string[], dx: num
     doc,
     layerId,
     items.map((t) => {
-      if (!ids.includes(t.id)) return t;
+      // 動かせるのは文字だけ（×印は、付けた開閉器について動く）
+      if (t.kind !== 'text' || !ids.includes(t.id)) return t;
       const p = resolveText(doc, t);
       const x = p.x + dx;
       const y = p.y + dy;
@@ -246,4 +266,88 @@ export function removeLayerItems(doc: Doc, layerId: string, ids: string[]): Doc 
   const items = layerOf(doc, layerId)?.items;
   if (!items) return doc;
   return setLayerItems(doc, layerId, items.filter((t) => !ids.includes(t.id)));
+}
+
+/* ---------------- 開放の赤い×印 ---------------- */
+
+/** ×印を付けられる開閉器か（記号の定義に、×印の位置が決めてあるもの） */
+export const canMark = (sym: DocSymbol): boolean => defOf(sym).markCenter !== undefined;
+
+/** ×印の中心（図面の座標）。PAS は外枠の中央、そのほかは記号の中央。記号を回していても、その位置に付く */
+export function markPoint(sym: DocSymbol): { x: number; y: number } | null {
+  const def = defOf(sym);
+  if (!def.markCenter) return null;
+  const [rx, ry] = rotatedPort(def.box, def.markCenter.x, def.markCenter.y, sym.rotate);
+  return { x: sym.x + rx, y: sym.y + ry };
+}
+
+/** 画面と印刷に出す×印（付けた開閉器が図面にあるものだけ） */
+export interface ResolvedCross {
+  id: string;
+  target: string;
+  /** 付けた開閉器の、いまの id */
+  symbolId: string;
+  x: number;
+  y: number;
+  /** 一辺と太さ */
+  size: number;
+  thickness: number;
+  sizeId: CrossSize;
+}
+
+const symbolByTarget = (doc: Doc, target: string): DocSymbol | undefined => {
+  for (const it of doc.items) if (it.kind === 'symbol' && sameName(it.id) === target) return it;
+  return undefined;
+};
+
+export function resolveCrosses(doc: Doc, layerId: string): ResolvedCross[] {
+  const out: ResolvedCross[] = [];
+  for (const c of layerOf(doc, layerId)?.items ?? []) {
+    if (c.kind !== 'cross') continue;
+    const sym = symbolByTarget(doc, c.target);
+    const at = sym ? markPoint(sym) : null;
+    if (!sym || !at) continue;
+    const spec = CROSS_SPECS[c.size] ?? CROSS_SPECS.M;
+    out.push({ id: c.id, target: c.target, symbolId: sym.id, x: at.x, y: at.y, size: spec.size, thickness: spec.thickness, sizeId: c.size });
+  }
+  return out;
+}
+
+/** その開閉器に付いている×印 */
+export const crossOn = (doc: Doc, layerId: string, symbolId: string): LayerCross | undefined => {
+  const target = sameName(symbolId);
+  return (layerOf(doc, layerId)?.items ?? []).find((i): i is LayerCross => i.kind === 'cross' && i.target === target);
+};
+
+/** 開閉器に×印を付ける。付けられない記号・上限を超えるとき・すでに付いているときは null */
+export function addLayerCross(doc: Doc, layerId: string, symbolId: string, size: CrossSize): { doc: Doc; id: string } | null {
+  const sym = symbolByTarget(doc, sameName(symbolId));
+  if (!sym || !canMark(sym) || !layerInfos(doc).some((l) => l.id === layerId)) return null;
+  if (crossOn(doc, layerId, symbolId) || !canAddLayerCross(doc, layerId)) return null;
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('lcross', new Set(items.map((i) => i.id)));
+  return { doc: setLayerItems(doc, layerId, [...items, { kind: 'cross', id, target: sameName(symbolId), size }]), id };
+}
+
+/** ×印の大きさを変える */
+export function setCrossSize(doc: Doc, layerId: string, id: string, size: CrossSize): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(doc, layerId, items.map((i) => (i.kind === 'cross' && i.id === id ? { ...i, size } : i)));
+}
+
+/**
+ * 付けた開閉器が、図面から無くなった×印を、データから外す（保存するときに行う）。
+ * それまでは、画面にも印刷にも出さずに、取っておく（「操作を戻す」で機器が戻れば、×印も戻るように）。
+ */
+export function purgeOrphanCrosses(doc: Doc): Doc {
+  if (!doc.layers) return doc;
+  let changed = false;
+  const layers = doc.layers.map((l) => {
+    const items = l.items.filter((i) => i.kind !== 'cross' || symbolByTarget(doc, i.target) !== undefined);
+    if (items.length === l.items.length) return l;
+    changed = true;
+    return { ...l, items };
+  });
+  return changed ? { ...doc, layers } : doc;
 }

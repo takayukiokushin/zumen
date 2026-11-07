@@ -58,8 +58,18 @@ export interface DrawingText {
   red?: boolean;
 }
 
+/** 開放の赤い×印（レイヤーに置いたもの）。中心の位置と、一辺・太さ（cross.ts） */
+export interface DrawingCross {
+  x: number;
+  y: number;
+  size: number;
+  thickness: number;
+}
+
 export interface DrawingLayout {
   symbols: PlacedSymbol[];
+  /** 赤い×印。記号・文字のあとに、いちばん上に描く */
+  crosses?: DrawingCross[];
   wires: Wire[];
   frames: FrameMark[];
   /** 手で追加した注記 */

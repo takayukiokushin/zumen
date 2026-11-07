@@ -1139,6 +1139,12 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .layer-note .hint { margin: 0; color: var(--ink-2); }
 .canvas .item.inert { opacity: .4; cursor: default; }
 .canvas .item.inert:hover { color: inherit; }
+/* ×印を付けるモード：付けられる開閉器だけを、はっきり見せる */
+.canvas.cross-mode .item { cursor: default; }
+.canvas .item.inert.eligible { opacity: 1; cursor: crosshair; }
+.canvas .item.inert.eligible:hover { color: var(--draw-accent); }
+.canvas .cross-mark { cursor: pointer; }
+.canvas.cross-mode .cross-mark { cursor: crosshair; }
 
 /* 複製のときの、レイヤーを選ぶ窓 */
 .pick-list { display: flex; flex-direction: column; gap: calc(6px * var(--text-scale)); margin-top: calc(8px * var(--text-scale)); }
@@ -1157,3 +1163,9 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .text-style .red-word { color: #d40000; font-weight: var(--weight-strong); }
 :root[data-theme="dark"] .text-style .red-word { color: #ff7a7a; }
 @media (prefers-color-scheme: dark) { :root[data-theme="auto"] .text-style .red-word { color: #ff7a7a; } }
+
+/* ×印を付けるモードの案内（文と、大きさの選択と、終わるボタンを、横に並べる） */
+.mode-hint.cross-hint { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale)); background: var(--accent-soft); border-bottom: 1px solid var(--accent);
+  color: var(--ink); display: flex; flex-wrap: wrap; align-items: center; gap: calc(8px * var(--text-scale)) calc(16px * var(--text-scale)); }
+.cross-hint .cross-size-pick { display: inline-flex; align-items: center; gap: calc(8px * var(--text-scale)); }
+.cross-hint .cross-size-pick .lbl { font-size: calc(12px * var(--text-scale)); color: var(--ink-2); }

@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, crossPointsAttr } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
+import type { ResolvedCross } from './layers.ts';
 
 interface Props {
   doc: Doc;
@@ -18,8 +19,12 @@ interface Props {
   onWireEnd: (id: string, end: 1 | 2, dx: number, dy: number) => void;
   /** 線を引き終えたとき */
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
-  /** 'wire' のときは2点をクリックして線を引く */
-  mode: 'select' | 'wire';
+  /** 'wire' のときは2点をクリックして線を引く。'cross' のときは、開閉器をクリックして、開放の×印を付ける・外す */
+  mode: 'select' | 'wire' | 'cross';
+  /** レイヤーに付けた赤い×印（図面のいちばん上に描く） */
+  crosses?: ResolvedCross[];
+  /** 'cross' のときに、記号（PAS のような、中に部品を抱えるものは、かたまりの親）をクリックしたとき */
+  onCrossClick?: (symbolId: string) => void;
   /**
    * 元の図面を動かせない状態（レイヤーを選んでいるとき）。元の図面は薄く表示して、選ぶ・動かす・線を引くことはできない。
    * 触れるのは、activeIds に入っているもの（そのレイヤーに置いたもの）だけ
@@ -75,7 +80,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], onCrossClick, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -288,6 +293,14 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   const inert = (id: string) => locked && !activeIds?.has(id);
 
   const onPointerDown = (e: React.PointerEvent, it: DocItem) => {
+    // ×印を付けるモード：記号をクリックすると、×印を付ける・外す（薄く表示している元の図面の記号も、押せる）
+    if (mode === 'cross') {
+      if (it.kind === 'symbol') {
+        e.stopPropagation();
+        onCrossClick?.(groupRootOf(doc, it.id));
+      }
+      return;
+    }
     if (mode === 'wire' || inert(it.id)) return;
     e.stopPropagation();
 
@@ -405,6 +418,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
 
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
+    if (mode === 'cross') return;
     // レイヤーを選んでいて、置いたものが無いときは、触れるものが無いので、何もしない
     if (locked && !(activeIds && activeIds.size > 0)) return;
     if (mode !== 'wire') {
@@ -439,7 +453,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   return (
     <svg
       ref={svgRef}
-      className={locked ? 'canvas locked' : 'canvas'}
+      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}`}
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
       onPointerDown={onCanvasDown}
@@ -459,7 +473,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           const common = {
             key: it.id,
             onPointerDown: (e: React.PointerEvent) => onPointerDown(e, it),
-            className: `item${selected ? ' selected' : ''}${inert(it.id) ? ' inert' : ''}`,
+            className: `item${selected ? ' selected' : ''}${inert(it.id) ? ' inert' : ''}${mode === 'cross' && it.kind === 'symbol' && defOf(it).markCenter ? ' eligible' : ''}`,
           };
 
           if (it.kind === 'wire') {
@@ -545,6 +559,25 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                 </text>
               )}
               <rect x={it.x} y={it.y} width={def.box.w} height={def.box.h} fill="transparent" stroke="none" />
+            </g>
+          );
+        })}
+
+        {/* 開放の赤い×印。付けた開閉器について動くので、ドラッグでは動かさない（選ぶ・外すだけ） */}
+        {crosses.map((c) => {
+          const sel = selectedIds.includes(c.id);
+          return (
+            <g
+              key={c.id}
+              className={`cross-mark${sel ? ' selected' : ''}`}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (mode === 'cross') onCrossClick?.(c.symbolId);
+                else if (mode === 'select') onSelect([c.id]);
+              }}
+            >
+              <polygon points={crossPointsAttr(c.x, c.y, c.size, c.thickness)} fill={OVERLAY_RED} stroke="none" />
+              {sel && <rect className="selection" x={c.x - c.size / 2 - 4} y={c.y - c.size / 2 - 4} width={c.size + 8} height={c.size + 8} fill="none" pointerEvents="none" />}
             </g>
           );
         })}

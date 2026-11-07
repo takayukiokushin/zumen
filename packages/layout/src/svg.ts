@@ -1,5 +1,6 @@
 import { FONT_FAMILY, getSymbol, shapesToSvg, sizedSymbol } from '@zumen/symbols';
 import type { DrawingLayout } from './layout.ts';
+import { crossPointsAttr } from './cross.ts';
 import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, textWidth } from './text.ts';
 
 /** 表題欄の内容 */
@@ -194,6 +195,11 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
         `    <text x="${round(s.labelAt.x)}" y="${round(s.labelAt.y)}" font-size="${LABEL_FONT}" text-anchor="${s.labelAt.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
       );
     }
+  }
+
+  // 開放の赤い×印は、図面のいちばん上に重ねる
+  for (const c of drawing.crosses ?? []) {
+    body.push(`    <polygon points="${crossPointsAttr(c.x, c.y, c.size, c.thickness)}" fill="${OVERLAY_RED}" stroke="none" />`);
   }
 
   // 1行のときは枠の中央に、2行のときは上の行・下の行の順に、枠の中央にそろえて書く

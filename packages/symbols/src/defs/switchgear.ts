@@ -92,6 +92,8 @@ const pasDef = (
     // 内蔵するZCT・VT・LAが収まる最小限の大きさにしてある。
     // 以前は余白が多く、他の記号に比べて大きすぎた。
     box: { w: 86 + l + r, h },
+    // 開放の×印は、外枠（rect）の中央に付ける
+    markCenter: { x: 6 + (74 + l + r) / 2, y: (frameTop + frameBottom) / 2 },
     shapes: [
       vline(x, 0, frameTop),
       rect(6, frameTop, 74 + l + r, frameBottom - frameTop),
@@ -153,7 +155,7 @@ const pasDef = (
   };
 };
 
-export const switchgearSymbols: SymbolDef[] = [
+const switchgearRaw: SymbolDef[] = [
   {
     id: 'as',
     labelLines: ['AS', '{ratedVoltage}V', '{ratedCurrent}A'],
@@ -376,3 +378,11 @@ export const switchgearSymbols: SymbolDef[] = [
   // 内蔵機器（LA・VT）を入れるとき用。枠を少しだけ広げてある（とくに左）
   pasDef('pas-builtin', { l: 8, r: 2, t: 4, b: 12 }, 'pas'),
 ];
+
+/**
+ * 開閉器・遮断器には、停電範囲図などで、開放の×印を付けられる（ヒューズ単体の PF は、開閉するものではないので付けない）。
+ * 付ける位置は、記号の中央（PAS・UGS・PGS は、pasDef で、外枠の中央に決めてある）。
+ */
+export const switchgearSymbols: SymbolDef[] = switchgearRaw.map((d) =>
+  d.markCenter || d.id === 'pf' ? d : { ...d, markCenter: { x: d.box.w / 2, y: d.box.h / 2 } },
+);
