@@ -20,6 +20,8 @@ interface Props {
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く */
   mode: 'select' | 'wire';
+  /** 元の図面を動かせない状態（レイヤーを選んでいるとき）。薄く表示して、選ぶ・動かす・線を引くことはできない */
+  locked?: boolean;
   /** 線を引くとき、点線で引くか（引いている最中の見本の線も、同じ種類で出す） */
   wireDashed?: boolean;
   zoom: number;
@@ -69,7 +71,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, locked = false, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -279,7 +281,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   };
 
   const onPointerDown = (e: React.PointerEvent, it: DocItem) => {
-    if (mode === 'wire') return;
+    if (mode === 'wire' || locked) return;
     e.stopPropagation();
 
     // PASのように中に部品を抱えている記号は、かたまりごと選ぶ。
@@ -396,6 +398,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
 
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
+    if (locked) return;
     if (mode !== 'wire') {
       // 指のときは、なぞれば画面が動くので、「選択を外す」のは、離したときに上の処理で行う。
       // マウス・ペンは、何も無いところからドラッグすると、範囲で選べる（離したとき、動かしていなければ、選びを外す）
@@ -428,7 +431,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   return (
     <svg
       ref={svgRef}
-      className="canvas"
+      className={locked ? 'canvas locked' : 'canvas'}
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
       onPointerDown={onCanvasDown}

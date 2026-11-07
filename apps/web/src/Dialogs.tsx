@@ -37,16 +37,28 @@ export interface InputOptions {
   validate?: (value: string) => string | null;
 }
 
+export interface PickOptions {
+  title: string;
+  message?: string[] | string;
+  /** 選べるもの。checked は、最初に選んでおくか（意図せず選んでしまわないよう、ふつうは付けない） */
+  options: { id: string; label: string; hint?: string; checked?: boolean }[];
+  confirmLabel?: string;
+  cancelLabel?: string;
+}
+
 interface Ctx {
   ask: (o: AskOptions) => Promise<boolean>;
   input: (o: InputOptions) => Promise<string | null>;
+  /** チェックを入れて選ぶ窓。選んだものの id の一覧を返す（1つも選ばなくてよい）。キャンセルなら null */
+  pick: (o: PickOptions) => Promise<string[] | null>;
 }
 
 const DialogsContext = createContext<Ctx | null>(null);
 
 type Pending =
   | { id: number; kind: 'ask'; opts: AskOptions; done: (v: boolean) => void }
-  | { id: number; kind: 'input'; opts: InputOptions; done: (v: string | null) => void };
+  | { id: number; kind: 'input'; opts: InputOptions; done: (v: string | null) => void }
+  | { id: number; kind: 'pick'; opts: PickOptions; done: (v: string[] | null) => void };
 
 let nextId = 1;
 
@@ -104,7 +116,11 @@ export function DialogsProvider({ children }: { children: ReactNode }) {
     (opts: InputOptions) => new Promise<string | null>((done) => setQueue((q) => [...q, { id: nextId++, kind: 'input', opts, done }])),
     [],
   );
-  const value = useMemo(() => ({ ask, input }), [ask, input]);
+  const pick = useCallback(
+    (opts: PickOptions) => new Promise<string[] | null>((done) => setQueue((q) => [...q, { id: nextId++, kind: 'pick', opts, done }])),
+    [],
+  );
+  const value = useMemo(() => ({ ask, input, pick }), [ask, input, pick]);
 
   const current = queue[0];
   const close = () => setQueue((q) => q.slice(1));
@@ -114,6 +130,16 @@ export function DialogsProvider({ children }: { children: ReactNode }) {
       {children}
       {current?.kind === 'ask' && (
         <AskDialog
+          key={current.id}
+          opts={current.opts}
+          onResult={(v) => {
+            current.done(v);
+            close();
+          }}
+        />
+      )}
+      {current?.kind === 'pick' && (
+        <PickDialog
           key={current.id}
           opts={current.opts}
           onResult={(v) => {
@@ -258,6 +284,62 @@ function InputDialog({ opts, onResult }: { opts: InputOptions; onResult: (v: str
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function PickDialog({ opts, onResult }: { opts: PickOptions; onResult: (v: string[] | null) => void }) {
+  const t = useT();
+  const [checked, setChecked] = useState<Set<string>>(() => new Set(opts.options.filter((o) => o.checked).map((o) => o.id)));
+  const cancel = () => onResult(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useDialogKeys(boxRef, cancel);
+  // 最初に選ばれているのは「キャンセル」（うっかりEnterを押しても、何も複製されないように）
+  useEffect(() => cancelRef.current?.focus(), []);
+
+  return (
+    <div className="modal-back dialog-back" onClick={cancel}>
+      <div ref={boxRef} className="modal confirm" role="dialog" aria-modal="true" aria-label={opts.title} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+        <header>
+          <h2>{opts.title}</h2>
+        </header>
+        <section>
+          {lines(opts.message).map((line, i) => (
+            <p key={i} className="confirm-line">
+              {line}
+            </p>
+          ))}
+          <div className="pick-list">
+            {opts.options.map((o) => (
+              <label key={o.id} className="pick-row">
+                <input
+                  type="checkbox"
+                  checked={checked.has(o.id)}
+                  onChange={(e) =>
+                    setChecked((prev) => {
+                      const next = new Set(prev);
+                      if (e.target.checked) next.add(o.id);
+                      else next.delete(o.id);
+                      return next;
+                    })
+                  }
+                />
+                <span className="pick-label">{o.label}</span>
+                {o.hint && <span className="pick-hint">{o.hint}</span>}
+              </label>
+            ))}
+          </div>
+        </section>
+        <div className="confirm-actions">
+          <button type="button" className="btn" ref={cancelRef} onClick={cancel}>
+            {opts.cancelLabel ?? t('dialog.cancel')}
+          </button>
+          <button type="button" className="btn primary" onClick={() => onResult(opts.options.filter((o) => checked.has(o.id)).map((o) => o.id))}>
+            {opts.confirmLabel ?? t('dialog.ok')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

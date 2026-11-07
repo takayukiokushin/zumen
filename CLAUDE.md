@@ -21,7 +21,7 @@ scripts/        検証（check-knowledge / check-drawing / selftest）
 pnpm typecheck   # 型を見る
 pnpm check       # ナレッジベースと作図の検証（図面の見本との比較を含む）
 pnpm golden      # 図面の見本を保存し直す（意図して図面を変えたときだけ。docs/golden/）
-pnpm selftest    # サーバーまで通した自己診断（271件）
+pnpm selftest    # サーバーまで通した自己診断（289件）
 pnpm build       # 画面を組み立てる
 pnpm start       # 組み立ててサーバーを起動
 ```

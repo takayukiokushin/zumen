@@ -211,7 +211,7 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
   /* 用紙の指定は Editor が差し込む（A4/A3・縦横を選べるため） */
   html, body, #root { margin: 0; padding: 0; height: auto; background: #fff; zoom: 1; }
   .tabbar, .projectbar, .bar-error, .bar-lock, .bar-update, .editor-bar, .editor-body, .app,
-  .mode-hint, .preview-note, .stale-note, .panel-bar, .modal-back, .heavy-toast { display: none !important; }
+  .mode-hint, .preview-note, .stale-note, .layer-note, .panel-bar, .modal-back, .heavy-toast { display: none !important; }
   .shell, .shell > .body { display: block; height: auto; overflow: visible; }
   .editor { display: block; height: auto; container-type: normal; }
   .print-root { display: block; }
@@ -1114,3 +1114,35 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 /* 画面を開きっぱなしのあいだに、サーバーが新しい版に入れ替わったときの帯（保存してから、読み込み直してもらう） */
 .bar-update { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin: 0; padding: calc(8px * var(--text-scale)) calc(16px * var(--text-scale)); background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink); font-size: calc(12.5px * var(--text-scale)); flex: 0 0 auto; }
 .shell > .bar-update { flex: 0 0 auto; }
+
+/* レイヤー（図面の種類）の切り替え。印刷のボタンの近くに置く */
+.layer-menu { position: relative; display: inline-block; }
+.layer-trigger { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); max-width: 100%; }
+.layer-trigger-cap { font-size: calc(11px * var(--text-scale)); color: var(--muted); }
+.layer-trigger-name { font-weight: var(--weight-strong); max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-panel { position: fixed; z-index: 60; min-width: calc(260px * var(--text-scale)); max-width: min(92vw, 420px);
+  background: var(--panel); border: 1px solid var(--control-border); border-radius: 3px; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); padding: calc(6px * var(--text-scale)); }
+.layer-list { display: flex; flex-direction: column; gap: 2px; }
+.layer-row { display: flex; align-items: center; gap: calc(6px * var(--text-scale)); }
+.layer-pick { flex: 1 1 auto; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 2px; padding: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); color: var(--ink); cursor: pointer; overflow-wrap: anywhere; }
+.layer-pick:hover { background: var(--alt); }
+.layer-pick[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: var(--weight-strong); }
+.layer-pick[aria-selected="true"]::before { content: "✓ "; }
+.layer-small { padding: calc(3px * var(--text-scale)) calc(8px * var(--text-scale)); font-size: calc(11.5px * var(--text-scale)); white-space: nowrap; }
+.layer-add-row { margin-top: calc(6px * var(--text-scale)); padding-top: calc(6px * var(--text-scale)); border-top: 1px solid var(--rule-soft); display: flex; flex-direction: column; gap: calc(4px * var(--text-scale)); align-items: flex-start; }
+.layer-full-note { font-size: calc(11.5px * var(--text-scale)); color: var(--muted); }
+
+/* レイヤーを選んでいるあいだの案内と、元の図面の見え方（薄くして、動かせない） */
+.layer-note { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale));
+  background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink);
+  font-size: calc(12.5px * var(--text-scale)); display: flex; align-items: center; gap: calc(10px * var(--text-scale)); flex-wrap: wrap; }
+.layer-note .hint { margin: 0; color: var(--ink-2); }
+.canvas.locked .item { opacity: .4; cursor: default; }
+.canvas.locked .item:hover { color: inherit; }
+
+/* 複製のときの、レイヤーを選ぶ窓 */
+.pick-list { display: flex; flex-direction: column; gap: calc(6px * var(--text-scale)); margin-top: calc(8px * var(--text-scale)); }
+.pick-row { display: flex; align-items: center; gap: calc(10px * var(--text-scale)); padding: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); border: 1px solid var(--control-border); border-radius: 2px; cursor: pointer; }
+.pick-row input { margin: 0; width: calc(20px * var(--ctl-scale)); height: calc(20px * var(--ctl-scale)); min-height: 0; accent-color: var(--accent); }
+.pick-label { font-weight: var(--weight-strong); overflow-wrap: anywhere; }
+.pick-hint { color: var(--muted); font-size: calc(12px * var(--text-scale)); }

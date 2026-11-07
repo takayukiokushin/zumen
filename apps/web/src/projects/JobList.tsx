@@ -4,6 +4,7 @@ import type { PracticeSource, ProjectSummary, Role, TrashItem } from '../session
 import { useDialogs } from '../Dialogs.tsx';
 import { useLang, useT } from '../i18n/useT.ts';
 import { MAX_TEXT_LENGTH } from '@zumen/knowledge';
+import { FIXED_LAYER_KEY } from '../editor/LayerMenu.tsx';
 
 /**
  * 案件の一覧（㉚）。名前の一部を入れて絞り込める。
@@ -88,7 +89,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
 
 export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Props) {
   const t = useT();
-  const { ask, input } = useDialogs();
+  const { ask, input, pick } = useDialogs();
   const lang = useLang();
   /** いま画面に出している案件（先頭から、続きを足していく） */
   const [list, setList] = useState<ProjectSummary[] | null>(null);
@@ -225,7 +226,24 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     if (!(await canLeave())) return;
     try {
       setError(null);
-      const r = await api.duplicateProject(src.id);
+      // レイヤー（停電範囲図など）があるときは、複製するかを、レイヤーごとに尋ねる（最初は、すべて「複製しない」）
+      const { layers } = await api.projectLayers(src.id);
+      let keep: string[] = [];
+      if (layers.length > 0) {
+        const chosen = await pick({
+          title: t('project.duplicate.layersTitle'),
+          message: [t('project.duplicate.layersMessage')],
+          options: layers.map((l) => ({
+            id: l.id,
+            label: l.name === null ? t(FIXED_LAYER_KEY[l.id] ?? 'layer.outage') : l.name,
+            hint: l.count > 0 ? t('project.duplicate.layerCount', { n: l.count }) : undefined,
+          })),
+          confirmLabel: t('project.duplicate.layersOk'),
+        });
+        if (chosen === null) return;
+        keep = chosen;
+      }
+      const r = await api.duplicateProject(src.id, keep);
       onOpen(r.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('err.duplicate'));

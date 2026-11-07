@@ -10,6 +10,7 @@ import { state } from './check-drawing/common.ts';
 import './check-drawing/part1.ts';
 import './check-drawing/part2.ts';
 import './check-drawing/part3.ts';
+import './check-drawing/part4.ts';
 
 console.log(state.failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${state.failed}件の問題があります`);
 process.exit(state.failed === 0 ? 0 : 1);

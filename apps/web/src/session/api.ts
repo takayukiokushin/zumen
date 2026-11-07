@@ -244,8 +244,11 @@ export const api = {
       body: JSON.stringify({ sourceId }),
     }),
   /** 過去の図面を複製して、新しい案件を作る（事業場名称などは空。設備の内容と手直しはそのまま） */
-  duplicateProject: (id: string) =>
-    call<{ id: string; name: string; updatedAt: string }>(`/api/projects/${id}/duplicate`, { method: 'POST' }),
+  duplicateProject: (id: string, layers: string[] = []) =>
+    call<{ id: string; name: string; updatedAt: string }>(`/api/projects/${id}/duplicate`, { method: 'POST', body: JSON.stringify({ layers }) }),
+  /** 複製のときに尋ねる、図面のレイヤーの一覧（追加したレイヤーと、何か置いてある固定のレイヤー） */
+  projectLayers: (id: string) =>
+    call<{ layers: { id: string; name: string | null; count: number }[] }>(`/api/projects/${id}/layers`),
   listTrash: () => call<{ retainDays: number; projects: TrashItem[] }>('/api/projects/trash'),
   restoreProject: (id: string) => call<{ ok: true }>(`/api/projects/${id}/restore`, { method: 'POST' }),
 

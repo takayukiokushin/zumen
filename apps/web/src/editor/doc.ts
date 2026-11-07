@@ -2,6 +2,7 @@ import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sizedSymbol }
 import type { SizeRange, SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
+import type { Layer } from './layers.ts';
 
 /**
  * 編集中の図面。自動レイアウトの結果をここに取り込んでから、自由に動かせるようにする。
@@ -230,6 +231,12 @@ export interface Doc {
   overrides?: Overrides;
   /** 印刷する向き。利用者が選んだとき（縦・横のボタン）だけ入る。無ければ、図面の形に合わせて自動で決まる */
   orientation?: Orientation;
+  /**
+   * レイヤー（停電範囲図など）。元の図面（items）とは別に持つ。
+   * 元の図面を作り直しても、「操作を戻す」を押しても、引き継ぐ（layers.ts の carryLayers）。
+   * 無ければ、レイヤーを使っていない図面
+   */
+  layers?: Layer[];
 }
 
 /**

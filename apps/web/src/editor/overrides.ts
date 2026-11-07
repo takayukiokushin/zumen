@@ -310,6 +310,8 @@ export function rebuildWithOverrides(generated: Doc, current: Doc | null): { doc
     base: baselineOf(generated),
     overrides: kept ? ov : undefined,
     ...(current?.orientation ? { orientation: current.orientation } : {}),
+    // レイヤー（停電範囲図など）は、元の図面を作り直しても、そのまま引き継ぐ
+    ...(current?.layers !== undefined ? { layers: current.layers } : {}),
   };
   return { doc, report: { kept, dormant, overlaps } };
 }

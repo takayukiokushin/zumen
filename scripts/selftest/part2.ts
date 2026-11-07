@@ -281,6 +281,63 @@ export async function part2(c: Awaited<ReturnType<typeof part1>>) {
     void up;
   }
 
+  // レイヤー（停電範囲図など）：複製のときの選択・一覧・古い画面からの保存を止める
+  {
+    const J = (r: Response) => r.json() as Promise<any>;
+    const before = await J(await call(a, `/api/projects/${created.id}`));
+    const withLayers = {
+      items: [{ kind: 'text', id: 'auto-t', x: 0, y: 0, lines: ['埋設ケーブル'], anchor: 'start' }],
+      layers: [
+        { id: 'outage', items: [{ id: 'k1', kind: 'cross' }, { id: 'k2', kind: 'cross' }] },
+        { id: 'withstand', items: [] },
+        { id: 'custom-1', name: '夜間停電', items: [] },
+        { id: 'custom-2', name: '予備', items: [{ id: 'k3', kind: 'cross' }] },
+      ],
+    };
+    const save = await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: withLayers }) });
+    check('レイヤーつきの図面を保存できる', save.ok, `${save.status}`);
+    const got = await J(await call(a, `/api/projects/${created.id}`));
+    check('レイヤーは、保存して開いても、そのまま戻る', JSON.stringify(got.drawing.layers) === JSON.stringify(withLayers.layers));
+
+    const list = (await J(await call(a, `/api/projects/${created.id}/layers`))).layers as { id: string; name: string | null; count: number }[];
+    check('レイヤーの一覧：追加したレイヤーは、置いたものが無くても出る', list.some((l) => l.id === 'custom-1' && l.name === '夜間停電' && l.count === 0));
+    check('レイヤーの一覧：固定のレイヤーは、置いたものがあるときだけ出る（名前は画面が持つので null）', list.some((l) => l.id === 'outage' && l.name === null && l.count === 2) && !list.some((l) => l.id === 'withstand'));
+    check('レイヤーの一覧：置いたものの数が合う', list.find((l) => l.id === 'custom-2')?.count === 1);
+    check('レイヤーの一覧：存在しない案件は 404', (await call(a, '/api/projects/nai/layers')).status === 404);
+    check('レイヤーの一覧：見られない案件（練習用）は 404', (await call(a, `/api/projects/${renshuMade.id}/layers`)).status === 404);
+
+    const none = await J(await call(a, `/api/projects/${created.id}/duplicate`, { method: 'POST' }));
+    const dNone = await J(await call(a, `/api/projects/${none.id}`));
+    check('複製：何も選ばなければ、レイヤーは1つも複製されない（意図せず写さない）', dNone.drawing.layers === undefined, JSON.stringify(dNone.drawing.layers));
+    check('複製：レイヤー以外（図面の本体）は、そのまま複製される', dNone.drawing.items.some((x: { id: string }) => x.id === 'auto-t'));
+    const some = await J(await call(a, `/api/projects/${created.id}/duplicate`, { method: 'POST', body: JSON.stringify({ layers: ['custom-2', 'outage', 'nai'] }) }));
+    const dSome = await J(await call(a, `/api/projects/${some.id}`));
+    check('複製：選んだレイヤーだけが、置いたものごと複製される', JSON.stringify(dSome.drawing.layers.map((l: { id: string }) => l.id)) === JSON.stringify(['outage', 'custom-2']) && dSome.drawing.layers[0].items.length === 2);
+    const junk = await J(await call(a, `/api/projects/${created.id}/duplicate`, { method: 'POST', body: JSON.stringify({ layers: 'custom-1' }) }));
+    const dJunk = await J(await call(a, `/api/projects/${junk.id}`));
+    check('複製：レイヤーの指定が変な形でも、1つも複製せずに作る', dJunk.drawing.layers === undefined);
+    const after = await J(await call(a, `/api/projects/${created.id}`));
+    check('複製しても、もとのレイヤーは変わらない', JSON.stringify(after.drawing.layers) === JSON.stringify(withLayers.layers));
+
+    // 古い画面（レイヤーを知らない版）が、そのまま保存すると、レイヤーが消える。それを止める
+    const stale = await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: { items: [] } }) });
+    const staleBody = await J(stale);
+    check('古い画面からの保存は、レイヤーが消えるので断る', stale.status === 400 && staleBody.oldScreen === true && String(staleBody.error).includes('古い版'), `${stale.status} ${staleBody.error}`);
+    const still = await J(await call(a, `/api/projects/${created.id}`));
+    check('断ったときは、保存してあるレイヤーは、そのまま残る', JSON.stringify(still.drawing.layers) === JSON.stringify(withLayers.layers));
+    const force = await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: { items: [] }, force: true }) });
+    check('「上書き」の指定でも、レイヤーが消える保存は断る', force.status === 400);
+    const keep = await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: { items: [], layers: withLayers.layers } }) });
+    check('レイヤーを持ったままの保存は、できる', keep.ok, `${keep.status}`);
+    const cleared = await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: { items: [], layers: [] } }) });
+    check('画面でレイヤーを全部消したとき（layers が空）の保存は、できる', cleared.ok, `${cleared.status}`);
+    const plain = await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: { items: [] } }) });
+    check('レイヤーが無い図面は、これまでどおり保存できる', plain.ok, `${plain.status}`);
+
+    for (const x of [none.id, some.id, junk.id]) await call(a, `/api/projects/${x}`, { method: 'DELETE' });
+    await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ answers: before.answers, drawing: before.drawing }) });
+  }
+
   // 練習環境：本番の案件をコピーして練習する（もとの案件は変わらない）
   {
     const J = (r: Response) => r.json() as Promise<any>;

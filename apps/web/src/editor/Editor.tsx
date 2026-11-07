@@ -3,7 +3,7 @@ import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@z
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
-import { buildComposition, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
+import { buildComposition, MAX_CUSTOM_LAYERS, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
@@ -18,6 +18,9 @@ import { WireKindWindow } from './WireKindWindow.tsx';
 import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
+import { LayerMenu } from './LayerMenu.tsx';
+import { addLayer, carryLayers, customCount, layerInfos, layerNameProblem, layerOf, layerTitle, removeLayer, renameLayer, setLayerOrientation } from './layers.ts';
+import { useDialogs } from '../Dialogs.tsx';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setWireKind, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
@@ -72,7 +75,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     // 手で直していない図面は、いつでも回答から作り直してよい。
     // 手で直したものは、手で直した内容を残したまま、回答が変わっていれば、作り直す（下の useEffect）
     if (!initialDoc || initialDoc.edited !== true) {
-      return { past: [], present: generated, future: [] };
+      // レイヤー（停電範囲図など）は、元の図面を作り直しても、引き継ぐ
+      return { past: [], present: initialDoc ? carryLayers(generated, initialDoc) : generated, future: [] };
     }
     // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく。
     // 自動で作った図面の控えが無い古い図面は、いまの回答から作った図面を控えにする（回答が同じなら、ほぼ同じ図面）
@@ -94,6 +98,12 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   /** 用紙のまま（図枠つき）で見るか。印刷の見た目をそのまま確かめられる */
   const [sheetView, setSheetView] = useState(false);
+  /**
+   * いま見ている・編集しているレイヤー。null は単線結線図。
+   * 図面を開くたびに、必ず単線結線図から始まる（誤って、別のレイヤーを編集しないように）。保存はしない
+   */
+  const [activeLayer, setActiveLayer] = useState<string | null>(null);
+  const { ask, input } = useDialogs();
   /** スマホ（幅の狭い画面）で、ほかの操作のボタン列・記号パレットを開いているか */
   const [moreOpen, setMoreOpen] = useState(false);
   const [sideOpen, setSideOpen] = useState(false);
@@ -108,9 +118,18 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const lastArrow = useRef<{ id: string; at: number } | null>(null);
 
   const doc = history.present;
+  const docRef = useRef(doc);
+  docRef.current = doc;
+  /** 選んでいるレイヤー（消されて無いときは、単線結線図） */
+  const activeId = activeLayer !== null && layerTitle(doc, activeLayer) !== null ? activeLayer : null;
+  /** レイヤーを選んでいるあいだは、元の図面を動かせない（そのレイヤーに置いたものだけを、変えられる） */
+  const locked = activeId !== null;
+  /** 元の図面を編集できない状態（印刷プレビュー中、または、レイヤーを選んでいるとき） */
+  const frozen = sheetView || locked;
   const sheetTitle = {
     site: String(answers.customerNameForTitleBlock ?? answers.siteName ?? ''),
-    name: resolveDrawingName(answers),
+    // レイヤーを選んでいるときは、タイトルの「図面名称」の部分だけが、そのレイヤーの名前になる（事業場名などは、そのまま）
+    name: activeId !== null ? (layerTitle(doc, activeId) ?? '') : resolveDrawingName(answers),
     // 右下は常に社名（作成者や図面番号は図面に入れない方針）
     footer: COMPANY_NAME,
   };
@@ -119,9 +138,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   // 向きは、利用者が選んだもの（なければ、図面の形に合わせた自動の判定）。
   // 図面を描く台紙の大きさ（A4・A3）は、図面の大きさで内部的に決まる（画面には出さない。実際の用紙は、印刷の設定画面で選ぶ）
   const auto = useMemo(() => chooseSheet(doc, sheetTitle), [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer]);
+  // 向きは、元の図面と、レイヤーごとに別々に決める
+  const wantOrientation = activeId !== null ? layerOf(doc, activeId)?.orientation : doc.orientation;
   const chosen = useMemo(
-    () => (doc.orientation ? chooseSheet(doc, sheetTitle, doc.orientation) : auto),
-    [doc, auto, sheetTitle.site, sheetTitle.name, sheetTitle.footer],
+    () => (wantOrientation ? chooseSheet(doc, sheetTitle, wantOrientation) : auto),
+    [doc, auto, wantOrientation, sheetTitle.site, sheetTitle.name, sheetTitle.footer],
   );
   const paper: PaperSize = chosen.paper;
   const orientation: Orientation = chosen.orientation;
@@ -163,6 +184,75 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   );
 
   /**
+   * レイヤーを足す・名前を変える・消す・向きを決める。
+   * 元の図面を手で直したわけではないので「手で直した」印は付けず、「操作を戻す」の履歴にも入れない
+   * （履歴は元の図面だけのもの。戻したとき、レイヤーは、いまのものを引き継ぐ）。
+   */
+  const applyLayers = useCallback(
+    (next: Doc) => {
+      const stamped: Doc = { ...next, edited: doc.edited, basis: doc.basis };
+      setHistory((h) => ({ ...h, present: stamped }));
+      onDocChange?.(stamped);
+    },
+    [onDocChange, doc.edited, doc.basis],
+  );
+
+  /** 操作を戻す／進める（元の図面だけ。レイヤーは、いまのものを引き継ぐ） */
+  const stepHistory = (kind: 'undo' | 'redo') =>
+    setHistory((h) => {
+      const n = kind === 'undo' ? undo(h) : redo(h);
+      const present = carryLayers(n.present, h.present);
+      onDocChange?.(present);
+      return { ...n, present };
+    });
+
+  /** レイヤーを切り替える。選んでいた要素や、線を引くモードは、いったんやめる */
+  const selectLayer = (id: string | null) => {
+    setActiveLayer(id);
+    setSelection([]);
+    setMode('select');
+  };
+
+  const addLayerFlow = async () => {
+    const name = await input({
+      title: t('layer.add.title'),
+      message: [t('layer.add.help', { n: MAX_CUSTOM_LAYERS })],
+      confirmLabel: t('layer.add.ok'),
+      validate: (v) => {
+        const p = layerNameProblem(docRef.current, v);
+        return p ? t(p) : null;
+      },
+    });
+    if (name === null) return;
+    const r = addLayer(docRef.current, name);
+    if (!r) return;
+    applyLayers(r.doc);
+    selectLayer(r.id);
+  };
+  const renameLayerFlow = async (id: string) => {
+    const cur = layerTitle(docRef.current, id) ?? '';
+    const name = await input({
+      title: t('layer.rename.title'),
+      defaultValue: cur,
+      validate: (v) => {
+        const p = layerNameProblem(docRef.current, v, id);
+        return p ? t(p) : null;
+      },
+    });
+    if (name === null) return;
+    const next = renameLayer(docRef.current, id, name);
+    if (next) applyLayers(next);
+  };
+  const removeLayerFlow = async (id: string) => {
+    const cur = layerTitle(docRef.current, id) ?? '';
+    if (!(await ask({ title: t('layer.remove.title'), message: [t('layer.remove.confirm', { name: cur })], confirmLabel: t('layer.remove') }))) return;
+    const next = removeLayer(docRef.current, id);
+    if (!next) return;
+    applyLayers(next);
+    if (activeLayer === id) selectLayer(null);
+  };
+
+  /**
    * ヒアリングの回答から作り直す。手で直した内容は、自動で作った図面の上に重ねて、残す
    * （直前の図面は履歴に残るので、「操作を戻す」で戻せる）。
    * 手で直した内容を取り出せない古い図面（自動で作った図面の控えが無いもの）は、残せない。
@@ -170,7 +260,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const regenerate = () => {
     const legacy = doc.edited === true && !doc.base;
     const { doc: fresh, report } = legacy ? { doc: generated, report: { kept: false, dormant: 0, overlaps: 0 } } : rebuildWithOverrides(generated, doc);
-    const withOrientation: Doc = doc.orientation && !fresh.orientation ? { ...fresh, orientation: doc.orientation } : fresh;
+    // 印刷の向きとレイヤーは、作り直しても、引き継ぐ
+    const withOrientation: Doc = carryLayers(doc.orientation && !fresh.orientation ? { ...fresh, orientation: doc.orientation } : fresh, doc);
     setHistory((h) => commit(h, withOrientation));
     onDocChange?.(withOrientation);
     setSelection([]);
@@ -231,8 +322,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // 印刷プレビュー中は編集できない（Delete や 元に戻す のキーも効かせない）
-      if (sheetView) return;
+      // 印刷プレビュー中と、レイヤーを選んでいるあいだは、元の図面を編集できない（Delete や 元に戻す のキーも効かせない）
+      if (frozen) return;
       const el = e.target as HTMLElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       // 線を引くモードは、Esc キーで解除する（引きかけの線も、取りやめ）
@@ -243,11 +334,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        setHistory((h) => {
-          const n = e.shiftKey ? redo(h) : undo(h);
-          onDocChange?.(n.present);
-          return n;
-        });
+        stepHistory(e.shiftKey ? 'redo' : 'undo');
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length > 0) {
         e.preventDefault();
         apply(selection.length === 1 ? removeItem(doc, selection[0]!) : removeItems(doc, selection));
@@ -275,7 +362,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, sheetView, mode]);
+  }, [doc, selection, apply, frozen, mode]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -305,8 +392,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn with-icon"
                 title={t('editor.undo.help')}
-                onClick={() => setHistory((h) => { const n = undo(h); onDocChange?.(n.present); return n; })}
-                disabled={sheetView || history.past.length === 0}
+                onClick={() => stepHistory('undo')}
+                disabled={frozen || history.past.length === 0}
               >
                 <UndoIcon />
                 {t('editor.undo')}
@@ -315,8 +402,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn with-icon"
                 title={t('editor.redo.help')}
-                onClick={() => setHistory((h) => { const n = redo(h); onDocChange?.(n.present); return n; })}
-                disabled={sheetView || history.future.length === 0}
+                onClick={() => stepHistory('redo')}
+                disabled={frozen || history.future.length === 0}
               >
                 <UndoIcon redo />
                 {t('editor.redo')}
@@ -330,7 +417,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               <button
                 type="button"
                 className="btn danger"
-                disabled={sheetView || selection.length === 0}
+                disabled={frozen || selection.length === 0}
                 onClick={() => {
                   if (selection.length === 0) return;
                   apply(selection.length === 1 ? removeItem(doc, selection[0]!) : removeItems(doc, selection));
@@ -343,7 +430,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               <button
                 type="button"
                 className="sec"
-                disabled={sheetView}
+                disabled={frozen}
                 onClick={() => {
                   const b = docBounds(doc);
                   const { doc: next, id } = addText(doc, (b.x0 + b.x1) / 2, b.y1 + 40, '注記');
@@ -357,7 +444,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className={`sec${mode === 'wire' ? ' on' : ''}`}
                 aria-pressed={mode === 'wire'}
-                disabled={sheetView}
+                disabled={frozen}
                 onClick={() => {
                   setMode((m) => (m === 'wire' ? 'select' : 'wire'));
                   setSelection([]);
@@ -383,7 +470,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn sec"
                 title={t('editor.tidy.help')}
-                disabled={sheetView || heavy.busy !== null}
+                disabled={frozen || heavy.busy !== null}
                 aria-busy={heavy.busy === 'tidy'}
                 onClick={() => startHeavy('tidy')}
               >
@@ -393,7 +480,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn"
                 title={t('editor.layoutShrinkHelp')}
-                disabled={sheetView || heavy.busy !== null}
+                disabled={frozen || heavy.busy !== null}
                 aria-busy={heavy.busy === 'shrink'}
                 onClick={() => startHeavy('shrink')}
               >
@@ -403,7 +490,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn"
                 title={t('editor.layoutExpandHelp')}
-                disabled={sheetView || heavy.busy !== null}
+                disabled={frozen || heavy.busy !== null}
                 aria-busy={heavy.busy === 'expand'}
                 onClick={() => startHeavy('expand')}
               >
@@ -415,6 +502,15 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
             <div className="tool-row">
+              <LayerMenu
+                infos={layerInfos(doc)}
+                activeId={activeId}
+                full={customCount(doc) >= MAX_CUSTOM_LAYERS}
+                onSelect={selectLayer}
+                onAdd={() => void addLayerFlow()}
+                onRename={(id) => void renameLayerFlow(id)}
+                onRemove={(id) => void removeLayerFlow(id)}
+              />
               <button
                 type="button"
                 className="btn"
@@ -449,6 +545,16 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           </div>
         </div>
       </div>
+
+      {locked && (
+        <p className="layer-note" role="status">
+          <b>{t('layer.editing', { name: layerTitle(doc, activeId!) ?? '' })}</b>
+          <span className="hint">{t('layer.locked')}</span>
+          <button type="button" className="btn" onClick={() => selectLayer(null)}>
+            {t('layer.backToBase')}
+          </button>
+        </p>
+      )}
 
       {rebuiltNote && (
         <p className="stale-note" role="status">
@@ -527,7 +633,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn"
                 aria-pressed={orientation === o}
-                onClick={() => applyAuto({ ...doc, orientation: o })}
+                onClick={() => (activeId !== null ? applyLayers(setLayerOrientation(doc, activeId, o)) : applyAuto({ ...doc, orientation: o }))}
               >
                 {o === 'portrait' ? t('editor.portrait') : t('editor.landscape')}
               </button>
@@ -583,6 +689,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               setSelectedId(id);
             }}
             mode={mode}
+            locked={locked}
             wireDashed={wireDashed}
             zoom={zoom}
             onZoom={setZoom}
@@ -591,7 +698,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           )}
         </div>
 
-        <aside className={`side${sideOpen ? ' open' : ''}`} inert={sheetView}>
+        <aside className={`side${sideOpen ? ' open' : ''}`} inert={frozen}>
           <button type="button" className="btn side-close" onClick={() => setSideOpen(false)}>
             {t('common.close')}
           </button>

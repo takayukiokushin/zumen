@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { Hono } from 'hono';
 import { FILES_DIR, db, now } from './db.ts';
 import { isPlainObject, parseObject, readBody, text } from './input.ts';
+import { keepOnlyLayers, summarizeLayers, wouldDropLayers } from './layers.ts';
 import { searchFields, searchTerms } from './search.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
@@ -14,6 +15,9 @@ import { clearForDuplicate, MAX_TEXT_LENGTH } from '@zumen/knowledge';
 /** 現地写真の上限（1枚あたり） */
 /** 案件名が長すぎるときの知らせ（上限は MAX_TEXT_LENGTH ＝ 100文字） */
 const NAME_TOO_LONG = '案件名は100文字までです。短くしてから、もう一度お試しください。';
+/** 古い画面から保存しようとして、レイヤーが消えてしまうとき */
+const OLD_SCREEN_LAYERS =
+  'この画面は、古い版のまま開かれています。このまま保存すると、レイヤー（停電範囲図など）の内容が消えてしまうため、保存を止めました。画面を読み込み直してから、もう一度お試しください。';
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
 /** PDF（スキャンした図面など）は、写真より大きくなりやすいので、上限を広げる */
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
@@ -418,7 +422,7 @@ function withoutHandwrittenMemos(drawing: string | null): string | null {
  * その現場だけの、事業場名称・電柱名称・図面の名称・特記事項などの答えと、図面に手で足したメモは、空にする。
  * 現地写真は、その現場のものなので、コピーしない。もとの案件は何も変わらない。
  */
-projects.post('/:id/duplicate', (c) => {
+projects.post('/:id/duplicate', async (c) => {
   const user = c.get('user');
   const src = db.prepare('SELECT * FROM projects WHERE id = ? AND deleted_at IS NULL').get(c.req.param('id')) as
     | (ProjectRow & { answers: string; drawing: string | null })
@@ -433,12 +437,15 @@ projects.post('/:id/duplicate', (c) => {
   } catch {
     // 壊れた回答は、空として扱う
   }
+  // レイヤー（停電範囲図など）は、頼まれたものだけを複製する（何も頼まれなければ、1つも複製しない。意図せず写さないため）
+  const body = await readBody(c);
+  const layerIds = Array.isArray(body.layers) ? body.layers.filter((x): x is string => typeof x === 'string') : [];
   const id = newId();
   const t = now();
   const name = '無題の案件';
   db.prepare(
     'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, name, t, t, user.id, JSON.stringify(clearForDuplicate(answers as never)), withoutHandwrittenMemos(src.drawing), user.id);
+  ).run(id, name, t, t, user.id, JSON.stringify(clearForDuplicate(answers as never)), keepOnlyLayers(withoutHandwrittenMemos(src.drawing), layerIds), user.id);
   refreshSearch(id);
   takeLock(id, user.id);
   return c.json({ id, name, updatedAt: t }, 201);
@@ -475,6 +482,17 @@ projects.post('/', async (c) => {
   refreshSearch(id);
   takeLock(id, c.get('user').id);
   return c.json({ id, updatedAt: t }, 201);
+});
+
+/** 複製のときに尋ねる、図面のレイヤーの一覧（案件は開かない。編集中の印も取らない） */
+projects.get('/:id/layers', (c) => {
+  const row = db.prepare('SELECT id, drawing FROM projects WHERE id = ? AND deleted_at IS NULL').get(c.req.param('id')) as
+    | { id: string; drawing: string | null }
+    | undefined;
+  if (!row || !canTouch(c.get('user'), row.id)) {
+    return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
+  }
+  return c.json({ layers: summarizeLayers(row.drawing) });
 });
 
 projects.get('/:id', (c) => {
@@ -523,6 +541,11 @@ projects.put('/:id', async (c) => {
   // 回答と図面は、「項目名と値の組」の形で届く。ほかの形（文字・数字・配列）は、保存すると、案件が開けなくなるので受け付けない
   if ((body.answers != null && !isPlainObject(body.answers)) || (body.drawing != null && !isPlainObject(body.drawing))) {
     return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
+  }
+  // バージョンアップ前の古い画面は、レイヤーを知らない。そのまま保存すると消えてしまうので、止める
+  if (body.drawing != null) {
+    const stored = (db.prepare('SELECT drawing FROM projects WHERE id = ?').get(id) as { drawing: string | null } | undefined)?.drawing ?? null;
+    if (wouldDropLayers(stored, body.drawing)) return c.json({ error: OLD_SCREEN_LAYERS, oldScreen: true }, 400);
   }
 
   // 同じ人が別の端末や別の画面で保存していたら、そのまま上書きしない。
