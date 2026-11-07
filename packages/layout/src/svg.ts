@@ -1,6 +1,7 @@
 import { FONT_FAMILY, getSymbol, shapesToSvg, sizedSymbol } from '@zumen/symbols';
 import type { DrawingLayout } from './layout.ts';
 import { crossPointsAttr } from './cross.ts';
+import { groundSvg } from './ground.ts';
 import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, textWidth } from './text.ts';
 
 /** 表題欄の内容 */
@@ -201,6 +202,9 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   for (const c of drawing.crosses ?? []) {
     body.push(`    <polygon points="${crossPointsAttr(c.x, c.y, c.size, c.thickness)}" fill="${OVERLAY_RED}" stroke="none" />`);
   }
+
+  // 赤い接地のマーク
+  for (const g of drawing.grounds ?? []) body.push(groundSvg(g.x, g.y, g.rotate));
 
   // 1行のときは枠の中央に、2行のときは上の行・下の行の順に、枠の中央にそろえて書く
   const boxTop = M + 6;

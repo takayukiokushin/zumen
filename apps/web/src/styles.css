@@ -1143,8 +1143,9 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .canvas.cross-mode .item { cursor: default; }
 .canvas .item.inert.eligible { opacity: 1; cursor: crosshair; }
 .canvas .item.inert.eligible:hover { color: var(--draw-accent); }
-.canvas .cross-mark { cursor: pointer; }
-.canvas.cross-mode .cross-mark { cursor: crosshair; }
+.canvas .cross-mark, .canvas .ground-mark { cursor: pointer; }
+.canvas.cross-mode .cross-mark, .canvas.ground-mode .cross-mark, .canvas.ground-mode .ground-mark { cursor: crosshair; }
+.canvas.ground-mode, .canvas.ground-mode .item { cursor: crosshair; }
 
 /* 複製のときの、レイヤーを選ぶ窓 */
 .pick-list { display: flex; flex-direction: column; gap: calc(6px * var(--text-scale)); margin-top: calc(8px * var(--text-scale)); }

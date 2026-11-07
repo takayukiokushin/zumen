@@ -66,8 +66,17 @@ export interface DrawingCross {
   thickness: number;
 }
 
+/** 赤い接地のマーク（レイヤーに置いたもの）。取り付ける点の位置と、向き（ground.ts） */
+export interface DrawingGround {
+  x: number;
+  y: number;
+  rotate: number;
+}
+
 export interface DrawingLayout {
   symbols: PlacedSymbol[];
+  /** 赤い接地のマーク。×印と同じく、記号・文字のあとに描く */
+  grounds?: DrawingGround[];
   /** 赤い×印。記号・文字のあとに、いちばん上に描く */
   crosses?: DrawingCross[];
   wires: Wire[];

@@ -7,7 +7,7 @@ import { fromLayout, moveItem, removeItem } from '../../apps/web/src/editor/doc.
 import type { Doc, DocSymbol } from '../../apps/web/src/editor/doc.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { chooseSheet } from '../../apps/web/src/editor/inspect.ts';
-import { addExtraCross, addLayerCross, addLayerText, canAddLayerCross, CROSS_CENTER_SNAP, moveLayerCrosses, resetCross, canMark, crossOn, layerOf, markPoint, purgeOrphanCrosses, resolveCrosses, setCrossSize, setLayerItems } from '../../apps/web/src/editor/layers.ts';
+import { addExtraCross, addLayerCross, addLayerText, canAddLayerCross, CROSS_CENTER_SNAP, moveLayerCrosses, resetCross, canMark, crossOn, layerOf, markPoint, purgeOrphanMarks, resolveCrosses, setCrossSize, setLayerItems } from '../../apps/web/src/editor/layers.ts';
 import type { LayerCross } from '../../apps/web/src/editor/layers.ts';
 import { buildComposition, MAX_LAYER_ITEMS_PER_KIND } from '../../packages/knowledge/src/index.ts';
 import { COMPANY_NAME, CROSS_SPECS, OVERLAY_RED, crossPoints, layout, rotatedPort } from '../../packages/layout/src/index.ts';
@@ -83,10 +83,10 @@ console.log('\n■ 開放の赤い×印');
   const gone = removeItem(r1.doc, vcb.id);
   if (resolveCrosses(gone, 'outage').length !== 0) fail('開閉器が無くなっても、×印が出ています');
   if (layerOf(gone, 'outage')!.items.length !== 1) fail('開閉器が無くなった直後に、×印のデータを消してはいけません（「操作を戻す」で戻れるように、取っておく）');
-  if (layerOf(purgeOrphanCrosses(gone), 'outage')!.items.length !== 0) fail('保存するとき、機器が無くなった×印を、データから外せません');
+  if (layerOf(purgeOrphanMarks(gone), 'outage')!.items.length !== 0) fail('保存するとき、機器が無くなった×印を、データから外せません');
   const withText = addLayerText(gone, 'outage', 10, 10, '残る文字')!.doc;
-  if (layerOf(purgeOrphanCrosses(withText), 'outage')!.items.length !== 1) fail('×印を外すとき、文字まで消えています');
-  if (purgeOrphanCrosses(r1.doc) !== r1.doc) fail('外すものが無いときは、図面をそのまま返すはずです');
+  if (layerOf(purgeOrphanMarks(withText), 'outage')!.items.length !== 1) fail('×印を外すとき、文字まで消えています');
+  if (purgeOrphanMarks(r1.doc) !== r1.doc) fail('外すものが無いときは、図面をそのまま返すはずです');
   console.log('  付ける・外す・大きさを変える。開閉器を動かすと一緒に動く。開閉器が無くなったら出なくなり、保存するときにデータから外す（文字は残す）');
 
   // 5b. 中央からずらせる（付けた開閉器について動く）。中央の近くまで戻すと中央に戻る。同じ開閉器に、2つ以上付けられる
@@ -113,7 +113,7 @@ console.log('\n■ 開放の赤い×印');
   if (crossOn(extra.doc, 'outage', vcb.id)?.id !== r1.id) fail('増やしたあとも、中央の×印は、元のものを指すはずです');
   const centerFree = addLayerCross(shifted, 'outage', vcb.id, 'S');
   if (!centerFree || resolveCrosses(centerFree.doc, 'outage').length !== 2) fail('×印をずらしたあと、同じ開閉器の中央に、別の×印を付けられません');
-  const both = purgeOrphanCrosses(removeItem(extra.doc, vcb.id));
+  const both = purgeOrphanMarks(removeItem(extra.doc, vcb.id));
   if (layerOf(both, 'outage')!.items.length !== 0) fail('開閉器が無くなったとき、増やした×印まで、データから外れません');
   const movedBoth = resolveCrosses(moveItem(extra.doc, vcb.id, 20, 0), 'outage');
   if (Math.abs(movedBoth[0]!.x - (ex[0]!.x + 20)) > 1e-9 || Math.abs(movedBoth[1]!.x - (ex[1]!.x + 20)) > 1e-9) fail('増やした×印が、開閉器と一緒に動きません');

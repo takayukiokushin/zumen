@@ -19,13 +19,16 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addExtraCross, addLayer, addLayerCross, addLayerText, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addExtraCross, addLayer, addLayerCross, addLayerGround, addLayerText, canAddLayerGround, resolveGrounds, rotateGround, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
-import { CROSS_SIZE_IDS } from '@zumen/layout';
-import type { CrossSize } from '@zumen/layout';
+import { CROSS_SIZE_IDS, GROUND_ROTATES } from '@zumen/layout';
+import type { CrossSize, GroundRotate } from '@zumen/layout';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
+
+/** 接地のマークの向き（横線が向く方向）の、画面の言葉 */
+const GROUND_DIR_LABEL = { 0: 'ground.down', 90: 'ground.left', 180: 'ground.up', 270: 'ground.right' } as const;
 
 /** ×印の大きさの、画面の言葉 */
 const CROSS_LABEL = { S: 'cross.small', M: 'cross.mid', L: 'cross.large' } as const;
@@ -97,7 +100,9 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
-  const [mode, setMode] = useState<'select' | 'wire' | 'cross'>('select');
+  const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground'>('select');
+  /** 接地のマークを置くときの向き（横線が向く方向：下・左・上・右） */
+  const [groundRotate, setGroundRotate] = useState<GroundRotate>(0);
   /** 開放の×印を付けるときの大きさ（小・中・大） */
   const [crossSize, setCrossSize_] = useState<CrossSize>('M');
   /** 線を引くときの種類（false＝実線、true＝点線）。埋設ケーブル・TCなどは点線 */
@@ -150,9 +155,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const viewDoc = useMemo<Doc>(() => (layerDocItems.length > 0 ? { ...doc, items: [...doc.items, ...layerDocItems] } : doc), [doc, layerDocItems]);
   /** レイヤーに付けた赤い×印（付けた開閉器が図面にあるもの） */
   const layerCrosses = useMemo(() => (activeId !== null ? resolveCrosses(doc, activeId) : []), [doc, activeId]);
+  /** レイヤーに置いた赤い接地のマーク */
+  const layerGrounds = useMemo(() => (activeId !== null ? resolveGrounds(doc, activeId) : []), [doc, activeId]);
+  const sheetGrounds = useMemo(() => layerGrounds.map((g) => ({ x: g.x, y: g.y, rotate: g.rotate })), [layerGrounds]);
+  const selectedGround = locked ? (layerGrounds.find((g) => g.id === selectedId) ?? null) : null;
   const sheetCrosses = useMemo(() => layerCrosses.map((c) => ({ x: c.x, y: c.y, size: c.size, thickness: c.thickness })), [layerCrosses]);
   /** レイヤーを選んでいるときに、触れるもの（そのレイヤーに置いたもの）の id */
-  const activeIds = useMemo(() => new Set([...layerDocItems.map((i) => i.id), ...layerCrosses.map((c) => c.id)]), [layerDocItems, layerCrosses]);
+  const activeIds = useMemo(() => new Set([...layerDocItems.map((i) => i.id), ...layerCrosses.map((c) => c.id), ...layerGrounds.map((g) => g.id)]), [layerDocItems, layerCrosses, layerGrounds]);
   const selectedCross = locked ? (layerCrosses.find((c) => c.id === selectedId) ?? null) : null;
   const sheetTitle = {
     site: String(answers.customerNameForTitleBlock ?? answers.siteName ?? ''),
@@ -175,8 +184,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const paper: PaperSize = chosen.paper;
   const orientation: Orientation = chosen.orientation;
   const sheetSvg = useMemo(
-    () => buildSheetSvg(viewDoc, sheetTitle, paper, orientation, sheetCrosses),
-    [viewDoc, sheetCrosses, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
+    () => buildSheetSvg(viewDoc, sheetTitle, paper, orientation, sheetCrosses, sheetGrounds),
+    [viewDoc, sheetCrosses, sheetGrounds, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
   );
   /** 図面を描く台紙の縦横の比（印刷プレビューの形）。実際の用紙の大きさは、印刷の設定画面で決まる */
   const sheetMm = sheetSize(paper, orientation);
@@ -336,6 +345,19 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
   };
 
+  /** 接地のマークを、クリックした場所に置く（x・y が取り付ける点） */
+  const placeGround = (x: number, y: number) => {
+    if (activeId === null) return;
+    const d0 = docRef.current;
+    if (!canAddLayerGround(d0, activeId)) {
+      setLayerNote(t('layer.itemLimit.ground', { n: MAX_LAYER_ITEMS_PER_KIND }));
+      return;
+    }
+    setLayerNote(null);
+    const r = addLayerGround(d0, activeId, x, y, groundRotate);
+    if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+  };
+
   const addLayerFlow = async () => {
     const name = await input({
       title: t('layer.add.title'),
@@ -452,7 +474,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       if (locked && activeId !== null) {
         // レイヤーを選んでいるあいだは、そのレイヤーに置いたものだけを、戻す・消す・動かす
-        if (e.key === 'Escape' && mode === 'cross' && !e.isComposing) {
+        if (e.key === 'Escape' && (mode === 'cross' || mode === 'ground') && !e.isComposing) {
           e.preventDefault();
           setMode('select');
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -465,7 +487,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         } else if (selection.length > 0 && mode === 'select' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
           e.preventDefault();
           // 文字は動かし、×印は、付けた開閉器の中央からずらす
-          const textIds = selection.filter((id) => layerDocItems.some((i) => i.id === id));
+          const textIds = selection.filter((id) => layerDocItems.some((i) => i.id === id) || layerGrounds.some((g) => g.id === id));
           const crossIds = selection.filter((id) => layerCrosses.some((c) => c.id === id));
           if (textIds.length + crossIds.length === 0) return;
           const [ux, uy] = ARROW_MOVE[e.key]!;
@@ -510,7 +532,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems, layerCrosses]);
+  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems, layerCrosses, layerGrounds]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -630,6 +652,25 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 }}
               >
                 {t('layer.tool.cross')}
+              </button>
+              <button
+                type="button"
+                className={`${locked ? '' : 'dim'}${mode === 'ground' ? ' on' : ''}`.trim()}
+                aria-pressed={mode === 'ground'}
+                aria-disabled={!locked || sheetView}
+                title={t('layer.tool.groundHelp')}
+                onClick={() => {
+                  if (sheetView) return;
+                  if (!locked) {
+                    setLayerNote(t('layer.tool.notHere'));
+                    return;
+                  }
+                  setLayerNote(null);
+                  setSelection([]);
+                  setMode((m) => (m === 'ground' ? 'select' : 'ground'));
+                }}
+              >
+                {t('layer.tool.ground')}
               </button>
             </div>
           </div>
@@ -810,6 +851,25 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         <p className="mode-hint">{t('editor.wireHint')}</p>
       )}
 
+      {mode === 'ground' && locked && !sheetView && (
+        <p className="mode-hint cross-hint">
+          <span>{t('ground.hint')}</span>
+          <span className="cross-size-pick">
+            <span className="lbl">{t('ground.dir')}</span>
+            <span className="seg" role="group" aria-label={t('ground.dir')}>
+              {GROUND_ROTATES.map((r) => (
+                <button key={r} type="button" className="btn" aria-pressed={groundRotate === r} onClick={() => setGroundRotate(r)}>
+                  {t(GROUND_DIR_LABEL[r])}
+                </button>
+              ))}
+            </span>
+          </span>
+          <button type="button" className="btn" onClick={() => setMode('select')}>
+            {t('ground.done')}
+          </button>
+        </p>
+      )}
+
       {mode === 'cross' && locked && !sheetView && (
         <p className="mode-hint cross-hint">
           <span>{t('cross.hint')}</span>
@@ -906,8 +966,17 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               editLayer((d) => removeLayerItems(d, activeId, [id]));
               setSelection([]);
             }}
-            onCrossMoveEnd={(id, dx, dy) => {
-              if (activeId !== null) editLayer((d) => moveLayerCrosses(d, activeId, [id], dx, dy));
+            grounds={layerGrounds}
+            onGroundPlace={placeGround}
+            onGroundRemove={(id) => {
+              if (activeId === null) return;
+              editLayer((d) => removeLayerItems(d, activeId, [id]));
+              setSelection([]);
+            }}
+            onMarkMoveEnd={(id, dx, dy) => {
+              if (activeId === null) return;
+              if (layerGrounds.some((g) => g.id === id)) editLayer((d) => moveLayerItems(d, activeId, [id], dx, dy));
+              else editLayer((d) => moveLayerCrosses(d, activeId, [id], dx, dy));
             }}
             locked={locked}
             activeIds={activeIds}
@@ -949,6 +1018,38 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               ))}
             </div>
           </section>
+
+          {selectedGround && activeId !== null && (
+            <section>
+              <h3>{t('editor.selected')}</h3>
+              <p className="hint">{t('ground.selected')}</p>
+              <label className="lbl">{t('ground.dir')}</label>
+              <div className="seg" role="group" aria-label={t('ground.dir')}>
+                {GROUND_ROTATES.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className="btn"
+                    aria-pressed={selectedGround.rotate === r}
+                    onClick={() => editLayer((d) => rotateGround(d, activeId, selectedGround.id, r))}
+                  >
+                    {t(GROUND_DIR_LABEL[r])}
+                  </button>
+                ))}
+              </div>
+              <p className="hint">{t('ground.moveHint')}</p>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={() => {
+                  editLayer((d) => removeLayerItems(d, activeId, [selectedGround.id]));
+                  setSelection([]);
+                }}
+              >
+                {t('ground.remove')}
+              </button>
+            </section>
+          )}
 
           {selectedCross && activeId !== null && (
             <section>

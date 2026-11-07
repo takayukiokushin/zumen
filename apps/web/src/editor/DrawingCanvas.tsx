@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, crossPointsAttr } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, crossPointsAttr, groundBounds, groundSvg } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
-import type { ResolvedCross } from './layers.ts';
+import type { ResolvedCross, ResolvedGround } from './layers.ts';
 
 interface Props {
   doc: Doc;
@@ -20,15 +20,21 @@ interface Props {
   /** 線を引き終えたとき */
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く。'cross' のときは、開閉器をクリックして、開放の×印を付ける・外す */
-  mode: 'select' | 'wire' | 'cross';
+  mode: 'select' | 'wire' | 'cross' | 'ground';
+  /** レイヤーに置いた赤い接地のマーク */
+  grounds?: ResolvedGround[];
+  /** 'ground' のときに、図面のクリックした場所（取り付ける点）に、接地のマークを置く */
+  onGroundPlace?: (x: number, y: number) => void;
+  /** 'ground' のときに、接地のマークそのものをクリックしたとき（その接地のマークを外す） */
+  onGroundRemove?: (groundId: string) => void;
   /** レイヤーに付けた赤い×印（図面のいちばん上に描く） */
   crosses?: ResolvedCross[];
   /** 'cross' のときに、記号（PAS のような、中に部品を抱えるものは、かたまりの親）をクリックしたとき */
   onCrossClick?: (symbolId: string) => void;
   /** 'cross' のときに、×印そのものをクリックしたとき（その×印を外す） */
   onCrossRemove?: (crossId: string) => void;
-  /** ×印をドラッグして動かし終わったとき（動かした量。付けた開閉器の中央からのずれが変わる） */
-  onCrossMoveEnd?: (crossId: string, dx: number, dy: number) => void;
+  /** ×印・接地のマークをドラッグして動かし終わったとき（動かした量） */
+  onMarkMoveEnd?: (markId: string, dx: number, dy: number) => void;
   /**
    * 元の図面を動かせない状態（レイヤーを選んでいるとき）。元の図面は薄く表示して、選ぶ・動かす・線を引くことはできない。
    * 触れるのは、activeIds に入っているもの（そのレイヤーに置いたもの）だけ
@@ -84,7 +90,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], onCrossClick, onCrossRemove, onCrossMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], onGroundPlace, onGroundRemove, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -307,6 +313,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
       return;
     }
+    // 接地のマークを置くモード：どこをクリックしても、その場所に置く（記号の上でも。クリックは、図面の台紙に届かせる）
+    if (mode === 'ground') return;
     if (mode === 'wire' || inert(it.id)) return;
     e.stopPropagation();
 
@@ -413,7 +421,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       const { id, dx, dy } = crossDrag;
       setCrossDrag(null);
       start.current = null;
-      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) onCrossMoveEnd?.(id, dx, dy);
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) onMarkMoveEnd?.(id, dx, dy);
       return;
     }
     if (resize) {
@@ -437,6 +445,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
     if (mode === 'cross') return;
+    if (mode === 'ground') {
+      const q = toDrawing(e);
+      onGroundPlace?.(snap(q.x), snap(q.y));
+      return;
+    }
     // レイヤーを選んでいて、置いたものが無いときは、触れるものが無いので、何もしない
     if (locked && !(activeIds && activeIds.size > 0)) return;
     if (mode !== 'wire') {
@@ -471,7 +484,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   return (
     <svg
       ref={svgRef}
-      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}`}
+      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}`}
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
       onPointerDown={onCanvasDown}
@@ -589,6 +602,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
               key={c.id}
               className={`cross-mark${sel ? ' selected' : ''}`}
               onPointerDown={(e) => {
+                if (mode === 'ground') return;
                 e.stopPropagation();
                 if (mode === 'cross') onCrossRemove?.(c.id);
                 else if (mode === 'select') {
@@ -612,6 +626,40 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                   pointerEvents="none"
                 />
               )}
+            </g>
+          );
+        })}
+
+        {/* 赤い接地のマーク。置いた場所の近くの機器について動く。選んでドラッグすれば、動かせる */}
+        {grounds.map((g) => {
+          const sel = selectedIds.includes(g.id);
+          const dragging = crossDrag?.id === g.id;
+          const gx = g.x + (dragging ? crossDrag.dx : 0);
+          const gy = g.y + (dragging ? crossDrag.dy : 0);
+          const bb = groundBounds(gx, gy, g.rotate);
+          return (
+            <g
+              key={g.id}
+              className={`ground-mark${sel ? ' selected' : ''}`}
+              onPointerDown={(e) => {
+                if (mode === 'ground') {
+                  e.stopPropagation();
+                  onGroundRemove?.(g.id);
+                  return;
+                }
+                e.stopPropagation();
+                if (mode === 'select') {
+                  onSelect([g.id]);
+                  (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+                  start.current = toDrawing(e);
+                  setCrossDrag({ id: g.id, dx: 0, dy: 0 });
+                }
+              }}
+            >
+              <g dangerouslySetInnerHTML={{ __html: groundSvg(gx, gy, g.rotate, '') }} />
+              {/* 細い線でもつかめるように、見えない四角を重ねる */}
+              <rect x={bb.x0 - 3} y={bb.y0 - 3} width={bb.x1 - bb.x0 + 6} height={bb.y1 - bb.y0 + 6} fill="transparent" stroke="none" />
+              {sel && <rect className="selection" x={bb.x0 - 4} y={bb.y0 - 4} width={bb.x1 - bb.x0 + 8} height={bb.y1 - bb.y0 + 8} fill="none" pointerEvents="none" />}
             </g>
           );
         })}

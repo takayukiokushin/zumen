@@ -1,6 +1,7 @@
 import { getSymbol, sizedSymbol } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, renderSvg } from '@zumen/layout';
-import type { DrawingCross, DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
+import { groundBounds } from '@zumen/layout';
+import type { DrawingCross, DrawingGround, DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
 
 /** 編集中の図面を、図枠・表題欄つきの1枚のSVGにする */
@@ -11,6 +12,8 @@ export function buildSheetSvg(
   orientation: Orientation = 'portrait',
   /** 重ねる赤い×印（レイヤーを選んでいるとき） */
   crosses: DrawingCross[] = [],
+  /** 重ねる赤い接地のマーク */
+  grounds: DrawingGround[] = [],
 ): string {
   const drawing: DrawingLayout = {
     symbols: [],
@@ -78,6 +81,11 @@ export function buildSheetSvg(
   }
   for (const c of crosses) ext(c.x - c.size / 2, c.y - c.size / 2, c.x + c.size / 2, c.y + c.size / 2);
   if (crosses.length > 0) drawing.crosses = crosses;
+  for (const g of grounds) {
+    const gb = groundBounds(g.x, g.y, g.rotate);
+    ext(gb.x0, gb.y0, gb.x1, gb.y1);
+  }
+  if (grounds.length > 0) drawing.grounds = grounds;
   if (!Number.isFinite(b.x0)) Object.assign(b, { x0: 0, y0: 0, x1: 100, y1: 100 });
 
   return renderSvg(drawing, title, { paper, orientation });

@@ -1,7 +1,7 @@
 import { FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
 import { CROSS_SPECS, clampTextSize, rotatedPort } from '@zumen/layout';
-import type { CrossSize } from '@zumen/layout';
+import type { CrossSize, GroundRotate } from '@zumen/layout';
 import { defOf, freshId, sameName } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
 
@@ -54,8 +54,27 @@ export interface LayerCross {
   dy?: number;
 }
 
-/** レイヤーに置くもの。接地・枠などの種類は、これから足していく */
-export type LayerItem = LayerText | LayerCross;
+/**
+ * レイヤーに置いた、赤い接地のマーク（短絡接地器具を取り付ける場所）。
+ * 図面の好きな場所に置ける。置いた場所の近くの機器（near）からのずれで覚えるので、その機器が動けば、一緒に動く。
+ * その機器が無くなったら、接地のマークも消える（画面にも印刷にも出さず、保存するときに、データからも外す）。
+ * 近くに機器が無いところに置いたものは、置いた場所のまま。
+ */
+export interface LayerGround {
+  kind: 'ground';
+  id: string;
+  /** 取り付ける点の、最後に置いた場所 */
+  x: number;
+  y: number;
+  /** 横線が向く方向：0＝下、90＝左、180＝上、270＝右 */
+  rotate: GroundRotate;
+  near?: string;
+  ndx: number;
+  ndy: number;
+}
+
+/** レイヤーに置くもの。枠などの種類は、これから足していく */
+export type LayerItem = LayerText | LayerCross | LayerGround;
 
 export interface Layer {
   /** 固定のレイヤーは 'outage'・'withstand'。追加したものは 'custom-1' など */
@@ -254,9 +273,9 @@ export function moveLayerItems(doc: Doc, layerId: string, ids: string[], dx: num
     doc,
     layerId,
     items.map((t) => {
-      // 動かせるのは文字だけ（×印は、付けた開閉器について動く）
-      if (t.kind !== 'text' || !ids.includes(t.id)) return t;
-      const p = resolveText(doc, t);
+      // ×印は、付けた開閉器について動く（moveLayerCrosses）。ここで動かすのは、文字と、接地のマーク
+      if (t.kind === 'cross' || !ids.includes(t.id)) return t;
+      const p = t.kind === 'ground' ? (resolveGroundPoint(doc, t) ?? { x: t.x, y: t.y }) : resolveText(doc, t);
       const x = p.x + dx;
       const y = p.y + dy;
       return { ...t, x, y, ...anchorFor(doc, x, y) };
@@ -395,17 +414,72 @@ export function setCrossSize(doc: Doc, layerId: string, id: string, size: CrossS
 }
 
 /**
- * 付けた開閉器が、図面から無くなった×印を、データから外す（保存するときに行う）。
+ * 付けた開閉器・近くの機器が、図面から無くなった×印・接地のマークを、データから外す（保存するときに行う）。
  * それまでは、画面にも印刷にも出さずに、取っておく（「操作を戻す」で機器が戻れば、×印も戻るように）。
  */
-export function purgeOrphanCrosses(doc: Doc): Doc {
+export function purgeOrphanMarks(doc: Doc): Doc {
   if (!doc.layers) return doc;
   let changed = false;
   const layers = doc.layers.map((l) => {
-    const items = l.items.filter((i) => i.kind !== 'cross' || symbolByTarget(doc, i.target) !== undefined);
+    const items = l.items.filter((i) => {
+      if (i.kind === 'cross') return symbolByTarget(doc, i.target) !== undefined;
+      if (i.kind === 'ground') return resolveGroundPoint(doc, i) !== null;
+      return true;
+    });
     if (items.length === l.items.length) return l;
     changed = true;
     return { ...l, items };
   });
   return changed ? { ...doc, layers } : doc;
+}
+
+/* ---------------- 赤い接地のマーク ---------------- */
+
+/** 接地のマークの、いまの取り付ける点。近くの機器が無くなっていれば null（出さない） */
+export function resolveGroundPoint(doc: Doc, g: LayerGround): { x: number; y: number } | null {
+  if (g.near !== undefined) {
+    for (const it of doc.items) {
+      if (it.kind === 'symbol' && sameName(it.id) === g.near) return { x: it.x + g.ndx, y: it.y + g.ndy };
+    }
+    return null;
+  }
+  return { x: g.x, y: g.y };
+}
+
+/** 画面と印刷に出す接地のマーク（近くの機器が図面にあるもの、または、近くに機器が無いところに置いたもの） */
+export interface ResolvedGround {
+  id: string;
+  x: number;
+  y: number;
+  rotate: GroundRotate;
+}
+
+export function resolveGrounds(doc: Doc, layerId: string): ResolvedGround[] {
+  const out: ResolvedGround[] = [];
+  for (const g of layerOf(doc, layerId)?.items ?? []) {
+    if (g.kind !== 'ground') continue;
+    const at = resolveGroundPoint(doc, g);
+    if (at) out.push({ id: g.id, x: at.x, y: at.y, rotate: g.rotate });
+  }
+  return out;
+}
+
+/** 接地のマークを足せるか（1つのレイヤーに置ける数には、上限がある） */
+export const canAddLayerGround = (doc: Doc, layerId: string): boolean =>
+  (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'ground').length < MAX_LAYER_ITEMS_PER_KIND;
+
+/** 好きな場所（x・y が取り付ける点）に、接地のマークを置く。上限を超えるときは null。近くの機器を覚える */
+export function addLayerGround(doc: Doc, layerId: string, x: number, y: number, rotate: GroundRotate = 0): { doc: Doc; id: string } | null {
+  if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerGround(doc, layerId)) return null;
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('lground', new Set(items.map((i) => i.id)));
+  const g: LayerGround = { kind: 'ground', id, x, y, rotate, ...anchorFor(doc, x, y) };
+  return { doc: setLayerItems(doc, layerId, [...items, g]), id };
+}
+
+/** 接地のマークの向きを変える */
+export function rotateGround(doc: Doc, layerId: string, id: string, rotate: GroundRotate): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(doc, layerId, items.map((i) => (i.kind === 'ground' && i.id === id ? { ...i, rotate } : i)));
 }
