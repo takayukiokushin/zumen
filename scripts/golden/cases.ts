@@ -1,0 +1,271 @@
+/**
+ * 図面の見本（ゴールデン）の、組み合わせの一覧。
+ *
+ * 実際のお客様の回答は、公開されている場所に置けないので、ここにあるのはすべて「架空」の現場。
+ * 受電の形・エリアの数・変圧器の台数・PCS・発電機・蓄電池・継電器など、図面の形が大きく変わる組み合わせを
+ * 一通りそろえてある。ここから作った図面（印刷と同じ1枚の絵）を docs/golden/ に保存しておき、
+ * あとから作った図面と比べる（scripts/check-golden.ts）。
+ *
+ * 組み合わせを足す・変えるときは、`pnpm golden` で保存し直す。
+ * 「mustHave」は、回答のキーを書き間違えて、何も効いていない見本ができるのを防ぐための確認
+ * （図面に、この記号が必ず入っていること）。
+ */
+import type { Answers } from '../../packages/knowledge/src/index.ts';
+
+export interface GoldenCase {
+  /** ファイル名に使う番号つきの名前（半角） */
+  id: string;
+  /** 何を確かめる見本か（画面の一覧に出す） */
+  title: string;
+  answers: Answers;
+  /**
+   * 図面に必ず入っているべき記号。「pas」なら、名前の頭が pas の記号が1つ以上。
+   * 「tr-3p-dy=5」のように「=」を付けると、その記号がちょうど5個。
+   */
+  mustHave: string[];
+  /** 図面に入っていてはいけない記号（名前の頭が合うもの） */
+  mustNot?: string[];
+}
+
+/** 基本の現場：柱上PAS（DGR・VT・LA内蔵）→ 引込ケーブル → キュービクル（PF付LBS）→ 変圧器1台 → 低圧2回線 */
+const BASE: Answers = {
+  siteName: '見本工場',
+  receivingVoltage: 6600,
+  sourceType: 'pole',
+  poleName: '架空電柱 1',
+  hasAs: 'no',
+  boundaryPattern: 'coincident',
+  sectionalizer: 'pas',
+  pasControl: 'dgr',
+  pasBuiltinVt: 'yes',
+  pasBuiltinLa: 'yes',
+  pasRatedVoltage: '7200',
+  pasRatedCurrent: '200',
+  vctLocation: 'indoor',
+  vctCount: 2,
+  cableInstallation: 'buried',
+  cableStructure: 'CVT',
+  cableVoltage: 6600,
+  cableCrossSection: '38',
+  cableLength: 14,
+  areaCount: 1,
+  areaForm: 'cubicle',
+  areaPlacement: 'outdoor',
+  mainBreakerForm: 'pfs',
+  lbsRatedVoltage: '7200',
+  lbsRatedCurrent: 200,
+  lbsFuseCount: 3,
+  lbsPfG: '50A',
+  lbsPfKa: '40kA',
+  hasSiteVt: 'yes',
+  hasSiteCt: 'yes',
+  ctRatio: '40A/5A',
+  vtRatio: '6600/110V',
+  hasZpd: 'yes',
+  transformerCount: 1,
+  trUsage: '動力',
+  trConnection: 'tr-3p-dy',
+  trCapacity: 300,
+  trVoltage: '6600V/440-254V',
+  feederCount: 2,
+  feederName: '動力盤',
+  feederBreaker: 'MCCB225A',
+  hasCapacitor: 'no',
+  hasPv: 'no',
+  hasGenerator: 'no',
+  hasBattery: 'no',
+};
+
+/** CB形の主遮断装置（DS＋VCB） */
+const CB: Answers = {
+  mainBreakerForm: 'cb',
+  dsRating: '7200V 200A',
+  vcbRating: '7200V 600A',
+  hasSiteVt: 'yes',
+  hasSiteCt: 'yes',
+};
+
+const mk = (id: string, title: string, mustHave: string[], ...parts: Answers[]): GoldenCase => ({
+  id,
+  title,
+  mustHave,
+  answers: Object.assign({}, BASE, ...parts),
+});
+/** 入っていてはいけない記号も指定するとき */
+const not = (c: GoldenCase, ...mustNot: string[]): GoldenCase => ({ ...c, mustNot });
+
+export const GOLDEN_CASES: GoldenCase[] = [
+  mk('01-basic', '基本形：柱上PAS・キュービクル・PF付LBS・変圧器1台', ['pas-builtin', 'lbs-pf', 'tr-3p-dy=1'], {}),
+  mk('02-cb-multi', 'CB形・変圧器3台・コンデンサ2組', ['vcb=1', 'tr-3p-dy=3', 'sc=2', 'sr=2'], CB, {
+    transformerCount: 3,
+    hasCapacitor: 'yes',
+    capacitorCount: 2,
+    capacitorCapacity: '50kvar',
+    capHasPc: 'yes',
+    capHasLbs: 'yes',
+    hasReactor: 'yes',
+    reactorCapacity: '6%',
+  }),
+  mk('03-cabinet-source', '引込が高圧キャビネット（柱上ではない）・CB形', ['cabinet', 'vcb=1'], CB, {
+    sourceType: 'cabinet',
+    cabinetName: '架空キャビネット',
+    sectionalizer: 'none',
+    groundCabinet: 'no',
+  }),
+  mk('04-pgs-gr', '区分開閉器がPGS・地絡継電器GR', ['pas-builtin', 'relay-gr=1'], { sectionalizer: 'pgs', pasControl: 'gr' }),
+  mk('05-ugs', '区分開閉器がUGS（地中線用）', ['pas-builtin'], { sectionalizer: 'ugs', ugsCabinetName: '架空UGSキャビネット' }),
+  not(mk('06-ground-cabinet', '区分開閉器なし・地絡キャビネット', ['ds', 'lbs-pf'], {
+    sectionalizer: 'none',
+    groundCabinet: 'yes',
+    groundCabinetType: 'mold-discon',
+  }), 'pas'),
+  mk('07-split-boundary-lbs', '責任分界点を分ける（保安用LBS）', ['boundary-property'], { boundaryPattern: 'split', boundarySafetyDevice: 'lbs' }),
+  mk('08-split-boundary-vcb', '責任分界点を分ける（保安用VCB）・CB形', ['boundary-property', 'vcb'], CB, {
+    boundaryPattern: 'split',
+    boundarySafetyDevice: 'vcb',
+  }),
+  mk('09-room-cubicle', '電気室の中にキュービクル', ['lbs-pf'], { areaForm: 'room-cubicle', areaPlacement: 'indoor' }),
+  mk('10-room-open', '電気室・オープンフレーム式・CB形', ['vcb=1'], CB, { areaForm: 'room-open', areaPlacement: 'indoor' }),
+  mk('11-apartment-pole', '集合住宅の柱上変圧器', ['tr-1p-2w=1'], { areaForm: 'apartment-pole', trConnection: 'tr-1p-2w', trCapacity: 50, trVoltage: '6600V/210-105V' }),
+  mk('12-3300v-overhead', '3300V受電・架空引込ケーブル（CV）', ['lbs-pf', 'cable-head'], {
+    receivingVoltage: 3300,
+    pasRatedVoltage: '3300',
+    cableInstallation: 'overhead',
+    cableStructure: 'CV',
+    cableVoltage: 3300,
+    lbsRatedVoltage: '6600',
+    trVoltage: '3300V/210V',
+  }),
+  not(mk('13-no-cable', '引込ケーブルなし', ['lbs-pf'], { cableInstallation: 'none' }), 'cable-head'),
+  mk('14-tr5', '変圧器5台を横に並べる', ['tr-3p-dy=5'], CB, { transformerCount: 5 }),
+  mk('15-tr8-pv', '変圧器8台・太陽光PCSを各変圧器に割り振る', ['tr-3p-dy=8', 'pcs=8', 'pv=8'], CB, {
+    transformerCount: 8,
+    hasPv: 'yes',
+    pvGroupCount: '1',
+    pcsCapacity: 50,
+    pcsCount: '16',
+    pcsToTr1: 2,
+    pcsToTr2: 2,
+    pcsToTr3: 2,
+    pcsToTr4: 2,
+    pcsToTr5: 2,
+    pcsToTr6: 2,
+    pcsToTr7: 2,
+    pcsToTr8: 2,
+  }),
+  mk('16-pv-gen-battery', '太陽光・発電機・蓄電池が全部ある', ['pcs', 'generator=1', 'battery-unit=1'], CB, {
+    transformerCount: 2,
+    hasPv: 'yes',
+    pvGroupCount: '1',
+    pcsCapacity: 50,
+    pcsCount: '4',
+    pcsToTr1: 2,
+    pcsToTr2: 2,
+    hasGenerator: 'yes',
+    generatorCount: 1,
+    generatorUsage: 'emergency',
+    generatorFuel: 'diesel',
+    generatorCapacity: '100kVA',
+    generatorTransformer: '1',
+    hasBattery: 'yes',
+    batteryCapacity: '100kWh',
+    batteryTransformer: '2',
+  }),
+  mk('17-generator-normal', '常用発電機のみ', ['generator=2'], { hasGenerator: 'yes', generatorCount: 2, generatorUsage: 'normal', generatorFuel: 'gas', generatorCapacity: '250kVA' }),
+  mk('18-battery-station', '系統用蓄電所：蓄電池と補助変圧器2台', ['battery-unit=1', 'tr-1p-2w=2'], CB, {
+    transformerCount: 2,
+    hasBattery: 'yes',
+    batteryCapacity: '200kWh',
+    batteryTransformer: 'none',
+    auxTrCount: '2',
+    auxTrFrom: '1',
+    auxTrUsage: '電灯',
+    auxTrConnection: 'tr-1p-2w',
+    auxTrCapacity: 20,
+    auxTrVoltage: '6600V/210-105V',
+    auxTrMccb: '50',
+  }),
+  mk('19-relays-vt-ct', 'VT・CTが複数組・継電器（OCR・UVR・OVR）', ['relay-ocr=1', 'relay-uvr=1', 'relay-ovr=1', 'ct=2'], CB, {
+    vtSetCount: '2',
+    ctSetCount: '2',
+    relayCount: '3',
+    relayType: 'OCR',
+    relayAt: 'ct-1',
+    relayType__2: 'UVR',
+    relayAt__2: 'vt-1',
+    relayType__3: 'OVR',
+    relayAt__3: 'vt-1',
+    relayTest__3: 'no',
+  }),
+  mk('20-two-areas', 'エリア2つ（キュービクル＋電気室）', ['lbs-pf', 'cable-head=4'], {
+    areaCount: 2,
+    areaForm__2: 'room-open',
+    areaPlacement__2: 'indoor',
+    'a2:areaIntake': 'ds-vcb',
+    'a2:trCapacity': 100,
+    'a2:trConnection': 'tr-3p-dy',
+    'a2:linkTap': 'bus',
+    'a2:linkCableInstallation': 'buried',
+    'a2:linkCableStructure': 'CVT',
+    'a2:linkCableCrossSection': '38',
+    'a2:linkCableLength': 30,
+  }),
+  mk('21-three-areas', 'エリア3つ（2つ目から分岐・3つ目は1つ目から分岐）', ['vcb=3'], CB, {
+    areaCount: 3,
+    areaForm__2: 'cubicle',
+    areaPlacement__2: 'outdoor',
+    areaForm__3: 'cubicle',
+    areaPlacement__3: 'outdoor',
+    'a2:areaIntake': 'ds-vcb',
+    'a2:trCapacity': 100,
+    'a2:linkTap': 'bus',
+    'a2:linkCableInstallation': 'buried',
+    'a2:linkCableLength': 30,
+    'a3:areaIntake': 'ds-vcb',
+    'a3:trCapacity': 100,
+    'a3:linkTap': 'bus',
+    'a3:linkFrom': 1,
+    'a3:linkCableInstallation': 'buried',
+    'a3:linkCableLength': 40,
+  }),
+  mk('22-five-areas', 'エリア5つ（大きな構内）', ['vcb=5'], CB, {
+    areaCount: 5,
+    ...Object.fromEntries(
+      [2, 3, 4, 5].flatMap((n) => [
+        [`areaForm__${n}`, 'cubicle'],
+        [`areaPlacement__${n}`, 'outdoor'],
+        [`a${n}:areaIntake`, 'ds-vcb'],
+        [`a${n}:trCapacity`, 100],
+        [`a${n}:linkTap`, 'bus'],
+        [`a${n}:linkFrom`, 1],
+        [`a${n}:linkCableInstallation`, 'buried'],
+        [`a${n}:linkCableLength`, 20 + n],
+      ]),
+    ),
+  }),
+  mk('23-pole-top', '柱上開閉（pole-top）・小規模', ['tr-3p-dy=1'], { mainBreakerForm: 'pole-top', transformerCount: 1, trCapacity: 100, feederCount: 1 }),
+  mk('24-large', '大規模：変圧器12台・コンデンサ6組・発電機・太陽光', ['tr-3p-dy=12', 'sc=6', 'generator=1', 'pcs'], CB, {
+    transformerCount: 12,
+    hasCapacitor: 'yes',
+    capacitorCount: 6,
+    capacitorCapacity: '30kvar',
+    hasPv: 'yes',
+    pvGroupCount: '2',
+    pcsCapacity: 50,
+    pcsCount: '10',
+    pcsToTr1: 5,
+    pcsToTr2: 5,
+    hasGenerator: 'yes',
+    generatorCount: 1,
+    generatorUsage: 'emergency',
+    generatorFuel: 'diesel',
+    generatorCapacity: '500kVA',
+    generatorTransformer: '1',
+  }),
+  mk('25-minimal', '最小構成：低圧回線なし', ['pas', 'lbs-pf'], { feederCount: 0, hasSiteVt: 'no', hasSiteCt: 'no', hasZpd: 'no', pasBuiltinVt: 'no', pasBuiltinLa: 'no' }),
+  mk('26-long-title', '表題が長く2行になる（事業場名・表題欄への記載名・図面名称が長い）', ['lbs-pf'], {
+    siteName: '架空の株式会社 第二製造工場 敷地内高圧受電設備（北側・南側）',
+    customerNameForTitleBlock: '架空の株式会社 第二製造工場 敷地内高圧受電設備（北側・南側）',
+    drawingName: 'キュービクル式高圧受電設備単線結線図（増設工事後の姿・全体）',
+  }),
+];
