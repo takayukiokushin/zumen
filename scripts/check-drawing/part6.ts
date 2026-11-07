@@ -7,7 +7,7 @@ import { fromLayout, moveItem, removeItem } from '../../apps/web/src/editor/doc.
 import type { Doc, DocSymbol } from '../../apps/web/src/editor/doc.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { chooseSheet } from '../../apps/web/src/editor/inspect.ts';
-import { addLayerCross, addLayerText, canAddLayerCross, canMark, crossOn, layerOf, markPoint, purgeOrphanCrosses, resolveCrosses, setCrossSize, setLayerItems } from '../../apps/web/src/editor/layers.ts';
+import { addExtraCross, addLayerCross, addLayerText, canAddLayerCross, CROSS_CENTER_SNAP, moveLayerCrosses, resetCross, canMark, crossOn, layerOf, markPoint, purgeOrphanCrosses, resolveCrosses, setCrossSize, setLayerItems } from '../../apps/web/src/editor/layers.ts';
 import type { LayerCross } from '../../apps/web/src/editor/layers.ts';
 import { buildComposition, MAX_LAYER_ITEMS_PER_KIND } from '../../packages/knowledge/src/index.ts';
 import { COMPANY_NAME, CROSS_SPECS, OVERLAY_RED, crossPoints, layout, rotatedPort } from '../../packages/layout/src/index.ts';
@@ -88,6 +88,36 @@ console.log('\n■ 開放の赤い×印');
   if (layerOf(purgeOrphanCrosses(withText), 'outage')!.items.length !== 1) fail('×印を外すとき、文字まで消えています');
   if (purgeOrphanCrosses(r1.doc) !== r1.doc) fail('外すものが無いときは、図面をそのまま返すはずです');
   console.log('  付ける・外す・大きさを変える。開閉器を動かすと一緒に動く。開閉器が無くなったら出なくなり、保存するときにデータから外す（文字は残す）');
+
+  // 5b. 中央からずらせる（付けた開閉器について動く）。中央の近くまで戻すと中央に戻る。同じ開閉器に、2つ以上付けられる
+  const shifted = moveLayerCrosses(r1.doc, 'outage', [r1.id], 10, 6);
+  const sc = resolveCrosses(shifted, 'outage')[0]!;
+  if (Math.abs(sc.x - (c0.x + 10)) > 1e-9 || Math.abs(sc.y - (c0.y + 6)) > 1e-9 || sc.dx !== 10 || sc.dy !== 6) fail('×印を中央からずらせません');
+  const shiftedMoved = resolveCrosses(moveItem(shifted, vcb.id, 30, 40), 'outage')[0]!;
+  if (Math.abs(shiftedMoved.x - (sc.x + 30)) > 1e-9 || Math.abs(shiftedMoved.y - (sc.y + 40)) > 1e-9) fail('ずらした×印が、開閉器を動かしたときに、一緒に動きません');
+  const back = moveLayerCrosses(shifted, 'outage', [r1.id], -10, -6);
+  const bc = layerOf(back, 'outage')!.items[0] as LayerCross;
+  if ('dx' in bc || 'dy' in bc || crossOn(back, 'outage', vcb.id)?.id !== r1.id) fail('元の位置に戻したとき、×印が中央に戻っていません');
+  const near = moveLayerCrosses(shifted, 'outage', [r1.id], -10 + (CROSS_CENTER_SNAP - 1), -6);
+  if ('dx' in (layerOf(near, 'outage')!.items[0] as LayerCross)) fail('中央の近くまで戻したのに、中央に戻りません');
+  if (crossOn(shifted, 'outage', vcb.id) !== undefined) fail('ずらした×印が、「中央の×印」として扱われています（開閉器をクリックしたとき、ずらした×印を外してはいけません）');
+  const resetDoc = resetCross(shifted, 'outage', r1.id);
+  if ('dx' in (layerOf(resetDoc, 'outage')!.items[0] as LayerCross)) fail('「中央に戻す」が効きません');
+  // 同じ開閉器に、もう1つ。ずらした×印があれば、中央にも付けられる
+  const extra = addExtraCross(r1.doc, 'outage', r1.id);
+  if (!extra) throw new Error('同じ開閉器に、×印を増やせません');
+  const ex = resolveCrosses(extra.doc, 'outage');
+  const [e0, e1] = [ex.find((c) => c.id === r1.id)!, ex.find((c) => c.id === extra.id)!];
+  if (ex.length !== 2 || e1.target !== e0.target || e1.sizeId !== e0.sizeId) fail('増やした×印が、同じ開閉器・同じ大きさになっていません');
+  if (Math.abs(e1.x - e0.x) < e0.size) fail(`増やした×印が、元の×印と重なっています（中心の間隔 ${Math.abs(e1.x - e0.x)}、大きさ ${e0.size}）`);
+  if (crossOn(extra.doc, 'outage', vcb.id)?.id !== r1.id) fail('増やしたあとも、中央の×印は、元のものを指すはずです');
+  const centerFree = addLayerCross(shifted, 'outage', vcb.id, 'S');
+  if (!centerFree || resolveCrosses(centerFree.doc, 'outage').length !== 2) fail('×印をずらしたあと、同じ開閉器の中央に、別の×印を付けられません');
+  const both = purgeOrphanCrosses(removeItem(extra.doc, vcb.id));
+  if (layerOf(both, 'outage')!.items.length !== 0) fail('開閉器が無くなったとき、増やした×印まで、データから外れません');
+  const movedBoth = resolveCrosses(moveItem(extra.doc, vcb.id, 20, 0), 'outage');
+  if (Math.abs(movedBoth[0]!.x - (ex[0]!.x + 20)) > 1e-9 || Math.abs(movedBoth[1]!.x - (ex[1]!.x + 20)) > 1e-9) fail('増やした×印が、開閉器と一緒に動きません');
+  console.log('  中央からずらせる（ドラッグ・矢印キー）。中央の近くへ戻すと中央に戻る。同じ開閉器に、大きさの違う×印も含めて、何個でも付けられる。どれも開閉器について動く');
 
   // 6. 上限（1つのレイヤーに100個まで）
   const many: LayerCross[] = Array.from({ length: MAX_LAYER_ITEMS_PER_KIND }, (_, i) => ({ kind: 'cross', id: `lc-${i}`, target: 'x', size: 'S' }));

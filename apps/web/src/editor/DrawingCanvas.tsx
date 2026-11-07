@@ -25,6 +25,10 @@ interface Props {
   crosses?: ResolvedCross[];
   /** 'cross' のときに、記号（PAS のような、中に部品を抱えるものは、かたまりの親）をクリックしたとき */
   onCrossClick?: (symbolId: string) => void;
+  /** 'cross' のときに、×印そのものをクリックしたとき（その×印を外す） */
+  onCrossRemove?: (crossId: string) => void;
+  /** ×印をドラッグして動かし終わったとき（動かした量。付けた開閉器の中央からのずれが変わる） */
+  onCrossMoveEnd?: (crossId: string, dx: number, dy: number) => void;
   /**
    * 元の図面を動かせない状態（レイヤーを選んでいるとき）。元の図面は薄く表示して、選ぶ・動かす・線を引くことはできない。
    * 触れるのは、activeIds に入っているもの（そのレイヤーに置いたもの）だけ
@@ -80,11 +84,13 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], onCrossClick, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], onCrossClick, onCrossRemove, onCrossMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [resize, setResize] = useState<Resize | null>(null);
+  /** ×印をドラッグしている最中（動かした量） */
+  const [crossDrag, setCrossDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
   /** 何も無いところからドラッグして、範囲で選んでいる最中。表示用の枠（図面の座標）と、動いたか・追加選択か */
   const [band, setBand] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
@@ -337,6 +343,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
       return;
     }
+    if (crossDrag && start.current) {
+      const p = toDrawing(e);
+      setCrossDrag({ id: crossDrag.id, dx: snap(p.x - start.current.x), dy: snap(p.y - start.current.y) });
+      return;
+    }
     if (mode === 'wire') {
       const p = toDrawing(e);
       if (wireStart) setCursor(p);
@@ -396,6 +407,13 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       } else if (!bd.additive) {
         onSelect([]);
       }
+      return;
+    }
+    if (crossDrag) {
+      const { id, dx, dy } = crossDrag;
+      setCrossDrag(null);
+      start.current = null;
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) onCrossMoveEnd?.(id, dx, dy);
       return;
     }
     if (resize) {
@@ -572,12 +590,28 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
               className={`cross-mark${sel ? ' selected' : ''}`}
               onPointerDown={(e) => {
                 e.stopPropagation();
-                if (mode === 'cross') onCrossClick?.(c.symbolId);
-                else if (mode === 'select') onSelect([c.id]);
+                if (mode === 'cross') onCrossRemove?.(c.id);
+                else if (mode === 'select') {
+                  // 選んで、そのままドラッグすれば、付けた開閉器の中央からずらせる
+                  onSelect([c.id]);
+                  (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+                  start.current = toDrawing(e);
+                  setCrossDrag({ id: c.id, dx: 0, dy: 0 });
+                }
               }}
             >
-              <polygon points={crossPointsAttr(c.x, c.y, c.size, c.thickness)} fill={OVERLAY_RED} stroke="none" />
-              {sel && <rect className="selection" x={c.x - c.size / 2 - 4} y={c.y - c.size / 2 - 4} width={c.size + 8} height={c.size + 8} fill="none" pointerEvents="none" />}
+              <polygon points={crossPointsAttr(c.x + (crossDrag?.id === c.id ? crossDrag.dx : 0), c.y + (crossDrag?.id === c.id ? crossDrag.dy : 0), c.size, c.thickness)} fill={OVERLAY_RED} stroke="none" />
+              {sel && (
+                <rect
+                  className="selection"
+                  x={c.x + (crossDrag?.id === c.id ? crossDrag.dx : 0) - c.size / 2 - 4}
+                  y={c.y + (crossDrag?.id === c.id ? crossDrag.dy : 0) - c.size / 2 - 4}
+                  width={c.size + 8}
+                  height={c.size + 8}
+                  fill="none"
+                  pointerEvents="none"
+                />
+              )}
             </g>
           );
         })}

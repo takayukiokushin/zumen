@@ -1169,3 +1169,4 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
   color: var(--ink); display: flex; flex-wrap: wrap; align-items: center; gap: calc(8px * var(--text-scale)) calc(16px * var(--text-scale)); }
 .cross-hint .cross-size-pick { display: inline-flex; align-items: center; gap: calc(8px * var(--text-scale)); }
 .cross-hint .cross-size-pick .lbl { font-size: calc(12px * var(--text-scale)); color: var(--ink-2); }
+.cross-actions { display: flex; flex-wrap: wrap; gap: calc(6px * var(--text-scale)); margin-top: calc(6px * var(--text-scale)); }

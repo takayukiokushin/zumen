@@ -49,6 +49,9 @@ export interface LayerCross {
   target: string;
   /** 大きさ（小・中・大）。形と寸法は packages/layout/src/cross.ts */
   size: CrossSize;
+  /** 開閉器の中央からのずれ（図面の座標）。無ければ、中央。ずらしても、付けた開閉器について動く */
+  dx?: number;
+  dy?: number;
 }
 
 /** レイヤーに置くもの。接地・枠などの種類は、これから足していく */
@@ -293,6 +296,9 @@ export interface ResolvedCross {
   size: number;
   thickness: number;
   sizeId: CrossSize;
+  /** 開閉器の中央からのずれ（中央なら 0） */
+  dx: number;
+  dy: number;
 }
 
 const symbolByTarget = (doc: Doc, target: string): DocSymbol | undefined => {
@@ -308,18 +314,70 @@ export function resolveCrosses(doc: Doc, layerId: string): ResolvedCross[] {
     const at = sym ? markPoint(sym) : null;
     if (!sym || !at) continue;
     const spec = CROSS_SPECS[c.size] ?? CROSS_SPECS.M;
-    out.push({ id: c.id, target: c.target, symbolId: sym.id, x: at.x, y: at.y, size: spec.size, thickness: spec.thickness, sizeId: c.size });
+    const dx = c.dx ?? 0;
+    const dy = c.dy ?? 0;
+    out.push({ id: c.id, target: c.target, symbolId: sym.id, x: at.x + dx, y: at.y + dy, size: spec.size, thickness: spec.thickness, sizeId: c.size, dx, dy });
   }
   return out;
 }
 
-/** その開閉器に付いている×印 */
+/** ずらしていない（開閉器の中央にある）×印か */
+const atCenter = (c: LayerCross): boolean => !c.dx && !c.dy;
+
+/** その開閉器の中央に付いている×印（ずらした×印は含めない）。開閉器をクリックしたときに、付ける・外すのは、これ */
 export const crossOn = (doc: Doc, layerId: string, symbolId: string): LayerCross | undefined => {
   const target = sameName(symbolId);
-  return (layerOf(doc, layerId)?.items ?? []).find((i): i is LayerCross => i.kind === 'cross' && i.target === target);
+  return (layerOf(doc, layerId)?.items ?? []).find((i): i is LayerCross => i.kind === 'cross' && i.target === target && atCenter(i));
 };
 
-/** 開閉器に×印を付ける。付けられない記号・上限を超えるとき・すでに付いているときは null */
+/** ずらした位置が、中央にこれより近ければ、中央に戻す（図面の座標。矢印キーの1回ぶんより小さい） */
+export const CROSS_CENTER_SNAP = 3;
+
+/** ×印を動かす（開閉器の中央からのずれを変える。中央の近くまで来たら、中央に戻る） */
+export function moveLayerCrosses(doc: Doc, layerId: string, ids: string[], dx: number, dy: number): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((c) => {
+      if (c.kind !== 'cross' || !ids.includes(c.id)) return c;
+      const nx = r2((c.dx ?? 0) + dx);
+      const ny = r2((c.dy ?? 0) + dy);
+      const { dx: _x, dy: _y, ...rest } = c;
+      return Math.abs(nx) < CROSS_CENTER_SNAP && Math.abs(ny) < CROSS_CENTER_SNAP ? rest : { ...rest, dx: nx, dy: ny };
+    }),
+  );
+}
+
+/** ×印を、開閉器の中央に戻す */
+export function resetCross(doc: Doc, layerId: string, id: string): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((c) => {
+      if (c.kind !== 'cross' || c.id !== id) return c;
+      const { dx: _x, dy: _y, ...rest } = c;
+      return rest;
+    }),
+  );
+}
+
+/** 選んだ×印と同じ開閉器・同じ大きさで、×印をもう1つ足す（右へ、重ならないだけずらして置く）。上限を超えるときは null */
+export function addExtraCross(doc: Doc, layerId: string, fromId: string): { doc: Doc; id: string } | null {
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const from = items.find((i): i is LayerCross => i.kind === 'cross' && i.id === fromId);
+  if (!from || !canAddLayerCross(doc, layerId)) return null;
+  const id = freshId('lcross', new Set(items.map((i) => i.id)));
+  const shift = (CROSS_SPECS[from.size] ?? CROSS_SPECS.M).size + 8;
+  const extra: LayerCross = { kind: 'cross', id, target: from.target, size: from.size, dx: (from.dx ?? 0) + shift, dy: from.dy ?? 0 };
+  return { doc: setLayerItems(doc, layerId, [...items, extra]), id };
+}
+
+/** 開閉器の中央に×印を付ける。付けられない記号・上限を超えるとき・中央にすでに付いているときは null */
 export function addLayerCross(doc: Doc, layerId: string, symbolId: string, size: CrossSize): { doc: Doc; id: string } | null {
   const sym = symbolByTarget(doc, sameName(symbolId));
   if (!sym || !canMark(sym) || !layerInfos(doc).some((l) => l.id === layerId)) return null;

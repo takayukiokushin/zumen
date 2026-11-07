@@ -19,7 +19,7 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addLayer, addLayerCross, addLayerText, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addExtraCross, addLayer, addLayerCross, addLayerText, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
 import { CROSS_SIZE_IDS } from '@zumen/layout';
 import type { CrossSize } from '@zumen/layout';
@@ -464,12 +464,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           setSelection([]);
         } else if (selection.length > 0 && mode === 'select' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
           e.preventDefault();
-          // 動かせるのは文字だけ（×印は、付けた開閉器について動く）
+          // 文字は動かし、×印は、付けた開閉器の中央からずらす
           const textIds = selection.filter((id) => layerDocItems.some((i) => i.id === id));
-          if (textIds.length === 0) return;
+          const crossIds = selection.filter((id) => layerCrosses.some((c) => c.id === id));
+          if (textIds.length + crossIds.length === 0) return;
           const [ux, uy] = ARROW_MOVE[e.key]!;
           const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
-          editLayer((d) => moveLayerItems(d, activeId, textIds, ux * step, uy * step), `arrow:${textIds.join(',')}`);
+          editLayer((d) => moveLayerCrosses(moveLayerItems(d, activeId, textIds, ux * step, uy * step), activeId, crossIds, ux * step, uy * step), `arrow:${selection.join(',')}`);
         }
         return;
       }
@@ -509,7 +510,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems]);
+  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems, layerCrosses]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -900,6 +901,14 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             mode={mode}
             crosses={layerCrosses}
             onCrossClick={toggleCross}
+            onCrossRemove={(id) => {
+              if (activeId === null) return;
+              editLayer((d) => removeLayerItems(d, activeId, [id]));
+              setSelection([]);
+            }}
+            onCrossMoveEnd={(id, dx, dy) => {
+              if (activeId !== null) editLayer((d) => moveLayerCrosses(d, activeId, [id], dx, dy));
+            }}
             locked={locked}
             activeIds={activeIds}
             wireDashed={wireDashed}
@@ -959,16 +968,43 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                className="btn danger"
-                onClick={() => {
-                  editLayer((d) => removeLayerItems(d, activeId, [selectedCross.id]));
-                  setSelection([]);
-                }}
-              >
-                {t('cross.remove')}
-              </button>
+              <p className="hint">{t('cross.moveHint')}</p>
+              <div className="cross-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={selectedCross.dx === 0 && selectedCross.dy === 0}
+                  onClick={() => editLayer((d) => resetCross(d, activeId, selectedCross.id))}
+                >
+                  {t('cross.reset')}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    if (!canAddLayerCross(docRef.current, activeId)) {
+                      setLayerNote(t('layer.itemLimit.cross', { n: MAX_LAYER_ITEMS_PER_KIND }));
+                      return;
+                    }
+                    const r = addExtraCross(docRef.current, activeId, selectedCross.id);
+                    if (!r) return;
+                    commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+                    setSelectedId(r.id);
+                  }}
+                >
+                  {t('cross.more')}
+                </button>
+                <button
+                  type="button"
+                  className="btn danger"
+                  onClick={() => {
+                    editLayer((d) => removeLayerItems(d, activeId, [selectedCross.id]));
+                    setSelection([]);
+                  }}
+                >
+                  {t('cross.remove')}
+                </button>
+              </div>
             </section>
           )}
 
