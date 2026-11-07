@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
@@ -20,8 +20,12 @@ interface Props {
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く */
   mode: 'select' | 'wire';
-  /** 元の図面を動かせない状態（レイヤーを選んでいるとき）。薄く表示して、選ぶ・動かす・線を引くことはできない */
+  /**
+   * 元の図面を動かせない状態（レイヤーを選んでいるとき）。元の図面は薄く表示して、選ぶ・動かす・線を引くことはできない。
+   * 触れるのは、activeIds に入っているもの（そのレイヤーに置いたもの）だけ
+   */
   locked?: boolean;
+  activeIds?: ReadonlySet<string>;
   /** 線を引くとき、点線で引くか（引いている最中の見本の線も、同じ種類で出す） */
   wireDashed?: boolean;
   zoom: number;
@@ -71,7 +75,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, locked = false, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -280,8 +284,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     };
   };
 
+  /** 薄く表示していて、触れないもの（レイヤーを選んでいるときの、元の図面） */
+  const inert = (id: string) => locked && !activeIds?.has(id);
+
   const onPointerDown = (e: React.PointerEvent, it: DocItem) => {
-    if (mode === 'wire' || locked) return;
+    if (mode === 'wire' || inert(it.id)) return;
     e.stopPropagation();
 
     // PASのように中に部品を抱えている記号は、かたまりごと選ぶ。
@@ -371,7 +378,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       const rect = band;
       setBand(null);
       if (bd.moved && rect) {
-        const found = itemsInRange(doc, rect);
+        const found = itemsInRange(doc, rect).filter((id) => !inert(id));
         onSelect(bd.additive ? [...new Set([...bd.base, ...found])] : found);
       } else if (!bd.additive) {
         onSelect([]);
@@ -398,7 +405,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
 
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
-    if (locked) return;
+    // レイヤーを選んでいて、置いたものが無いときは、触れるものが無いので、何もしない
+    if (locked && !(activeIds && activeIds.size > 0)) return;
     if (mode !== 'wire') {
       // 指のときは、なぞれば画面が動くので、「選択を外す」のは、離したときに上の処理で行う。
       // マウス・ペンは、何も無いところからドラッグすると、範囲で選べる（離したとき、動かしていなければ、選びを外す）
@@ -451,7 +459,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           const common = {
             key: it.id,
             onPointerDown: (e: React.PointerEvent) => onPointerDown(e, it),
-            className: `item${selected ? ' selected' : ''}`,
+            className: `item${selected ? ' selected' : ''}${inert(it.id) ? ' inert' : ''}`,
           };
 
           if (it.kind === 'wire') {
@@ -486,11 +494,22 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           }
 
           if (it.kind === 'text') {
+            // 大きさは、縦横の比を変えず、文字と行の間隔を同じ倍率で変える。赤い文字は、レイヤーに置いたもの
+            const k = clampTextSize(it.size);
             return (
               <g {...common}>
-                <text x={it.x} y={it.y} fontSize={LABEL_FONT} textAnchor={it.anchor} fontFamily={FONT_FAMILY} fill="currentColor" stroke="none">
+                <text
+                  x={it.x}
+                  y={it.y}
+                  fontSize={LABEL_FONT * k}
+                  fontWeight={it.bold ? 700 : undefined}
+                  textAnchor={it.anchor}
+                  fontFamily={FONT_FAMILY}
+                  fill={it.red ? OVERLAY_RED : 'currentColor'}
+                  stroke="none"
+                >
                   {it.lines.map((l, i) => (
-                    <tspan key={i} x={it.x} dy={i === 0 ? 0 : LABEL_LINE}>
+                    <tspan key={i} x={it.x} dy={i === 0 ? 0 : LABEL_LINE * k}>
                       {l}
                     </tspan>
                   ))}

@@ -51,6 +51,11 @@ export interface DrawingText {
   y: number;
   lines: string[];
   anchor: 'start' | 'middle' | 'end';
+  /** 文字の大きさ（記号の横の文字を1倍とした倍率）。無ければ1倍 */
+  size?: number;
+  bold?: boolean;
+  /** 赤い文字（レイヤーに置いた文字） */
+  red?: boolean;
 }
 
 export interface DrawingLayout {

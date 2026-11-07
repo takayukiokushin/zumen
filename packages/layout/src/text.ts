@@ -9,6 +9,24 @@ export const LABEL_FONT = 10;
 export const LABEL_LINE = 12.5;
 
 /**
+ * 手で足す文字（メモ）の大きさの範囲。記号の横の文字（LABEL_FONT）を1倍とする。
+ * 縦横の比は変えず、全体の大きさだけを変える。1倍より小さくはできない。
+ */
+export const TEXT_SIZE_MIN = 1;
+export const TEXT_SIZE_MAX = 5;
+/** ボタンで大きさを変えるときの、1回ぶん */
+export const TEXT_SIZE_STEP = 0.25;
+
+/** 文字の大きさの倍率として読む（範囲外・数でないものは、範囲の中に収める。無ければ1倍） */
+export function clampTextSize(v: unknown): number {
+  const n = typeof v === 'number' && Number.isFinite(v) ? v : TEXT_SIZE_MIN;
+  return Math.min(TEXT_SIZE_MAX, Math.max(TEXT_SIZE_MIN, n));
+}
+
+/** レイヤー（停電範囲図など）に重ねる、赤い印・文字の色。カラー印刷の前提で、はっきりした赤にする */
+export const OVERLAY_RED = '#d40000';
+
+/**
  * 文字列の幅の見積もり（作図単位）。
  * 全角の文字は1文字ぶん、半角の英数字は0.5〜0.7文字ぶん。実際のフォントで測った値より
  * わずかに大きめに見積もる（枠からはみ出さないように）。

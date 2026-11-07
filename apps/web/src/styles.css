@@ -659,7 +659,7 @@ button.with-icon svg { flex: 0 0 auto; }
   font-size: calc(13px * var(--text-scale)); font-weight: var(--weight-strong);
   display: flex; align-items: center; gap: calc(14px * var(--text-scale)); flex-wrap: wrap; }
 /* 印刷プレビュー中は、右の記号の一覧も触れない */
-.side[inert] { opacity: .5; }
+.side[inert], .side section[inert] { opacity: .5; }
 
 /* 「結線を整える」の結果 */
 .tidy-note { margin: 0; padding: calc(8px * var(--text-scale)) calc(14px * var(--text-scale));
@@ -1137,8 +1137,8 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
   background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink);
   font-size: calc(12.5px * var(--text-scale)); display: flex; align-items: center; gap: calc(10px * var(--text-scale)); flex-wrap: wrap; }
 .layer-note .hint { margin: 0; color: var(--ink-2); }
-.canvas.locked .item { opacity: .4; cursor: default; }
-.canvas.locked .item:hover { color: inherit; }
+.canvas .item.inert { opacity: .4; cursor: default; }
+.canvas .item.inert:hover { color: inherit; }
 
 /* 複製のときの、レイヤーを選ぶ窓 */
 .pick-list { display: flex; flex-direction: column; gap: calc(6px * var(--text-scale)); margin-top: calc(8px * var(--text-scale)); }
@@ -1146,3 +1146,14 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .pick-row input { margin: 0; width: calc(20px * var(--ctl-scale)); height: calc(20px * var(--ctl-scale)); min-height: 0; accent-color: var(--accent); }
 .pick-label { font-weight: var(--weight-strong); overflow-wrap: anywhere; }
 .pick-hint { color: var(--muted); font-size: calc(12px * var(--text-scale)); }
+
+/* 手で足した文字：大きさ・太字・色 */
+.text-style .size-row { display: flex; align-items: center; gap: calc(6px * var(--text-scale)); }
+.text-style .size-row input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
+.text-style .size-step { min-width: calc(34px * var(--ctl-scale)); padding-left: 0; padding-right: 0; }
+.text-style .size-ends { display: flex; justify-content: space-between; font-size: calc(11px * var(--text-scale)); color: var(--muted); margin-bottom: calc(6px * var(--text-scale)); }
+.text-style .size-readout { color: var(--ink-2); font-weight: var(--weight-strong); }
+.text-style .text-style-row { margin-bottom: calc(4px * var(--text-scale)); }
+.text-style .red-word { color: #d40000; font-weight: var(--weight-strong); }
+:root[data-theme="dark"] .text-style .red-word { color: #ff7a7a; }
+@media (prefers-color-scheme: dark) { :root[data-theme="auto"] .text-style .red-word { color: #ff7a7a; } }

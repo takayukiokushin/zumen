@@ -1,6 +1,6 @@
 import { FONT_FAMILY, getSymbol, shapesToSvg, sizedSymbol } from '@zumen/symbols';
 import type { DrawingLayout } from './layout.ts';
-import { LABEL_FONT, LABEL_LINE, textWidth } from './text.ts';
+import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, textWidth } from './text.ts';
 
 /** 表題欄の内容 */
 /** 図面の右下に入れる社名。全図面で共通 */
@@ -167,11 +167,13 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   }
 
   for (const t2 of drawing.texts ?? []) {
+    // 大きさは、縦横の比を変えず、文字と行の間隔を同じ倍率で変える。倍率が無い（1倍）・太字でない・赤でないときは、これまでと同じ出力
+    const size = clampTextSize(t2.size);
     const tspans = t2.lines
-      .map((l, i) => `<tspan x="${round(t2.x)}" dy="${i === 0 ? 0 : LABEL_LINE}">${esc(l)}</tspan>`)
+      .map((l, i) => `<tspan x="${round(t2.x)}" dy="${i === 0 ? 0 : round(LABEL_LINE * size)}">${esc(l)}</tspan>`)
       .join('');
     body.push(
-      `    <text x="${round(t2.x)}" y="${round(t2.y)}" font-size="${LABEL_FONT}" text-anchor="${t2.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
+      `    <text x="${round(t2.x)}" y="${round(t2.y)}" font-size="${round(LABEL_FONT * size)}" text-anchor="${t2.anchor}"${t2.bold ? ' font-weight="700"' : ''} font-family="${FONT_FAMILY}" fill="${t2.red ? OVERLAY_RED : 'currentColor'}" stroke="none">${tspans}</text>`,
     );
   }
 

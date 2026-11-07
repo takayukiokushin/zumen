@@ -1,5 +1,5 @@
 import { getSymbol, sizedSymbol } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, renderSvg } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, renderSvg } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
 
@@ -24,7 +24,15 @@ export function buildSheetSvg(
     } else if (it.kind === 'frame') {
       drawing.frames.push({ x: it.x, y: it.y, w: it.w, label: it.label });
     } else if (it.kind === 'text') {
-      drawing.texts!.push({ x: it.x, y: it.y, lines: it.lines, anchor: it.anchor });
+      drawing.texts!.push({
+        x: it.x,
+        y: it.y,
+        lines: it.lines,
+        anchor: it.anchor,
+        ...(it.size !== undefined ? { size: it.size } : {}),
+        ...(it.bold ? { bold: true } : {}),
+        ...(it.red ? { red: true } : {}),
+      });
     } else {
       drawing.symbols.push({
         id: it.id,
@@ -62,8 +70,9 @@ export function buildSheetSvg(
   }
   for (const f of drawing.frames) ext(f.x, f.y - 14, f.x + f.w, f.y + 26);
   for (const t of drawing.texts!) {
-    const w = labelWidth(t.lines);
-    ext(t.x, t.y - LABEL_FONT, t.x + w, t.y + t.lines.length * LABEL_LINE);
+    const k = clampTextSize(t.size);
+    const w = labelWidth(t.lines, LABEL_FONT * k);
+    ext(t.x, t.y - LABEL_FONT * k, t.x + w, t.y + t.lines.length * LABEL_LINE * k);
   }
   if (!Number.isFinite(b.x0)) Object.assign(b, { x0: 0, y0: 0, x1: 100, y1: 100 });
 

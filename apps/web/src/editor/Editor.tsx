@@ -3,7 +3,7 @@ import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@z
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
-import { buildComposition, MAX_CUSTOM_LAYERS, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
+import { buildComposition, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
@@ -19,9 +19,11 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addLayer, carryLayers, customCount, layerInfos, layerNameProblem, layerOf, layerTitle, removeLayer, renameLayer, setLayerOrientation } from './layers.ts';
+import { addLayer, addLayerText, canAddLayerText, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import type { LayerItem } from './layers.ts';
+import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setWireKind, tidyDoc } from './doc.ts';
+import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
 
 /** 操作を戻す／進めるための履歴 */
 interface History {
@@ -103,6 +105,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
    * 図面を開くたびに、必ず単線結線図から始まる（誤って、別のレイヤーを編集しないように）。保存はしない
    */
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
+  /**
+   * レイヤーごとの、「操作を戻す」の履歴（元の図面の履歴とは別。切り替えても残る。画面を閉じる・開き直すと消える）。
+   * 各レイヤーに置いたものの、昔の状態を覚えておく
+   */
+  const [layerHist, setLayerHist] = useState<Record<string, { past: LayerItem[][]; future: LayerItem[][] }>>({});
   const { ask, input } = useDialogs();
   /** スマホ（幅の狭い画面）で、ほかの操作のボタン列・記号パレットを開いているか */
   const [moreOpen, setMoreOpen] = useState(false);
@@ -116,6 +123,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; lost: boolean } | null>(null);
   /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
   const lastArrow = useRef<{ id: string; at: number } | null>(null);
+  /** 直前の、まとめられる操作（文字の大きさのつまみを動かし続けるなど）の種類と時刻 */
+  const lastEdit = useRef<{ key: string; at: number } | null>(null);
 
   const doc = history.present;
   const docRef = useRef(doc);
@@ -126,6 +135,14 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const locked = activeId !== null;
   /** 元の図面を編集できない状態（印刷プレビュー中、または、レイヤーを選んでいるとき） */
   const frozen = sheetView || locked;
+  /**
+   * 画面と印刷に出す図面。レイヤーを選んでいるときは、元の図面に、そのレイヤーに置いた文字を重ねる
+   * （元の図面と同じ描き方・同じ大きさの計算で扱うため、図面の文字の形にして渡す）。
+   */
+  const layerDocItems = useMemo(() => (activeId !== null ? layerItemsAsDocItems(doc, activeId) : []), [doc, activeId]);
+  const viewDoc = useMemo<Doc>(() => (layerDocItems.length > 0 ? { ...doc, items: [...doc.items, ...layerDocItems] } : doc), [doc, layerDocItems]);
+  /** レイヤーを選んでいるときに、触れるもの（そのレイヤーに置いたもの）の id */
+  const activeIds = useMemo(() => new Set(layerDocItems.map((i) => i.id)), [layerDocItems]);
   const sheetTitle = {
     site: String(answers.customerNameForTitleBlock ?? answers.siteName ?? ''),
     // レイヤーを選んでいるときは、タイトルの「図面名称」の部分だけが、そのレイヤーの名前になる（事業場名などは、そのまま）
@@ -133,22 +150,22 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     // 右下は常に社名（作成者や図面番号は図面に入れない方針）
     footer: COMPANY_NAME,
   };
-  const selected = doc.items.find((i) => i.id === selectedId) ?? null;
+  const selected = viewDoc.items.find((i) => i.id === selectedId && (!locked || activeIds.has(i.id))) ?? null;
   /** 印刷・保存用の1枚のSVG（図枠と表題欄つき） */
   // 向きは、利用者が選んだもの（なければ、図面の形に合わせた自動の判定）。
   // 図面を描く台紙の大きさ（A4・A3）は、図面の大きさで内部的に決まる（画面には出さない。実際の用紙は、印刷の設定画面で選ぶ）
-  const auto = useMemo(() => chooseSheet(doc, sheetTitle), [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer]);
+  const auto = useMemo(() => chooseSheet(viewDoc, sheetTitle), [viewDoc, sheetTitle.site, sheetTitle.name, sheetTitle.footer]);
   // 向きは、元の図面と、レイヤーごとに別々に決める
   const wantOrientation = activeId !== null ? layerOf(doc, activeId)?.orientation : doc.orientation;
   const chosen = useMemo(
-    () => (wantOrientation ? chooseSheet(doc, sheetTitle, wantOrientation) : auto),
-    [doc, auto, wantOrientation, sheetTitle.site, sheetTitle.name, sheetTitle.footer],
+    () => (wantOrientation ? chooseSheet(viewDoc, sheetTitle, wantOrientation) : auto),
+    [viewDoc, auto, wantOrientation, sheetTitle.site, sheetTitle.name, sheetTitle.footer],
   );
   const paper: PaperSize = chosen.paper;
   const orientation: Orientation = chosen.orientation;
   const sheetSvg = useMemo(
-    () => buildSheetSvg(doc, sheetTitle, paper, orientation),
-    [doc, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
+    () => buildSheetSvg(viewDoc, sheetTitle, paper, orientation),
+    [viewDoc, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
   );
   /** 図面を描く台紙の縦横の比（印刷プレビューの形）。実際の用紙の大きさは、印刷の設定画面で決まる */
   const sheetMm = sheetSize(paper, orientation);
@@ -211,6 +228,77 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     setActiveLayer(id);
     setSelection([]);
     setMode('select');
+    setLayerNote(null);
+  };
+
+  /** 同じ種類の操作が、短い間に続いているか（続いていれば、「操作を戻す」では1つにまとめて戻す） */
+  const isMerged = (key: string | undefined): boolean => {
+    if (key === undefined) {
+      lastEdit.current = null;
+      return false;
+    }
+    const now = Date.now();
+    const last = lastEdit.current;
+    lastEdit.current = { key, at: now };
+    return !!last && last.key === key && now - last.at < ARROW_MERGE_MS;
+  };
+  /** 元の図面の文字の大きさのように、続けて変える操作は、まとめて1回の操作にする */
+  const applyMerged = (next: Doc, key: string) => {
+    if (isMerged(key)) {
+      const stamped: Doc = { ...next, edited: true, basis: doc.basis };
+      setHistory((h) => ({ ...h, present: stamped }));
+      onDocChange?.(stamped);
+    } else apply(next);
+  };
+
+  /* ---- レイヤーに置いたものの編集（レイヤーごとに、「操作を戻す」の履歴を持つ） ---- */
+
+  /** 置いたものを入れ替える。merge が true のときは、直前の操作と1つにまとめる（矢印キーで続けて動かすとき） */
+  const commitLayer = (layerId: string, items: LayerItem[], merge = false) => {
+    const cur = layerOf(docRef.current, layerId)?.items ?? [];
+    setLayerHist((h) => {
+      const e = h[layerId] ?? { past: [], future: [] };
+      return { ...h, [layerId]: { past: merge ? e.past : [...e.past, cur], future: [] } };
+    });
+    applyLayers(setLayerItems(docRef.current, layerId, items));
+  };
+  /** 動かす・文字を変える・消す、など、レイヤーの置いたものを変える操作を、履歴に残して行う */
+  const editLayer = (change: (d: Doc) => Doc, mergeKey?: string) => {
+    if (activeId === null) return;
+    const next = change(docRef.current);
+    commitLayer(activeId, layerOf(next, activeId)?.items ?? [], isMerged(mergeKey));
+  };
+  const stepLayer = (kind: 'undo' | 'redo') => {
+    if (activeId === null) return;
+    const e = layerHist[activeId];
+    const cur = layerOf(doc, activeId)?.items ?? [];
+    if (!e) return;
+    if (kind === 'undo' && e.past.length > 0) {
+      setLayerHist({ ...layerHist, [activeId]: { past: e.past.slice(0, -1), future: [cur, ...e.future] } });
+      applyLayers(setLayerItems(doc, activeId, e.past[e.past.length - 1]!));
+    } else if (kind === 'redo' && e.future.length > 0) {
+      setLayerHist({ ...layerHist, [activeId]: { past: [...e.past, cur], future: e.future.slice(1) } });
+      applyLayers(setLayerItems(doc, activeId, e.future[0]!));
+    } else return;
+    setSelection([]);
+  };
+  const layerEntry = activeId !== null ? layerHist[activeId] : undefined;
+  const canUndo = locked ? (layerEntry?.past.length ?? 0) > 0 : history.past.length > 0;
+  const canRedo = locked ? (layerEntry?.future.length ?? 0) > 0 : history.future.length > 0;
+  /** レイヤーに文字を足す（上限を超えるときは、知らせるだけ） */
+  const [layerNote, setLayerNote] = useState<string | null>(null);
+  const addLayerTextHere = () => {
+    if (activeId === null) return;
+    if (!canAddLayerText(docRef.current, activeId)) {
+      setLayerNote(t('layer.itemLimit', { n: MAX_LAYER_ITEMS_PER_KIND }));
+      return;
+    }
+    setLayerNote(null);
+    const b = docBounds(docRef.current);
+    const r = addLayerText(docRef.current, activeId, (b.x0 + b.x1) / 2, b.y1 + 40, '注記');
+    if (!r) return;
+    commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+    setSelectedId(r.id);
   };
 
   const addLayerFlow = async () => {
@@ -249,6 +337,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     const next = removeLayer(docRef.current, id);
     if (!next) return;
     applyLayers(next);
+    setLayerHist(({ [id]: _gone, ...rest }) => rest);
     if (activeLayer === id) selectLayer(null);
   };
 
@@ -323,9 +412,26 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // 印刷プレビュー中と、レイヤーを選んでいるあいだは、元の図面を編集できない（Delete や 元に戻す のキーも効かせない）
-      if (frozen) return;
+      if (sheetView) return;
       const el = e.target as HTMLElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
+      if (locked && activeId !== null) {
+        // レイヤーを選んでいるあいだは、そのレイヤーに置いたものだけを、戻す・消す・動かす
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          stepLayer(e.shiftKey ? 'redo' : 'undo');
+        } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length > 0) {
+          e.preventDefault();
+          editLayer((d) => removeLayerItems(d, activeId, selection));
+          setSelection([]);
+        } else if (selection.length > 0 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
+          e.preventDefault();
+          const [ux, uy] = ARROW_MOVE[e.key]!;
+          const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
+          editLayer((d) => moveLayerItems(d, activeId, selection, ux * step, uy * step), `arrow:${selection.join(',')}`);
+        }
+        return;
+      }
       // 線を引くモードは、Esc キーで解除する（引きかけの線も、取りやめ）
       if (e.key === 'Escape' && mode === 'wire' && !e.isComposing) {
         e.preventDefault();
@@ -362,7 +468,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, frozen, mode]);
+  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -392,8 +498,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn with-icon"
                 title={t('editor.undo.help')}
-                onClick={() => stepHistory('undo')}
-                disabled={frozen || history.past.length === 0}
+                onClick={() => (locked ? stepLayer('undo') : stepHistory('undo'))}
+                disabled={sheetView || !canUndo}
               >
                 <UndoIcon />
                 {t('editor.undo')}
@@ -402,8 +508,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 type="button"
                 className="btn with-icon"
                 title={t('editor.redo.help')}
-                onClick={() => stepHistory('redo')}
-                disabled={frozen || history.future.length === 0}
+                onClick={() => (locked ? stepLayer('redo') : stepHistory('redo'))}
+                disabled={sheetView || !canRedo}
               >
                 <UndoIcon redo />
                 {t('editor.redo')}
@@ -417,10 +523,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               <button
                 type="button"
                 className="btn danger"
-                disabled={frozen || selection.length === 0}
+                disabled={sheetView || selection.length === 0}
                 onClick={() => {
                   if (selection.length === 0) return;
-                  apply(selection.length === 1 ? removeItem(doc, selection[0]!) : removeItems(doc, selection));
+                  if (locked && activeId !== null) editLayer((d) => removeLayerItems(d, activeId, selection));
+                  else apply(selection.length === 1 ? removeItem(doc, selection[0]!) : removeItems(doc, selection));
                   setSelection([]);
                 }}
               >
@@ -430,8 +537,12 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               <button
                 type="button"
                 className="sec"
-                disabled={frozen}
+                disabled={sheetView}
                 onClick={() => {
+                  if (locked) {
+                    addLayerTextHere();
+                    return;
+                  }
                   const b = docBounds(doc);
                   const { doc: next, id } = addText(doc, (b.x0 + b.x1) / 2, b.y1 + 40, '注記');
                   apply(next);
@@ -556,6 +667,15 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         </p>
       )}
 
+      {layerNote && (
+        <p className="layer-note" role="status">
+          <b>{layerNote}</b>
+          <button type="button" className="btn" onClick={() => setLayerNote(null)}>
+            {t('common.close')}
+          </button>
+        </p>
+      )}
+
       {rebuiltNote && (
         <p className="stale-note" role="status">
           <Rich text={t('editor.rebuilt')} />
@@ -676,10 +796,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             />
           ) : (
           <DrawingCanvas
-            doc={doc}
+            doc={viewDoc}
             selectedIds={selection}
             onSelect={setSelection}
-            onMoveEnd={(ids, dx, dy) => apply(ids.length === 1 ? moveItem(doc, ids[0]!, dx, dy) : moveItems(doc, ids, dx, dy))}
+            onMoveEnd={(ids, dx, dy) => {
+              if (locked && activeId !== null) editLayer((d) => moveLayerItems(d, activeId, ids, dx, dy));
+              else apply(ids.length === 1 ? moveItem(doc, ids[0]!, dx, dy) : moveItems(doc, ids, dx, dy));
+            }}
             onWireEnd={(id, end, dx, dy) => apply(moveWireEnd(doc, id, end, dx, dy))}
             onResizeEnd={(id, rect) => apply(setItemRect(doc, id, rect))}
             onAddWire={(x1, y1, x2, y2, opts) => {
@@ -690,6 +813,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             }}
             mode={mode}
             locked={locked}
+            activeIds={activeIds}
             wireDashed={wireDashed}
             zoom={zoom}
             onZoom={setZoom}
@@ -698,11 +822,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           )}
         </div>
 
-        <aside className={`side${sideOpen ? ' open' : ''}`} inert={frozen}>
+        <aside className={`side${sideOpen ? ' open' : ''}`} inert={sheetView}>
           <button type="button" className="btn side-close" onClick={() => setSideOpen(false)}>
             {t('common.close')}
           </button>
-          <section>
+          <section inert={locked}>
             <h3>{t('editor.palette')}</h3>
             <p className="hint">
               {selectedSymbol
@@ -811,7 +935,27 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                     rows={3}
                     maxLength={MAX_TEXT_LENGTH}
                     value={selected.lines.join('\n')}
-                    onChange={(e) => apply(setLabel(doc, selected.id, e.target.value.split('\n')))}
+                    onChange={(e) => {
+                      const lines = e.target.value.split('\n');
+                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { lines }));
+                      else apply(setLabel(doc, selected.id, lines));
+                    }}
+                  />
+                  <TextStyleControls
+                    size={selected.size}
+                    bold={!!selected.bold}
+                    red={locked ? !!selected.red : null}
+                    onSize={(n) => {
+                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { size: n }), `size:${selected.id}`);
+                      else applyMerged(setTextStyle(doc, selected.id, { size: n }), `size:${selected.id}`);
+                    }}
+                    onBold={(b) => {
+                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { bold: b }));
+                      else apply(setTextStyle(doc, selected.id, { bold: b }));
+                    }}
+                    onRed={(r) => {
+                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { red: r }));
+                    }}
                   />
                 </>
               ) : (

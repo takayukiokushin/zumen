@@ -199,7 +199,7 @@ console.log('\n■ 構成の一覧の「種類」の名前');
 console.log('\n■ 画面の部品に、訳せない日本語が直接書かれていないか');
 {
   // 許す：コメント／エラーの投げ込み（開発者向け）／図面に書く文字（注記）／辞書を使わない備え（'件'）
-  const ALLOW = [/addText\(.*'注記'/, /\?\? '件'/, /throw new Error\(/, /join\('・'\)/, /ROLE_LABEL|admin: '管理用'|member: '標準'|sandbox: '練習用'/];
+  const ALLOW = [/(addText|addLayerText)\(.*'注記'/, /\?\? '件'/, /throw new Error\(/, /join\('・'\)/, /ROLE_LABEL|admin: '管理用'|member: '標準'|sandbox: '練習用'/];
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((n) => {
       const p = join(dir, n);

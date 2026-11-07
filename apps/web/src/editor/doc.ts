@@ -1,6 +1,6 @@
 import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sizedSymbol } from '@zumen/symbols';
 import type { SizeRange, SymbolDef } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
 import type { Layer } from './layers.ts';
 
@@ -88,6 +88,11 @@ export interface DocText {
   y: number;
   lines: string[];
   anchor: 'start' | 'middle' | 'end';
+  /** 文字の大きさ。記号の横の文字を1倍とした倍率（1〜5）。縦横の比は変えない。無ければ1倍 */
+  size?: number;
+  bold?: boolean;
+  /** 赤い文字（レイヤーに置いた文字だけ。元の図面では使わない） */
+  red?: boolean;
 }
 
 export type DocItem = DocSymbol | DocWire | DocFrame | DocText;
@@ -1072,6 +1077,21 @@ export const setWireKind = (doc: Doc, ids: string[], dashed: boolean): Doc => ({
   }),
 });
 
+/** 手で足した文字（メモ）の、大きさ・太字を変える。大きさは、1〜5倍の範囲に収める */
+export const setTextStyle = (doc: Doc, id: string, patch: { size?: number; bold?: boolean }): Doc => ({
+  ...doc,
+  items: doc.items.map((it) => {
+    if (it.kind !== 'text' || it.id !== id) return it;
+    const next: DocText = { ...it };
+    if (patch.size !== undefined) next.size = clampTextSize(patch.size);
+    if (patch.bold !== undefined) {
+      if (patch.bold) next.bold = true;
+      else delete next.bold;
+    }
+    return next;
+  }),
+});
+
 export const setLabel = (doc: Doc, id: string, lines: string[]): Doc => ({
   ...doc,
   items: doc.items.map((it) => {
@@ -1429,8 +1449,9 @@ export function itemBounds(it: DocItem): { x0: number; y0: number; x1: number; y
   }
   if (it.kind === 'frame') return { x0: it.x, y0: it.y - 14, x1: it.x + it.w, y1: it.y + 26 };
   if (it.kind === 'text') {
-    const w = labelWidth(it.lines);
-    return { x0: it.x, y0: it.y - LABEL_FONT, x1: it.x + w, y1: it.y + it.lines.length * LABEL_LINE };
+    const k = clampTextSize(it.size);
+    const w = labelWidth(it.lines, LABEL_FONT * k);
+    return { x0: it.x, y0: it.y - LABEL_FONT * k, x1: it.x + w, y1: it.y + it.lines.length * LABEL_LINE * k };
   }
   const def = defOf(it);
   const rb = rotatedBox(def.box, it.rotate);

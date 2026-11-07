@@ -1,6 +1,8 @@
-import { FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
+import { FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
-import type { Doc } from './doc.ts';
+import { clampTextSize } from '@zumen/layout';
+import { defOf, freshId, sameName } from './doc.ts';
+import type { Doc, DocText } from './doc.ts';
 
 /**
  * 図面のレイヤー（停電範囲図・絶縁耐力試験範囲図・追加したレイヤー）。
@@ -10,11 +12,32 @@ import type { Doc } from './doc.ts';
  * 固定の2つは、何か置いたとき（向きを決めたときなど）に、初めて記録ができる。追加したレイヤーは、作ったときから記録がある。
  */
 
-/** レイヤーに置くもの。×印・接地・枠などの種類は、これから足していく */
-export interface LayerItem {
+/**
+ * レイヤーに置いた文字（テキストボックス）。
+ * 近くの機器（near）からのずれ（ndx・ndy）で覚えるので、その機器が動けば、一緒に動く。
+ * 機器が無くなったときは、文字は消さずに、最後に置いた場所（x・y）に残す（書いた内容が、気づかないうちに消えないように）。
+ */
+export interface LayerText {
+  kind: 'text';
   id: string;
-  kind: string;
+  /** 最後に置いた場所（近くの機器が見つからないときに使う） */
+  x: number;
+  y: number;
+  lines: string[];
+  anchor: 'start' | 'middle' | 'end';
+  /** 文字の大きさ（記号の横の文字を1倍とした倍率）。無ければ1倍 */
+  size?: number;
+  bold?: boolean;
+  /** 赤い文字か。レイヤーに置く文字は、ふつう赤 */
+  red?: boolean;
+  /** 近くの機器と、そこからのずれ */
+  near?: string;
+  ndx: number;
+  ndy: number;
 }
+
+/** レイヤーに置くもの。×印・接地・枠などの種類は、これから足していく */
+export type LayerItem = LayerText;
 
 export interface Layer {
   /** 固定のレイヤーは 'outage'・'withstand'。追加したものは 'custom-1' など */
@@ -108,4 +131,119 @@ export function setLayerOrientation(doc: Doc, id: string, orientation: Orientati
 export function carryLayers(next: Doc, from: Doc): Doc {
   const { layers: _drop, ...rest } = next;
   return from.layers !== undefined ? { ...rest, layers: from.layers } : rest;
+}
+
+/* ---------------- レイヤーに置いた文字 ---------------- */
+
+/** 近くの機器と、そこからのずれ。近くに機器が無ければ、場所だけで覚える */
+function anchorFor(doc: Doc, x: number, y: number): Pick<LayerText, 'near' | 'ndx' | 'ndy'> {
+  let best: { id: string; d: number; sx: number; sy: number } | null = null;
+  for (const it of doc.items) {
+    if (it.kind !== 'symbol') continue;
+    const def = defOf(it);
+    const d = Math.hypot(it.x + def.box.w / 2 - x, it.y + def.box.h / 2 - y);
+    if (!best || d < best.d) best = { id: sameName(it.id), d, sx: it.x, sy: it.y };
+  }
+  if (best && best.d < 400) return { near: best.id, ndx: x - best.sx, ndy: y - best.sy };
+  return { ndx: x, ndy: y };
+}
+
+/** いまの場所。近くの機器があれば、その機器の位置からのずれ。機器が無くなっていれば、最後に置いた場所 */
+export function resolveText(doc: Doc, t: LayerText): { x: number; y: number } {
+  if (t.near !== undefined) {
+    for (const it of doc.items) {
+      if (it.kind === 'symbol' && sameName(it.id) === t.near) return { x: it.x + t.ndx, y: it.y + t.ndy };
+    }
+  }
+  return { x: t.x, y: t.y };
+}
+
+/** レイヤーに置いた文字を、図面の文字として使える形にする（画面と印刷で、元の図面の文字と同じように描くため） */
+export function layerItemsAsDocItems(doc: Doc, layerId: string): DocText[] {
+  return (layerOf(doc, layerId)?.items ?? []).map((t): DocText => {
+    const { x, y } = resolveText(doc, t);
+    return {
+      kind: 'text',
+      id: t.id,
+      x,
+      y,
+      lines: t.lines,
+      anchor: t.anchor,
+      ...(t.size !== undefined ? { size: t.size } : {}),
+      ...(t.bold ? { bold: true } : {}),
+      ...(t.red ? { red: true } : {}),
+    };
+  });
+}
+
+/** そのレイヤーに、置いたものを入れ替える（固定のレイヤーは、このとき初めて記録ができる） */
+export function setLayerItems(doc: Doc, layerId: string, items: LayerItem[]): Doc {
+  if (!layerInfos(doc).some((l) => l.id === layerId)) return doc;
+  const has = !!layerOf(doc, layerId);
+  const layers = has
+    ? layersOf(doc).map((l) => (l.id === layerId ? { ...l, items } : l))
+    : [...layersOf(doc), { id: layerId, items }];
+  return { ...doc, layers };
+}
+
+/** 文字を足せるか（1つのレイヤーに置ける数には、上限がある） */
+export const canAddLayerText = (doc: Doc, layerId: string): boolean =>
+  (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'text').length < MAX_LAYER_ITEMS_PER_KIND;
+
+/** レイヤーに文字を足す。上限を超えるときは null。置く場所の近くの機器を覚える */
+export function addLayerText(doc: Doc, layerId: string, x: number, y: number, text: string, red = true): { doc: Doc; id: string } | null {
+  if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerText(doc, layerId)) return null;
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('ltext', new Set(items.map((i) => i.id)));
+  const t: LayerText = { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start', ...(red ? { red: true } : {}), ...anchorFor(doc, x, y) };
+  return { doc: setLayerItems(doc, layerId, [...items, t]), id };
+}
+
+/** 文字の中身・大きさ・太字・色を変える */
+export function updateLayerText(doc: Doc, layerId: string, id: string, patch: { lines?: string[]; size?: number; bold?: boolean; red?: boolean }): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((t) => {
+      if (t.id !== id) return t;
+      const n: LayerText = { ...t };
+      if (patch.lines !== undefined) n.lines = patch.lines;
+      if (patch.size !== undefined) n.size = clampTextSize(patch.size);
+      if (patch.bold !== undefined) {
+        if (patch.bold) n.bold = true;
+        else delete n.bold;
+      }
+      if (patch.red !== undefined) {
+        if (patch.red) n.red = true;
+        else delete n.red;
+      }
+      return n;
+    }),
+  );
+}
+
+/** 置いたものを動かす（動かしたあとの場所の近くの機器から、覚え直す） */
+export function moveLayerItems(doc: Doc, layerId: string, ids: string[], dx: number, dy: number): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((t) => {
+      if (!ids.includes(t.id)) return t;
+      const p = resolveText(doc, t);
+      const x = p.x + dx;
+      const y = p.y + dy;
+      return { ...t, x, y, ...anchorFor(doc, x, y) };
+    }),
+  );
+}
+
+/** 置いたものを消す */
+export function removeLayerItems(doc: Doc, layerId: string, ids: string[]): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(doc, layerId, items.filter((t) => !ids.includes(t.id)));
 }

@@ -80,7 +80,7 @@ console.log('\n■ レイヤー（停電範囲図など）の入れ物');
   else console.log('  印刷の向きは、元の図面とレイヤーごとに別々に持つ');
 
   // 5. 作り直し・整える・戻す・保存を通しても、レイヤーは消えない
-  const withLayers: Doc = { ...d, layers: [...d.layers!.map((l) => ({ ...l, items: [{ id: `${l.id}-x`, kind: 'mark' }] })), { id: 'outage', items: [], orientation: 'landscape' }] };
+  const withLayers: Doc = { ...d, layers: [...d.layers!.map((l) => ({ ...l, items: [{ kind: 'text' as const, id: `${l.id}-x`, x: 10, y: 20, lines: ['注記'], anchor: 'start' as const, ndx: 10, ndy: 20 }] })), { id: 'outage', items: [], orientation: 'landscape' }] };
   const regen = rebuildWithOverrides(fromLayout(layout(buildComposition(answersSpread), answersSpread)), withLayers);
   if (JSON.stringify(regen.doc.layers) !== JSON.stringify(withLayers.layers)) fail('図面を作り直すと、レイヤーが消えたり、変わったりします');
   const edited: Doc = { ...withLayers, items: withLayers.items.filter((i) => i.kind !== 'text').slice(0, 5), edited: true };
