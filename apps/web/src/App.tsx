@@ -11,6 +11,8 @@ import { Editor } from './editor/Editor.tsx';
 import { purgeOrphanMarks, withCleanLayers } from './editor/layers.ts';
 import { useHeavyJob } from './editor/useHeavyJob.tsx';
 import { useNewVersion } from './session/useNewVersion.ts';
+import { useServerStatus } from './session/useServerStatus.ts';
+import { useWarningText } from './projects/ServerStatusPanel.tsx';
 import { Analyze } from './analyze/Analyze.tsx';
 import { Voice } from './voice/Voice.tsx';
 import { JobList } from './projects/JobList.tsx';
@@ -109,6 +111,10 @@ export function App() {
    * 動かし始めたときと違っていたら、古い図面に上書きしないよう、結果を使わない
    */
   const newVersion = useNewVersion(Boolean(user));
+  /** サーバーの状態（管理用のアカウントだけ）。控えが取れていない・ディスクの空きが少ないときに、帯で知らせる */
+  const { status: serverStatus } = useServerStatus(user?.role === 'admin');
+  const warnText = useWarningText();
+  const [statusBannerClosed, setStatusBannerClosed] = useState(false);
   const docVersion = useRef(0);
   useEffect(() => {
     docVersion.current++;
@@ -509,6 +515,19 @@ export function App() {
             }}
           >
             {t('update.reload')}
+          </button>
+        </p>
+      )}
+
+      {serverStatus && serverStatus.warnings.length > 0 && !statusBannerClosed && (
+        <p className="bar-warn status-banner" role="alert">
+          <b>{t('status.banner.title')}</b>
+          {serverStatus.warnings.map(warnText).join(' ')}
+          <button type="button" className="btn" onClick={() => setUsersOpen(true)}>
+            {t('status.banner.open')}
+          </button>
+          <button type="button" className="btn" onClick={() => setStatusBannerClosed(true)}>
+            {t('status.banner.close')}
           </button>
         </p>
       )}

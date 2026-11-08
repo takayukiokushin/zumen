@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { pdfPageCount } from '../../apps/server/src/analyze.ts';
-import { say, check, dataDir } from './common.ts';
+import { say, check, dataDir, backupDir } from './common.ts';
 import type { part1 } from './part1.ts';
 
 export async function part2(c: Awaited<ReturnType<typeof part1>>) {
@@ -421,6 +421,19 @@ export async function part2(c: Awaited<ReturnType<typeof part1>>) {
   check('標準は利用者の管理を使えない', memberAdmin.status === 403, `${memberAdmin.status}`);
   const adminUsers = (await (await call(kanri, '/api/admin/users')).json()) as { users: unknown[] };
   check('管理用は利用者の一覧を見られる', adminUsers.users.length === 5, `${adminUsers.users.length}人`);
+  // サーバーの状態（控え・ディスクの空き・エラーの件数）も、管理用だけ
+  check('標準は、サーバーの状態を見られない', (await call(a, '/api/admin/status')).status === 403);
+  check('練習用は、サーバーの状態を見られない', (await call(renshu, '/api/admin/status')).status === 403);
+  {
+    const res = await call(kanri, '/api/admin/status');
+    const raw = await res.text();
+    const st2 = JSON.parse(raw) as { backup: { configured: boolean; count: number; lastAt: number | null }; disk: { freePercent: number } | null; errors: { last24h: number; last7d: number }; warnings: { code: string }[]; version: string };
+    check('管理用は、サーバーの状態を見られる', res.ok && typeof st2.version === 'string');
+    check('サーバーの状態：控えの保存先が決まっていて、控えが1つ以上あり、直近のものが分かる', st2.backup.configured && st2.backup.count >= 1 && st2.backup.lastAt !== null && Date.now() - st2.backup.lastAt < 3600_000, JSON.stringify(st2.backup));
+    check('サーバーの状態：ディスクの空きの割合と、エラーの件数が数で返る', typeof st2.disk?.freePercent === 'number' && Number.isInteger(st2.errors.last24h) && Number.isInteger(st2.errors.last7d), JSON.stringify([st2.disk, st2.errors]));
+    check('サーバーの状態：控えが取れているので、控えについての注意は出ない', !st2.warnings.some((w) => w.code.startsWith('backup-') && w.code !== 'backup-disk-low'), JSON.stringify(st2.warnings));
+    check('サーバーの状態に、保存先の場所・パスワード・案件の中身は入らない', !raw.includes(backupDir) && !raw.toLowerCase().includes('password') && !raw.includes('answers'));
+  }
   const made = await call(kanri, '/api/admin/users', {
     method: 'POST',
     body: JSON.stringify({ id: 'tsuika', name: '追加した人', password: 'Mizu-Kawa-7391', role: 'member' }),

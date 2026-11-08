@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DATA_DIR, db } from './db.ts';
+import { recordBackupFailure, recordBackupSuccess } from './status.ts';
 import { DEFAULT_TIMEZONE, KEEP, dayOf, msUntilMidnight, pickToDelete, stamp, validTimezone } from './backup-rules.ts';
 
 /**
@@ -68,8 +69,10 @@ export function startAutoBackup(): void {
   const run = () => {
     try {
       const r = backup(dest);
+      recordBackupSuccess();
       console.log(`控えを作りました: ${r.dir}`);
     } catch (e) {
+      recordBackupFailure(e instanceof Error ? e.message : String(e));
       console.error('控えを作れませんでした:', e instanceof Error ? e.message : e);
     }
   };

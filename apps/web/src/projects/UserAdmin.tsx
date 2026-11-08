@@ -4,6 +4,7 @@ import type { Role, User } from '../session/api.ts';
 import { useDialogs } from '../Dialogs.tsx';
 import { useT } from '../i18n/useT.ts';
 import { MAX_TEXT_LENGTH } from '@zumen/knowledge';
+import { ServerStatusPanel } from './ServerStatusPanel.tsx';
 
 /**
  * 利用者の管理。管理用のアカウントでログインしたときだけ開ける。
@@ -95,6 +96,8 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
 
         {error && <p className="err">{error}</p>}
         {done && <p className="ok-note">{done}</p>}
+
+        <ServerStatusPanel />
 
         <section>
           <h3>{t('users.current')}</h3>

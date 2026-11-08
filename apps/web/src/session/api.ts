@@ -18,6 +18,24 @@ export interface User {
   role: Role;
 }
 
+/** サーバーの状態（管理者だけが見られる。apps/server/src/status.ts） */
+export interface ServerDisk {
+  freeBytes: number;
+  totalBytes: number;
+  freePercent: number;
+}
+export type StatusWarningCode = 'backup-not-configured' | 'backup-none' | 'backup-stale' | 'backup-failed' | 'disk-low' | 'backup-disk-low';
+export interface ServerStatus {
+  now: number;
+  version: string;
+  startedAt: number;
+  backup: { configured: boolean; lastAt: number | null; count: number; keep: number; failure: { at: number; message: string } | null };
+  disk: ServerDisk | null;
+  backupDisk: ServerDisk | null;
+  errors: { last24h: number; last7d: number; lastAt: number | null };
+  warnings: { code: StatusWarningCode; n?: number }[];
+}
+
 /** 誰かが編集中であることの印 */
 export interface Lock {
   userId: string;
@@ -261,6 +279,7 @@ export const api = {
   releaseLock: (id: string) => call<{ ok: true }>(`/api/projects/${id}/lock`, { method: 'DELETE' }),
 
   /* ---- 利用者の管理（管理用のアカウントのみ） ---- */
+  serverStatus: () => call<ServerStatus>('/api/admin/status'),
   listUsers: () => call<{ users: User[] }>('/api/admin/users'),
   addUser: (u: { id: string; name: string; password: string; role: Role }) =>
     call<{ ok: true }>('/api/admin/users', { method: 'POST', body: JSON.stringify(u) }),

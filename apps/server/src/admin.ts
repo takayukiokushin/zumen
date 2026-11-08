@@ -13,6 +13,7 @@ import {
 import type { Role, User } from './auth.ts';
 import { checkPassword } from './password-policy.ts';
 import { removeUser } from './user-removal.ts';
+import { serverStatus } from './status.ts';
 
 /**
  * 利用者の管理。管理用のアカウントだけが使える。
@@ -24,6 +25,9 @@ admin.use('*', requireAdmin);
 
 /** IDに使える文字（人に伝えるときに混乱しないよう、記号は控えめに） */
 const ID_PATTERN = /^[A-Za-z0-9._@-]{2,64}$/;
+
+/** サーバーの状態（控え・ディスクの空き・エラーの件数）。見るだけ */
+admin.get('/status', (c) => c.json(serverStatus()));
 
 admin.get('/users', (c) => c.json({ users: listUsers() }));
 
