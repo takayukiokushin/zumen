@@ -11,6 +11,8 @@
  * （図面に、この記号が必ず入っていること）。
  */
 import type { Answers } from '../../packages/knowledge/src/index.ts';
+import { customLayer, outageLayer, withstandLayer } from './layers.ts';
+import type { LayerStep } from './layers.ts';
 
 export interface GoldenCase {
   /** ファイル名に使う番号つきの名前（半角） */
@@ -25,6 +27,8 @@ export interface GoldenCase {
   mustHave: string[];
   /** 図面に入っていてはいけない記号（名前の頭が合うもの） */
   mustNot?: string[];
+  /** レイヤーの見本のとき：図面の上に赤い印を置いて、そのレイヤーの印刷を見本にする（scripts/golden/layers.ts） */
+  layer?: LayerStep;
 }
 
 /** 基本の現場：柱上PAS（DGR・VT・LA内蔵）→ 引込ケーブル → キュービクル（PF付LBS）→ 変圧器1台 → 低圧2回線 */
@@ -91,6 +95,8 @@ const mk = (id: string, title: string, mustHave: string[], ...parts: Answers[]):
   mustHave,
   answers: Object.assign({}, BASE, ...parts),
 });
+/** レイヤー（赤い印）の見本にするとき */
+const withLayer = (c: GoldenCase, layer: LayerStep): GoldenCase => ({ ...c, layer });
 /** 入っていてはいけない記号も指定するとき */
 const not = (c: GoldenCase, ...mustNot: string[]): GoldenCase => ({ ...c, mustNot });
 
@@ -268,4 +274,8 @@ export const GOLDEN_CASES: GoldenCase[] = [
     customerNameForTitleBlock: '架空の株式会社 第二製造工場 敷地内高圧受電設備（北側・南側）',
     drawingName: 'キュービクル式高圧受電設備単線結線図（増設工事後の姿・全体）',
   }),
+  // ---- 赤いレイヤー（停電範囲図・絶縁耐力試験範囲図・追加したレイヤー）の印刷 ----
+  withLayer(mk('L1-outage', '赤いレイヤー：停電範囲図（メモ・×印・接地・停電範囲の枠・点と印加点の矢印・渡り線）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), outageLayer),
+  withLayer(mk('L2-withstand', '赤いレイヤー：絶縁耐力試験範囲図（充電範囲の斜線・印加範囲・4つの形の渡り線・印加点の矢印）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), withstandLayer),
+  withLayer(mk('L3-custom', '赤いレイヤー：追加したレイヤー「作業停電図」（大きな太字のメモ・複数の枠・矢印）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), customLayer),
 ];

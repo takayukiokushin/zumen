@@ -266,6 +266,8 @@ export const en: Dict = {
   'help.7.b': 'Click a symbol to select it; you can move it or “Delete” it. Use “Draw a line” to add a connection. Use “Undo” if you make a mistake. “Tidy connections” snaps wires back onto their connection points. “Apply entered content” redraws the drawing from what you entered (a confirmation appears; you can still undo it).',
   'help.8.t': 'Output and display settings',
   'help.8.b': 'Use “Print / PDF” in the drawing tab to export. Language, brightness and text size can be changed with the gear icon (display settings) at the top right.',
+  'help.9.t': 'Layers (outage range, insulation withstand test range, etc.)',
+  'help.9.b': 'Under “Diagram type”, choose the outage range diagram, the insulation withstand test range diagram, or a layer you added (up to 3), and you can place red marks on top of the original diagram. The original is shown faded and cannot be moved. You can use notes, × marks (switches), ground marks, red frames (hatched for the live range), dots, applied-point arrows and jumper lines. Printing and PDF output cover only the selected one. If the original diagram has changed, opening the layer asks you to check it.',
   'msg.networkDown': 'Cannot reach the server. Please check your Wi-Fi or signal, and the company network. What you entered is still on this screen (it will be lost if you close or reload the page).',
   'msg.gateway': 'The server is not responding. It may be stopped or still starting up. Please wait a moment and try again. What you entered is still on this screen (it will be lost if you close or reload the page).',
   'msg.serverError': 'An error occurred on the server. Please try again in a little while. If it keeps happening, tell your administrator.',

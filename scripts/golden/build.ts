@@ -6,6 +6,8 @@ import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { fromLayout } from '../../apps/web/src/editor/doc.ts';
 import type { Doc } from '../../apps/web/src/editor/doc.ts';
 import { chooseSheet } from '../../apps/web/src/editor/inspect.ts';
+import { buildLayerSheetSvg } from '../../apps/web/src/editor/layerSheet.ts';
+import { layerTitle } from '../../apps/web/src/editor/layers.ts';
 import { buildComposition, resolveDrawingName } from '../../packages/knowledge/src/index.ts';
 import { COMPANY_NAME, layout } from '../../packages/layout/src/index.ts';
 import { spreadUnits } from '../check-drawing/common.ts';
@@ -22,14 +24,20 @@ export interface GoldenResult {
 
 export function buildGolden(c: GoldenCase): GoldenResult {
   const answers = spreadUnits(c.answers);
-  const doc = fromLayout(layout(buildComposition(answers), answers));
-  const title = {
-    site: String(answers.customerNameForTitleBlock ?? answers.siteName ?? ''),
-    name: resolveDrawingName(answers),
-    footer: COMPANY_NAME,
-  };
-  const { paper, orientation } = chooseSheet(doc, title);
-  const svg = buildSheetSvg(doc, title, paper, orientation);
+  const base = fromLayout(layout(buildComposition(answers), answers));
+  const site = String(answers.customerNameForTitleBlock ?? answers.siteName ?? '');
+  let doc = base;
+  let svg: string;
+  if (c.layer) {
+    // 赤いレイヤーの見本：図面の上に赤い印を置いて、そのレイヤーの印刷にする
+    const made = c.layer(base);
+    doc = made.doc;
+    svg = buildLayerSheetSvg(doc, made.layerId, { site, name: layerTitle(doc, made.layerId) ?? '', footer: COMPANY_NAME }).svg;
+  } else {
+    const title = { site, name: resolveDrawingName(answers), footer: COMPANY_NAME };
+    const { paper, orientation } = chooseSheet(doc, title);
+    svg = buildSheetSvg(doc, title, paper, orientation);
+  }
   const symbols: Record<string, number> = {};
   for (const it of doc.items) if (it.kind === 'symbol') symbols[it.symbolId] = (symbols[it.symbolId] ?? 0) + 1;
   return { case: c, doc, svg, symbols };

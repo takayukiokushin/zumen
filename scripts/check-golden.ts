@@ -35,6 +35,11 @@ function checkContent(r: GoldenResult): void {
       fail(`${r.case.id}：${name} の記号が図面に入っていません（回答の書き間違いかもしれません）`);
     }
   }
+  // 赤いレイヤーの見本に、赤い印が出ていること（置き方の書き間違いで、赤い印が1つも出ていない見本を防ぐ）
+  if (r.case.layer) {
+    const red = (r.svg.match(/#d40000/g) ?? []).length;
+    if (red < 8) fail(`${r.case.id}：赤い印が少なすぎます（${red}か所）。レイヤーの見本の置き方を確かめてください`);
+  }
   for (const bad of r.case.mustNot ?? []) {
     const hit = ids.filter((id) => id.startsWith(bad));
     if (hit.length) fail(`${r.case.id}：入っていないはずの ${hit.join('・')} が図面に入っています`);

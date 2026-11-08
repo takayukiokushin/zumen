@@ -299,6 +299,34 @@ export async function part2(c: Awaited<ReturnType<typeof part1>>) {
     const got = await J(await call(a, `/api/projects/${created.id}`));
     check('レイヤーは、保存して開いても、そのまま戻る', JSON.stringify(got.drawing.layers) === JSON.stringify(withLayers.layers));
 
+    // 赤い印のすべての種類（文字・×印・接地・枠・点・矢印・渡り線）と、元の図面の記録（seen）・向きが、そのまま保存されて戻る
+    const rich = {
+      items: withLayers.items,
+      layers: [
+        {
+          id: 'outage',
+          orientation: 'landscape',
+          seen: 'abc123',
+          items: [
+            { kind: 'text', id: 't1', x: 1, y: 2, lines: ['メモ'], anchor: 'start', red: true, ndx: 1, ndy: 2 },
+            { kind: 'cross', id: 'c1', target: 'vcb', size: 'M', dx: 4, dy: -2 },
+            { kind: 'ground', id: 'g1', anchor: { kind: 'wire', key: 'k', id: 'w1', t: 0.5 }, lead: 30, drop: 20, label: ['No.1'], size: 2, bold: true },
+            { kind: 'area', id: 'a1', x: 0, y: 0, w: 100, h: 80, near: 'vcb', ndx: -10, ndy: -5, hatch: true, label: ['充電範囲'], labelPos: 'br' },
+            { kind: 'dot', id: 'd1', anchor: { kind: 'port', item: 'vcb', port: 'top' }, x: 5, y: 6, near: 'vcb', ndx: 1, ndy: 2 },
+            { kind: 'dot', id: 'd2', x: 50, y: 60, ndx: 50, ndy: 60 },
+            { kind: 'arrow', id: 'r1', dot: 'd1', dir: 'ne', len: 60, label: ['印加点'], size: 2 },
+            { kind: 'link', id: 'l1', a: 'd1', b: 'd2', shape: 'round', flip: true },
+          ],
+        },
+      ],
+    };
+    const saveRich = await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: rich }) });
+    const gotRich = await J(await call(a, `/api/projects/${created.id}`));
+    check('赤い印のすべての種類・元の図面の記録・向きを含むレイヤーが、保存して開いても、そのまま戻る', saveRich.ok && JSON.stringify(gotRich.drawing.layers) === JSON.stringify(rich.layers));
+    const richList = (await J(await call(a, `/api/projects/${created.id}/layers`))).layers as { id: string; count: number }[];
+    check('レイヤーの一覧：赤い印のすべての種類が、置いたものの数に入る', richList.find((l) => l.id === 'outage')?.count === 8);
+    await call(a, `/api/projects/${created.id}`, { method: 'PUT', body: JSON.stringify({ drawing: withLayers }) });
+
     const list = (await J(await call(a, `/api/projects/${created.id}/layers`))).layers as { id: string; name: string | null; count: number }[];
     check('レイヤーの一覧：追加したレイヤーは、置いたものが無くても出る', list.some((l) => l.id === 'custom-1' && l.name === '夜間停電' && l.count === 0));
     check('レイヤーの一覧：固定のレイヤーは、置いたものがあるときだけ出る（名前は画面が持つので null）', list.some((l) => l.id === 'outage' && l.name === null && l.count === 2) && !list.some((l) => l.id === 'withstand'));
