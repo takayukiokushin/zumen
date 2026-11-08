@@ -1,7 +1,7 @@
 import { getSymbol } from '@zumen/symbols';
 import { tr } from '../i18n/index.ts';
 import type { Key } from '../i18n/index.ts';
-import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, clampTextSize, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
 import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf } from './doc.ts';
@@ -93,11 +93,12 @@ const overlaps = (a: Box, b: Box, gap = 0): boolean =>
   a.x0 - gap < b.x1 && b.x0 - gap < a.x1 && a.y0 - gap < b.y1 && b.y0 - gap < a.y1;
 
 /** 文字の並びが占める範囲 */
-function textBox(x: number, y: number, lines: string[], anchor: 'start' | 'middle' | 'end'): Box {
-  const w = Math.max(0, ...lines.map((l) => textWidth(l)));
+function textBox(x: number, y: number, lines: string[], anchor: 'start' | 'middle' | 'end', scale = 1): Box {
+  const font = LABEL_FONT * scale;
+  const w = Math.max(0, ...lines.map((l) => textWidth(l, font)));
   const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
   // yは1行目のベースライン。上に文字の高さぶん、下に行数ぶん
-  return { x0, y0: y - LABEL_FONT, x1: x0 + w, y1: y + (lines.length - 1) * LABEL_LINE + 3 };
+  return { x0, y0: y - font, x1: x0 + w, y1: y + (lines.length - 1) * LABEL_LINE * scale + 3 };
 }
 
 /** 記号が占める範囲（絵のぶんだけ。文字は別に数える） */
@@ -544,7 +545,7 @@ function shiftBelow(doc: Doc, lo: number, hi: number, shift: number): Doc {
     items: doc.items.map((it): DocItem => {
       if (it.kind === 'wire') return { ...it, y1: up(it.y1), y2: up(it.y2) };
       if (it.kind === 'symbol') return drawnBox(it).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
-      if (it.kind === 'text') return textBox(it.x, it.y, it.lines, it.anchor).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
+      if (it.kind === 'text') return textBox(it.x, it.y, it.lines, it.anchor, clampTextSize(it.size)).y0 >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
       return it.y >= hi - 0.5 ? { ...it, y: it.y - shift } : it;
     }),
   };
@@ -591,7 +592,7 @@ function contentBoxes(doc: Doc, joinLabels = false, skipCables = false): Box[] {
       if (joinLabels) boxes.push({ x0: Math.min(body.x0, lb.x0), y0: Math.min(body.y0, lb.y0), x1: Math.max(body.x1, lb.x1), y1: Math.max(body.y1, lb.y1) });
       else boxes.push(body, lb);
     } else if (it.kind === 'text') {
-      boxes.push(textBox(it.x, it.y, it.lines, it.anchor));
+      boxes.push(textBox(it.x, it.y, it.lines, it.anchor, clampTextSize(it.size)));
     } else if (it.kind === 'frame') {
       boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
     } else if (it.y1 === it.y2 && it.x1 !== it.x2 && !(skipCables && it.dashed)) {
@@ -805,13 +806,15 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
     const anchor = it.kind === 'symbol' ? it.labelAnchor : it.anchor;
     const baseX = it.kind === 'symbol' ? it.x + it.labelDx : it.x;
     const baseY = it.kind === 'symbol' ? it.y + it.labelDy : it.y;
+    // 大きくした文字は、その大きさで場所を測る（メモなど。記号の横の文字は、いつも標準）
+    const scale = it.kind === 'text' ? clampTextSize(it.size) : 1;
     // 自分の記号そのものとは重なってよい扱いにする（文字は記号の横に出すため）
     const others = symbols
       .map((s2, i2) => ({ id: s2.id, box: symBoxes[i2]! }))
       .filter((e) => e.id !== it.id)
       .map((e) => e.box);
 
-    let best = { dx: 0, dy: 0, bad: clashScore(textBox(baseX, baseY, lines, anchor), placed, others, wires) };
+    let best = { dx: 0, dy: 0, bad: clashScore(textBox(baseX, baseY, lines, anchor, scale), placed, others, wires) };
     // 文字どうしが重なっているときだけ動かす（線をまたぐだけなら動かさない）
     if (best.bad >= CLASH_TEXT) {
       // 右・下・上・左の順に、少しずつ離して空いているところを探す
@@ -822,7 +825,7 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
         ] as const) {
           const dx = ux * r * step;
           const dy = uy * r * step;
-          const bad = clashScore(textBox(baseX + dx, baseY + dy, lines, anchor), placed, others, wires);
+          const bad = clashScore(textBox(baseX + dx, baseY + dy, lines, anchor, scale), placed, others, wires);
           if (bad < best.bad) best = { dx, dy, bad };
           if (bad < CLASH_TEXT) break outer;
         }
@@ -847,7 +850,7 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
         });
       }
     }
-    placed.push(textBox(baseX + best.dx, baseY + best.dy, lines, anchor));
+    placed.push(textBox(baseX + best.dx, baseY + best.dy, lines, anchor, scale));
   }
 
   return { doc: { ...doc, items }, fixed, issues };
@@ -1124,7 +1127,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
     });
   }
   for (const it of textsOf(doc)) {
-    boxes.push({ box: textBox(it.x, it.y, it.lines, it.anchor), id: it.id, head: it.lines[0] ?? '' });
+    boxes.push({ box: textBox(it.x, it.y, it.lines, it.anchor, clampTextSize(it.size)), id: it.id, head: it.lines[0] ?? '' });
   }
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {

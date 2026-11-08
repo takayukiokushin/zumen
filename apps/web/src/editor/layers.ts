@@ -268,6 +268,15 @@ export function carryLayers(next: Doc, from: Doc): Doc {
   return from.layers !== undefined ? { ...rest, layers: from.layers } : rest;
 }
 
+/**
+ * 手で直していない図面を開き直す（回答から作り直す）とき、前の図面から引き継ぐもの：
+ * 印刷の向き（縦・横。決めてあれば）と、レイヤー。
+ */
+export function carryOver(next: Doc, from: Doc): Doc {
+  const withOrientation: Doc = from.orientation && !next.orientation ? { ...next, orientation: from.orientation } : next;
+  return carryLayers(withOrientation, from);
+}
+
 /* ---------------- レイヤーに置いた文字 ---------------- */
 
 /** 近くの機器と、そこからのずれ。近くに機器が無ければ、場所だけで覚える */

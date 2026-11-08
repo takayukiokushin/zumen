@@ -18,6 +18,7 @@ import './check-drawing/part8.ts';
 import './check-drawing/part9.ts';
 import './check-drawing/part10.ts';
 import './check-drawing/part11.ts';
+import './check-drawing/part12.ts';
 
 console.log(state.failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${state.failed}件の問題があります`);
 process.exit(state.failed === 0 ? 0 : 1);

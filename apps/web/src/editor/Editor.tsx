@@ -19,7 +19,7 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addExtraCross, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addExtraCross, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
 import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
 import type { AreaRect, ArrowDir, CrossSize, LinkShape } from '@zumen/layout';
@@ -93,8 +93,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     // 手で直していない図面は、いつでも回答から作り直してよい。
     // 手で直したものは、手で直した内容を残したまま、回答が変わっていれば、作り直す（下の useEffect）
     if (!initialDoc || initialDoc.edited !== true) {
-      // レイヤー（停電範囲図など）は、元の図面を作り直しても、引き継ぐ
-      return { past: [], present: initialDoc ? carryLayers(generated, initialDoc) : generated, future: [] };
+      // 印刷の向きとレイヤー（停電範囲図など）は、元の図面を作り直しても、引き継ぐ
+      return { past: [], present: initialDoc ? carryOver(generated, initialDoc) : generated, future: [] };
     }
     // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく。
     // 自動で作った図面の控えが無い古い図面は、いまの回答から作った図面を控えにする（回答が同じなら、ほぼ同じ図面）
@@ -523,7 +523,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     const legacy = doc.edited === true && !doc.base;
     const { doc: fresh, report } = legacy ? { doc: generated, report: { kept: false, dormant: 0, overlaps: 0 } } : rebuildWithOverrides(generated, doc);
     // 印刷の向きとレイヤーは、作り直しても、引き継ぐ
-    const withOrientation: Doc = carryLayers(doc.orientation && !fresh.orientation ? { ...fresh, orientation: doc.orientation } : fresh, doc);
+    const withOrientation: Doc = carryOver(fresh, doc);
     setHistory((h) => commit(h, withOrientation));
     onDocChange?.(withOrientation);
     setSelection([]);
