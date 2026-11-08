@@ -695,6 +695,130 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     }
   }
 
+  /* ---------- 9a3. アプリの更新と、元の版へ戻す ---------- */
+  say('\n■ アプリの更新（update-mac.command）と、更新前の版へ戻す（rollback-mac.command）');
+  {
+    const { spawnSync } = await import('node:child_process');
+    const { cpSync, readFileSync: rf, existsSync: ex, rmSync: rm2, readdirSync: rd } = await import('node:fs');
+    const { ROOT } = await import('./common.ts');
+    const need = ['bash', 'zip', 'unzip', 'curl', 'tar', 'find'];
+    const missing = need.filter((c) => spawnSync('sh', ['-c', `command -v ${c}`]).status !== 0);
+    if (missing.length) {
+      ok(`（この環境には ${missing.join('・')} が無いため、この確認は省略します）`);
+    } else {
+      const hasRsync = spawnSync('sh', ['-c', 'command -v rsync']).status === 0;
+      const variants: { label: string; noRsync: boolean }[] = [{ label: 'rsync なし（find と tar）', noRsync: true }, ...(hasRsync ? [{ label: 'rsync あり', noRsync: false }] : [])];
+      if (!hasRsync) ok('（この環境には rsync が無いため、rsync を使う側の確認は省略します。GitHub の自動確認では動きます）');
+      const put = (path: string, text: string) => {
+        mkdirSync(join(path, '..'), { recursive: true });
+        writeFileSync(path, text);
+      };
+      const text = (path: string) => (ex(path) ? rf(path, 'utf8') : null);
+      const COPIES = '更新前の控え'; // 「zumen-更新前の控え」の後ろ
+      for (const v of variants) {
+        const tag = `［${v.label}］`;
+        const base = mkdtempSync(join(tmpdir(), 'zumen-upd-'));
+        const home = join(base, 'home');
+        const app = join(base, 'app');
+        const copies = join(home, `zumen-${COPIES}`);
+        mkdirSync(home);
+        // いまのアプリ（版 1.0.0）
+        put(join(app, 'package.json'), '{\n  "name": "zumen",\n  "version": "1.0.0"\n}\n');
+        put(join(app, 'app-file.txt'), 'v1');
+        put(join(app, 'old-only.txt'), '古い版にだけあるファイル');
+        put(join(app, 'dir/sub.txt'), 'old');
+        put(join(app, '.env'), 'ANTHROPIC_API_KEY=secret');
+        put(join(app, 'data/zumen.db'), 'DATA1');
+        put(join(app, 'node_modules/dep/index.js'), 'dep');
+        put(join(app, 'apps/web/node_modules/x'), 'nested-dep');
+        put(join(app, '.git/HEAD'), 'ref');
+        for (const f of ['update-mac.command', 'rollback-mac.command']) cpSync(join(ROOT, f), join(app, f));
+        // 新しい版（2.0.0）のZIP（展開すると、zumen-main/ という1段深いフォルダになる）
+        const src = join(base, 'zip-src', 'zumen-main');
+        put(join(src, 'package.json'), '{\n  "name": "zumen",\n  "version": "2.0.0"\n}\n');
+        put(join(src, 'app-file.txt'), 'v2');
+        put(join(src, 'new-only.txt'), '新しい版にだけあるファイル');
+        put(join(src, 'dir/sub.txt'), 'new');
+        for (const f of ['update-mac.command', 'rollback-mac.command']) cpSync(join(ROOT, f), join(src, f));
+        const zip = join(base, 'new.zip');
+        spawnSync('zip', ['-qr', zip, 'zumen-main'], { cwd: join(base, 'zip-src') });
+        const run = (script: string, extra: Record<string, string>) =>
+          spawnSync('bash', [join(app, script)], {
+            env: { ...process.env, HOME: home, ZUMEN_SKIP_INSTALL: '1', ZUMEN_NO_RSYNC: v.noRsync ? '1' : '0', ZUMEN_ZIP_URL: `file://${zip}`, ...extra },
+            input: '\n',
+            encoding: 'utf8',
+            timeout: 60_000,
+          });
+        const stamps = () => rd(copies).filter((n) => /^\d{8}-\d{6}$/.test(n)).sort();
+        try {
+          // 1. 更新する
+          const up = run('update-mac.command', { ZUMEN_STAMP: '20261101-100000' });
+          check(`${tag}更新できる`, up.status === 0, up.status === 0 ? '' : `${up.status} ${up.stdout.split('\n').slice(-4).join(' / ')}`);
+          check(`${tag}更新すると、新しい版の中身になる（変わったもの・増えたものが入り、無くなったものが消える）`, text(join(app, 'app-file.txt')) === 'v2' && text(join(app, 'new-only.txt')) !== null && text(join(app, 'old-only.txt')) === null && text(join(app, 'dir/sub.txt')) === 'new' && /2\.0\.0/.test(text(join(app, 'package.json')) ?? ''));
+          check(`${tag}更新しても、APIキー（.env）・案件のデータ（data）・部品（node_modules）は、そのまま`, text(join(app, '.env')) === 'ANTHROPIC_API_KEY=secret' && text(join(app, 'data/zumen.db')) === 'DATA1' && text(join(app, 'node_modules/dep/index.js')) === 'dep' && text(join(app, 'apps/web/node_modules/x')) === 'nested-dep' && text(join(app, '.git/HEAD')) === 'ref');
+          const c1 = join(copies, '20261101-100000');
+          check(`${tag}更新前の控えに、アプリ本体（更新前の版）も入っている`, text(join(c1, 'app/app-file.txt')) === 'v1' && text(join(c1, 'app/old-only.txt')) !== null && /1\.0\.0/.test(text(join(c1, 'app/package.json')) ?? ''));
+          check(`${tag}更新前の控えの本体には、データ・APIキー・部品を入れない（データは別に控える）`, !ex(join(c1, 'app/data')) && !ex(join(c1, 'app/.env')) && !ex(join(c1, 'app/node_modules')) && !ex(join(c1, 'app/.git')) && text(join(c1, 'data/zumen.db')) === 'DATA1' && text(join(c1, '.env')) === 'ANTHROPIC_API_KEY=secret');
+
+          // 2. 更新したあとに、案件が増える
+          put(join(app, 'data/zumen.db'), 'DATA2');
+          put(join(app, 'data/new-project.txt'), '更新のあとに作った案件');
+
+          // 3. 戻す（データは、そのまま）
+          const rb = run('rollback-mac.command', { ZUMEN_YES: 'yes', ZUMEN_RESTORE_DATA: 'no', ZUMEN_STAMP: '20261101-110000' });
+          check(`${tag}更新前の版に戻せる`, rb.status === 0, rb.status === 0 ? '' : `${rb.status} ${rb.stdout.split('\n').slice(-4).join(' / ')}`);
+          check(`${tag}戻すと、更新前の版の中身になる（増えたものが消え、無くなっていたものが戻る）`, text(join(app, 'app-file.txt')) === 'v1' && text(join(app, 'old-only.txt')) !== null && text(join(app, 'new-only.txt')) === null && text(join(app, 'dir/sub.txt')) === 'old' && /1\.0\.0/.test(text(join(app, 'package.json')) ?? ''));
+          check(`${tag}戻しても、案件のデータ（更新のあとに作った分も）・APIキー・部品は、そのまま`, text(join(app, 'data/zumen.db')) === 'DATA2' && text(join(app, 'data/new-project.txt')) === '更新のあとに作った案件' && text(join(app, '.env')) === 'ANTHROPIC_API_KEY=secret' && text(join(app, 'node_modules/dep/index.js')) === 'dep');
+          const b1 = join(copies, '20261101-110000-戻す前');
+          check(`${tag}戻す前の状態（新しい版の本体・そのときのデータ）も、あらためて控える`, text(join(b1, 'app/app-file.txt')) === 'v2' && text(join(b1, 'data/zumen.db')) === 'DATA2');
+          check(`${tag}戻す操作の控えは、「更新前の控え」の一覧に混ざらない（次に戻すとき、戻し先に選ばれない）`, stamps().join() === '20261101-100000');
+
+          // 4. もう一度戻しても、同じ（戻す前の控えを、戻し先に選ばない）
+          const rb2 = run('rollback-mac.command', { ZUMEN_YES: 'yes', ZUMEN_RESTORE_DATA: 'no', ZUMEN_STAMP: '20261101-110100' });
+          check(`${tag}続けてもう一度戻しても、同じ更新前の版のまま（壊れた版を、戻し先に選ばない）`, rb2.status === 0 && text(join(app, 'app-file.txt')) === 'v1' && text(join(app, 'new-only.txt')) === null);
+
+          // 5. 更新し直して、データも一緒に戻す
+          run('update-mac.command', { ZUMEN_STAMP: '20261101-120000' });
+          check(`${tag}更新し直せる`, text(join(app, 'app-file.txt')) === 'v2' && stamps().join() === '20261101-100000,20261101-120000');
+          put(join(app, 'data/zumen.db'), 'DATA3');
+          put(join(app, 'data/after-update.txt'), '2回目の更新のあとに作った案件');
+          const rb3 = run('rollback-mac.command', { ZUMEN_YES: 'yes', ZUMEN_RESTORE_DATA: 'yes', ZUMEN_STAMP: '20261101-130000' });
+          check(`${tag}データも一緒に戻せる（戻し先は、いちばん新しい更新前の控え）`, rb3.status === 0 && text(join(app, 'app-file.txt')) === 'v1' && text(join(app, 'data/zumen.db')) === 'DATA2' && text(join(app, 'data/after-update.txt')) === null);
+          check(`${tag}データも戻したとき、戻す前のデータも、控えに残る`, text(join(copies, '20261101-130000-戻す前', 'data/zumen.db')) === 'DATA3' && text(join(copies, '20261101-130000-戻す前', 'data/after-update.txt')) !== null);
+
+          // 6. 更新に失敗したとき（新しい中身を取れない）は、何も変えない
+          const before = text(join(app, 'app-file.txt'));
+          const failUp = run('update-mac.command', { ZUMEN_ZIP_URL: `file://${base}/nai.zip`, ZUMEN_STAMP: '20261101-140000' });
+          check(`${tag}新しい中身を取れなかったとき、更新は止まり、アプリは変わらない`, failUp.status !== 0 && text(join(app, 'app-file.txt')) === before && text(join(app, 'data/zumen.db')) === 'DATA2');
+
+          // 7. 控えは新しい3回分だけ残る（戻す前の控えは、片づけの対象にしない）
+          for (const [i, st] of ['20261102-100000', '20261103-100000', '20261104-100000'].entries()) {
+            put(join(app, 'app-file.txt'), `v1-${i}`);
+            run('update-mac.command', { ZUMEN_STAMP: st });
+          }
+          check(`${tag}更新前の控えは、新しい3回分だけ残る。戻す前の控えは、残る`, stamps().join() === '20261102-100000,20261103-100000,20261104-100000' && ex(join(copies, '20261101-130000-戻す前')), stamps().join(','));
+          check(`${tag}残った控えには、どれもアプリ本体が入っている`, stamps().every((n) => ex(join(copies, n, 'app/package.json'))));
+        } finally {
+          rm2(base, { recursive: true, force: true });
+        }
+      }
+      // 戻し先が無いとき（アプリ本体を控えるようになる前の更新だけ、のとき）
+      {
+        const base = mkdtempSync(join(tmpdir(), 'zumen-upd-'));
+        const home = join(base, 'home');
+        const app = join(base, 'app');
+        put(join(app, 'package.json'), '{\n  "name": "zumen",\n  "version": "3.0.0"\n}\n');
+        put(join(app, 'app-file.txt'), 'now');
+        put(join(app, 'data/zumen.db'), 'DATA');
+        cpSync(join(ROOT, 'rollback-mac.command'), join(app, 'rollback-mac.command'));
+        put(join(home, `zumen-${COPIES}/20260101-000000/data/zumen.db`), 'OLD'); // 本体の控えが無い、古い形の控え
+        const r = spawnSync('bash', [join(app, 'rollback-mac.command')], { env: { ...process.env, HOME: home, ZUMEN_YES: 'yes' }, input: '\n', encoding: 'utf8', timeout: 30_000 });
+        check('戻し先（アプリ本体の控え）が無いとき、何も変えずに、分かる言葉で断る', r.status !== 0 && /見つかりません/.test(r.stdout) && text(join(app, 'app-file.txt')) === 'now' && text(join(app, 'data/zumen.db')) === 'DATA');
+        rm2(base, { recursive: true, force: true });
+      }
+    }
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {

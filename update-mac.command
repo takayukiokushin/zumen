@@ -11,12 +11,26 @@ set -u
 cd "$(dirname "$0")" || exit 1
 DIR="$(pwd)"
 LABEL="jp.co.fuji-elex.zumen"
-ZIP_URL="https://github.com/takayukiokushin/zumen/archive/refs/heads/claude/single-line-diagram-app-h1mp73.zip"
+# ZUMEN_ で始まる設定は、自動の試験のためのもの（ふだんは、使わない）
+ZIP_URL="${ZUMEN_ZIP_URL:-https://github.com/takayukiokushin/zumen/archive/refs/heads/claude/single-line-diagram-app-h1mp73.zip}"
 
 say() { printf '%s\n' "$1"; }
 # ファイルの日付。macOS（BSD）とそれ以外の両方に合わせる
 when_of() { stat -f '%Sm' -t '%Y/%m/%d %H:%M' "$1" 2>/dev/null || date -r "$1" '+%Y/%m/%d %H:%M' 2>/dev/null; }
 die() { say ""; say "[×] $1"; say ""; read -r -p "Enterキーで閉じます"; exit 1; }
+
+# アプリの中身（.env・data・node_modules・.git 以外）を、$1 から $2 へ写す。$2 にだけあるファイルは消す。
+# rsync があればそれを使い、無ければ find と tar で同じことをする。
+mirror_app() {
+  if [ "${ZUMEN_NO_RSYNC:-}" != "1" ] && command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete --exclude '/.env' --exclude '/data/' --exclude 'node_modules/' --exclude '.git/' "$1/" "$2/"
+    return
+  fi
+  ( cd "$2" && find . \( -path ./.env -o -path ./data -o -name node_modules -o -name .git \) -prune -o -type f -print ) | while IFS= read -r f; do
+    [ -e "$1/$f" ] || rm -f -- "$2/$f"
+  done
+  ( cd "$1" && tar cf - --exclude=./.env --exclude=./data --exclude=node_modules --exclude=.git . ) | ( cd "$2" && tar xf - )
+}
 
 say "単線結線図作成：アプリを新しくします"
 say "  場所: $DIR"
@@ -31,12 +45,14 @@ command -v curl >/dev/null 2>&1 || die "curl が見つかりません。"
 command -v unzip >/dev/null 2>&1 || die "unzip が見つかりません。"
 
 # ---- 1. いまの .env と data を控えておく ----
-STAMP="$(date +%Y%m%d-%H%M%S)"
+STAMP="${ZUMEN_STAMP:-$(date +%Y%m%d-%H%M%S)}"
 SAFE="$HOME/zumen-更新前の控え/$STAMP"
-mkdir -p "$SAFE" || die "控えの場所を作れませんでした。"
+mkdir -p "$SAFE/app" || die "控えの場所を作れませんでした。"
 [ -f "$DIR/.env" ] && cp "$DIR/.env" "$SAFE/" 2>/dev/null
 [ -d "$DIR/data" ] && cp -R "$DIR/data" "$SAFE/" 2>/dev/null
-say "[1/6] いまの設定とデータを控えました"
+# 更新がうまくいかなかったとき、元の版に戻せるように、いまのアプリ本体も控える（rollback-mac.command が使う）
+mirror_app "$DIR" "$SAFE/app" || die "いまのアプリ本体を控えられませんでした。何も変えていません。"
+say "[1/6] いまの設定・データ・アプリ本体を控えました"
 say "      $SAFE"
 
 # ---- 2. 新しい中身を取ってくる ----
@@ -78,14 +94,10 @@ NEW="$(dirname "$NEW")"
 
 # ---- 3. 入れ替える（.env と data と node_modules は触らない） ----
 say "[3/6] 入れ替えています…"
-if command -v rsync >/dev/null 2>&1; then
-  rsync -a --delete \
-    --exclude '.env' --exclude 'data/' --exclude 'node_modules/' --exclude '.git/' \
-    "$NEW/" "$DIR/" || die "入れ替えに失敗しました。控えは $SAFE にあります。"
-else
-  # rsync が無いときは、上書きコピーだけ（消えた古いファイルは残る）
-  (cd "$NEW" && tar cf - .) | (cd "$DIR" && tar xf -) || die "入れ替えに失敗しました。"
-fi
+mirror_app "$NEW" "$DIR" || die "入れ替えに失敗しました。
+
+    元の版に戻すには、rollback-mac.command をダブルクリックしてください。
+    （控えは $SAFE にあります）"
 chmod +x "$DIR"/*.command 2>/dev/null
 xattr -dr com.apple.quarantine "$DIR" 2>/dev/null
 
@@ -110,16 +122,20 @@ fi
 # ---- 5. 必要な部品をそろえる（部品が増えていることがあるため） ----
 say "[5/6] 必要な部品をそろえています…（初回は数分かかることがあります）"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-if ! command -v pnpm >/dev/null 2>&1 && command -v corepack >/dev/null 2>&1; then
-  mkdir -p "$HOME/.zumen-bin"
-  corepack enable --install-directory "$HOME/.zumen-bin" >/dev/null 2>&1
-  PATH="$HOME/.zumen-bin:$PATH"
-  export PATH
-fi
-if command -v pnpm >/dev/null 2>&1; then
-  pnpm install >/dev/null 2>&1 || say "      （部品の用意でつまずきました。起動時にもう一度試します）"
+if [ "${ZUMEN_SKIP_INSTALL:-}" = "1" ]; then
+  say "      （試験のため、省略しました）"
 else
-  say "      （pnpm が見つかりません。start-server.command が用意します）"
+  if ! command -v pnpm >/dev/null 2>&1 && command -v corepack >/dev/null 2>&1; then
+    mkdir -p "$HOME/.zumen-bin"
+    corepack enable --install-directory "$HOME/.zumen-bin" >/dev/null 2>&1
+    PATH="$HOME/.zumen-bin:$PATH"
+    export PATH
+  fi
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm install >/dev/null 2>&1 || say "      （部品の用意でつまずきました。起動時にもう一度試します）"
+  else
+    say "      （pnpm が見つかりません。start-server.command が用意します）"
+  fi
 fi
 
 # ---- 6. 立ち上げ直す ----
@@ -141,6 +157,10 @@ if [ -f "$HOME/Library/LaunchAgents/$LABEL.plist" ]; then
   else
     say ""
     say "サーバーがまだ立ち上がりません。data/server.log を見てください。"
+    say ""
+    say "新しい版がうまく動かないときは、元の版に戻せます："
+    say "  rollback-mac.command をダブルクリックしてください。"
+    say "  （案件のデータは、そのまま残ります。更新前の版に戻るのは、アプリ本体だけです）"
   fi
 else
   say ""
