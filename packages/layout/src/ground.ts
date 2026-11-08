@@ -36,8 +36,8 @@ export const GROUND_HALF_WIDTH = HALF_WIDTHS[0]!;
 const BARS_HEIGHT = BAR_GAP * 2;
 
 /** 縦の長さ・横棒の長さとして読む（範囲に収める。横棒は、短すぎれば 0＝横棒なし） */
-export const clampDrop = (v: number): number => Math.max(GROUND_DROP_MIN, v);
-export const clampLead = (v: number): number => (Math.abs(v) < GROUND_LEAD_MIN ? 0 : v);
+export const clampDrop = (v: number): number => (Number.isFinite(v) ? Math.max(GROUND_DROP_MIN, v) : GROUND_DROP_MIN);
+export const clampLead = (v: number): number => (Number.isFinite(v) && Math.abs(v) >= GROUND_LEAD_MIN ? v : 0);
 
 /**
  * つなぐ場所 (px,py) と、マークを置く場所（縦の線の先＝いちばん上の横線の中央）(tx,ty) から、横棒と縦の長さを決める。

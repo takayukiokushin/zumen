@@ -8,7 +8,7 @@ import { HearingForm } from './HearingForm.tsx';
 import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
-import { purgeOrphanMarks } from './editor/layers.ts';
+import { purgeOrphanMarks, withCleanLayers } from './editor/layers.ts';
 import { useHeavyJob } from './editor/useHeavyJob.tsx';
 import { useNewVersion } from './session/useNewVersion.ts';
 import { Analyze } from './analyze/Analyze.tsx';
@@ -259,7 +259,8 @@ export function App() {
       setProjectId(p.id);
       setProjectName(base?.name ?? p.name);
       setAnswers(base ? base.answers : (p.answers ?? {}));
-      setDrawing(base ? base.drawing : p.drawing);
+      // 形の合わないレイヤーのデータ（古い版・壊れたもの）で、案件が開けなくならないよう、読み込むときに整理する
+      setDrawing(withCleanLayers(base ? base.drawing : p.drawing));
       setSketchRead(
         base?.sketchRead || (p.sketchRead ?? p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf')),
       );

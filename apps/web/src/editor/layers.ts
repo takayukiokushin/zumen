@@ -3,7 +3,7 @@ import type { AreaKindDef } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
 import { CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
 import { AREA_MIN, ARROW_DIR_DEFAULT, ARROW_LEN_DEFAULT, arrowFromTail, clampArrowLen } from '@zumen/layout';
-import { LINK_SHAPES, LINK_SHAPE_DEFAULT } from '@zumen/layout';
+import { ARROW_DIRS, LINK_SHAPES, LINK_SHAPE_DEFAULT } from '@zumen/layout';
 import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel, LinkShape } from '@zumen/layout';
 import { assistGroundPoint, defOf, digest, freshId, portsOf, sameName, wireKey } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
@@ -1114,4 +1114,90 @@ export function editLink(doc: Doc, layerId: string, id: string, patch: { shape?:
       return n;
     }),
   );
+}
+
+/* ---------------- 保存データを読み込むときの整理 ---------------- */
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isStrArr = (v: unknown): v is string[] => Array.isArray(v) && v.every(isStr);
+
+/** 吸い付き先（anchor）の形が正しいか */
+function validAnchor(a: unknown): boolean {
+  if (!isObj(a)) return false;
+  if (a.kind === 'port') return isStr(a.item) && isStr(a.port);
+  if (a.kind === 'wire') return isNum(a.t) && (a.key === undefined || isStr(a.key)) && (a.id === undefined || isStr(a.id));
+  return false;
+}
+
+/** 項目ごとの、なくてよい項目の形（合わなければ、その項目だけ外す） */
+const OPTIONAL: Record<LayerItem['kind'], Record<string, (v: unknown) => boolean>> = {
+  text: { anchor: (v) => v === 'start' || v === 'middle' || v === 'end', size: isNum, bold: (v) => typeof v === 'boolean', red: (v) => typeof v === 'boolean', near: isStr, ndx: isNum, ndy: isNum },
+  cross: { dx: isNum, dy: isNum },
+  ground: { anchor: validAnchor, lead: isNum, drop: isNum, label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean', x: isNum, y: isNum, rotate: isNum, near: isStr, ndx: isNum, ndy: isNum },
+  area: { near: isStr, hatch: (v) => typeof v === 'boolean', label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean', labelPos: (v) => v === 'tl' || v === 'tr' || v === 'bl' || v === 'br' },
+  dot: { anchor: validAnchor, near: isStr },
+  arrow: { dir: (v) => (ARROW_DIRS as readonly unknown[]).includes(v), len: isNum, label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean' },
+  link: { shape: (v) => LINK_SHAPES.some((x) => x.id === v), flip: (v) => typeof v === 'boolean' },
+};
+
+/** 項目ごとの、なくてはならない項目の形（合わなければ、その項目ごと外す） */
+const REQUIRED: Record<LayerItem['kind'], Record<string, (v: unknown) => boolean>> = {
+  text: { x: isNum, y: isNum, lines: isStrArr },
+  cross: { target: isStr, size: (v) => v === 'S' || v === 'M' || v === 'L' },
+  ground: {},
+  area: { x: isNum, y: isNum, w: isNum, h: isNum, ndx: isNum, ndy: isNum },
+  dot: { x: isNum, y: isNum, ndx: isNum, ndy: isNum },
+  arrow: { dot: isStr },
+  link: { a: isStr, b: isStr },
+};
+
+/**
+ * 保存してあったレイヤーのデータを、読み込むときに整理する。
+ * このアプリが作ったデータは、そのまま通る。形の合わないもの（古い版・手で書き換えられた・壊れたデータ）は、
+ * 画面が止まって案件が開けなくなるのを防ぐため、その項目だけ外す（なくてよい項目が合わないときは、その項目だけ）。
+ * 同じ id の重複・追加レイヤーの数・種類ごとの上限（100）も、決まりの範囲に収める。
+ */
+export function sanitizeLayers(raw: unknown): Layer[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return [];
+  const out: Layer[] = [];
+  const seenLayer = new Set<string>();
+  let custom = 0;
+  for (const l of raw) {
+    if (!isObj(l) || !isStr(l.id) || l.id === '' || seenLayer.has(l.id)) continue;
+    if (!isFixedLayerId(l.id)) {
+      if (!isStr(l.name) || custom >= MAX_CUSTOM_LAYERS) continue;
+      custom++;
+    }
+    seenLayer.add(l.id);
+    const items: LayerItem[] = [];
+    const ids = new Set<string>();
+    const perKind: Record<string, number> = {};
+    for (const it of Array.isArray(l.items) ? l.items : []) {
+      if (!isObj(it) || !isStr(it.kind) || !isStr(it.id) || it.id === '' || ids.has(it.id)) continue;
+      const kind = it.kind as LayerItem['kind'];
+      if (!(kind in REQUIRED)) continue;
+      if (!Object.entries(REQUIRED[kind]).every(([k, ok]) => ok(it[k]))) continue;
+      if ((perKind[kind] ?? 0) >= MAX_LAYER_ITEMS_PER_KIND) continue;
+      const clean: Record<string, unknown> = { kind, id: it.id };
+      for (const k of Object.keys(REQUIRED[kind])) clean[k] = it[k];
+      for (const [k, ok] of Object.entries(OPTIONAL[kind])) if (it[k] !== undefined && ok(it[k])) clean[k] = it[k];
+      items.push(clean as unknown as LayerItem);
+      ids.add(it.id);
+      perKind[kind] = (perKind[kind] ?? 0) + 1;
+    }
+    const layer: Layer = { id: l.id, ...(isFixedLayerId(l.id) ? {} : { name: l.name as string }), items };
+    if (l.orientation === 'portrait' || l.orientation === 'landscape') layer.orientation = l.orientation;
+    if (isStr(l.seen)) layer.seen = l.seen;
+    out.push(layer);
+  }
+  return out;
+}
+
+/** 読み込んだ図面の、レイヤーを整理する（レイヤーが無い図面は、そのまま） */
+export function withCleanLayers<T extends { layers?: unknown } | null | undefined>(doc: T): T {
+  if (!doc || typeof doc !== 'object' || (doc as { layers?: unknown }).layers === undefined) return doc;
+  return { ...doc, layers: sanitizeLayers((doc as { layers?: unknown }).layers) } as T;
 }

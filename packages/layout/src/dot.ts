@@ -42,7 +42,8 @@ const UNIT: Record<ArrowDir, { x: number; y: number }> = {
   nw: { x: -R2, y: -R2 },
 };
 
-export const clampArrowLen = (v: number): number => Math.min(ARROW_LEN_MAX, Math.max(ARROW_LEN_MIN, v));
+/** 矢印の長さとして読む（範囲に収める。数でないものは、最初の長さ） */
+export const clampArrowLen = (v: number): number => (Number.isFinite(v) ? Math.min(ARROW_LEN_MAX, Math.max(ARROW_LEN_MIN, v)) : ARROW_LEN_DEFAULT);
 
 /** 尾の位置から、いちばん近い向き（8方向）と長さにする。長さは、格子（2）に合わせる */
 export function arrowFromTail(dx: number, dy: number): { dir: ArrowDir; len: number } {
