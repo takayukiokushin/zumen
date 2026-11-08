@@ -577,7 +577,7 @@ export const ko: Dict = {
   'ground.shorter': '짧게',
   'ground.longer': '길게',
   'ground.label': '표시 옆에 붙일 글자(번호·회로명 등)',
-  'ground.labelHelp': '비워 두면 글자가 붙지 않습니다. 크기·굵게·색은 텍스트 상자와 같습니다.',
+  'ground.labelHelp': '비워 두면 글자가 붙지 않습니다. 크기·굵게는 텍스트 상자와 같습니다. 색은 접지 표시와 같은 빨강입니다.',
   'layer.itemLimit.ground': '이 레이어에 놓을 수 있는 접지 표시는 {n}개까지입니다',
   'cross.notSwitch': '이 기호에는 × 표시를 붙일 수 없습니다. 개폐기·차단기(PAS, VCB, LBS, DS 등)에 붙일 수 있습니다.',
   'layer.itemLimit.cross': '이 레이어에 붙일 수 있는 × 표시는 {n}개까지입니다',

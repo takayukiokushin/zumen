@@ -578,7 +578,7 @@ export const en: Dict = {
   'ground.shorter': 'Shorter',
   'ground.longer': 'Longer',
   'ground.label': 'Text beside the mark (number, circuit name, etc.)',
-  'ground.labelHelp': 'If left empty, no text is shown. Size, bold and color work as in text boxes.',
+  'ground.labelHelp': 'If left empty, no text is shown. Size and bold work as in text boxes. The color is the same red as the ground mark.',
   'layer.itemLimit.ground': 'You can place up to {n} ground marks on this layer',
   'cross.notSwitch': 'A × mark cannot be put on this symbol. It can be put on switches and breakers (PAS, VCB, LBS, DS, etc.).',
   'layer.itemLimit.cross': 'You can put up to {n} × marks on this layer',

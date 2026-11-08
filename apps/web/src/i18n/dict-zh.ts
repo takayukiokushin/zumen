@@ -575,7 +575,7 @@ export const zh: Dict = {
   'ground.shorter': '缩短',
   'ground.longer': '加长',
   'ground.label': '标记旁的文字（编号、回路名等）',
-  'ground.labelHelp': '留空则不显示文字。大小、粗体、颜色与文本框相同。',
+  'ground.labelHelp': '留空则不显示文字。大小、粗体与文本框相同。颜色与接地标记相同，为红色。',
   'layer.itemLimit.ground': '此图层上最多可放置{n}个接地标记',
   'cross.notSwitch': '此符号上不能加×标记。可加在开关、断路器（PAS、VCB、LBS、DS等）上。',
   'layer.itemLimit.cross': '此图层上最多可加{n}个×标记',

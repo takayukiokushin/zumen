@@ -579,7 +579,7 @@ export const ja = {
   'ground.shorter': '短く',
   'ground.longer': '長く',
   'ground.label': '横に付ける文字（番号・回路名など）',
-  'ground.labelHelp': '空のままなら、文字は付きません。大きさ・太字・色は、テキストボックスと同じです。',
+  'ground.labelHelp': '空のままなら、文字は付きません。大きさ・太字は、テキストボックスと同じです。色は、接地のマークと同じ赤です。',
   'layer.itemLimit.ground': 'このレイヤーに置ける接地のマークは、{n}個までです',
   'cross.notSwitch': 'この記号には、×印を付けられません。開閉器・遮断器（PAS・VCB・LBS・DSなど）に付けられます。',
   'layer.itemLimit.cross': 'このレイヤーに付けられる×印は、{n}個までです',

@@ -65,7 +65,7 @@ export type GroundAnchor =
  * つなぐ場所（anchor：母線の途中・記号の接続点）から、横棒（lead）と縦の線（drop）を引いて、下向きのマークを付ける
  * （形は packages/layout/src/ground.ts）。つないだ母線・記号が動けば、一緒に動く。
  * つないだ母線・記号が無くなったら、接地のマークも消える（画面にも印刷にも出さず、保存するときに、データからも外す）。
- * 横に、番号・回路名などの文字（label）を、任意で付けられる（大きさ・太字・色は、テキストボックスと同じ）。
+ * 横に、番号・回路名などの文字（label）を、任意で付けられる（大きさ・太字は、テキストボックスと同じ。色は、いつも接地のマークと同じ赤）。
  *
  * anchor が無いのは、古い版のデータ（置いた場所と近くの機器だけを覚えたもの）。横棒なし・縦10のマークとして出す。
  */
@@ -81,7 +81,6 @@ export interface LayerGround {
   label?: string[];
   size?: number;
   bold?: boolean;
-  red?: boolean;
   /** 古い版のデータ：置いた場所と、近くの機器からのずれ */
   x?: number;
   y?: number;
@@ -543,7 +542,7 @@ export function resolveGrounds(doc: Doc, layerId: string): ResolvedGround[] {
     const drop = clampDrop(g.drop ?? LEGACY_DROP);
     const label: GroundLabel | undefined =
       g.label && g.label.some((l) => l !== '')
-        ? { lines: g.label, ...(g.size !== undefined ? { size: g.size } : {}), ...(g.bold ? { bold: true } : {}), ...(g.red ? { red: true } : {}) }
+        ? { lines: g.label, ...(g.size !== undefined ? { size: g.size } : {}), ...(g.bold ? { bold: true } : {}), red: true }
         : undefined;
     const r = { id: g.id, x: at.x, y: at.y, lead, drop, ...(label ? { label } : {}) };
     out.push({ ...r, overlaps: groundOverlapsSymbols(doc, r, g.anchor) });
@@ -572,7 +571,7 @@ export function editGround(
   doc: Doc,
   layerId: string,
   id: string,
-  patch: { lead?: number; drop?: number; anchor?: GroundAnchor; label?: string[]; size?: number; bold?: boolean; red?: boolean },
+  patch: { lead?: number; drop?: number; anchor?: GroundAnchor; label?: string[]; size?: number; bold?: boolean },
 ): Doc {
   const items = layerOf(doc, layerId)?.items;
   if (!items) return doc;
@@ -607,10 +606,6 @@ export function editGround(
       if (patch.bold !== undefined) {
         if (patch.bold) n.bold = true;
         else delete n.bold;
-      }
-      if (patch.red !== undefined) {
-        if (patch.red) n.red = true;
-        else delete n.red;
       }
       return n;
     }),

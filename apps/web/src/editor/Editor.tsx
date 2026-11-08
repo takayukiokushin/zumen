@@ -1070,10 +1070,10 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 <TextStyleControls
                   size={selectedGround.label.size}
                   bold={!!selectedGround.label.bold}
-                  red={!!selectedGround.label.red}
+                  red={null}
                   onSize={(n) => editLayer((d) => editGround(d, activeId, selectedGround.id, { size: n }), `gsize:${selectedGround.id}`)}
                   onBold={(b) => editLayer((d) => editGround(d, activeId, selectedGround.id, { bold: b }))}
-                  onRed={(r) => editLayer((d) => editGround(d, activeId, selectedGround.id, { red: r }))}
+                  onRed={() => {}}
                 />
               )}
               <button

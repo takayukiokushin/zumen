@@ -579,7 +579,7 @@ export const fr: Dict = {
   'ground.shorter': 'Plus court',
   'ground.longer': 'Plus long',
   'ground.label': 'Texte à côté de la marque (numéro, nom du circuit, etc.)',
-  'ground.labelHelp': 'Si vide, aucun texte n’est affiché. La taille, le gras et la couleur fonctionnent comme dans les zones de texte.',
+  'ground.labelHelp': 'Si vide, aucun texte n’est affiché. La taille et le gras fonctionnent comme dans les zones de texte. La couleur est le même rouge que la marque de terre.',
   'layer.itemLimit.ground': 'Vous pouvez placer jusqu’à {n} marques de terre sur ce calque',
   'cross.notSwitch': 'Une marque × ne peut pas être placée sur ce symbole. Elle se place sur les interrupteurs et disjoncteurs (PAS, VCB, LBS, DS, etc.).',
   'layer.itemLimit.cross': 'Vous pouvez placer jusqu’à {n} marques × sur ce calque',
