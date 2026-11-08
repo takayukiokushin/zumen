@@ -750,4 +750,5 @@ export const en: Dict = {
   'status.banner.title': 'The server needs attention:',
   'status.banner.open': 'View status',
   'status.banner.close': 'Close',
+  'srv.diskFull': 'The server’s disk is full, so saving and logging in are not possible. What you entered is still on this screen (it will be lost if you close or reload it). Please ask the server administrator to free up disk space.',
 };

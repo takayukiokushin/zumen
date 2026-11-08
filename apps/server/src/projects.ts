@@ -10,6 +10,20 @@ import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
 import { clearForDuplicate, MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
+/** ファイルを書く。途中で失敗（ディスクがいっぱいなど）したら、書きかけのファイルを消してから、失敗を伝える */
+function writeWhole(path: string, data: Buffer): void {
+  try {
+    writeFileSync(path, data);
+  } catch (e) {
+    try {
+      unlinkSync(path);
+    } catch {
+      // もともと無い
+    }
+    throw e;
+  }
+}
+
 /** 案件（プロジェクト）の保存・呼び出し。ヒアリング回答・図面・現地写真を一式で扱う */
 
 /** 現地写真の上限（1枚あたり） */
@@ -381,12 +395,17 @@ projects.post('/practice/copy', async (c) => {
     try {
       const buf = readFileSync(resolve(FILES_DIR, f.id));
       const fid = newId();
-      writeFileSync(resolve(FILES_DIR, fid), buf);
-      db.prepare(
-        'INSERT INTO project_files (id, project_id, file_name, media_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ).run(fid, id, f.file_name, f.media_type, buf.byteLength, t);
+      writeWhole(resolve(FILES_DIR, fid), buf);
+      try {
+        db.prepare(
+          'INSERT INTO project_files (id, project_id, file_name, media_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(fid, id, f.file_name, f.media_type, buf.byteLength, t);
+      } catch (e) {
+        unlinkSync(resolve(FILES_DIR, fid));
+        throw e;
+      }
     } catch {
-      // もとの写真のデータが無いものは、コピーしない
+      // もとの写真のデータが無いもの・書き込めなかったもの（書きかけのファイルは、残さない）は、コピーしない
     }
   }
   refreshSearch(id);
@@ -724,10 +743,16 @@ projects.post('/:id/files', async (c) => {
     return c.json({ error: `ファイルが大きすぎます（1つ${maxBytes / 1024 / 1024}MBまで）。小さくするか、別のファイルでお試しください。` }, 413);
   }
   const id = newId();
-  writeFileSync(resolve(FILES_DIR, id), buf);
-  db.prepare(
-    'INSERT INTO project_files (id, project_id, file_name, media_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, projectId, String(body.fileName ?? '写真').slice(0, 200), body.mediaType, buf.byteLength, now());
+  writeWhole(resolve(FILES_DIR, id), buf);
+  try {
+    db.prepare(
+      'INSERT INTO project_files (id, project_id, file_name, media_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(id, projectId, String(body.fileName ?? '写真').slice(0, 200), body.mediaType, buf.byteLength, now());
+  } catch (e) {
+    // 記録できなかったときは、書いたファイルも残さない（持ち主の分からないファイルになるため）
+    unlinkSync(resolve(FILES_DIR, id));
+    throw e;
+  }
   return c.json({ id, size: buf.byteLength }, 201);
 });
 

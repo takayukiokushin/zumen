@@ -50,6 +50,20 @@ export function logError(kind: string, err: unknown, context = ''): void {
   }
 }
 
+/** ディスクがいっぱいで書き込めなかったときの、利用者への案内（画面には、この文がそのまま出る） */
+export const DISK_FULL_MESSAGE =
+  'サーバーのディスクがいっぱいで、保存やログインができません。画面に入力した内容は、この画面に残っています（閉じたり読み込み直したりすると消えます）。サーバーの管理の方に、ディスクの空きを作るよう伝えてください。';
+
+/** ディスクがいっぱい（または、使える量の上限）で書き込めなかったエラーか。ファイルの書き込みと、データベースの書き込みの両方 */
+export function isDiskFull(err: unknown): boolean {
+  const e = err as { code?: unknown; errcode?: unknown; message?: unknown } | null;
+  if (!e || typeof e !== 'object') return false;
+  if (e.code === 'ENOSPC' || e.code === 'EDQUOT') return true;
+  // node:sqlite：SQLITE_FULL（番号 13）。ほかの番号のエラーを、ディスクのせいにしない
+  if (e.errcode === 13) return true;
+  return typeof e.message === 'string' && /database or disk is full|no space left on device/i.test(e.message);
+}
+
 /** Hono の onError に渡す。どの処理で想定外のエラーが起きても、ここで受ける */
 export function onUnexpectedError(err: Error, c: Context): Response {
   // 入力が大きすぎる等、意図して返しているものは、そのまま返す
@@ -58,6 +72,11 @@ export function onUnexpectedError(err: Error, c: Context): Response {
     return (err as HTTPException).getResponse();
   }
   const user = (c.get as (k: string) => { id?: string } | undefined)('user');
+  // ディスクがいっぱい：原因が分かるので、「保存できない理由」と「どうすればよいか」を、そのまま伝える（状態の番号は 507）
+  if (isDiskFull(err)) {
+    logError('ディスクがいっぱいで書き込めません', err, `${c.req.method} ${c.req.path}${user?.id ? ` （ID: ${user.id}）` : ''}`);
+    return c.json({ error: DISK_FULL_MESSAGE, diskFull: true }, 507);
+  }
   // 送られてきた内容は記録しない。操作（方法と道筋）と、その人のIDだけ
   logError('想定外のエラー', err, `${c.req.method} ${c.req.path}${user?.id ? ` （ID: ${user.id}）` : ''}`);
   // 画面側が、状態の番号（500）から、分かる言葉の案内を出す

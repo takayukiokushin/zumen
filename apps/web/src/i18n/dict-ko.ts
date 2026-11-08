@@ -749,4 +749,5 @@ export const ko: Dict = {
   'status.banner.title': '서버 상태에 주의가 필요합니다:',
   'status.banner.open': '상태 보기',
   'status.banner.close': '닫기',
+  'srv.diskFull': '서버의 디스크가 가득 차서 저장이나 로그인을 할 수 없습니다. 입력한 내용은 이 화면에 남아 있습니다(닫거나 다시 불러오면 사라집니다). 서버 관리자에게 디스크 공간을 확보해 달라고 전해 주세요.',
 };

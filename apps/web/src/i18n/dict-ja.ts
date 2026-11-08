@@ -751,6 +751,7 @@ export const ja = {
   'status.banner.title': 'サーバーの状態に注意が必要です：',
   'status.banner.open': '状態を見る',
   'status.banner.close': '閉じる',
+  'srv.diskFull': 'サーバーのディスクがいっぱいで、保存やログインができません。画面に入力した内容は、この画面に残っています（閉じたり読み込み直したりすると消えます）。サーバーの管理の方に、ディスクの空きを作るよう伝えてください。',
 } as const;
 
 export type Key = keyof typeof ja;

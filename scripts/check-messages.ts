@@ -114,5 +114,16 @@ else console.log(`  ${total}件の文言すべてに、次にすることが書�
   else console.log('  読み取り画面に、開発者向けのコマンドは出ない');
 }
 
+// ディスクがいっぱいのときの案内：サーバーの文と、画面の辞書（日本語）の文が同じ（同じでないと、他の言葉に訳せない）
+{
+  const src = readFileSync(new URL('../apps/server/src/errors.ts', import.meta.url), 'utf8');
+  const serverText = /DISK_FULL_MESSAGE =\s*'([^']+)'/.exec(src)?.[1];
+  const dict = readFileSync(new URL('../apps/web/src/i18n/dict-ja.ts', import.meta.url), 'utf8');
+  const dictText = /'srv\.diskFull': '([^']+)'/.exec(dict)?.[1];
+  if (!serverText || serverText !== dictText) fail('ディスクがいっぱいのときの案内が、サーバー（errors.ts）と日本語の辞書（srv.diskFull）で、同じ文になっていません');
+  else if (!/ディスクがいっぱい/.test(serverText) || !/残っています/.test(serverText) || !NEXT.test(serverText)) fail('ディスクがいっぱいのときの案内に、原因・入力が残ること・どうするか、のどれかが書かれていません');
+  else console.log('  ディスクがいっぱい：原因・入力が残ること・管理の方に伝えること、を伝え、他の言葉にも訳せる');
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);

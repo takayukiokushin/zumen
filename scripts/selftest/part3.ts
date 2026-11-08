@@ -543,6 +543,158 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     }
   }
 
+  /* ---------- 9a2. ディスクがいっぱいのとき ---------- */
+  say('\n■ ディスクがいっぱいのとき（本物の満杯のディスクを作って、サーバーを動かして確かめる）');
+  {
+    const J = (r: Response) => r.json() as Promise<any>;
+    const { execFileSync, spawn } = await import('node:child_process');
+    const { appendFileSync, unlinkSync } = await import('node:fs');
+    const { ROOT, sleep, freePort } = await import('./common.ts');
+    const mnt = mkdtempSync(join(tmpdir(), 'zumen-full-'));
+    let mounted = false;
+    // 小さな専用の領域（3MB）を作る。Linux で、管理者の権限があるときだけ作れる
+    if (process.platform === 'linux') {
+      try {
+        execFileSync('mount', ['-t', 'tmpfs', '-o', 'size=3m', 'tmpfs', mnt], { stdio: 'pipe' });
+        mounted = true;
+      } catch {
+        mounted = false;
+      }
+    }
+    if (!mounted) {
+      ok('（この環境では、満杯のディスクを作れない（Linux で、管理者の権限が必要）ため、この確認は省略します）');
+      rmSync(mnt, { recursive: true, force: true });
+    } else {
+      const fdata = join(mnt, 'data');
+      const fbackups = join(mnt, 'backups');
+      mkdirSync(fdata);
+      const fenv = { DATA_DIR: fdata, ANTHROPIC_API_KEY: '' };
+      let srv: ReturnType<typeof spawn> | null = null;
+      try {
+        await runNode(['apps/server/src/cli.ts', 'add', 'full1', '満杯試験', 'testpass123'], fenv);
+        await runNode(['apps/server/src/cli.ts', 'add', 'fulladmin', '満杯管理', 'testpass123', 'admin'], fenv);
+        const fport = await freePort();
+        const fb = `http://127.0.0.1:${fport}`;
+        srv = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'apps/server/src/index.ts'], {
+          cwd: ROOT,
+          env: { ...process.env, ...fenv, PORT: String(fport), BACKUP_DIR: fbackups },
+        });
+        let flog = '';
+        srv.stdout?.on('data', (d) => (flog += String(d)));
+        srv.stderr?.on('data', (d) => (flog += String(d)));
+        let up = false;
+        for (let i = 0; i < 40 && !up; i++) {
+          await sleep(500);
+          up = await fetch(`${fb}/api/health`).then((r) => r.ok).catch(() => false);
+        }
+        check('満杯の試験用のサーバーが起動する', up);
+        // 大きな送信の途中で、サーバーが先に答えて接続を閉じると、使い回していた接続が閉じていることがある（ブラウザは、自動でやり直す）。
+        // 試験の道具も、閉じていたときだけ、もう1回やり直す（ディスクの満杯とは関係ない、通信の作法の話）
+        const f2 = (url: string, init?: RequestInit): Promise<Response> =>
+          fetch(url, init).catch((e: Error & { cause?: { message?: string } }) => {
+            if (/other side closed|ECONNRESET/.test(e.cause?.message ?? e.message)) return fetch(url, init);
+            throw e;
+          });
+        const loginF = async (userId: string) => {
+          const r = await f2(`${fb}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId, password: 'testpass123' }) }).catch((e: Error & { cause?: unknown }) => {
+            throw new Error(`${e.message}（${String((e.cause as Error | undefined)?.message ?? e.cause)}）`);
+          });
+          return { status: r.status, cookie: r.ok ? (r.headers.get('set-cookie') ?? '').split(';')[0]! : '', body: (await r.json().catch(() => ({}))) as { error?: string } };
+        };
+        const callF = (cookie: string, path: string, init?: RequestInit) =>
+          f2(fb + path, { ...init, headers: { cookie, ...(init?.body ? { 'content-type': 'application/json' } : {}) } });
+        const u = (await loginF('full1')).cookie;
+        const adm = (await loginF('fulladmin')).cookie;
+        // 満杯になる前に、ふつうの案件と写真と、控えを1つ作っておく
+        const pj = (await J(await callF(u, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '満杯の前の案件' }) }))) as { id: string };
+        const normal = { answers: { siteName: '満杯の前に保存した' }, drawing: { items: [{ kind: 'text', id: 't', x: 1, y: 2, lines: ['保存済み'], anchor: 'start' }] } };
+        await callF(u, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify(normal) });
+        const bk0 = await runNode(['apps/server/src/cli.ts', 'backup', fbackups], fenv);
+        check('満杯になる前に、控えを作れる', bk0.code === 0);
+        const goodBackups = readdirSync(fbackups).filter((n) => /^\d{8}-\d{6}$/.test(n));
+        const filesBefore = readdirSync(join(fdata, 'files')).length;
+
+        // ディスクを満杯にする（空きが 0 になるまで、少しずつ書く）
+        const filler = join(mnt, 'filler');
+        for (const size of [65536, 4096, 512, 64, 1]) {
+          for (;;) {
+            try {
+              appendFileSync(filler, Buffer.alloc(size));
+            } catch {
+              break;
+            }
+          }
+        }
+        let freeLeft = -1;
+        try {
+          const { statfsSync } = await import('node:fs');
+          const f = statfsSync(mnt);
+          freeLeft = Number(f.bavail) * Number(f.bsize);
+        } catch {
+          freeLeft = -1;
+        }
+        check('ディスクを満杯にできた（空きがほぼ無い）', freeLeft >= 0 && freeLeft < 4096, `空き ${freeLeft}バイト`);
+
+        const big = { answers: { siteName: '満杯のときに保存しようとした' }, drawing: { items: Array.from({ length: 6000 }, (_, i) => ({ kind: 'text', id: `t${i}`, x: i, y: i, lines: ['あ'.repeat(60)], anchor: 'start' })) } };
+        const save = await callF(u, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify(big) });
+        const saveBody = (await J(save)) as { error?: string; diskFull?: boolean };
+        check('満杯のとき、保存は、サーバーのエラー（500）ではなく、「ディスクがいっぱい」と分かる状態（507）で断られる', save.status === 507 && saveBody.diskFull === true, `${save.status}`);
+        check('断るときの文が、原因（ディスクがいっぱい）・入力が残っていること・管理の方に伝えること、を伝える', /ディスクがいっぱい/.test(saveBody.error ?? '') && /残っています/.test(saveBody.error ?? '') && /管理の方/.test(saveBody.error ?? ''), saveBody.error ?? '');
+        const photo = await callF(u, `/api/projects/${pj.id}/files`, { method: 'POST', body: JSON.stringify({ fileName: 'a.png', mediaType: 'image/png', data: Buffer.alloc(300_000, 7).toString('base64') }) });
+        check('満杯のとき、写真を預かれない旨を、同じ言葉で伝える（507）', photo.status === 507, `${photo.status}`);
+        check('写真の書き込みに失敗しても、書きかけのファイルが残らない', readdirSync(join(fdata, 'files')).length === filesBefore, `${filesBefore} → ${readdirSync(join(fdata, 'files')).length}`);
+        const lg = await loginF('full1');
+        check('満杯のとき、新しくログインできない理由も、同じ言葉で伝える（507）', lg.status === 507 && /ディスクがいっぱい/.test(lg.body.error ?? ''), `${lg.status}`);
+
+        // 見るだけの操作は、続けられる。サーバーも止まらない。保存済みの案件は、そのまま
+        const read = await callF(u, `/api/projects/${pj.id}`);
+        const readBody = (await J(read)) as { answers: unknown; drawing: unknown };
+        check('満杯のあいだも、保存済みの案件を開ける。中身は、満杯になる前のまま（途中まで書かれていない）', read.ok && JSON.stringify(readBody.answers) === JSON.stringify(normal.answers) && JSON.stringify(readBody.drawing) === JSON.stringify(normal.drawing));
+        check('満杯のあいだも、案件の一覧を見られる', (await callF(u, '/api/projects')).ok);
+        await sleep(1500);
+        check('満杯のあいだも、サーバーは止まらず、応答し続ける', (await fetch(`${fb}/api/health`).then((r) => r.ok).catch(() => false)));
+        {
+          const stat = await callF(adm, '/api/admin/status');
+          const sb = (await J(stat)) as { disk: { freePercent: number } | null; warnings: { code: string }[] };
+          check('満杯のあいだ、管理者の状態の画面に、「ディスクの空きが少ない」の注意が出る', stat.ok && (sb.disk?.freePercent ?? 100) <= 10 && sb.warnings.some((w) => w.code === 'disk-low'), JSON.stringify(sb.warnings));
+        }
+
+        // 控え：満杯のときに作ろうとして失敗しても、空の控え・作りかけが残らず、前の控えも消えない
+        const bk1 = await runNode(['apps/server/src/cli.ts', 'backup', fbackups], fenv);
+        check('満杯のとき、控えは作れず、失敗として知らせる', bk1.code !== 0);
+        const afterNames = readdirSync(fbackups);
+        check('控えの作成に失敗しても、空の控え・作りかけが残らない（最新の控えとして、数えられてしまわない）', afterNames.every((n) => goodBackups.includes(n)), afterNames.join(','));
+        check('前の控え（満杯になる前のもの）は、そのまま残っている', goodBackups.every((n) => existsSync(join(fbackups, n, 'zumen.db')) && statSync(join(fbackups, n, 'zumen.db')).size > 0));
+
+        // 空きを作ると、サーバーを起動し直さなくても、もとどおり使える
+        unlinkSync(filler);
+        const lg2 = await loginF('full1');
+        check('空きを作ると、起動し直さなくても、ログインできる', lg2.status === 200);
+        // 空きを作ったあとは、ふつうの大きさの図面を保存できる（満杯のときに断った巨大な図面は、そもそも入らない大きさ）
+        const usual = { answers: { siteName: '空きを作ったあとに保存した' }, drawing: { items: Array.from({ length: 300 }, (_, i) => ({ kind: 'text', id: `t${i}`, x: i, y: i, lines: ['あ'.repeat(30)], anchor: 'start' })) } };
+        const save2 = await callF(lg2.cookie, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify(usual) });
+        check('空きを作ると、起動し直さなくても、保存できる', save2.ok, `${save2.status}`);
+        const photo2 = await callF(lg2.cookie, `/api/projects/${pj.id}/files`, { method: 'POST', body: JSON.stringify({ fileName: 'a.png', mediaType: 'image/png', data: Buffer.alloc(300_000, 7).toString('base64') }) });
+        check('空きを作ると、写真も預かれる', photo2.status === 201, `${photo2.status}`);
+        const bk2b = await runNode(['apps/server/src/cli.ts', 'backup', fbackups], fenv);
+        check('空きを作ると、控えも作れる', bk2b.code === 0);
+        const live = new DatabaseSync(join(fdata, 'zumen.db'), { readOnly: true });
+        const qc = (live.prepare('PRAGMA quick_check').get() as { quick_check: string }).quick_check;
+        live.close();
+        check('満杯を経験したデータベースは、壊れていない', qc === 'ok', qc);
+      } finally {
+        srv?.kill();
+        await sleep(300);
+        try {
+          execFileSync('umount', [mnt], { stdio: 'pipe' });
+        } catch {
+          // 外せなくても、一時の領域なので、あとで片づく
+        }
+        rmSync(mnt, { recursive: true, force: true });
+      }
+    }
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {

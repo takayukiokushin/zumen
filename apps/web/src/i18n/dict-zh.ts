@@ -747,4 +747,5 @@ export const zh: Dict = {
   'status.banner.title': '服务器需要注意：',
   'status.banner.open': '查看状态',
   'status.banner.close': '关闭',
+  'srv.diskFull': '服务器的磁盘已满，无法保存或登录。您输入的内容仍保留在此画面中（关闭或重新载入后会消失）。请告知服务器管理人员腾出磁盘空间。',
 };

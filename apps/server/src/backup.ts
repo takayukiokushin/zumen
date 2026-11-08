@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { resolve } from 'node:path';
 import { DATA_DIR, db } from './db.ts';
 import { recordBackupFailure, recordBackupSuccess } from './status.ts';
@@ -27,22 +28,54 @@ export interface BackupResult {
   bytes: number;
 }
 
-/** 1回分の写しを作る。返り値は作った場所 */
+/** 作っている途中の写しの置き場所の印（控えの名前の形ではないので、控えとしては数えられず、間引きの対象にもならない） */
+const PARTIAL = '.作成中';
+
+/** 控えのデータベースが、ちゃんと開けて、案件を読めるか（空・途中で切れたものを、控えとして残さないための確認） */
+function verifyCopy(file: string): void {
+  const copy = new DatabaseSync(file, { readOnly: true });
+  try {
+    const r = copy.prepare('PRAGMA quick_check').get() as { quick_check: string };
+    if (r.quick_check !== 'ok') throw new Error(`控えの確認に失敗しました: ${r.quick_check}`);
+    copy.prepare('SELECT COUNT(*) AS n FROM projects').get();
+  } finally {
+    copy.close();
+  }
+}
+
+/**
+ * 1回分の写しを作る。返り値は作った場所。
+ * 「作成中」の場所に作り、確認が済んでから、控えの名前に変える。
+ * ディスクがいっぱいなどで失敗したときは、作りかけのものを消す（空の控えが、最新の控えとして残り、本物の控えを間引いてしまわないように）。
+ */
 export function backup(destRoot: string): BackupResult {
   const root = resolve(destRoot);
   mkdirSync(root, { recursive: true });
 
-  const dir = resolve(root, stamp(new Date(), TIMEZONE));
-  // 同じ秒に二度実行された場合に備えて、いちど消してから作る
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
+  // 前に失敗して残った作りかけがあれば、片づける
+  for (const n of readdirSync(root)) if (n.endsWith(PARTIAL)) rmSync(resolve(root, n), { recursive: true, force: true });
 
-  // データベースのきれいな写し（書き込み中でも整合が取れた1ファイルになる）
-  const dbCopy = resolve(dir, 'zumen.db');
-  db.exec(`VACUUM INTO '${dbCopy.replaceAll("'", "''")}'`);
+  const name = stamp(new Date(), TIMEZONE);
+  const work = resolve(root, `${name}${PARTIAL}`);
+  const dir = resolve(root, name);
+  rmSync(work, { recursive: true, force: true });
+  mkdirSync(work, { recursive: true });
+  try {
+    // データベースのきれいな写し（書き込み中でも整合が取れた1ファイルになる）
+    const dbCopy = resolve(work, 'zumen.db');
+    db.exec(`VACUUM INTO '${dbCopy.replaceAll("'", "''")}'`);
+    verifyCopy(dbCopy);
+    // 同じ秒に二度実行された場合に備えて、同じ名前のものは、確認が済んでから入れ替える
+    rmSync(dir, { recursive: true, force: true });
+    renameSync(work, dir);
+  } catch (e) {
+    rmSync(work, { recursive: true, force: true });
+    throw e;
+  }
 
+  // 間引くのは、新しい控えが確かにできてから
   prune(root);
-  return { dir, bytes: statSync(dbCopy).size };
+  return { dir, bytes: statSync(resolve(dir, 'zumen.db')).size };
 }
 
 /** 古い写しを間引く（同じ日は新しい1つだけ、新しい日から10日分） */

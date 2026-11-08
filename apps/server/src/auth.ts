@@ -238,13 +238,22 @@ export function currentUser(c: Context): User | null {
   if (!row) return null;
   const left = new Date(row.expires_at).getTime() - Date.now();
   if (left < 0) {
-    db.prepare('DELETE FROM sessions WHERE token = ?').run(tokenKey(token));
+    try {
+      db.prepare('DELETE FROM sessions WHERE token = ?').run(tokenKey(token));
+    } catch {
+      // 片づけは、できなくてもよい（ディスクがいっぱいのときなど）
+    }
     return null;
   }
   if (left < SESSION_DAYS * 86400_000 - RENEW_AFTER_MS) {
-    const expires = new Date(Date.now() + SESSION_DAYS * 86400_000).toISOString();
-    db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(expires, tokenKey(token));
-    setSessionCookie(c, token);
+    // 期限を延ばせなくても、いまのログインは有効（ディスクがいっぱいのときも、見るだけの操作は続けられるように）
+    try {
+      const expires = new Date(Date.now() + SESSION_DAYS * 86400_000).toISOString();
+      db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run(expires, tokenKey(token));
+      setSessionCookie(c, token);
+    } catch {
+      // 次の機会に延ばす
+    }
   }
   return { id: row.id, name: row.name, role: row.role };
 }
