@@ -408,6 +408,141 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     check('控えには、写真・PDFを入れない（案件のデータだけ）', !existsSync(join(latest, 'files')));
   }
 
+  /* ---------- 9a. 控えから戻す（手順書どおり） ---------- */
+  say('\n■ 控えから戻す（手順書の「控えから戻す（復元）」のとおりに、新しいデータ置き場へ zumen.db を置いて、サーバーを動かす）');
+  {
+    const J = (r: Response) => r.json() as Promise<any>;
+    // 1. 戻す対象を用意する：赤い印のすべての種類を持つ図面・日本語・記号を含む名前
+    const richDrawing = {
+      items: [{ kind: 'text', id: 't0', x: 1, y: 2, lines: ['メモ ＆ <b>'], anchor: 'start' }],
+      orientation: 'landscape',
+      layers: [
+        {
+          id: 'outage',
+          seen: 'abc123',
+          items: [
+            { kind: 'text', id: 'a1', x: 1, y: 2, lines: ['停電範囲'], anchor: 'start', red: true, ndx: 1, ndy: 2 },
+            { kind: 'area', id: 'a2', x: 0, y: 0, w: 100, h: 80, ndx: 0, ndy: 0, hatch: true, label: ['充電範囲'] },
+            { kind: 'dot', id: 'd1', x: 5, y: 6, ndx: 5, ndy: 6 },
+            { kind: 'dot', id: 'd2', x: 50, y: 60, ndx: 50, ndy: 60 },
+            { kind: 'arrow', id: 'r1', dot: 'd1', dir: 'ne', len: 60, label: ['印加点'] },
+            { kind: 'link', id: 'l1', a: 'd1', b: 'd2', shape: 'round', flip: true },
+          ],
+        },
+        { id: 'custom-1', name: '作業停電図', items: [] },
+      ],
+    };
+    const mk = async (name: string, i: number) => {
+      const pj = (await J(await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name }) }))) as { id: string };
+      const put = await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: `復元の試験 ${i}`, transformerCount: i + 1 }, drawing: richDrawing }) });
+      if (!put.ok) throw new Error(`復元の試験の案件を保存できません: ${put.status}`);
+      return pj.id;
+    };
+    const ids = [await mk('復元の試験①（日本語・記号 ＆ <>）', 1), await mk('復元の試験②', 2), await mk('復元の試験③', 3)];
+    // ①には、読み取りの写真を1枚預けておく（控えには、写真のファイルは写さない決まり。記録だけが写る）
+    const photo = (await J(await call(a, `/api/projects/${ids[0]}/files`, { method: 'POST', body: JSON.stringify({ fileName: 'x.png', mediaType: 'image/png', data: Buffer.from('dummy-restore').toString('base64') }) }))) as { id: string };
+
+    // 2. 控えを作る。作っている最中にも、別の人が保存し続けている（控えが、書き込み中でも壊れないこと）
+    const writers = Array.from({ length: 24 }, (_, i) => call(b, '/api/projects', { method: 'POST', body: JSON.stringify({ name: `書き込み中の案件 ${i}` }) }).then((r) => J(r)).then((pj: { id: string }) => call(b, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: `書き込み ${i}` }, drawing: richDrawing }) })));
+    const mid = await runNode(['apps/server/src/cli.ts', 'backup', backupDir], env);
+    await Promise.all(writers);
+    check('書き込みが続いている最中でも、控えを作れる', mid.code === 0, mid.code === 0 ? '' : mid.out.trim().split('\n').pop() ?? '');
+    const midCopy = join(backupDir, readdirSync(backupDir).filter((n) => /^\d{8}-\d{6}$/.test(n)).sort().at(-1)!, 'zumen.db');
+    {
+      const dbm = new DatabaseSync(midCopy, { readOnly: true });
+      const integrity = (dbm.prepare('PRAGMA integrity_check').get() as { integrity_check: string }).integrity_check;
+      const rows = dbm.prepare('SELECT id, name, answers, drawing FROM projects').all() as { id: string; name: string; answers: string | null; drawing: string | null }[];
+      const broken = rows.filter((r) => {
+        try {
+          if (r.answers) JSON.parse(r.answers);
+          if (r.drawing) JSON.parse(r.drawing);
+          return false;
+        } catch {
+          return true;
+        }
+      });
+      dbm.close();
+      check('書き込み中に作った控えも、データベースとして壊れていない', integrity === 'ok', integrity);
+      check('書き込み中に作った控えの案件は、どれも中身が読める（途中で切れた案件が無い）', broken.length === 0, `${rows.length}件中 ${broken.length}件が壊れている`);
+    }
+
+    // 戻す前の状態を覚える（このあとの控えと同じ時点）
+    const snapshot = async (at: string, cookie: string) => {
+      const get = (path: string) => fetch(at + path, { headers: { cookie } });
+      const list = (await J(await get('/api/projects'))) as { projects: { id: string; name: string }[] };
+      const details = [] as { id: string; name: string; answers: unknown; drawing: unknown }[];
+      for (const p of list.projects) {
+        const d = (await J(await get(`/api/projects/${p.id}`))) as { name: string; answers: unknown; drawing: unknown };
+        details.push({ id: p.id, name: d.name, answers: d.answers, drawing: d.drawing });
+      }
+      details.sort((x, y) => (x.id < y.id ? -1 : 1));
+      const users = (((await J(await get('/api/admin/users'))) as { users?: { id: string }[] }).users ?? []).map((u) => u.id).sort();
+      return { details, users };
+    };
+    const before = await snapshot(base, kanri);
+    const beforeA = await snapshot(base, a);
+    const bk2 = await runNode(['apps/server/src/cli.ts', 'backup', backupDir], env);
+    check('戻す元になる控えを作れる', bk2.code === 0);
+    const latest = join(backupDir, readdirSync(backupDir).filter((n) => /^\d{8}-\d{6}$/.test(n)).sort().at(-1)!);
+
+    // 3. 手順書どおり：新しい data を作り、控えの zumen.db だけを置く（.env・写真は無い）
+    const restored = mkdtempSync(join(tmpdir(), 'zumen-restore-'));
+    writeFileSync(join(restored, 'zumen.db'), readFileSync(join(latest, 'zumen.db')));
+    const rport = await (await import('./common.ts')).freePort();
+    const rbase = `http://127.0.0.1:${rport}`;
+    const { spawn } = await import('node:child_process');
+    const { ROOT, sleep } = await import('./common.ts');
+    const srv = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'apps/server/src/index.ts'], {
+      cwd: ROOT,
+      env: { ...process.env, DATA_DIR: restored, ANTHROPIC_API_KEY: '', PORT: String(rport), BACKUP_DIR: '' },
+    });
+    let log = '';
+    srv.stdout?.on('data', (d) => (log += String(d)));
+    srv.stderr?.on('data', (d) => (log += String(d)));
+    try {
+      let up = false;
+      for (let i = 0; i < 40 && !up; i++) {
+        await sleep(500);
+        up = await fetch(`${rbase}/api/health`).then((r) => r.ok).catch(() => false);
+      }
+      check('戻したデータで、サーバーが起動する', up, up ? '' : log.trim().split('\n').slice(-3).join(' / '));
+      if (up) {
+        const loginAt = async (userId: string) => {
+          const r = await fetch(`${rbase}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId, password: 'testpass123' }) });
+          return r.ok ? (r.headers.get('set-cookie') ?? '').split(';')[0]! : '';
+        };
+        const rk = await loginAt('kanri');
+        const ra = await loginAt('tester1');
+        check('戻したあとも、同じパスワードでログインできる（利用者とパスワードも、控えの時点に戻る）', rk !== '' && ra !== '');
+        const health = (await J(await fetch(`${rbase}/api/health`))) as { userCount: number };
+        check('利用者の数が、控えの時点と同じ', health.userCount === 5, `${health.userCount}人`);
+        const after = await snapshot(rbase, rk);
+        const afterA = await snapshot(rbase, ra);
+        check('利用者の一覧が、戻す前と同じ', JSON.stringify(after.users) === JSON.stringify(before.users));
+        check('案件が、1件も欠けず、増えもしない（管理用の見え方）', after.details.length === before.details.length, `${after.details.length}件 / 戻す前 ${before.details.length}件`);
+        check('案件の名前・回答・図面が、1件ずつ、戻す前と同じ（赤いレイヤーの全種類・日本語・記号を含む）', JSON.stringify(afterA.details) === JSON.stringify(beforeA.details), `${afterA.details.length}件`);
+        const first = afterA.details.find((d) => d.id === ids[0]);
+        check('赤い印のすべての種類を持つ図面が、そのまま戻っている', JSON.stringify(first?.drawing) === JSON.stringify(richDrawing));
+        // 戻したあとも、ふつうに使える
+        const put = await fetch(`${rbase}/api/projects/${ids[1]}`, { method: 'PUT', headers: { cookie: ra, 'content-type': 'application/json' }, body: JSON.stringify({ answers: { siteName: '戻したあとに直した' }, drawing: richDrawing }) });
+        const reread = (await J(await fetch(`${rbase}/api/projects/${ids[1]}`, { headers: { cookie: ra } }))) as { answers: { siteName?: string } };
+        check('戻したあとも、案件を保存できる', put.ok && reread.answers.siteName === '戻したあとに直した', `${put.status}`);
+        const add = await fetch(`${rbase}/api/projects`, { method: 'POST', headers: { cookie: ra, 'content-type': 'application/json' }, body: JSON.stringify({ name: '戻したあとの新しい案件' }) });
+        check('戻したあとも、新しい案件を作れる', add.ok, `${add.status}`);
+        // 戻した先の変更は、もとのデータには及ばない
+        const orig = (await J(await call(a, `/api/projects/${ids[1]}`))) as { answers: { siteName?: string } };
+        check('戻した先で直しても、もとのサーバーの案件は変わらない（別々のデータ置き場）', orig.answers.siteName === '復元の試験 2');
+        // 控えは、写真・PDFを写さない決まり。戻したあと、写真の記録だけが残って、開くとエラーになることがないか
+        const filesOfRestored = (await J(await fetch(`${rbase}/api/projects/${ids[0]}`, { headers: { cookie: ra } }))) as { files: { id: string }[] };
+        const fileRes = await fetch(`${rbase}/api/projects/${ids[0]}/files/${photo.id}`, { headers: { cookie: ra } });
+        check('戻したあと、写真・PDFの記録だけが残っていても、開こうとして、サーバーがエラー（500）にならない', filesOfRestored.files.some((f) => f.id === photo.id) && fileRes.status >= 400 && fileRes.status < 500, `記録 ${filesOfRestored.files.length}件・開くと ${fileRes.status}`);
+      }
+    } finally {
+      srv.kill();
+      rmSync(restored, { recursive: true, force: true });
+    }
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {
