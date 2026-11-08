@@ -710,4 +710,11 @@ export const ko: Dict = {
   'link.shapeApply': '이 선의 모양 바꾸기',
   'link.flip': '볼록한 방향 뒤집기',
   'link.remove': '이 건넘선 떼기',
+  'layer.review.title': '원래 도면이 바뀌었습니다',
+  'layer.review.popup': '도면이 바뀌었습니다. 도면 기호와 글자의 배치를 확인해 주세요.',
+  'layer.review.popupHint': '빨간 표시와 글자가 원래 도면의 기호나 글자와 겹치지 않는지, 위치가 어긋나지 않았는지 확인해 주세요. 확인했으면 "확인했음"을 눌러 주세요.',
+  'layer.review.banner': '이 레이어를 마지막으로 수정한 뒤 원래 도면이 바뀌었습니다. 빨간 표시·글자의 위치와 도면 기호와의 겹침을 확인해 주세요.',
+  'layer.review.confirm': '확인했음',
+  'layer.review.later': '나중에 확인',
+  'layer.review.badge': '확인 필요',
 };

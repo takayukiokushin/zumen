@@ -5,7 +5,7 @@ import { CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLe
 import { AREA_MIN, ARROW_DIR_DEFAULT, ARROW_LEN_DEFAULT, arrowFromTail, clampArrowLen } from '@zumen/layout';
 import { LINK_SHAPES, LINK_SHAPE_DEFAULT } from '@zumen/layout';
 import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel, LinkShape } from '@zumen/layout';
-import { assistGroundPoint, defOf, freshId, portsOf, sameName, wireKey } from './doc.ts';
+import { assistGroundPoint, defOf, digest, freshId, portsOf, sameName, wireKey } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
 
 /**
@@ -178,6 +178,11 @@ export interface Layer {
   items: LayerItem[];
   /** このレイヤーを印刷するときの向き。無ければ、図面の形に合わせて自動で決まる */
   orientation?: Orientation;
+  /**
+   * このレイヤーに最後に手を入れた（または、「確認した」を押した）ときの、元の図面の署名（baseSignature）。
+   * いまの元の図面の署名と違えば、元の図面が変わっているので、レイヤーを開いたときに、確認をうながす。
+   */
+  seen?: string;
 }
 
 /** 画面の一覧に出すための、レイヤーの情報 */
@@ -310,10 +315,32 @@ export function layerItemsAsDocItems(doc: Doc, layerId: string): DocText[] {
 export function setLayerItems(doc: Doc, layerId: string, items: LayerItem[]): Doc {
   if (!layerInfos(doc).some((l) => l.id === layerId)) return doc;
   const has = !!layerOf(doc, layerId);
+  // 元の図面が変わって、まだ「確認した」を押していないときは、署名を書き換えない（手を入れても、確認したことにはならない）
+  const pending = layerNeedsReview(doc, layerId);
+  const mark = (l: Layer): Layer => {
+    if (items.length === 0 || pending) return l;
+    return { ...l, seen: baseSignature(doc) };
+  };
   const layers = has
-    ? layersOf(doc).map((l) => (l.id === layerId ? { ...l, items } : l))
-    : [...layersOf(doc), { id: layerId, items }];
+    ? layersOf(doc).map((l) => (l.id === layerId ? mark({ ...l, items }) : l))
+    : [...layersOf(doc), mark({ id: layerId, items })];
   return { ...doc, layers };
+}
+
+/** 元の図面の署名（記号・線・文字・枠の中身から決まる。レイヤーと、向きは含めない）。元の図面が変わったかどうかの目印 */
+export const baseSignature = (doc: Doc): string => digest(JSON.stringify(doc.items));
+
+/** 元の図面が、このレイヤーに最後に手を入れたとき（または「確認した」を押したとき）から変わっているか。置いたものが無いレイヤーと、古いデータ（署名なし）は、確認の対象にしない */
+export function layerNeedsReview(doc: Doc, layerId: string): boolean {
+  const l = layerOf(doc, layerId);
+  return !!l && l.items.length > 0 && l.seen !== undefined && l.seen !== baseSignature(doc);
+}
+
+/** 「確認した」：いまの元の図面を見て確かめたことにする */
+export function confirmLayerReview(doc: Doc, layerId: string): Doc {
+  const l = layerOf(doc, layerId);
+  if (!l || l.items.length === 0) return doc;
+  return { ...doc, layers: layersOf(doc).map((x) => (x.id === layerId ? { ...x, seen: baseSignature(doc) } : x)) };
 }
 
 /** 文字を足せるか（1つのレイヤーに置ける数には、上限がある） */

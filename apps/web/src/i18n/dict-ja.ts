@@ -712,6 +712,13 @@ export const ja = {
   'link.shapeApply': 'この線の形を変える',
   'link.flip': 'ふくらむ向きを反転',
   'link.remove': 'この渡り線を外す',
+  'layer.review.title': '元の図面が変わっています',
+  'layer.review.popup': '図面が変わっています。図記号や文字の配置を確認してください。',
+  'layer.review.popupHint': '赤い印や文字が、元の図面の記号や文字に重なっていないか、位置がずれていないかを見てください。確認できたら、「確認した」を押してください。',
+  'layer.review.banner': '元の図面が、このレイヤーに最後に手を入れたときから変わっています。赤い印・文字の位置や、図記号との重なりを確認してください。',
+  'layer.review.confirm': '確認した',
+  'layer.review.later': 'あとで確認する',
+  'layer.review.badge': '要確認',
 } as const;
 
 export type Key = keyof typeof ja;

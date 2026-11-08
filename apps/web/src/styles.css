@@ -1196,3 +1196,5 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .canvas.link-mode .dot-mark { cursor: copy; }
 .canvas .link-mark .selection-line { stroke: var(--draw-accent); stroke-width: 7px; stroke-opacity: 0.35; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .canvas .dot-mark.pending .selection { stroke-dasharray: none; stroke-width: 2.5; }
+.layer-review-badge { margin-left: 8px; padding: 1px 6px; border-radius: 8px; font-size: 0.75em; background: #e07a00; color: #fff; }
+.layer-note.review { border-left: 4px solid #e07a00; }

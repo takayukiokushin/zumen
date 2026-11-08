@@ -25,6 +25,8 @@ export const layerLabel = (t: (k: Key) => string, info: LayerInfo): string =>
 
 interface Props {
   infos: LayerInfo[];
+  /** 元の図面が変わっていて、まだ確認していないレイヤー */
+  review?: ReadonlySet<string>;
   /** いま選んでいるレイヤー。null は単線結線図 */
   activeId: string | null;
   /** もう追加できないか（上限に達した） */
@@ -35,7 +37,7 @@ interface Props {
   onRemove: (id: string) => void;
 }
 
-export function LayerMenu({ infos, activeId, full, onSelect, onAdd, onRename, onRemove }: Props) {
+export function LayerMenu({ infos, review, activeId, full, onSelect, onAdd, onRename, onRemove }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -88,6 +90,7 @@ export function LayerMenu({ infos, activeId, full, onSelect, onAdd, onRename, on
                   }}
                 >
                   {layerLabel(t, i)}
+                  {review?.has(i.id) && <span className="layer-review-badge">{t('layer.review.badge')}</span>}
                 </button>
                 {!i.fixed && (
                   <>

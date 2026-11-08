@@ -711,4 +711,11 @@ export const en: Dict = {
   'link.shapeApply': 'Change the shape of this line',
   'link.flip': 'Flip the bulge direction',
   'link.remove': 'Remove this jumper line',
+  'layer.review.title': 'The original diagram has changed',
+  'layer.review.popup': 'The diagram has changed. Please check the placement of symbols and text.',
+  'layer.review.popupHint': 'Check that the red marks and text do not overlap the symbols or text of the original diagram and have not shifted. When you have checked, press “Checked”.',
+  'layer.review.banner': 'The original diagram has changed since this layer was last edited. Please check the position of the red marks and text and any overlap with symbols.',
+  'layer.review.confirm': 'Checked',
+  'layer.review.later': 'Check later',
+  'layer.review.badge': 'Check',
 };

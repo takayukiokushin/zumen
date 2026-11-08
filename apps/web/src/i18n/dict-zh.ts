@@ -708,4 +708,11 @@ export const zh: Dict = {
   'link.shapeApply': '更改此线的形状',
   'link.flip': '反转弧的鼓出方向',
   'link.remove': '取消此跨接线',
+  'layer.review.title': '原图纸已变更',
+  'layer.review.popup': '图纸已变更。请确认图形符号和文字的位置。',
+  'layer.review.popupHint': '请确认红色标记和文字有没有与原图纸的符号、文字重叠，位置有没有偏移。确认后，请按“已确认”。',
+  'layer.review.banner': '自上次编辑此图层以来，原图纸已发生变更。请确认红色标记、文字的位置，以及与图形符号的重叠情况。',
+  'layer.review.confirm': '已确认',
+  'layer.review.later': '稍后确认',
+  'layer.review.badge': '需确认',
 };

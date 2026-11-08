@@ -712,4 +712,11 @@ export const fr: Dict = {
   'link.shapeApply': 'Changer la forme de cette ligne',
   'link.flip': 'Inverser le sens du bombement',
   'link.remove': 'Retirer cette ligne de jonction',
+  'layer.review.title': 'Le schéma d’origine a changé',
+  'layer.review.popup': 'Le schéma a changé. Veuillez vérifier la disposition des symboles et du texte.',
+  'layer.review.popupHint': 'Vérifiez que les marques et le texte rouges ne chevauchent pas les symboles ou le texte du schéma d’origine et ne se sont pas décalés. Une fois vérifié, appuyez sur « Vérifié ».',
+  'layer.review.banner': 'Le schéma d’origine a changé depuis la dernière modification de ce calque. Vérifiez la position des marques et du texte rouges et leur chevauchement avec les symboles.',
+  'layer.review.confirm': 'Vérifié',
+  'layer.review.later': 'Vérifier plus tard',
+  'layer.review.badge': 'À vérifier',
 };

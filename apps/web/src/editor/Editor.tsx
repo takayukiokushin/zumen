@@ -19,7 +19,7 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addExtraCross, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addExtraCross, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
 import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
 import type { AreaRect, ArrowDir, CrossSize, LinkShape } from '@zumen/layout';
@@ -274,7 +274,19 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     });
 
   /** レイヤーを切り替える。選んでいた要素や、線を引くモードは、いったんやめる */
+  /** 「元の図面が変わっています」を、もう知らせたレイヤー（開くたびに出さないため） */
+  const reviewShown = useRef(new Set<string>());
   const selectLayer = (id: string | null) => {
+    // 元の図面が変わっていて、まだ確認していないレイヤーを開くとき：一度だけ、知らせる（帯は、「確認した」を押すまで残る）
+    if (id !== null && layerNeedsReview(docRef.current, id)) {
+      const key = `${id}:${layerOf(docRef.current, id)?.seen ?? ''}`;
+      if (!reviewShown.current.has(key)) {
+        reviewShown.current.add(key);
+        void ask({ title: t('layer.review.title'), message: [t('layer.review.popup'), t('layer.review.popupHint')], confirmLabel: t('layer.review.confirm'), cancelLabel: t('layer.review.later') }).then((ok) => {
+          if (ok) applyLayers(confirmLayerReview(docRef.current, id));
+        });
+      }
+    }
     setActiveLayer(id);
     setSelection([]);
     setMode('select');
@@ -921,6 +933,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             <div className="tool-row">
               <LayerMenu
                 infos={layerInfos(doc)}
+                review={new Set(layerInfos(doc).filter((i) => layerNeedsReview(doc, i.id)).map((i) => i.id))}
                 activeId={activeId}
                 full={customCount(doc) >= MAX_CUSTOM_LAYERS}
                 onSelect={selectLayer}
@@ -969,6 +982,16 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           <span className="hint">{t('layer.locked')}</span>
           <button type="button" className="btn" onClick={() => selectLayer(null)}>
             {t('layer.backToBase')}
+          </button>
+        </p>
+      )}
+
+      {locked && layerNeedsReview(doc, activeId!) && (
+        <p className="layer-note review" role="alert">
+          <b>{t('layer.review.title')}</b>
+          <span className="hint">{t('layer.review.banner')}</span>
+          <button type="button" className="btn primary" onClick={() => applyLayers(confirmLayerReview(docRef.current, activeId!))}>
+            {t('layer.review.confirm')}
           </button>
         </p>
       )}
