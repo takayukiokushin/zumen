@@ -1183,3 +1183,11 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .canvas .area-mark .grip-tr, .canvas .area-mark .grip-bl { cursor: nesw-resize; }
 .canvas .area-mark .grip-t, .canvas .area-mark .grip-b { cursor: ns-resize; }
 .canvas .area-mark .grip-l, .canvas .area-mark .grip-r { cursor: ew-resize; }
+
+/* 赤い丸い点・印加点の矢印 */
+.canvas .dot-mark, .canvas .arrow-mark { cursor: pointer; }
+.canvas.dot-mode, .canvas.dot-mode .item, .canvas.dot-mode .cross-mark, .canvas.dot-mode .ground-mark, .canvas.dot-mode .area-mark { cursor: crosshair; }
+.canvas.arrow-mode .dot-mark { cursor: copy; }
+.canvas .arrow-mark .selection-line { stroke: var(--draw-accent); stroke-width: 7px; stroke-opacity: 0.35; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.arrow-dirs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-width: 150px; }
+.arrow-dirs .btn { padding: 4px 0; }

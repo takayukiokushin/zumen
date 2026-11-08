@@ -1,10 +1,10 @@
-import { AREA_KINDS, FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
+import { ARROW_LABEL_DEFAULT, AREA_KINDS, FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
 import type { AreaKindDef } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
 import { CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
-import { AREA_MIN } from '@zumen/layout';
-import type { AreaLabel, AreaLabelPos, AreaRect, CrossSize, GroundLabel } from '@zumen/layout';
-import { defOf, freshId, portsOf, sameName, wireKey } from './doc.ts';
+import { AREA_MIN, ARROW_DIR_DEFAULT, ARROW_LEN_DEFAULT, arrowFromTail, clampArrowLen } from '@zumen/layout';
+import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel } from '@zumen/layout';
+import { assistGroundPoint, defOf, freshId, portsOf, sameName, wireKey } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
 
 /**
@@ -117,8 +117,42 @@ export interface LayerArea {
   labelPos?: AreaLabelPos;
 }
 
-/** レイヤーに置くもの。点・矢印・渡り線などの種類は、これから足していく */
-export type LayerItem = LayerText | LayerCross | LayerGround | LayerArea;
+/**
+ * レイヤーに置いた、赤い丸い点。母線（線）の途中や記号の接続点の近くに置くと、そこに吸い付く（anchor）。
+ * どこにも吸い付かないときは、近くの機器（near）からのずれ（ndx・ndy）で覚える。
+ * 吸い付いた先・近くの機器が無くなったら、点も消える（画面にも印刷にも出さず、保存するときに、データからも外す）。
+ */
+export interface LayerDot {
+  kind: 'dot';
+  id: string;
+  anchor?: GroundAnchor;
+  /** 最後に置いた場所（吸い付いていないときの、機器が無いときの置き場所） */
+  x: number;
+  y: number;
+  near?: string;
+  ndx: number;
+  ndy: number;
+}
+
+/**
+ * レイヤーに置いた、印加点の矢印。丸い点（dot）を指す。1つの点に、1本まで。
+ * 尾の向き（dir：8方向）と長さ（len）を持ち、尾の側に文字（label。最初は「印加点」）を付ける。
+ * 指している点が無くなったら、矢印も消える。
+ */
+export interface LayerArrow {
+  kind: 'arrow';
+  id: string;
+  /** 指している丸い点の id */
+  dot: string;
+  dir?: ArrowDir;
+  len?: number;
+  label?: string[];
+  size?: number;
+  bold?: boolean;
+}
+
+/** レイヤーに置くもの。渡り線などの種類は、これから足していく */
+export type LayerItem = LayerText | LayerCross | LayerGround | LayerArea | LayerDot | LayerArrow;
 
 export interface Layer {
   /** 固定のレイヤーは 'outage'・'withstand'。追加したものは 'custom-1' など */
@@ -331,7 +365,9 @@ export function moveLayerItems(doc: Doc, layerId: string, ids: string[], dx: num
 export function removeLayerItems(doc: Doc, layerId: string, ids: string[]): Doc {
   const items = layerOf(doc, layerId)?.items;
   if (!items) return doc;
-  return setLayerItems(doc, layerId, items.filter((t) => !ids.includes(t.id)));
+  // 丸い点を外したら、その点を指していた矢印も、一緒に外す
+  const left = items.filter((t) => !ids.includes(t.id));
+  return setLayerItems(doc, layerId, left.filter((t) => t.kind !== 'arrow' || !ids.includes(t.dot)));
 }
 
 /* ---------------- 開放の赤い×印 ---------------- */
@@ -468,8 +504,15 @@ export function purgeOrphanMarks(doc: Doc): Doc {
     const items = l.items.filter((i) => {
       if (i.kind === 'cross') return symbolByTarget(doc, i.target) !== undefined;
       if (i.kind === 'ground') return resolveGroundPoint(doc, i) !== null;
+      if (i.kind === 'dot') return resolveDotPoint(doc, i) !== null;
       return true;
     });
+    // 点が無くなった矢印も、外す
+    const dotIds = new Set(items.filter((i) => i.kind === 'dot').map((i) => i.id));
+    for (let k = items.length - 1; k >= 0; k--) {
+      const it = items[k]!;
+      if (it.kind === 'arrow' && !dotIds.has(it.dot)) items.splice(k, 1);
+    }
     if (items.length === l.items.length) return l;
     changed = true;
     return { ...l, items };
@@ -781,4 +824,169 @@ export function moveAreas(doc: Doc, layerId: string, ids: string[], dx: number, 
     if (ids.includes(a.id)) n = editArea(n, layerId, a.id, { rect: { x: a.x + dx, y: a.y + dy, w: a.w, h: a.h } });
   }
   return n;
+}
+
+/* ---------------- 赤い丸い点・印加点の矢印 ---------------- */
+
+/** 丸い点の、いまの位置。吸い付いた先・近くの機器が無くなっていれば null（出さない） */
+export function resolveDotPoint(doc: Doc, d: LayerDot): { x: number; y: number } | null {
+  if (d.anchor) return resolveGroundAnchor(doc, d.anchor);
+  if (d.near !== undefined) {
+    for (const it of doc.items) {
+      if (it.kind === 'symbol' && sameName(it.id) === d.near) return { x: it.x + d.ndx, y: it.y + d.ndy };
+    }
+    return null;
+  }
+  return { x: d.x, y: d.y };
+}
+
+export interface ResolvedDot {
+  id: string;
+  x: number;
+  y: number;
+}
+
+export function resolveDots(doc: Doc, layerId: string): ResolvedDot[] {
+  const out: ResolvedDot[] = [];
+  for (const d of layerOf(doc, layerId)?.items ?? []) {
+    if (d.kind !== 'dot') continue;
+    const at = resolveDotPoint(doc, d);
+    if (at) out.push({ id: d.id, x: at.x, y: at.y });
+  }
+  return out;
+}
+
+export interface ResolvedArrow {
+  id: string;
+  /** 指している丸い点の id と、その中心 */
+  dot: string;
+  x: number;
+  y: number;
+  dir: ArrowDir;
+  len: number;
+  label?: ArrowLabel;
+}
+
+export function resolveArrows(doc: Doc, layerId: string): ResolvedArrow[] {
+  const dots = new Map(resolveDots(doc, layerId).map((d) => [d.id, d]));
+  const out: ResolvedArrow[] = [];
+  for (const a of layerOf(doc, layerId)?.items ?? []) {
+    if (a.kind !== 'arrow') continue;
+    const d = dots.get(a.dot);
+    if (!d) continue;
+    const label: ArrowLabel | undefined =
+      a.label && a.label.some((l) => l !== '')
+        ? { lines: a.label, ...(a.size !== undefined ? { size: a.size } : {}), ...(a.bold ? { bold: true } : {}) }
+        : undefined;
+    out.push({ id: a.id, dot: a.dot, x: d.x, y: d.y, dir: a.dir ?? ARROW_DIR_DEFAULT, len: clampArrowLen(a.len ?? ARROW_LEN_DEFAULT), ...(label ? { label } : {}) });
+  }
+  return out;
+}
+
+export const canAddLayerDot = (doc: Doc, layerId: string): boolean =>
+  (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'dot').length < MAX_LAYER_ITEMS_PER_KIND;
+
+export const canAddLayerArrow = (doc: Doc, layerId: string): boolean =>
+  (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'arrow').length < MAX_LAYER_ITEMS_PER_KIND;
+
+/** 場所（x・y）から、丸い点の置き場所を決める。線の途中・接続点の近くなら、そこに吸い付く。それ以外は、格子（2）に合わせて、その場所に置く */
+function dotPlacement(doc: Doc, x: number, y: number, free = false): Pick<LayerDot, 'anchor' | 'x' | 'y' | 'near' | 'ndx' | 'ndy'> {
+  const hit = free ? null : assistGroundPoint(doc, x, y);
+  if (hit) return { anchor: hit.anchor, x: hit.x, y: hit.y, ...anchorFor(doc, hit.x, hit.y) };
+  const sn = (v: number) => Math.round(v / 2) * 2;
+  const px = sn(x);
+  const py = sn(y);
+  return { x: px, y: py, ...anchorFor(doc, px, py) };
+}
+
+/** 丸い点を置く。上限を超えるときは null */
+export function addLayerDot(doc: Doc, layerId: string, x: number, y: number, free = false): { doc: Doc; id: string } | null {
+  if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerDot(doc, layerId)) return null;
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('ldot', new Set(items.map((i) => i.id)));
+  const d: LayerDot = { kind: 'dot', id, ...dotPlacement(doc, x, y, free) };
+  return { doc: setLayerItems(doc, layerId, [...items, d]), id };
+}
+
+/** 丸い点の場所を決め直す（ドラッグしたとき。線の途中・接続点の近くなら、吸い付く） */
+export function setDotPoint(doc: Doc, layerId: string, id: string, x: number, y: number, free = false): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((d) => {
+      if (d.kind !== 'dot' || d.id !== id) return d;
+      const n: LayerDot = { kind: 'dot', id: d.id, ...dotPlacement(doc, x, y, free) };
+      return n;
+    }),
+  );
+}
+
+/** 丸い点を、矢印キーなどで動かす（吸い付きは外れ、動かした場所に置く） */
+export function moveLayerDots(doc: Doc, layerId: string, ids: string[], dx: number, dy: number): Doc {
+  const cur = resolveDots(doc, layerId);
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  const at = new Map(cur.map((d) => [d.id, d]));
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((d) => {
+      if (d.kind !== 'dot' || !ids.includes(d.id)) return d;
+      const p = at.get(d.id);
+      if (!p) return d;
+      const x = p.x + dx;
+      const y = p.y + dy;
+      return { kind: 'dot', id: d.id, x, y, ...anchorFor(doc, x, y) } as LayerDot;
+    }),
+  );
+}
+
+/** その丸い点を指している矢印 */
+export const arrowOn = (doc: Doc, layerId: string, dotId: string): LayerArrow | undefined =>
+  (layerOf(doc, layerId)?.items ?? []).find((i): i is LayerArrow => i.kind === 'arrow' && i.dot === dotId);
+
+/** 丸い点に、印加点の矢印を付ける（1つの点に1本まで。すでに付いているとき・上限を超えるときは null） */
+export function addLayerArrow(doc: Doc, layerId: string, dotId: string): { doc: Doc; id: string } | null {
+  if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerArrow(doc, layerId)) return null;
+  if (!resolveDots(doc, layerId).some((d) => d.id === dotId) || arrowOn(doc, layerId, dotId)) return null;
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('larrow', new Set(items.map((i) => i.id)));
+  const a: LayerArrow = { kind: 'arrow', id, dot: dotId, label: [ARROW_LABEL_DEFAULT] };
+  return { doc: setLayerItems(doc, layerId, [...items, a]), id };
+}
+
+/** 矢印を直す（向き・長さ・文字・大きさ・太字）。文字は、空にすると外れる */
+export function editArrow(doc: Doc, layerId: string, id: string, patch: { dir?: ArrowDir; len?: number; label?: string[]; size?: number; bold?: boolean }): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((a) => {
+      if (a.kind !== 'arrow' || a.id !== id) return a;
+      const n: LayerArrow = { ...a };
+      if (patch.dir !== undefined) n.dir = patch.dir;
+      if (patch.len !== undefined) n.len = clampArrowLen(patch.len);
+      if (patch.label !== undefined) {
+        if (patch.label.every((l) => l === '')) delete n.label;
+        else n.label = patch.label;
+      }
+      if (patch.size !== undefined) n.size = clampTextSize(patch.size);
+      if (patch.bold !== undefined) {
+        if (patch.bold) n.bold = true;
+        else delete n.bold;
+      }
+      return n;
+    }),
+  );
+}
+
+/** 尾の端を、図面の座標で指定して、向き（8方向）と長さを決め直す（ドラッグしたとき） */
+export function setArrowTail(doc: Doc, layerId: string, id: string, tx: number, ty: number): Doc {
+  const a = resolveArrows(doc, layerId).find((r) => r.id === id);
+  if (!a) return doc;
+  const { dir, len } = arrowFromTail(tx - a.x, ty - a.y);
+  return editArrow(doc, layerId, id, { dir, len });
 }

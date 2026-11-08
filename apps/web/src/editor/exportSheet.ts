@@ -1,7 +1,7 @@
 import { getSymbol, sizedSymbol } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, renderSvg } from '@zumen/layout';
-import { areaLabelAt, groundBounds, groundLabelAt } from '@zumen/layout';
-import type { DrawingArea, DrawingCross, DrawingGround, DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
+import { ARROW_HEAD_HALF, DOT_RADIUS, areaLabelAt, arrowLabelAt, arrowTail, groundBounds, groundLabelAt } from '@zumen/layout';
+import type { DrawingArea, DrawingArrow, DrawingCross, DrawingDot, DrawingGround, DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
 
 /** 編集中の図面を、図枠・表題欄つきの1枚のSVGにする */
@@ -16,7 +16,11 @@ export function buildSheetSvg(
   grounds: DrawingGround[] = [],
   /** 重ねる赤い枠（範囲を囲む四角） */
   areas: DrawingArea[] = [],
+  /** 重ねる赤い丸い点と、印加点の矢印 */
+  points: { dots?: DrawingDot[]; arrows?: DrawingArrow[] } = {},
 ): string {
+  const dots = points.dots ?? [];
+  const arrows = points.arrows ?? [];
   const drawing: DrawingLayout = {
     symbols: [],
     wires: [],
@@ -86,6 +90,21 @@ export function buildSheetSvg(
     });
   }
 
+  // 印加点の矢印の文字も、図面の文字として、一緒に出す（色は、矢印と同じ赤）
+  for (const a of arrows) {
+    if (!a.label || a.label.lines.every((l) => l === '')) continue;
+    const at = arrowLabelAt(a, a.label);
+    drawing.texts!.push({
+      x: at.x,
+      y: at.y,
+      lines: a.label.lines,
+      anchor: at.anchor,
+      red: true,
+      ...(a.label.size !== undefined ? { size: a.label.size } : {}),
+      ...(a.label.bold ? { bold: true } : {}),
+    });
+  }
+
   // 外形を求める（図枠に収めるために使う）
   const b = drawing.bounds;
   const ext = (x0: number, y0: number, x1: number, y1: number) => {
@@ -120,6 +139,13 @@ export function buildSheetSvg(
   if (grounds.length > 0) drawing.grounds = grounds;
   for (const a of areas) ext(a.x - 1, a.y - 1, a.x + a.w + 1, a.y + a.h + 1);
   if (areas.length > 0) drawing.areas = areas;
+  for (const d of dots) ext(d.x - DOT_RADIUS, d.y - DOT_RADIUS, d.x + DOT_RADIUS, d.y + DOT_RADIUS);
+  if (dots.length > 0) drawing.dots = dots;
+  for (const a of arrows) {
+    const t = arrowTail(a);
+    ext(Math.min(a.x, t.x) - ARROW_HEAD_HALF, Math.min(a.y, t.y) - ARROW_HEAD_HALF, Math.max(a.x, t.x) + ARROW_HEAD_HALF, Math.max(a.y, t.y) + ARROW_HEAD_HALF);
+  }
+  if (arrows.length > 0) drawing.arrows = arrows;
   if (!Number.isFinite(b.x0)) Object.assign(b, { x0: 0, y0: 0, x1: 100, y1: 100 });
 
   return renderSvg(drawing, title, { paper, orientation });

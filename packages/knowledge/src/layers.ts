@@ -46,3 +46,6 @@ export const AREA_KINDS: readonly AreaKindDef[] = [
   { id: 'live', label: '充電範囲', hatch: true },
   { id: 'applied', label: '印加範囲', hatch: false },
 ];
+
+/** 印加点の矢印に、最初に入る文字（書き換えられる） */
+export const ARROW_LABEL_DEFAULT = '印加点';
