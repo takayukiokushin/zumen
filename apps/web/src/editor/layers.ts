@@ -1,8 +1,8 @@
 import { FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
-import { CROSS_SPECS, clampTextSize, rotatedPort } from '@zumen/layout';
-import type { CrossSize, GroundRotate } from '@zumen/layout';
-import { defOf, freshId, sameName } from './doc.ts';
+import { CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
+import type { CrossSize, GroundLabel } from '@zumen/layout';
+import { defOf, freshId, portsOf, sameName, wireKey } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
 
 /**
@@ -54,23 +54,41 @@ export interface LayerCross {
   dy?: number;
 }
 
+/** 接地のマークをつなぐ場所：記号の接続点、または、線（母線など）の途中 */
+export type GroundAnchor =
+  | { kind: 'port'; item: string; port: string }
+  /** 線の途中。線は、両端が記号につながっていれば、その印（key）で探し、無ければ id で探す。t は、始点から終点までの割合（0〜1） */
+  | { kind: 'wire'; key?: string; id?: string; t: number };
+
 /**
  * レイヤーに置いた、赤い接地のマーク（短絡接地器具を取り付ける場所）。
- * 図面の好きな場所に置ける。置いた場所の近くの機器（near）からのずれで覚えるので、その機器が動けば、一緒に動く。
- * その機器が無くなったら、接地のマークも消える（画面にも印刷にも出さず、保存するときに、データからも外す）。
- * 近くに機器が無いところに置いたものは、置いた場所のまま。
+ * つなぐ場所（anchor：母線の途中・記号の接続点）から、横棒（lead）と縦の線（drop）を引いて、下向きのマークを付ける
+ * （形は packages/layout/src/ground.ts）。つないだ母線・記号が動けば、一緒に動く。
+ * つないだ母線・記号が無くなったら、接地のマークも消える（画面にも印刷にも出さず、保存するときに、データからも外す）。
+ * 横に、番号・回路名などの文字（label）を、任意で付けられる（大きさ・太字・色は、テキストボックスと同じ）。
+ *
+ * anchor が無いのは、古い版のデータ（置いた場所と近くの機器だけを覚えたもの）。横棒なし・縦10のマークとして出す。
  */
 export interface LayerGround {
   kind: 'ground';
   id: string;
-  /** 取り付ける点の、最後に置いた場所 */
-  x: number;
-  y: number;
-  /** 横線が向く方向：0＝下、90＝左、180＝上、270＝右 */
-  rotate: GroundRotate;
+  anchor?: GroundAnchor;
+  /** 横棒の長さ（右が正・左が負）。0 または無ければ、横棒なし */
+  lead?: number;
+  /** つなぐ場所から、マークまでの縦の長さ */
+  drop?: number;
+  /** 横に付ける文字（1行ずつ） */
+  label?: string[];
+  size?: number;
+  bold?: boolean;
+  red?: boolean;
+  /** 古い版のデータ：置いた場所と、近くの機器からのずれ */
+  x?: number;
+  y?: number;
+  rotate?: number;
   near?: string;
-  ndx: number;
-  ndy: number;
+  ndx?: number;
+  ndy?: number;
 }
 
 /** レイヤーに置くもの。枠などの種類は、これから足していく */
@@ -273,9 +291,9 @@ export function moveLayerItems(doc: Doc, layerId: string, ids: string[], dx: num
     doc,
     layerId,
     items.map((t) => {
-      // ×印は、付けた開閉器について動く（moveLayerCrosses）。ここで動かすのは、文字と、接地のマーク
-      if (t.kind === 'cross' || !ids.includes(t.id)) return t;
-      const p = t.kind === 'ground' ? (resolveGroundPoint(doc, t) ?? { x: t.x, y: t.y }) : resolveText(doc, t);
+      // 動かせるのは文字だけ（×印・接地のマークは、つないだ開閉器・母線について動く）
+      if (t.kind !== 'text' || !ids.includes(t.id)) return t;
+      const p = resolveText(doc, t);
       const x = p.x + dx;
       const y = p.y + dy;
       return { ...t, x, y, ...anchorFor(doc, x, y) };
@@ -435,23 +453,84 @@ export function purgeOrphanMarks(doc: Doc): Doc {
 
 /* ---------------- 赤い接地のマーク ---------------- */
 
-/** 接地のマークの、いまの取り付ける点。近くの機器が無くなっていれば null（出さない） */
-export function resolveGroundPoint(doc: Doc, g: LayerGround): { x: number; y: number } | null {
-  if (g.near !== undefined) {
+/** 古い版のデータの、縦の長さ */
+const LEGACY_DROP = 10;
+
+/** つなぐ場所の、いまの座標。つないだ記号・線が無くなっていれば null */
+export function resolveGroundAnchor(doc: Doc, a: GroundAnchor): { x: number; y: number } | null {
+  if (a.kind === 'port') {
     for (const it of doc.items) {
-      if (it.kind === 'symbol' && sameName(it.id) === g.near) return { x: it.x + g.ndx, y: it.y + g.ndy };
+      if (it.kind === 'symbol' && sameName(it.id) === a.item) return portsOf(it).find((p) => p.id === a.port) ?? null;
     }
     return null;
   }
-  return { x: g.x, y: g.y };
+  const w = doc.items.find((it) => it.kind === 'wire' && ((a.key !== undefined && wireKey(it) === a.key) || (a.id !== undefined && it.id === a.id)));
+  if (!w || w.kind !== 'wire') return null;
+  return { x: w.x1 + (w.x2 - w.x1) * a.t, y: w.y1 + (w.y2 - w.y1) * a.t };
 }
 
-/** 画面と印刷に出す接地のマーク（近くの機器が図面にあるもの、または、近くに機器が無いところに置いたもの） */
+/** 接地のマークの、つなぐ場所。無くなっていれば null（出さない）。古い版のデータは、近くの機器からのずれで求める */
+export function resolveGroundPoint(doc: Doc, g: LayerGround): { x: number; y: number } | null {
+  if (g.anchor) return resolveGroundAnchor(doc, g.anchor);
+  if (g.near !== undefined) {
+    for (const it of doc.items) {
+      if (it.kind === 'symbol' && sameName(it.id) === g.near) return { x: it.x + (g.ndx ?? 0), y: it.y + (g.ndy ?? 0) };
+    }
+    return null;
+  }
+  return { x: g.x ?? 0, y: g.y ?? 0 };
+}
+
+/** 画面と印刷に出す接地のマーク（つなぐ場所が図面にあるもの） */
 export interface ResolvedGround {
   id: string;
+  /** つなぐ場所 */
   x: number;
   y: number;
-  rotate: GroundRotate;
+  lead: number;
+  drop: number;
+  label?: GroundLabel;
+  /** 他の図記号にかかっているか（かかっていても置けるが、知らせる） */
+  overlaps: boolean;
+}
+
+/** 文字の、見えている大きさの見積もり */
+const widthOfLines = (lines: string[], size: number): number => labelWidth(lines, size);
+
+/** 接地のマークの部品ごとの外形（横棒・縦の線・マーク・文字）。他の図記号にかかっているかの確認に使う */
+function groundParts(g: Pick<ResolvedGround, 'x' | 'y' | 'lead' | 'drop' | 'label'>): { x0: number; y0: number; x1: number; y1: number }[] {
+  const cx = g.x + g.lead;
+  const all = groundBounds(g.x, g.y, g.lead, g.drop);
+  const parts = [
+    // 縦の線
+    { x0: cx - 1, y0: g.y, x1: cx + 1, y1: g.y + g.drop },
+    // マーク（3本の横線）
+    { x0: cx - GROUND_HALF_WIDTH, y0: g.y + g.drop, x1: cx + GROUND_HALF_WIDTH, y1: all.y1 },
+  ];
+  if (g.lead !== 0) parts.push({ x0: Math.min(g.x, cx), y0: g.y - 1, x1: Math.max(g.x, cx), y1: g.y + 1 });
+  const lb = groundLabelBounds(g.x, g.y, g.lead, g.drop, g.label, widthOfLines);
+  if (lb) parts.push(lb);
+  return parts;
+}
+
+/**
+ * 他の図記号（記号の枠と、記号の横の文字）にかかっているか。つなぐ記号（接続点につないだとき）と、外枠（キュービクルなど）は、かかっていても気にしない。
+ * 「かからないようにする」ための目安で、かかっていても置ける。
+ */
+export function groundOverlapsSymbols(doc: Doc, g: Pick<ResolvedGround, 'x' | 'y' | 'lead' | 'drop' | 'label'>, anchor: GroundAnchor | undefined): boolean {
+  const parts = groundParts(g);
+  const hit = (b: { x0: number; y0: number; x1: number; y1: number }) =>
+    parts.some((p) => p.x0 < b.x1 - 1 && p.x1 > b.x0 + 1 && p.y0 < b.y1 - 1 && p.y1 > b.y0 + 1);
+  for (const it of doc.items) {
+    if (it.kind !== 'symbol') continue;
+    const def = defOf(it);
+    if (def.category === 'enclosure') continue;
+    if (anchor?.kind === 'port' && sameName(it.id) === anchor.item) continue;
+    const rb = rotatedBox(def.box, it.rotate);
+    if (hit({ x0: it.x + rb.dx, y0: it.y + rb.dy, x1: it.x + rb.dx + rb.w, y1: it.y + rb.dy + rb.h })) return true;
+    if (it.label.length > 0 && hit(labelRect({ x: it.x + it.labelDx, y: it.y + it.labelDy, anchor: it.labelAnchor }, it.label))) return true;
+  }
+  return false;
 }
 
 export function resolveGrounds(doc: Doc, layerId: string): ResolvedGround[] {
@@ -459,7 +538,15 @@ export function resolveGrounds(doc: Doc, layerId: string): ResolvedGround[] {
   for (const g of layerOf(doc, layerId)?.items ?? []) {
     if (g.kind !== 'ground') continue;
     const at = resolveGroundPoint(doc, g);
-    if (at) out.push({ id: g.id, x: at.x, y: at.y, rotate: g.rotate });
+    if (!at) continue;
+    const lead = clampLead(g.lead ?? 0);
+    const drop = clampDrop(g.drop ?? LEGACY_DROP);
+    const label: GroundLabel | undefined =
+      g.label && g.label.some((l) => l !== '')
+        ? { lines: g.label, ...(g.size !== undefined ? { size: g.size } : {}), ...(g.bold ? { bold: true } : {}), ...(g.red ? { red: true } : {}) }
+        : undefined;
+    const r = { id: g.id, x: at.x, y: at.y, lead, drop, ...(label ? { label } : {}) };
+    out.push({ ...r, overlaps: groundOverlapsSymbols(doc, r, g.anchor) });
   }
   return out;
 }
@@ -468,18 +555,85 @@ export function resolveGrounds(doc: Doc, layerId: string): ResolvedGround[] {
 export const canAddLayerGround = (doc: Doc, layerId: string): boolean =>
   (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'ground').length < MAX_LAYER_ITEMS_PER_KIND;
 
-/** 好きな場所（x・y が取り付ける点）に、接地のマークを置く。上限を超えるときは null。近くの機器を覚える */
-export function addLayerGround(doc: Doc, layerId: string, x: number, y: number, rotate: GroundRotate = 0): { doc: Doc; id: string } | null {
+/** つなぐ場所（anchor）と、マークを置く場所（縦の線の先 tx・ty）から、接地のマークを置く。つなぐ場所が無い・上限を超えるときは null */
+export function addLayerGround(doc: Doc, layerId: string, anchor: GroundAnchor, tx: number, ty: number): { doc: Doc; id: string } | null {
   if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerGround(doc, layerId)) return null;
+  const at = resolveGroundAnchor(doc, anchor);
+  if (!at) return null;
+  const { lead, drop } = groundFromTip(at.x, at.y, tx, ty);
   const items = layerOf(doc, layerId)?.items ?? [];
   const id = freshId('lground', new Set(items.map((i) => i.id)));
-  const g: LayerGround = { kind: 'ground', id, x, y, rotate, ...anchorFor(doc, x, y) };
+  const g: LayerGround = { kind: 'ground', id, anchor, ...(lead !== 0 ? { lead } : {}), drop };
   return { doc: setLayerItems(doc, layerId, [...items, g]), id };
 }
 
-/** 接地のマークの向きを変える */
-export function rotateGround(doc: Doc, layerId: string, id: string, rotate: GroundRotate): Doc {
+/** 接地のマークを直す。横棒・縦の長さは、範囲に収める。つなぎ直し（anchor）は、つなぐ場所が見つかるときだけ。文字は、空にすると外れる */
+export function editGround(
+  doc: Doc,
+  layerId: string,
+  id: string,
+  patch: { lead?: number; drop?: number; anchor?: GroundAnchor; label?: string[]; size?: number; bold?: boolean; red?: boolean },
+): Doc {
   const items = layerOf(doc, layerId)?.items;
   if (!items) return doc;
-  return setLayerItems(doc, layerId, items.map((i) => (i.kind === 'ground' && i.id === id ? { ...i, rotate } : i)));
+  if (patch.anchor && !resolveGroundAnchor(doc, patch.anchor)) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((g) => {
+      if (g.kind !== 'ground' || g.id !== id) return g;
+      const n: LayerGround = { ...g };
+      // 古い版のデータは、新しい形に直す（つなぐ場所を、いまの位置で、近くの機器から決め直すことはしない。横棒・縦の長さだけ持たせる）
+      if (patch.anchor) {
+        n.anchor = patch.anchor;
+        delete n.near;
+        delete n.ndx;
+        delete n.ndy;
+        delete n.x;
+        delete n.y;
+        delete n.rotate;
+      }
+      if (patch.lead !== undefined) {
+        const l = clampLead(patch.lead);
+        if (l === 0) delete n.lead;
+        else n.lead = l;
+      }
+      if (patch.drop !== undefined) n.drop = clampDrop(patch.drop);
+      if (patch.label !== undefined) {
+        if (patch.label.every((l) => l === '')) delete n.label;
+        else n.label = patch.label;
+      }
+      if (patch.size !== undefined) n.size = clampTextSize(patch.size);
+      if (patch.bold !== undefined) {
+        if (patch.bold) n.bold = true;
+        else delete n.bold;
+      }
+      if (patch.red !== undefined) {
+        if (patch.red) n.red = true;
+        else delete n.red;
+      }
+      return n;
+    }),
+  );
+}
+
+/** マークを置く場所（縦の線の先）を、図面の座標で指定して、横棒・縦の長さを決め直す（ドラッグ・矢印キーで動かしたとき） */
+export function setGroundTip(doc: Doc, layerId: string, id: string, tx: number, ty: number): Doc {
+  const g = resolveGrounds(doc, layerId).find((r) => r.id === id);
+  if (!g) return doc;
+  const { lead, drop } = groundFromTip(g.x, g.y, tx, ty);
+  return editGround(doc, layerId, id, { lead, drop });
+}
+
+/** 横棒の向きを、左右反転する（横棒なしのときは、何もしない） */
+export function flipGround(doc: Doc, layerId: string, id: string): Doc {
+  const g = resolveGrounds(doc, layerId).find((r) => r.id === id);
+  return g && g.lead !== 0 ? editGround(doc, layerId, id, { lead: -g.lead }) : doc;
+}
+
+/** 横棒を付ける（右へ、初めの長さで）／なくす */
+export function toggleGroundLead(doc: Doc, layerId: string, id: string): Doc {
+  const g = resolveGrounds(doc, layerId).find((r) => r.id === id);
+  if (!g) return doc;
+  return editGround(doc, layerId, id, { lead: g.lead === 0 ? GROUND_LEAD_DEFAULT : 0 });
 }

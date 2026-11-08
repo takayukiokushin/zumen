@@ -2,6 +2,7 @@ import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol } from '@zumen/symbols';
 import type { Port, RectShape, SymbolDef } from '@zumen/symbols';
 import { ROW, ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
+import type { DrawingGround } from './ground.ts';
 import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
 
 /**
@@ -64,13 +65,6 @@ export interface DrawingCross {
   y: number;
   size: number;
   thickness: number;
-}
-
-/** 赤い接地のマーク（レイヤーに置いたもの）。取り付ける点の位置と、向き（ground.ts） */
-export interface DrawingGround {
-  x: number;
-  y: number;
-  rotate: number;
 }
 
 export interface DrawingLayout {

@@ -2,7 +2,7 @@ import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sizedSymbol }
 import type { SizeRange, SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
-import type { Layer } from './layers.ts';
+import type { GroundAnchor, Layer } from './layers.ts';
 
 /**
  * 編集中の図面。自動レイアウトの結果をここに取り込んでから、自由に動かせるようにする。
@@ -1347,6 +1347,40 @@ export function assistPoint(doc: Doc, x: number, y: number, exclude?: string, ra
   }
   if (on) return { x: on.x, y: on.y, kind: 'wire' };
   return { x: snap(x), y: snap(y), kind: 'grid' };
+}
+
+/**
+ * 接地のマークをつなぐ場所の候補。近くの「記号の接続点」か「線（母線など）の途中」だけに吸い寄せる
+ * （枠の端・記号の形の端などには、つなげない）。近くに何も無ければ null。
+ * 線の途中は、線の方向に格子に合わせた位置を取り、線からずれないようにする（assistPoint と同じ）。
+ */
+export function assistGroundPoint(
+  doc: Doc,
+  x: number,
+  y: number,
+  range = ASSIST_RANGE,
+): { x: number; y: number; anchor: GroundAnchor } | null {
+  const port = nearestPort(doc, x, y, range);
+  if (port) return { x: port.x, y: port.y, anchor: { kind: 'port', item: sameName(port.item), port: port.port } };
+  let best: { x: number; y: number; anchor: GroundAnchor } | null = null;
+  let bestD = range;
+  for (const it of doc.items) {
+    if (it.kind !== 'wire') continue;
+    const vertical = isVerticalWire(it);
+    const a0 = vertical ? it.y1 : it.x1;
+    const a1 = vertical ? it.y2 : it.x2;
+    if (Math.abs(a1 - a0) < 0.01) continue;
+    const along = Math.max(Math.min(a0, a1), Math.min(Math.max(a0, a1), snap(vertical ? y : x)));
+    const px = vertical ? it.x1 : along;
+    const py = vertical ? along : it.y1;
+    const d = Math.hypot(px - x, py - y);
+    if (d <= bestD) {
+      bestD = d;
+      const key = wireKey(it);
+      best = { x: px, y: py, anchor: { kind: 'wire', ...(key ? { key } : {}), id: it.id, t: (along - a0) / (a1 - a0) } };
+    }
+  }
+  return best;
 }
 
 /** 「ほかと揃う位置」に吸い寄せる範囲（つなぐ先への吸い付きより、控えめにする） */

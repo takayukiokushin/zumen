@@ -1,12 +1,13 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, crossPointsAttr, groundBounds, groundSvg } from '@zumen/layout';
+import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
-import { assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
+import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
-import type { ResolvedCross, ResolvedGround } from './layers.ts';
+import { groundOverlapsSymbols } from './layers.ts';
+import type { GroundAnchor, ResolvedCross, ResolvedGround } from './layers.ts';
 
 interface Props {
   doc: Doc;
@@ -23,10 +24,17 @@ interface Props {
   mode: 'select' | 'wire' | 'cross' | 'ground';
   /** レイヤーに置いた赤い接地のマーク */
   grounds?: ResolvedGround[];
-  /** 'ground' のときに、図面のクリックした場所（取り付ける点）に、接地のマークを置く */
-  onGroundPlace?: (x: number, y: number) => void;
-  /** 'ground' のときに、接地のマークそのものをクリックしたとき（その接地のマークを外す） */
-  onGroundRemove?: (groundId: string) => void;
+  /**
+   * 'ground' のとき、2回クリックで接地のマークを置く：1回目＝つなぐ場所（母線の途中・記号の接続点。近くに無ければ置けない）、
+   * 2回目＝マークを置く場所（縦の線の先）。置いたとき、つなぐ場所と、マークを置く場所を知らせる
+   */
+  onGroundAdd?: (anchor: GroundAnchor, tipX: number, tipY: number) => void;
+  /** 'ground' で、1回目のクリックが、母線の途中・記号の接続点から遠かったとき */
+  onGroundMiss?: () => void;
+  /** 選んでいる接地のマークの、先（丸）をドラッグして動かし終わったとき（マークを置く場所） */
+  onGroundTip?: (groundId: string, tipX: number, tipY: number) => void;
+  /** 選んでいる接地のマークの、根もと（丸）をドラッグして動かし終わったとき（つなぎ直す場所） */
+  onGroundAnchor?: (groundId: string, anchor: GroundAnchor) => void;
   /** レイヤーに付けた赤い×印（図面のいちばん上に描く） */
   crosses?: ResolvedCross[];
   /** 'cross' のときに、記号（PAS のような、中に部品を抱えるものは、かたまりの親）をクリックしたとき */
@@ -90,11 +98,17 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], onGroundPlace, onGroundRemove, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [resize, setResize] = useState<Resize | null>(null);
+  /** 接地のマークを置いている途中：1回目にクリックした、つなぐ場所 */
+  const [groundStart, setGroundStart] = useState<{ x: number; y: number; anchor: GroundAnchor } | null>(null);
+  /** 接地のマークを置くモードで、1回目のクリックの前に、カーソルの近くで、つなげる場所の候補 */
+  const [groundHover, setGroundHover] = useState<{ x: number; y: number; anchor: GroundAnchor } | null>(null);
+  /** 選んでいる接地のマークの、根もと（root）か先（tip）の丸をドラッグしている最中 */
+  const [handleDrag, setHandleDrag] = useState<{ id: string; which: 'root' | 'tip'; x: number; y: number; anchor?: GroundAnchor } | null>(null);
   /** ×印をドラッグしている最中（動かした量） */
   const [crossDrag, setCrossDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -125,7 +139,24 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     setWireStart(null);
     setCursor(null);
     setHint(null);
+    setGroundStart(null);
+    setGroundHover(null);
+    setHandleDrag(null);
   }, [mode]);
+
+  // 接地のマークを置いている途中・丸をドラッグしている最中の Esc：その操作だけをやめる（モードは、そのまま）
+  useEffect(() => {
+    if (!groundStart && !handleDrag) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.isComposing) return;
+      e.stopPropagation();
+      e.preventDefault();
+      setGroundStart(null);
+      setHandleDrag(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [groundStart, handleDrag]);
 
   const scroller = () => svgRef.current?.parentElement ?? null;
 
@@ -351,6 +382,20 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
       return;
     }
+    if (handleDrag) {
+      const p = toDrawing(e);
+      if (handleDrag.which === 'root') {
+        const a = e.altKey ? null : assistGroundPoint(doc, p.x, p.y, snapRange());
+        setHandleDrag({ ...handleDrag, x: a ? a.x : p.x, y: a ? a.y : p.y, anchor: a?.anchor });
+      } else setHandleDrag({ ...handleDrag, x: p.x, y: p.y });
+      return;
+    }
+    if (mode === 'ground') {
+      const p = toDrawing(e);
+      setCursor(p);
+      if (!groundStart) setGroundHover(e.altKey ? null : assistGroundPoint(doc, p.x, p.y, snapRange()));
+      return;
+    }
     if (crossDrag && start.current) {
       const p = toDrawing(e);
       setCrossDrag({ id: crossDrag.id, dx: snap(p.x - start.current.x), dy: snap(p.y - start.current.y) });
@@ -417,6 +462,13 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
       return;
     }
+    if (handleDrag) {
+      const hd = handleDrag;
+      setHandleDrag(null);
+      if (hd.which === 'tip') onGroundTip?.(hd.id, hd.x, hd.y);
+      else if (hd.anchor) onGroundAnchor?.(hd.id, hd.anchor);
+      return;
+    }
     if (crossDrag) {
       const { id, dx, dy } = crossDrag;
       setCrossDrag(null);
@@ -447,7 +499,19 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     if (mode === 'cross') return;
     if (mode === 'ground') {
       const q = toDrawing(e);
-      onGroundPlace?.(snap(q.x), snap(q.y));
+      if (!groundStart) {
+        // 1回目：つなぐ場所（母線の途中・記号の接続点）。近くに無ければ、何もしない
+        const a = e.altKey ? null : assistGroundPoint(doc, q.x, q.y, snapRange());
+        if (a) {
+          setGroundStart(a);
+          setCursor(q);
+        } else onGroundMiss?.();
+      } else {
+        // 2回目：マークを置く場所（縦の線の先）
+        onGroundAdd?.(groundStart.anchor, q.x, q.y);
+        setGroundStart(null);
+        setGroundHover(null);
+      }
       return;
     }
     // レイヤーを選んでいて、置いたものが無いときは、触れるものが無いので、何もしない
@@ -491,6 +555,12 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      // 接地のマークを置くモードで、カーソルが図面の外に出たら、つなげる場所の丸と、置いたときの見本を、いったん消す
+      onPointerLeave={() => {
+        if (mode !== 'ground') return;
+        setGroundHover(null);
+        setCursor(null);
+      }}
       // Mac の Control＋クリックは、ふつう、右クリックのメニューが出る。追加選択に使うので、出さない
       onContextMenu={(e) => {
         if (e.ctrlKey && mode === 'select') e.preventDefault();
@@ -630,39 +700,105 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           );
         })}
 
-        {/* 赤い接地のマーク。置いた場所の近くの機器について動く。選んでドラッグすれば、動かせる */}
-        {grounds.map((g) => {
-          const sel = selectedIds.includes(g.id);
-          const dragging = crossDrag?.id === g.id;
-          const gx = g.x + (dragging ? crossDrag.dx : 0);
-          const gy = g.y + (dragging ? crossDrag.dy : 0);
-          const bb = groundBounds(gx, gy, g.rotate);
+        {/* 赤い接地のマーク。つないだ母線・記号について動く。選ぶと、根もと・先に丸が出て、ドラッグで直せる */}
+        {grounds.map((g0) => {
+          const sel = selectedIds.includes(g0.id);
+          // 丸をドラッグしている最中は、動かしたあとの形で見せる
+          let g = g0;
+          if (handleDrag && handleDrag.id === g0.id) {
+            g =
+              handleDrag.which === 'tip'
+                ? { ...g0, ...groundFromTip(g0.x, g0.y, handleDrag.x, handleDrag.y) }
+                : { ...g0, x: handleDrag.x, y: handleDrag.y };
+          }
+          const bb = groundBounds(g.x, g.y, g.lead, g.drop);
+          const lb = groundLabelBounds(g.x, g.y, g.lead, g.drop, g.label, labelWidth);
+          const tip = groundTip(g.x, g.y, g.lead, g.drop);
+          const lat = groundLabelAt(g.x, g.y, g.lead, g.drop);
+          const k = clampTextSize(g.label?.size);
+          const x0 = Math.min(bb.x0, lb ? lb.x0 : bb.x0);
+          const x1 = Math.max(bb.x1, lb ? lb.x1 : bb.x1);
+          const y1 = Math.max(bb.y1, lb ? lb.y1 : bb.y1);
           return (
             <g
-              key={g.id}
-              className={`ground-mark${sel ? ' selected' : ''}`}
+              key={g0.id}
+              className={`ground-mark${sel ? ' selected' : ''}${g0.overlaps ? ' overlaps' : ''}`}
               onPointerDown={(e) => {
-                if (mode === 'ground') {
-                  e.stopPropagation();
-                  onGroundRemove?.(g.id);
-                  return;
-                }
+                if (mode !== 'select') return;
                 e.stopPropagation();
-                if (mode === 'select') {
-                  onSelect([g.id]);
-                  (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-                  start.current = toDrawing(e);
-                  setCrossDrag({ id: g.id, dx: 0, dy: 0 });
-                }
+                onSelect([g0.id]);
               }}
             >
-              <g dangerouslySetInnerHTML={{ __html: groundSvg(gx, gy, g.rotate, '') }} />
-              {/* 細い線でもつかめるように、見えない四角を重ねる */}
-              <rect x={bb.x0 - 3} y={bb.y0 - 3} width={bb.x1 - bb.x0 + 6} height={bb.y1 - bb.y0 + 6} fill="transparent" stroke="none" />
-              {sel && <rect className="selection" x={bb.x0 - 4} y={bb.y0 - 4} width={bb.x1 - bb.x0 + 8} height={bb.y1 - bb.y0 + 8} fill="none" pointerEvents="none" />}
+              <g dangerouslySetInnerHTML={{ __html: groundSvg(g.x, g.y, g.lead, g.drop, { indent: '' }) }} />
+              {g.label && (
+                <text
+                  x={lat.x}
+                  y={lat.y}
+                  fontSize={LABEL_FONT * k}
+                  fontWeight={g.label.bold ? 700 : undefined}
+                  textAnchor={lat.anchor}
+                  fontFamily={FONT_FAMILY}
+                  fill={g.label.red ? OVERLAY_RED : 'currentColor'}
+                  stroke="none"
+                >
+                  {g.label.lines.map((l, i) => (
+                    <tspan key={i} x={lat.x} dy={i === 0 ? 0 : LABEL_LINE * k}>
+                      {l}
+                    </tspan>
+                  ))}
+                </text>
+              )}
+              {/* 細い線でもつかめるように、見えない太い線・四角を重ねる */}
+              {g.lead !== 0 && <line x1={g.x} y1={g.y} x2={g.x + g.lead} y2={g.y} stroke="transparent" strokeWidth={10} />}
+              <line x1={g.x + g.lead} y1={g.y} x2={g.x + g.lead} y2={g.y + g.drop} stroke="transparent" strokeWidth={10} />
+              <rect x={bb.x0 - 2} y={g.y + g.drop - 2} width={bb.x1 - bb.x0 + 4} height={bb.y1 - g.y - g.drop + 4} fill="transparent" stroke="none" />
+              {lb && <rect x={lb.x0} y={lb.y0} width={lb.x1 - lb.x0} height={lb.y1 - lb.y0} fill="transparent" stroke="none" />}
+              {g0.overlaps && <rect className="overlap-mark" x={x0 - 4} y={bb.y0 - 4} width={x1 - x0 + 8} height={y1 - bb.y0 + 8} fill="none" pointerEvents="none" />}
+              {sel && (
+                <>
+                  <rect className="selection" x={x0 - 4} y={bb.y0 - 4} width={x1 - x0 + 8} height={y1 - bb.y0 + 8} fill="none" pointerEvents="none" />
+                  {([['root', g.x, g.y], ['tip', tip.x, tip.y]] as const).map(([which, hx, hy]) => (
+                    <circle
+                      key={which}
+                      className="handle"
+                      cx={hx}
+                      cy={hy}
+                      r={4}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        (e.target as Element).setPointerCapture?.(e.pointerId);
+                        setHandleDrag({ id: g0.id, which, x: hx, y: hy });
+                      }}
+                    />
+                  ))}
+                </>
+              )}
             </g>
           );
         })}
+
+        {/* 接地のマークを置くモード：1回目の前は、つなげる場所を、薄い丸で知らせる。1回目のあとは、2回目で置いたときの形を、薄く見せる */}
+        {mode === 'ground' && !groundStart && groundHover && (
+          <circle className="ground-hover" cx={groundHover.x} cy={groundHover.y} r={5} pointerEvents="none" />
+        )}
+        {mode === 'ground' && groundStart && (
+          <>
+            <circle className="ground-hover" cx={groundStart.x} cy={groundStart.y} r={5} pointerEvents="none" />
+            {cursor &&
+              (() => {
+                const { lead, drop } = groundFromTip(groundStart.x, groundStart.y, cursor.x, cursor.y);
+                const bad = groundOverlapsSymbols(doc, { x: groundStart.x, y: groundStart.y, lead, drop }, groundStart.anchor);
+                return (
+                  <g
+                    pointerEvents="none"
+                    dangerouslySetInnerHTML={{
+                      __html: groundSvg(groundStart.x, groundStart.y, lead, drop, { indent: '', opacity: 0.45, color: bad ? '#e07a00' : OVERLAY_RED }),
+                    }}
+                  />
+                );
+              })()}
+          </>
+        )}
 
         {/* 動かしている最中、まっすぐ揃った位置に目安の線を出す */}
         {drag?.guideX !== undefined && (

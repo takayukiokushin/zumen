@@ -1,6 +1,6 @@
 import { getSymbol, sizedSymbol } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, renderSvg } from '@zumen/layout';
-import { groundBounds } from '@zumen/layout';
+import { groundBounds, groundLabelAt } from '@zumen/layout';
 import type { DrawingCross, DrawingGround, DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
 
@@ -54,6 +54,21 @@ export function buildSheetSvg(
     }
   }
 
+  // 接地のマークの横に付けた文字は、図面の文字として、一緒に出す（大きさ・太字・色も、そのまま）
+  for (const g of grounds) {
+    if (!g.label || g.label.lines.every((l) => l === '')) continue;
+    const at = groundLabelAt(g.x, g.y, g.lead, g.drop);
+    drawing.texts!.push({
+      x: at.x,
+      y: at.y,
+      lines: g.label.lines,
+      anchor: at.anchor,
+      ...(g.label.size !== undefined ? { size: g.label.size } : {}),
+      ...(g.label.bold ? { bold: true } : {}),
+      ...(g.label.red ? { red: true } : {}),
+    });
+  }
+
   // 外形を求める（図枠に収めるために使う）
   const b = drawing.bounds;
   const ext = (x0: number, y0: number, x1: number, y1: number) => {
@@ -82,7 +97,7 @@ export function buildSheetSvg(
   for (const c of crosses) ext(c.x - c.size / 2, c.y - c.size / 2, c.x + c.size / 2, c.y + c.size / 2);
   if (crosses.length > 0) drawing.crosses = crosses;
   for (const g of grounds) {
-    const gb = groundBounds(g.x, g.y, g.rotate);
+    const gb = groundBounds(g.x, g.y, g.lead, g.drop);
     ext(gb.x0, gb.y0, gb.x1, gb.y1);
   }
   if (grounds.length > 0) drawing.grounds = grounds;

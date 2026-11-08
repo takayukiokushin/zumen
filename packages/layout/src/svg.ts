@@ -204,7 +204,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   }
 
   // 赤い接地のマーク
-  for (const g of drawing.grounds ?? []) body.push(groundSvg(g.x, g.y, g.rotate));
+  for (const g of drawing.grounds ?? []) body.push(groundSvg(g.x, g.y, g.lead, g.drop));
 
   // 1行のときは枠の中央に、2行のときは上の行・下の行の順に、枠の中央にそろえて書く
   const boxTop = M + 6;

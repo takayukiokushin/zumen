@@ -1171,3 +1171,7 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .cross-hint .cross-size-pick { display: inline-flex; align-items: center; gap: calc(8px * var(--text-scale)); }
 .cross-hint .cross-size-pick .lbl { font-size: calc(12px * var(--text-scale)); color: var(--ink-2); }
 .cross-actions { display: flex; flex-wrap: wrap; gap: calc(6px * var(--text-scale)); margin-top: calc(6px * var(--text-scale)); }
+
+/* 接地のマーク：つなげる場所を知らせる薄い丸。他の図記号にかかっているときは、オレンジの枠 */
+.canvas .ground-hover { fill: rgba(0, 0, 0, 0.18); stroke: rgba(0, 0, 0, 0.5); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.canvas .overlap-mark { stroke: #e07a00; stroke-width: 1.5; stroke-dasharray: 3 2; }

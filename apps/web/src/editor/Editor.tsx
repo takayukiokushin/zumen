@@ -19,16 +19,14 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addExtraCross, addLayer, addLayerCross, addLayerGround, addLayerText, canAddLayerGround, resolveGrounds, rotateGround, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addExtraCross, addLayer, addLayerCross, addLayerGround, addLayerText, canAddLayerGround, editGround, flipGround, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
-import { CROSS_SIZE_IDS, GROUND_ROTATES } from '@zumen/layout';
-import type { CrossSize, GroundRotate } from '@zumen/layout';
+import { CROSS_SIZE_IDS, GROUND_STEP, groundTip } from '@zumen/layout';
+import type { CrossSize } from '@zumen/layout';
+import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
-
-/** 接地のマークの向き（横線が向く方向）の、画面の言葉 */
-const GROUND_DIR_LABEL = { 0: 'ground.down', 90: 'ground.left', 180: 'ground.up', 270: 'ground.right' } as const;
 
 /** ×印の大きさの、画面の言葉 */
 const CROSS_LABEL = { S: 'cross.small', M: 'cross.mid', L: 'cross.large' } as const;
@@ -101,8 +99,6 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
   const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground'>('select');
-  /** 接地のマークを置くときの向き（横線が向く方向：下・左・上・右） */
-  const [groundRotate, setGroundRotate] = useState<GroundRotate>(0);
   /** 開放の×印を付けるときの大きさ（小・中・大） */
   const [crossSize, setCrossSize_] = useState<CrossSize>('M');
   /** 線を引くときの種類（false＝実線、true＝点線）。埋設ケーブル・TCなどは点線 */
@@ -157,7 +153,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const layerCrosses = useMemo(() => (activeId !== null ? resolveCrosses(doc, activeId) : []), [doc, activeId]);
   /** レイヤーに置いた赤い接地のマーク */
   const layerGrounds = useMemo(() => (activeId !== null ? resolveGrounds(doc, activeId) : []), [doc, activeId]);
-  const sheetGrounds = useMemo(() => layerGrounds.map((g) => ({ x: g.x, y: g.y, rotate: g.rotate })), [layerGrounds]);
+  const sheetGrounds = useMemo(() => layerGrounds.map((g) => ({ x: g.x, y: g.y, lead: g.lead, drop: g.drop, ...(g.label ? { label: g.label } : {}) })), [layerGrounds]);
   const selectedGround = locked ? (layerGrounds.find((g) => g.id === selectedId) ?? null) : null;
   const sheetCrosses = useMemo(() => layerCrosses.map((c) => ({ x: c.x, y: c.y, size: c.size, thickness: c.thickness })), [layerCrosses]);
   /** レイヤーを選んでいるときに、触れるもの（そのレイヤーに置いたもの）の id */
@@ -345,8 +341,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
   };
 
-  /** 接地のマークを、クリックした場所に置く（x・y が取り付ける点） */
-  const placeGround = (x: number, y: number) => {
+  /** 接地のマークを置く（つなぐ場所と、マークを置く場所＝縦の線の先） */
+  const addGround = (anchor: GroundAnchor, tx: number, ty: number) => {
     if (activeId === null) return;
     const d0 = docRef.current;
     if (!canAddLayerGround(d0, activeId)) {
@@ -354,8 +350,10 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       return;
     }
     setLayerNote(null);
-    const r = addLayerGround(d0, activeId, x, y, groundRotate);
-    if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+    const r = addLayerGround(d0, activeId, anchor, tx, ty);
+    if (!r) return;
+    commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+    setSelectedId(r.id);
   };
 
   const addLayerFlow = async () => {
@@ -487,12 +485,21 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         } else if (selection.length > 0 && mode === 'select' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key in ARROW_MOVE) {
           e.preventDefault();
           // 文字は動かし、×印は、付けた開閉器の中央からずらす
-          const textIds = selection.filter((id) => layerDocItems.some((i) => i.id === id) || layerGrounds.some((g) => g.id === id));
+          const textIds = selection.filter((id) => layerDocItems.some((i) => i.id === id));
           const crossIds = selection.filter((id) => layerCrosses.some((c) => c.id === id));
-          if (textIds.length + crossIds.length === 0) return;
+          // 接地のマークは、先（マークを置く場所）を動かして、横棒・縦の長さを変える
+          const groundsSel = layerGrounds.filter((g) => selection.includes(g.id));
+          if (textIds.length + crossIds.length + groundsSel.length === 0) return;
           const [ux, uy] = ARROW_MOVE[e.key]!;
           const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
-          editLayer((d) => moveLayerCrosses(moveLayerItems(d, activeId, textIds, ux * step, uy * step), activeId, crossIds, ux * step, uy * step), `arrow:${selection.join(',')}`);
+          editLayer((d) => {
+            let n = moveLayerCrosses(moveLayerItems(d, activeId, textIds, ux * step, uy * step), activeId, crossIds, ux * step, uy * step);
+            for (const g of groundsSel) {
+              const tp = groundTip(g.x, g.y, g.lead, g.drop);
+              n = setGroundTip(n, activeId, g.id, tp.x + ux * step, tp.y + uy * step);
+            }
+            return n;
+          }, `arrow:${selection.join(',')}`);
         }
         return;
       }
@@ -854,16 +861,6 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       {mode === 'ground' && locked && !sheetView && (
         <p className="mode-hint cross-hint">
           <span>{t('ground.hint')}</span>
-          <span className="cross-size-pick">
-            <span className="lbl">{t('ground.dir')}</span>
-            <span className="seg" role="group" aria-label={t('ground.dir')}>
-              {GROUND_ROTATES.map((r) => (
-                <button key={r} type="button" className="btn" aria-pressed={groundRotate === r} onClick={() => setGroundRotate(r)}>
-                  {t(GROUND_DIR_LABEL[r])}
-                </button>
-              ))}
-            </span>
-          </span>
           <button type="button" className="btn" onClick={() => setMode('select')}>
             {t('ground.done')}
           </button>
@@ -967,16 +964,16 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               setSelection([]);
             }}
             grounds={layerGrounds}
-            onGroundPlace={placeGround}
-            onGroundRemove={(id) => {
-              if (activeId === null) return;
-              editLayer((d) => removeLayerItems(d, activeId, [id]));
-              setSelection([]);
+            onGroundAdd={addGround}
+            onGroundMiss={() => setLayerNote(t('ground.miss'))}
+            onGroundTip={(id, tx, ty) => {
+              if (activeId !== null) editLayer((d) => setGroundTip(d, activeId, id, tx, ty));
+            }}
+            onGroundAnchor={(id, anchor) => {
+              if (activeId !== null) editLayer((d) => editGround(d, activeId, id, { anchor }));
             }}
             onMarkMoveEnd={(id, dx, dy) => {
-              if (activeId === null) return;
-              if (layerGrounds.some((g) => g.id === id)) editLayer((d) => moveLayerItems(d, activeId, [id], dx, dy));
-              else editLayer((d) => moveLayerCrosses(d, activeId, [id], dx, dy));
+              if (activeId !== null) editLayer((d) => moveLayerCrosses(d, activeId, [id], dx, dy));
             }}
             locked={locked}
             activeIds={activeIds}
@@ -1023,21 +1020,62 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             <section>
               <h3>{t('editor.selected')}</h3>
               <p className="hint">{t('ground.selected')}</p>
-              <label className="lbl">{t('ground.dir')}</label>
-              <div className="seg" role="group" aria-label={t('ground.dir')}>
-                {GROUND_ROTATES.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className="btn"
-                    aria-pressed={selectedGround.rotate === r}
-                    onClick={() => editLayer((d) => rotateGround(d, activeId, selectedGround.id, r))}
-                  >
-                    {t(GROUND_DIR_LABEL[r])}
-                  </button>
-                ))}
-              </div>
+              {selectedGround.overlaps && <p className="err">{t('ground.overlaps')}</p>}
               <p className="hint">{t('ground.moveHint')}</p>
+              <div className="cross-actions">
+                <button type="button" className="btn" aria-pressed={selectedGround.lead !== 0} onClick={() => editLayer((d) => toggleGroundLead(d, activeId, selectedGround.id))}>
+                  {selectedGround.lead !== 0 ? t('ground.leadOff') : t('ground.leadOn')}
+                </button>
+                <button type="button" className="btn" disabled={selectedGround.lead === 0} onClick={() => editLayer((d) => flipGround(d, activeId, selectedGround.id))}>
+                  {t('ground.flip')}
+                </button>
+              </div>
+              <label className="lbl">{t('ground.leadLen')}</label>
+              <div className="cross-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={selectedGround.lead === 0}
+                  onClick={() => editLayer((d) => editGround(d, activeId, selectedGround.id, { lead: selectedGround.lead + (selectedGround.lead > 0 ? -GROUND_STEP : GROUND_STEP) }), `lead:${selectedGround.id}`)}
+                >
+                  {t('ground.shorter')}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={selectedGround.lead === 0}
+                  onClick={() => editLayer((d) => editGround(d, activeId, selectedGround.id, { lead: selectedGround.lead + (selectedGround.lead > 0 ? GROUND_STEP : -GROUND_STEP) }), `lead:${selectedGround.id}`)}
+                >
+                  {t('ground.longer')}
+                </button>
+              </div>
+              <label className="lbl">{t('ground.dropLen')}</label>
+              <div className="cross-actions">
+                <button type="button" className="btn" onClick={() => editLayer((d) => editGround(d, activeId, selectedGround.id, { drop: selectedGround.drop - GROUND_STEP }), `drop:${selectedGround.id}`)}>
+                  {t('ground.shorter')}
+                </button>
+                <button type="button" className="btn" onClick={() => editLayer((d) => editGround(d, activeId, selectedGround.id, { drop: selectedGround.drop + GROUND_STEP }), `drop:${selectedGround.id}`)}>
+                  {t('ground.longer')}
+                </button>
+              </div>
+              <label className="lbl">{t('ground.label')}</label>
+              <p className="hint">{t('ground.labelHelp')}</p>
+              <textarea
+                rows={2}
+                maxLength={MAX_TEXT_LENGTH}
+                value={(selectedGround.label?.lines ?? []).join('\n')}
+                onChange={(e) => editLayer((d) => editGround(d, activeId, selectedGround.id, { label: e.target.value.split('\n') }), `label:${selectedGround.id}`)}
+              />
+              {selectedGround.label && (
+                <TextStyleControls
+                  size={selectedGround.label.size}
+                  bold={!!selectedGround.label.bold}
+                  red={!!selectedGround.label.red}
+                  onSize={(n) => editLayer((d) => editGround(d, activeId, selectedGround.id, { size: n }), `gsize:${selectedGround.id}`)}
+                  onBold={(b) => editLayer((d) => editGround(d, activeId, selectedGround.id, { bold: b }))}
+                  onRed={(r) => editLayer((d) => editGround(d, activeId, selectedGround.id, { red: r }))}
+                />
+              )}
               <button
                 type="button"
                 className="btn danger"
