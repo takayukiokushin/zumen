@@ -1,5 +1,6 @@
 import { FONT_FAMILY, getSymbol, shapesToSvg, sizedSymbol } from '@zumen/symbols';
 import type { DrawingLayout } from './layout.ts';
+import { areaSvg } from './area.ts';
 import { crossPointsAttr } from './cross.ts';
 import { groundSvg } from './ground.ts';
 import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, textWidth } from './text.ts';
@@ -197,6 +198,9 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
       );
     }
   }
+
+  // 赤い枠（充電範囲の斜線つき）
+  for (const a of drawing.areas ?? []) body.push(areaSvg(a));
 
   // 開放の赤い×印は、図面のいちばん上に重ねる
   for (const c of drawing.crosses ?? []) {

@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
-import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
+import { AREA_MIN, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, clampTextSize, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
-import { groundOverlapsSymbols } from './layers.ts';
-import type { GroundAnchor, ResolvedCross, ResolvedGround } from './layers.ts';
+import { groundOverlapsSymbols, normalizeRect } from './layers.ts';
+import type { AreaRect } from '@zumen/layout';
+import type { GroundAnchor, ResolvedArea, ResolvedCross, ResolvedGround } from './layers.ts';
 
 interface Props {
   doc: Doc;
@@ -21,7 +22,13 @@ interface Props {
   /** 線を引き終えたとき */
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く。'cross' のときは、開閉器をクリックして、開放の×印を付ける・外す */
-  mode: 'select' | 'wire' | 'cross' | 'ground';
+  mode: 'select' | 'wire' | 'cross' | 'ground' | 'area';
+  /** レイヤーに置いた赤い枠（範囲を囲む四角。充電範囲は斜線つき） */
+  areas?: ResolvedArea[];
+  /** 'area' のとき、ドラッグで四角を描き終えたとき（左上と大きさ。小さすぎるものは、呼ばない） */
+  onAreaDraw?: (rect: AreaRect) => void;
+  /** 選んでいる枠を、動かした・大きさを変え終わったとき（新しい左上と大きさ） */
+  onAreaChange?: (areaId: string, rect: AreaRect) => void;
   /** レイヤーに置いた赤い接地のマーク */
   grounds?: ResolvedGround[];
   /**
@@ -98,7 +105,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], areas = [], onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -107,6 +114,10 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   const [groundStart, setGroundStart] = useState<{ x: number; y: number; anchor: GroundAnchor } | null>(null);
   /** 接地のマークを置くモードで、1回目のクリックの前に、カーソルの近くで、つなげる場所の候補 */
   const [groundHover, setGroundHover] = useState<{ x: number; y: number; anchor: GroundAnchor } | null>(null);
+  /** 赤い枠を、ドラッグで描いている最中（始めの角と、いまの角） */
+  const [areaDraw, setAreaDraw] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  /** 選んでいる枠を、ドラッグで動かしている・大きさを変えている最中（つかんだところ・つかんだときの位置・いまの形） */
+  const [areaDrag, setAreaDrag] = useState<{ id: string; grip: string; sx: number; sy: number; orig: AreaRect; cur: AreaRect } | null>(null);
   /** 選んでいる接地のマークの、根もと（root）か先（tip）の丸をドラッグしている最中 */
   const [handleDrag, setHandleDrag] = useState<{ id: string; which: 'root' | 'tip'; x: number; y: number; anchor?: GroundAnchor } | null>(null);
   /** ×印をドラッグしている最中（動かした量） */
@@ -142,21 +153,25 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     setGroundStart(null);
     setGroundHover(null);
     setHandleDrag(null);
+    setAreaDraw(null);
+    setAreaDrag(null);
   }, [mode]);
 
   // 接地のマークを置いている途中・丸をドラッグしている最中の Esc：その操作だけをやめる（モードは、そのまま）
   useEffect(() => {
-    if (!groundStart && !handleDrag) return;
+    if (!groundStart && !handleDrag && !areaDraw && !areaDrag) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.isComposing) return;
       e.stopPropagation();
       e.preventDefault();
       setGroundStart(null);
       setHandleDrag(null);
+      setAreaDraw(null);
+      setAreaDrag(null);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [groundStart, handleDrag]);
+  }, [groundStart, handleDrag, areaDraw, areaDrag]);
 
   const scroller = () => svgRef.current?.parentElement ?? null;
 
@@ -344,8 +359,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
       return;
     }
-    // 接地のマークを置くモード：どこをクリックしても、その場所に置く（記号の上でも。クリックは、図面の台紙に届かせる）
-    if (mode === 'ground') return;
+    // 接地のマークを置くモード・枠を描くモード：どこをクリックしても（記号の上でも）、図面の台紙のクリックとして扱う
+    if (mode === 'ground' || mode === 'area') return;
     if (mode === 'wire' || inert(it.id)) return;
     e.stopPropagation();
 
@@ -380,6 +395,38 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
         const q = toDrawing(e);
         setBand({ x0: Math.min(bd.x, q.x), y0: Math.min(bd.y, q.y), x1: Math.max(bd.x, q.x), y1: Math.max(bd.y, q.y) });
       }
+      return;
+    }
+    if (areaDraw) {
+      const p = toDrawing(e);
+      setAreaDraw({ ...areaDraw, x1: p.x, y1: p.y });
+      return;
+    }
+    if (areaDrag) {
+      const p = toDrawing(e);
+      const dx = p.x - areaDrag.sx;
+      const dy = p.y - areaDrag.sy;
+      const o = areaDrag.orig;
+      const sn = (v: number) => Math.round(v / 2) * 2;
+      let { x, y, w, h } = o;
+      const g = areaDrag.grip;
+      if (g === 'move') {
+        x = sn(o.x + dx);
+        y = sn(o.y + dy);
+      } else {
+        // つかんだ辺・角だけが動く。反対側は動かさない。小さくしすぎないようにする
+        if (g.includes('l')) {
+          x = Math.min(sn(o.x + dx), o.x + o.w - AREA_MIN);
+          w = o.x + o.w - x;
+        }
+        if (g.includes('r')) w = Math.max(AREA_MIN, sn(o.w + dx));
+        if (g.includes('t')) {
+          y = Math.min(sn(o.y + dy), o.y + o.h - AREA_MIN);
+          h = o.y + o.h - y;
+        }
+        if (g.includes('b')) h = Math.max(AREA_MIN, sn(o.h + dy));
+      }
+      setAreaDrag({ ...areaDrag, cur: { x, y, w, h } });
       return;
     }
     if (handleDrag) {
@@ -462,6 +509,18 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
       return;
     }
+    if (areaDraw) {
+      const r = normalizeRect(areaDraw.x0, areaDraw.y0, areaDraw.x1, areaDraw.y1);
+      setAreaDraw(null);
+      if (r.w >= AREA_MIN && r.h >= AREA_MIN) onAreaDraw?.(r);
+      return;
+    }
+    if (areaDrag) {
+      const { id, orig, cur } = areaDrag;
+      setAreaDrag(null);
+      if (cur.x !== orig.x || cur.y !== orig.y || cur.w !== orig.w || cur.h !== orig.h) onAreaChange?.(id, cur);
+      return;
+    }
     if (handleDrag) {
       const hd = handleDrag;
       setHandleDrag(null);
@@ -497,6 +556,13 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
     if (mode === 'cross') return;
+    if (mode === 'area') {
+      // ドラッグで四角を描き始める
+      const q = toDrawing(e);
+      svgRef.current?.setPointerCapture?.(e.pointerId);
+      setAreaDraw({ x0: q.x, y0: q.y, x1: q.x, y1: q.y });
+      return;
+    }
     if (mode === 'ground') {
       const q = toDrawing(e);
       if (!groundStart) {
@@ -548,7 +614,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   return (
     <svg
       ref={svgRef}
-      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}`}
+      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}${mode === 'area' ? ' area-mode' : ''}`}
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
       onPointerDown={onCanvasDown}
@@ -664,6 +730,94 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           );
         })}
 
+        {/* 赤い枠（範囲を囲む四角）。線の上をつかんで動かす。選ぶと、8つの丸で、大きさを変えられる。中は素通し（中の記号や×印を、そのまま触れる） */}
+        {areas.map((a0) => {
+          const sel = selectedIds.includes(a0.id);
+          const a: ResolvedArea = areaDrag && areaDrag.id === a0.id ? { ...a0, ...areaDrag.cur } : a0;
+          const lat = a.label ? areaLabelAt(a, a.label) : null;
+          const k = clampTextSize(a.label?.size);
+          const lw = a.label ? Math.max(...a.label.lines.map((l) => labelWidth([l], LABEL_FONT * k))) : 0;
+          const lx0 = lat ? (lat.anchor === 'end' ? lat.x - lw : lat.x) : 0;
+          const grips: [string, number, number][] = [
+            ['tl', a.x, a.y], ['t', a.x + a.w / 2, a.y], ['tr', a.x + a.w, a.y], ['r', a.x + a.w, a.y + a.h / 2],
+            ['br', a.x + a.w, a.y + a.h], ['b', a.x + a.w / 2, a.y + a.h], ['bl', a.x, a.y + a.h], ['l', a.x, a.y + a.h / 2],
+          ];
+          const begin = (e: React.PointerEvent, grip: string) => {
+            e.stopPropagation();
+            (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+            const q = toDrawing(e);
+            setAreaDrag({ id: a0.id, grip, sx: q.x, sy: q.y, orig: { x: a0.x, y: a0.y, w: a0.w, h: a0.h }, cur: { x: a0.x, y: a0.y, w: a0.w, h: a0.h } });
+          };
+          return (
+            <g key={a0.id} className={`area-mark${sel ? ' selected' : ''}`}>
+              <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: areaSvg({ ...a, label: undefined }, { indent: '' }) }} />
+              {a.label && lat && (
+                <text
+                  x={lat.x}
+                  y={lat.y}
+                  fontSize={LABEL_FONT * k}
+                  fontWeight={a.label.bold ? 700 : undefined}
+                  textAnchor={lat.anchor}
+                  fontFamily={FONT_FAMILY}
+                  fill={OVERLAY_RED}
+                  stroke="none"
+                >
+                  {a.label.lines.map((l, i) => (
+                    <tspan key={i} x={lat.x} dy={i === 0 ? 0 : LABEL_LINE * k}>
+                      {l}
+                    </tspan>
+                  ))}
+                </text>
+              )}
+              {/* 線の上と、文字の上だけ、つかめる（中は素通し） */}
+              <rect
+                x={a.x}
+                y={a.y}
+                width={a.w}
+                height={a.h}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={10}
+                pointerEvents={mode === 'select' ? 'stroke' : 'none'}
+                onPointerDown={(e) => {
+                  if (mode !== 'select') return;
+                  onSelect([a0.id]);
+                  begin(e, 'move');
+                }}
+              />
+              {lat && a.label && (
+                <rect
+                  x={lx0}
+                  y={lat.y - LABEL_FONT * k}
+                  width={lw}
+                  height={a.label.lines.length * LABEL_LINE * k}
+                  fill="transparent"
+                  pointerEvents={mode === 'select' ? 'all' : 'none'}
+                  onPointerDown={(e) => {
+                    if (mode !== 'select') return;
+                    onSelect([a0.id]);
+                    begin(e, 'move');
+                  }}
+                />
+              )}
+              {sel && mode === 'select' && (
+                <>
+                  <rect className="selection" x={a.x - 5} y={a.y - 5} width={a.w + 10} height={a.h + 10} fill="none" pointerEvents="none" />
+                  {grips.map(([grip, hx, hy]) => (
+                    <circle key={grip} className={`handle grip-${grip}`} cx={hx} cy={hy} r={4} onPointerDown={(e) => begin(e, grip)} />
+                  ))}
+                </>
+              )}
+            </g>
+          );
+        })}
+
+        {/* 枠をドラッグで描いている最中の見本（薄く） */}
+        {mode === 'area' && areaDraw && (() => {
+          const r = normalizeRect(areaDraw.x0, areaDraw.y0, areaDraw.x1, areaDraw.y1);
+          return <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: areaSvg({ ...r, hatch: false }, { indent: '', opacity: 0.5 }) }} />;
+        })()}
+
         {/* 開放の赤い×印。付けた開閉器について動くので、ドラッグでは動かさない（選ぶ・外すだけ） */}
         {crosses.map((c) => {
           const sel = selectedIds.includes(c.id);
@@ -672,7 +826,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
               key={c.id}
               className={`cross-mark${sel ? ' selected' : ''}`}
               onPointerDown={(e) => {
-                if (mode === 'ground') return;
+                if (mode === 'ground' || mode === 'area') return;
                 e.stopPropagation();
                 if (mode === 'cross') onCrossRemove?.(c.id);
                 else if (mode === 'select') {

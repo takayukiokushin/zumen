@@ -1175,3 +1175,11 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 /* 接地のマーク：つなげる場所を知らせる薄い丸。他の図記号にかかっているときは、オレンジの枠 */
 .canvas .ground-hover { fill: rgba(0, 0, 0, 0.18); stroke: rgba(0, 0, 0, 0.5); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .canvas .overlap-mark { stroke: #e07a00; stroke-width: 1.5; stroke-dasharray: 3 2; }
+
+/* 赤い枠：描くモード・つかむ丸の向き */
+.canvas.area-mode, .canvas.area-mode .item, .canvas.area-mode .cross-mark, .canvas.area-mode .ground-mark { cursor: crosshair; }
+.canvas .area-mark rect[pointer-events="stroke"] { cursor: move; }
+.canvas .area-mark .grip-tl, .canvas .area-mark .grip-br { cursor: nwse-resize; }
+.canvas .area-mark .grip-tr, .canvas .area-mark .grip-bl { cursor: nesw-resize; }
+.canvas .area-mark .grip-t, .canvas .area-mark .grip-b { cursor: ns-resize; }
+.canvas .area-mark .grip-l, .canvas .area-mark .grip-r { cursor: ew-resize; }

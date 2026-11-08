@@ -3,7 +3,7 @@ import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@z
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
-import { buildComposition, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
+import { AREA_KINDS, buildComposition, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
@@ -19,14 +19,18 @@ import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addExtraCross, addLayer, addLayerCross, addLayerGround, addLayerText, canAddLayerGround, editGround, flipGround, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addExtraCross, addLayer, addLayerArea, addLayerCross, addLayerGround, addLayerText, canAddLayerArea, canAddLayerGround, editArea, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
-import { CROSS_SIZE_IDS, GROUND_STEP, groundTip } from '@zumen/layout';
-import type { CrossSize } from '@zumen/layout';
+import { AREA_LABEL_POSITIONS, CROSS_SIZE_IDS, GROUND_STEP, groundTip } from '@zumen/layout';
+import type { AreaRect, CrossSize } from '@zumen/layout';
 import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
+
+/** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
+const AREA_KIND_LABEL = { outage: 'area.kind.outage', live: 'area.kind.live', applied: 'area.kind.applied' } as const;
+const AREA_POS_LABEL = { tl: 'area.pos.tl', tr: 'area.pos.tr', bl: 'area.pos.bl', br: 'area.pos.br' } as const;
 
 /** ×印の大きさの、画面の言葉 */
 const CROSS_LABEL = { S: 'cross.small', M: 'cross.mid', L: 'cross.large' } as const;
@@ -98,7 +102,9 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
-  const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground'>('select');
+  const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground' | 'area'>('select');
+  /** 赤い枠を描くときの種類（停電範囲・充電範囲・印加範囲）。最初に入れる文字と、斜線の有無が決まる */
+  const [areaKind, setAreaKind] = useState<string>(AREA_KINDS[0]!.id);
   /** 開放の×印を付けるときの大きさ（小・中・大） */
   const [crossSize, setCrossSize_] = useState<CrossSize>('M');
   /** 線を引くときの種類（false＝実線、true＝点線）。埋設ケーブル・TCなどは点線 */
@@ -155,9 +161,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const layerGrounds = useMemo(() => (activeId !== null ? resolveGrounds(doc, activeId) : []), [doc, activeId]);
   const sheetGrounds = useMemo(() => layerGrounds.map((g) => ({ x: g.x, y: g.y, lead: g.lead, drop: g.drop, ...(g.label ? { label: g.label } : {}) })), [layerGrounds]);
   const selectedGround = locked ? (layerGrounds.find((g) => g.id === selectedId) ?? null) : null;
+  /** レイヤーに置いた赤い枠 */
+  const layerAreas = useMemo(() => (activeId !== null ? resolveAreas(doc, activeId) : []), [doc, activeId]);
+  const sheetAreas = useMemo(() => layerAreas.map((a) => ({ x: a.x, y: a.y, w: a.w, h: a.h, hatch: a.hatch, ...(a.label ? { label: a.label } : {}) })), [layerAreas]);
+  const selectedArea = locked ? (layerAreas.find((a) => a.id === selectedId) ?? null) : null;
   const sheetCrosses = useMemo(() => layerCrosses.map((c) => ({ x: c.x, y: c.y, size: c.size, thickness: c.thickness })), [layerCrosses]);
   /** レイヤーを選んでいるときに、触れるもの（そのレイヤーに置いたもの）の id */
-  const activeIds = useMemo(() => new Set([...layerDocItems.map((i) => i.id), ...layerCrosses.map((c) => c.id), ...layerGrounds.map((g) => g.id)]), [layerDocItems, layerCrosses, layerGrounds]);
+  const activeIds = useMemo(() => new Set([...layerDocItems.map((i) => i.id), ...layerCrosses.map((c) => c.id), ...layerGrounds.map((g) => g.id), ...layerAreas.map((a) => a.id)]), [layerDocItems, layerCrosses, layerGrounds, layerAreas]);
   const selectedCross = locked ? (layerCrosses.find((c) => c.id === selectedId) ?? null) : null;
   const sheetTitle = {
     site: String(answers.customerNameForTitleBlock ?? answers.siteName ?? ''),
@@ -180,8 +190,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const paper: PaperSize = chosen.paper;
   const orientation: Orientation = chosen.orientation;
   const sheetSvg = useMemo(
-    () => buildSheetSvg(viewDoc, sheetTitle, paper, orientation, sheetCrosses, sheetGrounds),
-    [viewDoc, sheetCrosses, sheetGrounds, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
+    () => buildSheetSvg(viewDoc, sheetTitle, paper, orientation, sheetCrosses, sheetGrounds, sheetAreas),
+    [viewDoc, sheetCrosses, sheetGrounds, sheetAreas, sheetTitle.site, sheetTitle.name, sheetTitle.footer, paper, orientation],
   );
   /** 図面を描く台紙の縦横の比（印刷プレビューの形）。実際の用紙の大きさは、印刷の設定画面で決まる */
   const sheetMm = sheetSize(paper, orientation);
@@ -341,6 +351,21 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
   };
 
+  /** 赤い枠を置く（ドラッグで描いた四角と、選んでいる種類） */
+  const addArea = (rect: AreaRect) => {
+    if (activeId === null) return;
+    const d0 = docRef.current;
+    if (!canAddLayerArea(d0, activeId)) {
+      setLayerNote(t('layer.itemLimit.area', { n: MAX_LAYER_ITEMS_PER_KIND }));
+      return;
+    }
+    setLayerNote(null);
+    const r = addLayerArea(d0, activeId, rect, areaKind);
+    if (!r) return;
+    commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+    setSelectedId(r.id);
+  };
+
   /** 接地のマークを置く（つなぐ場所と、マークを置く場所＝縦の線の先） */
   const addGround = (anchor: GroundAnchor, tx: number, ty: number) => {
     if (activeId === null) return;
@@ -472,7 +497,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       if (locked && activeId !== null) {
         // レイヤーを選んでいるあいだは、そのレイヤーに置いたものだけを、戻す・消す・動かす
-        if (e.key === 'Escape' && (mode === 'cross' || mode === 'ground') && !e.isComposing) {
+        if (e.key === 'Escape' && (mode === 'cross' || mode === 'ground' || mode === 'area') && !e.isComposing) {
           e.preventDefault();
           setMode('select');
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -489,11 +514,12 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           const crossIds = selection.filter((id) => layerCrosses.some((c) => c.id === id));
           // 接地のマークは、先（マークを置く場所）を動かして、横棒・縦の長さを変える
           const groundsSel = layerGrounds.filter((g) => selection.includes(g.id));
-          if (textIds.length + crossIds.length + groundsSel.length === 0) return;
+          const areaIds = selection.filter((id) => layerAreas.some((a) => a.id === id));
+          if (textIds.length + crossIds.length + groundsSel.length + areaIds.length === 0) return;
           const [ux, uy] = ARROW_MOVE[e.key]!;
           const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
           editLayer((d) => {
-            let n = moveLayerCrosses(moveLayerItems(d, activeId, textIds, ux * step, uy * step), activeId, crossIds, ux * step, uy * step);
+            let n = moveAreas(moveLayerCrosses(moveLayerItems(d, activeId, textIds, ux * step, uy * step), activeId, crossIds, ux * step, uy * step), activeId, areaIds, ux * step, uy * step);
             for (const g of groundsSel) {
               const tp = groundTip(g.x, g.y, g.lead, g.drop);
               n = setGroundTip(n, activeId, g.id, tp.x + ux * step, tp.y + uy * step);
@@ -539,7 +565,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems, layerCrosses, layerGrounds]);
+  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems, layerCrosses, layerGrounds, layerAreas]);
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -678,6 +704,25 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 }}
               >
                 {t('layer.tool.ground')}
+              </button>
+              <button
+                type="button"
+                className={`${locked ? '' : 'dim'}${mode === 'area' ? ' on' : ''}`.trim()}
+                aria-pressed={mode === 'area'}
+                aria-disabled={!locked || sheetView}
+                title={t('layer.tool.areaHelp')}
+                onClick={() => {
+                  if (sheetView) return;
+                  if (!locked) {
+                    setLayerNote(t('layer.tool.notHere'));
+                    return;
+                  }
+                  setLayerNote(null);
+                  setSelection([]);
+                  setMode((m) => (m === 'area' ? 'select' : 'area'));
+                }}
+              >
+                {t('layer.tool.area')}
               </button>
             </div>
           </div>
@@ -858,6 +903,25 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         <p className="mode-hint">{t('editor.wireHint')}</p>
       )}
 
+      {mode === 'area' && locked && !sheetView && (
+        <p className="mode-hint cross-hint">
+          <span>{t('area.hint')}</span>
+          <span className="cross-size-pick">
+            <span className="lbl">{t('area.kind')}</span>
+            <span className="seg" role="group" aria-label={t('area.kind')}>
+              {AREA_KINDS.map((k) => (
+                <button key={k.id} type="button" className="btn" aria-pressed={areaKind === k.id} onClick={() => setAreaKind(k.id)}>
+                  {t(AREA_KIND_LABEL[k.id])}
+                </button>
+              ))}
+            </span>
+          </span>
+          <button type="button" className="btn" onClick={() => setMode('select')}>
+            {t('area.done')}
+          </button>
+        </p>
+      )}
+
       {mode === 'ground' && locked && !sheetView && (
         <p className="mode-hint cross-hint">
           <span>{t('ground.hint')}</span>
@@ -963,6 +1027,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               editLayer((d) => removeLayerItems(d, activeId, [id]));
               setSelection([]);
             }}
+            areas={layerAreas}
+            onAreaDraw={addArea}
+            onAreaChange={(id, rect) => {
+              if (activeId !== null) editLayer((d) => editArea(d, activeId, id, { rect }));
+            }}
             grounds={layerGrounds}
             onGroundAdd={addGround}
             onGroundMiss={() => setLayerNote(t('ground.miss'))}
@@ -1015,6 +1084,65 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               ))}
             </div>
           </section>
+
+          {selectedArea && activeId !== null && (
+            <section>
+              <h3>{t('editor.selected')}</h3>
+              <p className="hint">{t('area.selected')}</p>
+              <p className="hint">{t('area.moveHint')}</p>
+              <label className="lbl">{t('area.kindApply')}</label>
+              <div className="seg" role="group" aria-label={t('area.kindApply')}>
+                {AREA_KINDS.map((k) => (
+                  <button key={k.id} type="button" className="btn" onClick={() => editLayer((d) => editArea(d, activeId, selectedArea.id, { kind: k.id }))}>
+                    {t(AREA_KIND_LABEL[k.id])}
+                  </button>
+                ))}
+              </div>
+              <div className="cross-actions">
+                <button type="button" className="btn" aria-pressed={selectedArea.hatch} onClick={() => editLayer((d) => editArea(d, activeId, selectedArea.id, { hatch: !selectedArea.hatch }))}>
+                  {t('area.hatch')}
+                </button>
+              </div>
+              <label className="lbl">{t('area.label')}</label>
+              <p className="hint">{t('area.labelHelp')}</p>
+              <textarea
+                rows={2}
+                maxLength={MAX_TEXT_LENGTH}
+                value={(selectedArea.label?.lines ?? []).join('\n')}
+                onChange={(e) => editLayer((d) => editArea(d, activeId, selectedArea.id, { label: e.target.value.split('\n') }), `alabel:${selectedArea.id}`)}
+              />
+              {selectedArea.label && (
+                <>
+                  <TextStyleControls
+                    size={selectedArea.label.size}
+                    bold={!!selectedArea.label.bold}
+                    red={null}
+                    onSize={(n) => editLayer((d) => editArea(d, activeId, selectedArea.id, { size: n }), `asize:${selectedArea.id}`)}
+                    onBold={(b) => editLayer((d) => editArea(d, activeId, selectedArea.id, { bold: b }))}
+                    onRed={() => {}}
+                  />
+                  <label className="lbl">{t('area.pos')}</label>
+                  <div className="seg" role="group" aria-label={t('area.pos')}>
+                    {AREA_LABEL_POSITIONS.map((pos) => (
+                      <button key={pos} type="button" className="btn" aria-pressed={selectedArea.label?.pos === pos} onClick={() => editLayer((d) => editArea(d, activeId, selectedArea.id, { labelPos: pos }))}>
+                        {t(AREA_POS_LABEL[pos])}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <button
+                type="button"
+                className="btn danger"
+                onClick={() => {
+                  editLayer((d) => removeLayerItems(d, activeId, [selectedArea.id]));
+                  setSelection([]);
+                }}
+              >
+                {t('area.remove')}
+              </button>
+            </section>
+          )}
 
           {selectedGround && activeId !== null && (
             <section>

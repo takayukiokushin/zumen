@@ -2,6 +2,7 @@ import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol } from '@zumen/symbols';
 import type { Port, RectShape, SymbolDef } from '@zumen/symbols';
 import { ROW, ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
+import type { DrawingArea } from './area.ts';
 import type { DrawingGround } from './ground.ts';
 import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
 
@@ -71,6 +72,8 @@ export interface DrawingLayout {
   symbols: PlacedSymbol[];
   /** 赤い接地のマーク。×印と同じく、記号・文字のあとに描く */
   grounds?: DrawingGround[];
+  /** 赤い枠（範囲を囲む四角。充電範囲は斜線つき）。記号・文字のあと、×印・接地のマークの前に描く */
+  areas?: DrawingArea[];
   /** 赤い×印。記号・文字のあとに、いちばん上に描く */
   crosses?: DrawingCross[];
   wires: Wire[];

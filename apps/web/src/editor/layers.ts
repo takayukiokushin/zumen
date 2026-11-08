@@ -1,7 +1,9 @@
-import { FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
+import { AREA_KINDS, FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
+import type { AreaKindDef } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
 import { CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
-import type { CrossSize, GroundLabel } from '@zumen/layout';
+import { AREA_MIN } from '@zumen/layout';
+import type { AreaLabel, AreaLabelPos, AreaRect, CrossSize, GroundLabel } from '@zumen/layout';
 import { defOf, freshId, portsOf, sameName, wireKey } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
 
@@ -90,8 +92,33 @@ export interface LayerGround {
   ndy?: number;
 }
 
-/** レイヤーに置くもの。枠などの種類は、これから足していく */
-export type LayerItem = LayerText | LayerCross | LayerGround;
+/**
+ * レイヤーに置いた、赤い枠（範囲を囲む四角）。停電範囲・充電範囲（斜線つき）・印加範囲など。
+ * 左上の位置を、近くの機器（near）からのずれで覚えるので、その機器が動けば、位置は一緒に動く（大きさは、自動では変わらない）。
+ * 機器が無くなっても、枠は消さずに、最後に置いた場所（x・y）に残す（複数の機器を囲む枠が、1台を消しただけで消えないように）。
+ * 近くに、文字（label）を、任意で付けられる。斜線（hatch）は、充電範囲の枠に入れる。
+ */
+export interface LayerArea {
+  kind: 'area';
+  id: string;
+  /** 左上の、最後に置いた場所と、大きさ */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  near?: string;
+  ndx: number;
+  ndy: number;
+  hatch?: boolean;
+  label?: string[];
+  size?: number;
+  bold?: boolean;
+  /** 文字を書く位置（枠の四隅の外側）。無ければ、左上 */
+  labelPos?: AreaLabelPos;
+}
+
+/** レイヤーに置くもの。点・矢印・渡り線などの種類は、これから足していく */
+export type LayerItem = LayerText | LayerCross | LayerGround | LayerArea;
 
 export interface Layer {
   /** 固定のレイヤーは 'outage'・'withstand'。追加したものは 'custom-1' など */
@@ -631,4 +658,127 @@ export function toggleGroundLead(doc: Doc, layerId: string, id: string): Doc {
   const g = resolveGrounds(doc, layerId).find((r) => r.id === id);
   if (!g) return doc;
   return editGround(doc, layerId, id, { lead: g.lead === 0 ? GROUND_LEAD_DEFAULT : 0 });
+}
+
+/* ---------------- 赤い枠（範囲を囲む四角） ---------------- */
+
+/** 画面と印刷に出す赤い枠（いまの位置と大きさ） */
+export interface ResolvedArea extends AreaRect {
+  id: string;
+  hatch: boolean;
+  label?: AreaLabel;
+}
+
+/** 枠の左上の、いまの位置。近くの機器があれば、その機器の位置からのずれ。機器が無くなっていれば、最後に置いた場所 */
+function resolveAreaOrigin(doc: Doc, a: LayerArea): { x: number; y: number } {
+  if (a.near !== undefined) {
+    for (const it of doc.items) {
+      if (it.kind === 'symbol' && sameName(it.id) === a.near) return { x: it.x + a.ndx, y: it.y + a.ndy };
+    }
+  }
+  return { x: a.x, y: a.y };
+}
+
+export function resolveAreas(doc: Doc, layerId: string): ResolvedArea[] {
+  const out: ResolvedArea[] = [];
+  for (const a of layerOf(doc, layerId)?.items ?? []) {
+    if (a.kind !== 'area') continue;
+    const o = resolveAreaOrigin(doc, a);
+    const label: AreaLabel | undefined =
+      a.label && a.label.some((l) => l !== '')
+        ? { lines: a.label, pos: a.labelPos ?? 'tl', ...(a.size !== undefined ? { size: a.size } : {}), ...(a.bold ? { bold: true } : {}) }
+        : undefined;
+    out.push({ id: a.id, x: o.x, y: o.y, w: a.w, h: a.h, hatch: !!a.hatch, ...(label ? { label } : {}) });
+  }
+  return out;
+}
+
+/** 枠を足せるか（1つのレイヤーに置ける数には、上限がある） */
+export const canAddLayerArea = (doc: Doc, layerId: string): boolean =>
+  (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'area').length < MAX_LAYER_ITEMS_PER_KIND;
+
+/** 枠の種類（停電範囲・充電範囲・印加範囲）に応じて、文字と斜線の有無を決める */
+export const areaKindOf = (id: string): AreaKindDef => AREA_KINDS.find((k) => k.id === id) ?? AREA_KINDS[0]!;
+
+/** 四角の向かい合う2つの角から、左上と大きさにする。格子（2）に合わせる */
+export function normalizeRect(x0: number, y0: number, x1: number, y1: number): AreaRect {
+  const sn = (v: number) => Math.round(v / 2) * 2;
+  const x = sn(Math.min(x0, x1));
+  const y = sn(Math.min(y0, y1));
+  return { x, y, w: sn(Math.max(x0, x1)) - x, h: sn(Math.max(y0, y1)) - y };
+}
+
+/** 枠を置く。小さすぎる（AREA_MIN 未満）・上限を超えるときは null。種類に応じた文字・斜線が、最初に入る */
+export function addLayerArea(doc: Doc, layerId: string, rect: AreaRect, kindId: string): { doc: Doc; id: string } | null {
+  if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerArea(doc, layerId)) return null;
+  if (rect.w < AREA_MIN || rect.h < AREA_MIN) return null;
+  const kind = areaKindOf(kindId);
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('larea', new Set(items.map((i) => i.id)));
+  const a: LayerArea = {
+    kind: 'area',
+    id,
+    x: rect.x,
+    y: rect.y,
+    w: rect.w,
+    h: rect.h,
+    ...anchorFor(doc, rect.x, rect.y),
+    ...(kind.hatch ? { hatch: true } : {}),
+    label: [kind.label],
+  };
+  return { doc: setLayerItems(doc, layerId, [...items, a]), id };
+}
+
+/** 枠を直す。kind を渡すと、その種類の文字・斜線にする。位置と大きさ（rect）は、近くの機器から覚え直す */
+export function editArea(
+  doc: Doc,
+  layerId: string,
+  id: string,
+  patch: { rect?: AreaRect; kind?: string; hatch?: boolean; label?: string[]; size?: number; bold?: boolean; labelPos?: AreaLabelPos },
+): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((a) => {
+      if (a.kind !== 'area' || a.id !== id) return a;
+      const n: LayerArea = { ...a };
+      if (patch.rect) {
+        if (patch.rect.w < AREA_MIN || patch.rect.h < AREA_MIN) return a;
+        Object.assign(n, { x: patch.rect.x, y: patch.rect.y, w: patch.rect.w, h: patch.rect.h }, anchorFor(doc, patch.rect.x, patch.rect.y));
+      }
+      if (patch.kind !== undefined) {
+        const k = areaKindOf(patch.kind);
+        n.label = [k.label];
+        if (k.hatch) n.hatch = true;
+        else delete n.hatch;
+      }
+      if (patch.hatch !== undefined) {
+        if (patch.hatch) n.hatch = true;
+        else delete n.hatch;
+      }
+      if (patch.label !== undefined) {
+        if (patch.label.every((l) => l === '')) delete n.label;
+        else n.label = patch.label;
+      }
+      if (patch.size !== undefined) n.size = clampTextSize(patch.size);
+      if (patch.bold !== undefined) {
+        if (patch.bold) n.bold = true;
+        else delete n.bold;
+      }
+      if (patch.labelPos !== undefined) n.labelPos = patch.labelPos;
+      return n;
+    }),
+  );
+}
+
+/** 枠を動かす（大きさは、そのまま）。動かしたあとの場所の近くの機器から、覚え直す */
+export function moveAreas(doc: Doc, layerId: string, ids: string[], dx: number, dy: number): Doc {
+  const cur = resolveAreas(doc, layerId);
+  let n = doc;
+  for (const a of cur) {
+    if (ids.includes(a.id)) n = editArea(n, layerId, a.id, { rect: { x: a.x + dx, y: a.y + dy, w: a.w, h: a.h } });
+  }
+  return n;
 }
