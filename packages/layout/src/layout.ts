@@ -5,6 +5,7 @@ import type { Answers, PlacedItem } from '@zumen/knowledge';
 import type { DrawingArea } from './area.ts';
 import type { DrawingArrow, DrawingDot } from './dot.ts';
 import type { DrawingGround } from './ground.ts';
+import type { DrawingLink } from './link.ts';
 import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
 
 /**
@@ -76,6 +77,8 @@ export interface DrawingLayout {
   /** 赤い枠（範囲を囲む四角。充電範囲は斜線つき）。記号・文字のあと、×印・接地のマークの前に描く */
   areas?: DrawingArea[];
   /** 赤い丸い点・印加点の矢印。記号・文字のあとに描く */
+  /** 赤い渡り線（点と点を結ぶ弧の線）。点より下に描く */
+  links?: DrawingLink[];
   dots?: DrawingDot[];
   arrows?: DrawingArrow[];
   /** 赤い×印。記号・文字のあとに、いちばん上に描く */

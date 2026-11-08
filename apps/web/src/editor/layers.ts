@@ -3,7 +3,8 @@ import type { AreaKindDef } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
 import { CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
 import { AREA_MIN, ARROW_DIR_DEFAULT, ARROW_LEN_DEFAULT, arrowFromTail, clampArrowLen } from '@zumen/layout';
-import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel } from '@zumen/layout';
+import { LINK_SHAPES, LINK_SHAPE_DEFAULT } from '@zumen/layout';
+import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel, LinkShape } from '@zumen/layout';
 import { assistGroundPoint, defOf, freshId, portsOf, sameName, wireKey } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
 
@@ -151,8 +152,22 @@ export interface LayerArrow {
   bold?: boolean;
 }
 
-/** レイヤーに置くもの。渡り線などの種類は、これから足していく */
-export type LayerItem = LayerText | LayerCross | LayerGround | LayerArea | LayerDot | LayerArrow;
+/**
+ * レイヤーに置いた、渡り線（丸い点と点を、弧の線でつなぐもの）。両端の点（a・b）を覚える。
+ * 形（shape：直線／ゆるい弧／普通の弧／すごく丸い弧）と、ふくらむ向き（flip）は、1本ごとに決められる。
+ * どちらかの点が無くなったら、渡り線も消える。
+ */
+export interface LayerLink {
+  kind: 'link';
+  id: string;
+  a: string;
+  b: string;
+  shape?: LinkShape;
+  flip?: boolean;
+}
+
+/** レイヤーに置くもの */
+export type LayerItem = LayerText | LayerCross | LayerGround | LayerArea | LayerDot | LayerArrow | LayerLink;
 
 export interface Layer {
   /** 固定のレイヤーは 'outage'・'withstand'。追加したものは 'custom-1' など */
@@ -365,9 +380,9 @@ export function moveLayerItems(doc: Doc, layerId: string, ids: string[], dx: num
 export function removeLayerItems(doc: Doc, layerId: string, ids: string[]): Doc {
   const items = layerOf(doc, layerId)?.items;
   if (!items) return doc;
-  // 丸い点を外したら、その点を指していた矢印も、一緒に外す
+  // 丸い点を外したら、その点を指していた矢印・その点につないだ渡り線も、一緒に外す
   const left = items.filter((t) => !ids.includes(t.id));
-  return setLayerItems(doc, layerId, left.filter((t) => t.kind !== 'arrow' || !ids.includes(t.dot)));
+  return setLayerItems(doc, layerId, left.filter((t) => (t.kind !== 'arrow' || !ids.includes(t.dot)) && (t.kind !== 'link' || (!ids.includes(t.a) && !ids.includes(t.b)))));
 }
 
 /* ---------------- 開放の赤い×印 ---------------- */
@@ -512,6 +527,7 @@ export function purgeOrphanMarks(doc: Doc): Doc {
     for (let k = items.length - 1; k >= 0; k--) {
       const it = items[k]!;
       if (it.kind === 'arrow' && !dotIds.has(it.dot)) items.splice(k, 1);
+      else if (it.kind === 'link' && (!dotIds.has(it.a) || !dotIds.has(it.b))) items.splice(k, 1);
     }
     if (items.length === l.items.length) return l;
     changed = true;
@@ -989,4 +1005,77 @@ export function setArrowTail(doc: Doc, layerId: string, id: string, tx: number, 
   if (!a) return doc;
   const { dir, len } = arrowFromTail(tx - a.x, ty - a.y);
   return editArrow(doc, layerId, id, { dir, len });
+}
+
+/* ---------------- 渡り線（点と点を結ぶ弧の線） ---------------- */
+
+export interface ResolvedLink {
+  id: string;
+  a: string;
+  b: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  shape: LinkShape;
+  flip: boolean;
+}
+
+/** 画面と印刷に出す渡り線（両端の点が、どちらも図面にあるもの） */
+export function resolveLinks(doc: Doc, layerId: string): ResolvedLink[] {
+  const dots = new Map(resolveDots(doc, layerId).map((d) => [d.id, d]));
+  const out: ResolvedLink[] = [];
+  for (const k of layerOf(doc, layerId)?.items ?? []) {
+    if (k.kind !== 'link') continue;
+    const a = dots.get(k.a);
+    const b = dots.get(k.b);
+    if (!a || !b) continue;
+    out.push({ id: k.id, a: k.a, b: k.b, x1: a.x, y1: a.y, x2: b.x, y2: b.y, shape: k.shape ?? LINK_SHAPE_DEFAULT, flip: !!k.flip });
+  }
+  return out;
+}
+
+export const canAddLayerLink = (doc: Doc, layerId: string): boolean =>
+  (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'link').length < MAX_LAYER_ITEMS_PER_KIND;
+
+/** 2つの点を結ぶ渡り線（向きは問わない） */
+export const linkBetween = (doc: Doc, layerId: string, a: string, b: string): LayerLink | undefined =>
+  (layerOf(doc, layerId)?.items ?? []).find((i): i is LayerLink => i.kind === 'link' && ((i.a === a && i.b === b) || (i.a === b && i.b === a)));
+
+/**
+ * 点 a から点 b へ、渡り線を引く。同じ2つの点を結ぶ線がすでにある・同じ点どうし・点が無い・上限を超えるときは null。
+ * 形は shape（最初は普通の弧）。ふくらむ向きは、点 a から b へ向かう向きの左側。
+ */
+export function addLayerLink(doc: Doc, layerId: string, a: string, b: string, shape: LinkShape = LINK_SHAPE_DEFAULT): { doc: Doc; id: string } | null {
+  if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerLink(doc, layerId)) return null;
+  if (a === b || linkBetween(doc, layerId, a, b)) return null;
+  const dots = resolveDots(doc, layerId);
+  if (!dots.some((d) => d.id === a) || !dots.some((d) => d.id === b)) return null;
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('llink', new Set(items.map((i) => i.id)));
+  const k: LayerLink = { kind: 'link', id, a, b, ...(shape !== LINK_SHAPE_DEFAULT ? { shape } : {}) };
+  return { doc: setLayerItems(doc, layerId, [...items, k]), id };
+}
+
+/** 渡り線を直す（形・ふくらむ向き） */
+export function editLink(doc: Doc, layerId: string, id: string, patch: { shape?: LinkShape; flip?: boolean }): Doc {
+  const items = layerOf(doc, layerId)?.items;
+  if (!items) return doc;
+  return setLayerItems(
+    doc,
+    layerId,
+    items.map((k) => {
+      if (k.kind !== 'link' || k.id !== id) return k;
+      const n: LayerLink = { ...k };
+      if (patch.shape !== undefined && LINK_SHAPES.some((s) => s.id === patch.shape)) {
+        if (patch.shape === LINK_SHAPE_DEFAULT) delete n.shape;
+        else n.shape = patch.shape;
+      }
+      if (patch.flip !== undefined) {
+        if (patch.flip) n.flip = true;
+        else delete n.flip;
+      }
+      return n;
+    }),
+  );
 }

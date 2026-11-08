@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
-import { AREA_MIN, ARROW_HEAD_HALF, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
+import { AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
 import { groundOverlapsSymbols, normalizeRect } from './layers.ts';
-import type { AreaRect } from '@zumen/layout';
-import type { GroundAnchor, ResolvedArea, ResolvedArrow, ResolvedCross, ResolvedDot, ResolvedGround } from './layers.ts';
+import type { AreaRect, LinkShape } from '@zumen/layout';
+import type { GroundAnchor, ResolvedArea, ResolvedArrow, ResolvedCross, ResolvedDot, ResolvedGround, ResolvedLink } from './layers.ts';
 
 interface Props {
   doc: Doc;
@@ -22,7 +22,13 @@ interface Props {
   /** 線を引き終えたとき */
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く。'cross' のときは、開閉器をクリックして、開放の×印を付ける・外す */
-  mode: 'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow';
+  mode: 'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow' | 'link';
+  /** レイヤーに置いた渡り線（点と点を結ぶ弧の線） */
+  links?: ResolvedLink[];
+  /** 'link' のとき、置く前の見本の形 */
+  linkShape?: LinkShape;
+  /** 'link' のとき、点を順にクリックして、点から点へ渡り線を引いたとき（引いたあと、あとの点から続けて引ける） */
+  onLinkAdd?: (fromDot: string, toDot: string) => void;
   /** レイヤーに置いた赤い丸い点と、印加点の矢印 */
   dots?: ResolvedDot[];
   arrows?: ResolvedArrow[];
@@ -116,7 +122,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], areas = [], dots = [], arrows = [], onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -131,6 +137,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   const [areaDrag, setAreaDrag] = useState<{ id: string; grip: string; sx: number; sy: number; orig: AreaRect; cur: AreaRect } | null>(null);
   /** 丸い点を置くモードで、カーソルのところに置いたときの場所（吸い付くときは snapped） */
   const [dotHover, setDotHover] = useState<{ x: number; y: number; snapped: boolean } | null>(null);
+  /** 渡り線を引いている途中：最後にクリックした点 */
+  const [linkStart, setLinkStart] = useState<string | null>(null);
   /** 選んでいる丸い点を、ドラッグしている最中（いまの場所と、動き始めたときの場所） */
   const [dotDrag, setDotDrag] = useState<{ id: string; x: number; y: number; ox: number; oy: number; free: boolean } | null>(null);
   /** 選んでいる矢印の、尾の端をドラッグしている最中 */
@@ -175,11 +183,12 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     setDotHover(null);
     setDotDrag(null);
     setTailDrag(null);
+    setLinkStart(null);
   }, [mode]);
 
   // 接地のマークを置いている途中・丸をドラッグしている最中の Esc：その操作だけをやめる（モードは、そのまま）
   useEffect(() => {
-    if (!groundStart && !handleDrag && !areaDraw && !areaDrag && !dotDrag && !tailDrag) return;
+    if (!groundStart && !handleDrag && !areaDraw && !areaDrag && !dotDrag && !tailDrag && !linkStart) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.isComposing) return;
       e.stopPropagation();
@@ -190,10 +199,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       setAreaDrag(null);
       setDotDrag(null);
       setTailDrag(null);
+      setLinkStart(null);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [groundStart, handleDrag, areaDraw, areaDrag, dotDrag, tailDrag]);
+  }, [groundStart, handleDrag, areaDraw, areaDrag, dotDrag, tailDrag, linkStart]);
 
   const scroller = () => svgRef.current?.parentElement ?? null;
 
@@ -462,6 +472,10 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       setTailDrag({ ...tailDrag, x: p.x, y: p.y });
       return;
     }
+    if (mode === 'link') {
+      setCursor(toDrawing(e));
+      return;
+    }
     if (mode === 'dot') {
       const p = toDrawing(e);
       const a = e.altKey ? null : assistGroundPoint(doc, p.x, p.y, snapRange());
@@ -607,6 +621,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
     if (mode === 'cross' || mode === 'arrow') return;
+    // 渡り線：点のほかをクリックすると、引きかけの線をやめる（点のクリックは、点のほうで受ける）
+    if (mode === 'link') {
+      setLinkStart(null);
+      return;
+    }
     if (mode === 'dot') {
       const q = toDrawing(e);
       onDotAdd?.(q.x, q.y, e.altKey);
@@ -670,7 +689,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   return (
     <svg
       ref={svgRef}
-      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}${mode === 'area' ? ' area-mode' : ''}${mode === 'dot' ? ' dot-mode' : ''}${mode === 'arrow' ? ' arrow-mode' : ''}`}
+      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}${mode === 'area' ? ' area-mode' : ''}${mode === 'dot' ? ' dot-mode' : ''}${mode === 'arrow' ? ' arrow-mode' : ''}${mode === 'link' ? ' link-mode' : ''}`}
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
       onPointerDown={onCanvasDown}
@@ -680,6 +699,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       // 接地のマークを置くモードで、カーソルが図面の外に出たら、つなげる場所の丸と、置いたときの見本を、いったん消す
       onPointerLeave={() => {
         setDotHover(null);
+        if (mode === 'link') setCursor(null);
         if (mode !== 'ground') return;
         setGroundHover(null);
         setCursor(null);
@@ -883,7 +903,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
               key={c.id}
               className={`cross-mark${sel ? ' selected' : ''}`}
               onPointerDown={(e) => {
-                if (mode === 'ground' || mode === 'area' || mode === 'dot' || mode === 'arrow') return;
+                if (mode === 'ground' || mode === 'area' || mode === 'dot' || mode === 'arrow' || mode === 'link') return;
                 e.stopPropagation();
                 if (mode === 'cross') onCrossRemove?.(c.id);
                 else if (mode === 'select') {
@@ -989,6 +1009,37 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
         })}
 
         {/* 赤い丸い点と、印加点の矢印。点は、線の途中・接続点に吸い付く。選んで、ドラッグか矢印キーで動かす */}
+        {/* 赤い渡り線（点と点を結ぶ弧の線）。点より下に描く。線をクリックして選ぶ */}
+        {links.map((k) => {
+          const sel = selectedIds.includes(k.id);
+          const dd = (id: string) => (dotDrag && dotDrag.id === id ? dotDrag : null);
+          const da = dd(k.a);
+          const db = dd(k.b);
+          const kk = { ...k, ...(da ? { x1: da.x, y1: da.y } : {}), ...(db ? { x2: db.x, y2: db.y } : {}) };
+          return (
+            <g
+              key={k.id}
+              className={`link-mark${sel ? ' selected' : ''}`}
+              onPointerDown={(e) => {
+                if (mode !== 'select') return;
+                e.stopPropagation();
+                onSelect([k.id]);
+              }}
+            >
+              <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: linkSvg(kk, { indent: '' }) }} />
+              {/* 細い線でもつかめるように、見えない太い線を重ねる */}
+              <path d={linkPath(kk)} fill="none" stroke="transparent" strokeWidth={Math.max(10, LINK_STROKE * 4)} pointerEvents={mode === 'select' ? 'stroke' : 'none'} />
+              {sel && <path className="selection-line" d={linkPath(kk)} fill="none" pointerEvents="none" />}
+            </g>
+          );
+        })}
+        {/* 渡り線を引いている途中：最後にクリックした点から、カーソルまで、いまの形の見本を薄く見せる */}
+        {mode === 'link' && linkStart !== null && cursor &&
+          (() => {
+            const from = dots.find((d) => d.id === linkStart);
+            if (!from) return null;
+            return <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: linkSvg({ x1: from.x, y1: from.y, x2: cursor.x, y2: cursor.y, shape: linkShape, flip: false }, { indent: '', opacity: 0.45 }) }} />;
+          })()}
         {arrows.map((a0) => {
           const sel = selectedIds.includes(a0.id);
           const dd = dotDrag && dotDrag.id === a0.dot ? dotDrag : null;
@@ -1055,11 +1106,21 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           return (
             <g
               key={d0.id}
-              className={`dot-mark${sel ? ' selected' : ''}`}
+              className={`dot-mark${sel ? ' selected' : ''}${linkStart === d0.id ? ' pending' : ''}`}
               onPointerDown={(e) => {
                 if (mode === 'arrow') {
                   e.stopPropagation();
                   onArrowClick?.(d0.id);
+                  return;
+                }
+                if (mode === 'link') {
+                  e.stopPropagation();
+                  // 1つ目の点をクリック → 2つ目の点をクリックすると、渡り線が引かれ、2つ目の点から続けて引ける
+                  if (linkStart === null) setLinkStart(d0.id);
+                  else if (linkStart !== d0.id) {
+                    onLinkAdd?.(linkStart, d0.id);
+                    setLinkStart(d0.id);
+                  }
                   return;
                 }
                 if (mode !== 'select') return;
@@ -1070,8 +1131,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
               }}
             >
               <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: dotSvg(d, { indent: '' }) }} />
-              <circle cx={d.x} cy={d.y} r={DOT_RADIUS + 5} fill="transparent" stroke="none" pointerEvents={mode === 'select' || mode === 'arrow' ? 'all' : 'none'} />
-              {sel && <circle className="selection" cx={d.x} cy={d.y} r={DOT_RADIUS + 5} fill="none" pointerEvents="none" />}
+              <circle cx={d.x} cy={d.y} r={DOT_RADIUS + 5} fill="transparent" stroke="none" pointerEvents={mode === 'select' || mode === 'arrow' || mode === 'link' ? 'all' : 'none'} />
+              {(sel || linkStart === d0.id) && <circle className="selection" cx={d.x} cy={d.y} r={DOT_RADIUS + 5} fill="none" pointerEvents="none" />}
             </g>
           );
         })}

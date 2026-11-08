@@ -1,7 +1,7 @@
 import { getSymbol, sizedSymbol } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, renderSvg } from '@zumen/layout';
-import { ARROW_HEAD_HALF, DOT_RADIUS, areaLabelAt, arrowLabelAt, arrowTail, groundBounds, groundLabelAt } from '@zumen/layout';
-import type { DrawingArea, DrawingArrow, DrawingCross, DrawingDot, DrawingGround, DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
+import { ARROW_HEAD_HALF, DOT_RADIUS, areaLabelAt, linkApex, arrowLabelAt, arrowTail, groundBounds, groundLabelAt } from '@zumen/layout';
+import type { DrawingArea, DrawingArrow, DrawingCross, DrawingDot, DrawingLink, DrawingGround, DrawingLayout, Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc } from './doc.ts';
 
 /** 編集中の図面を、図枠・表題欄つきの1枚のSVGにする */
@@ -17,10 +17,11 @@ export function buildSheetSvg(
   /** 重ねる赤い枠（範囲を囲む四角） */
   areas: DrawingArea[] = [],
   /** 重ねる赤い丸い点と、印加点の矢印 */
-  points: { dots?: DrawingDot[]; arrows?: DrawingArrow[] } = {},
+  points: { dots?: DrawingDot[]; arrows?: DrawingArrow[]; links?: DrawingLink[] } = {},
 ): string {
   const dots = points.dots ?? [];
   const arrows = points.arrows ?? [];
+  const links = points.links ?? [];
   const drawing: DrawingLayout = {
     symbols: [],
     wires: [],
@@ -146,6 +147,11 @@ export function buildSheetSvg(
     ext(Math.min(a.x, t.x) - ARROW_HEAD_HALF, Math.min(a.y, t.y) - ARROW_HEAD_HALF, Math.max(a.x, t.x) + ARROW_HEAD_HALF, Math.max(a.y, t.y) + ARROW_HEAD_HALF);
   }
   if (arrows.length > 0) drawing.arrows = arrows;
+  for (const k of links) {
+    const ap = linkApex(k);
+    ext(Math.min(k.x1, k.x2, ap.x) - 1, Math.min(k.y1, k.y2, ap.y) - 1, Math.max(k.x1, k.x2, ap.x) + 1, Math.max(k.y1, k.y2, ap.y) + 1);
+  }
+  if (links.length > 0) drawing.links = links;
   if (!Number.isFinite(b.x0)) Object.assign(b, { x0: 0, y0: 0, x1: 100, y1: 100 });
 
   return renderSvg(drawing, title, { paper, orientation });
