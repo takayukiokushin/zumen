@@ -23,7 +23,8 @@ die() { say ""; say "[×] $1"; say ""; read -r -p "Enterキーで閉じます"; 
 # rsync があればそれを使い、無ければ find と tar で同じことをする。
 mirror_app() {
   if [ "${ZUMEN_NO_RSYNC:-}" != "1" ] && command -v rsync >/dev/null 2>&1; then
-    rsync -a --delete --exclude '/.env' --exclude '/data/' --exclude 'node_modules/' --exclude '.git/' "$1/" "$2/"
+    # 大きさと更新日時が同じでも、中身が違えば入れ替える（--checksum）
+    rsync -a --checksum --delete --exclude '/.env' --exclude '/data/' --exclude 'node_modules/' --exclude '.git/' "$1/" "$2/"
     return
   fi
   ( cd "$2" && find . \( -path ./.env -o -path ./data -o -name node_modules -o -name .git \) -prune -o -type f -print ) | while IFS= read -r f; do
