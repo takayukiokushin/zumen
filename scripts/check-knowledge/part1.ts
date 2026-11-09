@@ -15,7 +15,7 @@ console.log('■ 定義の整合性');
 const questionIds = new Set(QUESTIONS.map((q) => q.id));
 if (questionIds.size !== QUESTIONS.length) fail('質問IDが重複しています');
 /** 回答から組み立てる値（質問ではないが、構成ルールから参照してよい） */
-const derivedKeys = new Set(Object.keys(withDerived({})));
+const derivedKeys = new Set(Object.keys(withDerived({ transformerCount: 100 })));
 const known = (key: string) => questionIds.has(key) || derivedKeys.has(key);
 
 for (const q of QUESTIONS) {
@@ -271,10 +271,15 @@ if (schema.properties.answers.type !== 'array') fail('スキーマの answers �
 const pairKeys = Object.keys(schema.properties.answers.items.properties);
 if (!pairKeys.includes('key') || !pairKeys.includes('value')) fail('スキーマの answers に key / value がありません');
 const promptForIds = buildSystemPrompt();
-for (const q of QUESTIONS) {
-  if (!promptForIds.includes(q.id)) fail(`指示文に質問 ${q.id} がありません`);
+const forAi = QUESTIONS.filter((q) => !q.noAi);
+for (const q of forAi) {
+  if (!promptForIds.includes(`- ${q.id}:`)) fail(`指示文に質問 ${q.id} がありません`);
 }
-console.log(`  読み取り用スキーマ: 項目ID＋値の並び / 指示文に質問${QUESTIONS.length}項目`);
+// AIに渡さない項目（noAi）は、指示文に載せない（数が多く、指示文が長くなりすぎるため）
+for (const q of QUESTIONS.filter((y) => y.noAi)) {
+  if (promptForIds.includes(`- ${q.id}:`)) fail(`AIに渡さない項目 ${q.id} が、指示文に載っています`);
+}
+console.log(`  読み取り用スキーマ: 項目ID＋値の並び / 指示文に質問${forAi.length}項目（AIに渡さない${QUESTIONS.length - forAi.length}項目を除く）`);
 
 const prompt = buildSystemPrompt();
 for (const must of ['7200V', '6600V', 'PFS形', '300kVA', 'たたき台']) {

@@ -449,6 +449,7 @@ export const fr: Dict = {
   'revui.extraArea': 'Zone n° {n}',
   'revui.extraUnit': 'n° {n}',
   'vp.noKey': 'Cet élément n’existe pas dans l’application (les instructions sont peut-être périmées)',
+  'vp.noAi': 'Cet élément n’est pas transmis à l’IA (saisissez-le dans l’écran de l’application)',
   'vp.badArea': 'Le numéro de zone (a2: etc.) n’est pas valide',
   'vp.notPerArea': 'Cet élément ne se renseigne pas par zone : a2: ne peut pas être ajouté',
   'vp.notRepeat': 'Cet élément n’est pas répétable : un numéro d’occurrence comme __2 ne peut pas être ajouté',

@@ -447,6 +447,7 @@ export const ko: Dict = {
   'revui.extraArea': '{n}번째 구역',
   'revui.extraUnit': '{n}번째',
   'vp.noKey': '앱에 없는 항목입니다(지시문이 오래되었을 수 있습니다)',
+  'vp.noAi': '이 항목은 AI에 전달하지 않습니다(앱 화면에서 입력해 주세요)',
   'vp.badArea': '구역 번호(a2: 등)가 올바르지 않습니다',
   'vp.notPerArea': '구역별로 답하는 항목이 아니므로 a2: 를 붙일 수 없습니다',
   'vp.notRepeat': '반복하는 항목이 아니므로 __2 같은 건 번호를 붙일 수 없습니다',

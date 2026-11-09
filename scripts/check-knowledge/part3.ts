@@ -553,7 +553,7 @@ console.log('\n■ 説明文の整理');
     if ((ask?.aiHint ?? '').length < 80) fail(`${id}：AIへの説明が短すぎます（${(ask?.aiHint ?? '').length}文字）`);
   }
   // 画面に説明文（help）のある項目は、すべて、AIに渡す詳しい説明（ai-hints.ts）も持つ
-  const noHint = QUESTIONS.filter((y) => y.help !== undefined && y.aiHint === undefined).map((y) => y.id);
+  const noHint = QUESTIONS.filter((y) => y.help !== undefined && y.aiHint === undefined && !y.noAi).map((y) => y.id);
   if (noHint.length > 0) fail(`画面の説明文はあるのに、AIへの説明が無い項目があります（${noHint.join('、')}）`);
   const staleHint = Object.keys(AI_HINTS).filter((k) => !QUESTIONS.some((y) => y.id === k));
   if (staleHint.length > 0) fail(`AIへの説明（ai-hints.ts）に、質問に無い項目IDがあります（${staleHint.join('、')}）`);

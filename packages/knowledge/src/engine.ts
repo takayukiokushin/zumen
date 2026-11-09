@@ -1,5 +1,5 @@
 import type { Answers, Value } from './condition.ts';
-import { countOf, maxCountOf } from './counts.ts';
+import { PCS_INPUT_MAX, countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
 import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
@@ -85,7 +85,7 @@ export function normalizeAnswers(answers: Answers): Answers {
   }
   // 受電側の開閉器から決まる目印（質問の出し分けに使う）。
   // 1か所目は「主遮断装置の形式」、2か所目以降は「このエリアの受電側の開閉器」で決まる
-  out = { ...out, ...intakeFlags(out) };
+  out = { ...out, ...intakeFlags(out), pcsMode: pcsInputMode(out) };
   const cabinet = out.sourceType === 'cabinet';
   // 引込元が地上キャビネットのときは、PAS・PGS（電柱上）は無い。未回答（または古い回答）のときはUGSにする
   if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas' || out.sectionalizer === 'pgs')) {
@@ -245,6 +245,70 @@ const GENERATOR_FUEL_LABEL: Record<string, string> = {
   'heavy-oil': '重油',
 };
 
+/**
+ * PCSのつなぎ先の、入れ方（入力欄の数が少ないほうを、自動で出す）。
+ *   none   … 太陽光が無い・変圧器が1台（全部その1台につながるので、聞かない）
+ *   perPcs … PCSごとに、「何台目の変圧器につなぐか」を選ぶ（PCSの台数が、変圧器の台数以下のとき）
+ *   perTr  … 変圧器ごとに、「何台つなぐか」を入れる（PCSのほうが多いとき）
+ * すでに入れた答えがあるときは、その入れ方を続ける（案件を開き直しても、入れた内容が見えなくならないように）。
+ * 入力欄は、PCS・変圧器とも、30台目まで（PCS_INPUT_MAX）。30台を超えるときは、使える入れ方のほうにする。
+ * 引数は、1つの容量の種類（1件ぶん）の答え。
+ */
+export type PcsMode = 'none' | 'perPcs' | 'perTr';
+export function pcsInputMode(a: Answers): PcsMode {
+  if (a.hasPv !== 'yes') return 'none';
+  const tr = countOf(a.transformerCount, 1, maxCountOf('transformerCount'));
+  if (tr <= 1) return 'none';
+  const n = countOf(a.pcsCount ?? 1, 1, maxCountOf('pcsCount'));
+  const answered = (v: unknown) => v !== undefined && v !== null && v !== '';
+  for (let k = 1; k <= Math.min(n, PCS_INPUT_MAX); k++) if (answered(a[`pcsDest${k}`])) return 'perPcs';
+  for (let t = 1; t <= Math.min(tr, PCS_INPUT_MAX); t++) if (answered(a[`pcsToTr${t}`])) return 'perTr';
+  // 入れた答えが無いとき：入力欄が少ないほうにする。PCSが多い（30台超）ときは、変圧器ごと。変圧器が多い（30台超）ときは、PCSごと
+  if (n > PCS_INPUT_MAX) return 'perTr';
+  return n <= tr || tr > PCS_INPUT_MAX ? 'perPcs' : 'perTr';
+}
+
+/**
+ * 1つの容量の種類のPCS（total 台）を、変圧器ごとの台数に直す。
+ *   ・PCSごとに選んだ答え（pcsDest）が1つでもあれば、それを使う（選んでいないPCSは、1台目の変圧器）
+ *   ・無ければ、変圧器ごとの台数（pcsToTr）を使う。どこにも入れていなければ、全部1台目。入れ残しは1台目に足す
+ * counts … 変圧器ごとの台数 ／ perPcs … PCSごとの答えから作ったか ／ dest … perPcs のとき、PCSごとのつなぎ先（0始まりの変圧器の番号）
+ */
+export function pcsShares(
+  answers: Answers,
+  group: number,
+  total: number,
+  trCount: number,
+): { counts: number[]; perPcs: boolean; dest: number[] } {
+  const counts: number[] = Array.from({ length: trCount }, () => 0);
+  const dest: number[] = [];
+  let anyDest = false;
+  for (let k = 1; k <= Math.min(total, PCS_INPUT_MAX); k++) {
+    const v = answers[indexedKey(`pcsDest${k}`, group)];
+    if (v !== undefined && v !== null && v !== '') anyDest = true;
+  }
+  if (anyDest) {
+    for (let k = 1; k <= total; k++) {
+      const v = k <= PCS_INPUT_MAX ? Number(answers[indexedKey(`pcsDest${k}`, group)]) : NaN;
+      // 選んでいない・変圧器の台数より大きい番号は、1台目の変圧器
+      const t = Number.isInteger(v) && v >= 1 && v <= trCount ? v - 1 : 0;
+      dest.push(t);
+      counts[t]! += 1;
+    }
+    return { counts, perPcs: true, dest };
+  }
+  let assigned = 0;
+  for (let t = 0; t < trCount; t++) {
+    const n = Math.max(0, Number(answers[indexedKey(`pcsToTr${t + 1}`, group)] ?? 0) || 0);
+    counts[t] = n;
+    assigned += n;
+  }
+  // どこにも入れていなければ、全部1台目へ。入れ残しがあれば1台目に足す
+  if (assigned === 0) counts[0] = total;
+  else if (assigned < total) counts[0] = (counts[0] ?? 0) + (total - assigned);
+  return { counts, perPcs: false, dest };
+}
+
 /** 回答そのものに加えて、図面の文字に使う導出値を足した集まりを作る */
 export function withDerived(rawAnswers: Answers): Answers {
   const answers = normalizeAnswers(rawAnswers);
@@ -330,29 +394,31 @@ export function withDerived(rawAnswers: Answers): Answers {
    */
   const trCount = countOf(answers.transformerCount, 1, maxCountOf('transformerCount'));
   const perTransformer: string[][] = Array.from({ length: trCount }, () => []);
+  /** PCSごとにPVの容量を入れたときの、変圧器ごとの合計（kW） */
+  const pvByPcs: number[] = Array.from({ length: trCount }, () => 0);
+  const perPcsMode = pcsInputMode(answers) === 'perPcs';
   for (let i = 0; i < groups; i++) {
     const kw = answers[indexedKey('pcsCapacity', i)];
     if (kw === undefined || kw === null || kw === '') continue;
     const total = countOf(answers[indexedKey('pcsCount', i)] ?? 1, 0, maxCountOf('pcsCount'));
-    const share: number[] = [];
-    let assigned = 0;
+    const share = pcsShares(answers, i, total, trCount);
     for (let t = 0; t < trCount; t++) {
-      const n = Math.max(0, Number(answers[indexedKey(`pcsToTr${t + 1}`, i)] ?? 0) || 0);
-      share[t] = n;
-      assigned += n;
+      if ((share.counts[t] ?? 0) > 0) perTransformer[t]!.push(`${kw}kW×${share.counts[t]}台`);
     }
-    // どこにも入れていなければ、全部1台目へ。入れ残しがあれば1台目に足す
-    if (assigned === 0) share[0] = total;
-    else if (assigned < total) share[0] = (share[0] ?? 0) + (total - assigned);
-    for (let t = 0; t < trCount; t++) {
-      if ((share[t] ?? 0) > 0) perTransformer[t]!.push(`${kw}kW×${share[t]}台`);
+    // PCSごとのPVの容量（数として読めるものだけ。同じ変圧器につなぐものは足す）
+    if (share.perPcs) {
+      for (let k = 0; k < Math.min(total, PCS_INPUT_MAX); k++) {
+        const kwPv = parseFloat(String(answers[indexedKey(`pvKwPcs${k + 1}`, i)] ?? ''));
+        if (Number.isFinite(kwPv) && kwPv > 0) pvByPcs[share.dest[k] ?? 0]! += kwPv;
+      }
     }
   }
-  for (let t = 0; t < 8; t++) {
+  for (let t = 0; t < Math.max(8, trCount); t++) {
     d[`pcsAtTr${t + 1}`] = perTransformer[t]?.join('\n') ?? '';
     d[`pcsTrNo${t + 1}`] = String(t + 1);
     // PCSの枠の真下のPVの容量（任意）。入れてあれば「100kW」と書く。空欄なら書かない
-    const pvKw = String(answers[`pvKw${t + 1}`] ?? '').trim();
+    // PCSごとに入れる入れ方のときは、PCSごとの値を足した合計。変圧器ごとの入れ方のときは、その変圧器の欄の値
+    const pvKw = perPcsMode ? (pvByPcs[t] ? String(Math.round(pvByPcs[t]! * 100) / 100) : '') : String(answers[`pvKw${t + 1}`] ?? '').trim();
     d[`pvKwText${t + 1}`] = pvKw ? (/kw$/i.test(pvKw) ? pvKw : `${pvKw}kW`) : '';
   }
   /*
@@ -760,8 +826,9 @@ export function areaView(answers: Answers, area: number): Answers {
   return normalizeAnswers(out);
 }
 
-/** 質問ではないが、表示条件から参照してよい値（エリアの番号と、受電側の開閉器から決まる目印） */
+/** 質問ではないが、表示条件から参照してよい値（エリアの番号と、受電側の開閉器・PCSの入れ方から決まる目印） */
 export const VIEW_KEYS: ReadonlySet<string> = new Set([
+  'pcsMode',
   'areaNo',
   'unitNo',
   'intakeDs',

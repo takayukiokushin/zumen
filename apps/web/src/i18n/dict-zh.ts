@@ -445,6 +445,7 @@ export const zh: Dict = {
   'revui.extraArea': '第{n}处区域',
   'revui.extraUnit': '第{n}项',
   'vp.noKey': '应用中没有此项目（指示文可能已过时）',
+  'vp.noAi': '该项目不交给 AI（请在应用的画面中输入）',
   'vp.badArea': '区域编号（a2: 等）不正确',
   'vp.notPerArea': '此项目不是按区域回答的，不能加 a2:',
   'vp.notRepeat': '此项目不是重复项目，不能加 __2 这样的序号',

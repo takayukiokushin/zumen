@@ -98,7 +98,7 @@ export const DOMAIN_RULES = `- **定格電圧は 7200V と 6600V を現場で使
  */
 export function buildSystemPrompt(): string {
   const groups = QUESTION_GROUPS.map((g) => {
-    const qs = QUESTIONS.filter((q) => q.group === g.id);
+    const qs = QUESTIONS.filter((q) => q.group === g.id && !q.noAi);
     const lines = qs.map((q) => {
       const opts = q.options?.length
         ? `（${q.options.map((o) => `${o.value}=${o.label}${o.share ? `・${o.share}` : ''}`).join(' / ')}）`

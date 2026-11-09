@@ -448,6 +448,7 @@ export const en: Dict = {
   'revui.extraArea': 'Area {n}',
   'revui.extraUnit': 'Item {n}',
   'vp.noKey': 'This item does not exist in the app (the instructions may be out of date)',
+  'vp.noAi': 'This item is not passed to the AI (please enter it on the app screen)',
   'vp.badArea': 'The area number (such as a2:) is not valid',
   'vp.notPerArea': 'This item is not answered per area, so a2: cannot be added',
   'vp.notRepeat': 'This item is not repeated, so an item number such as __2 cannot be added',

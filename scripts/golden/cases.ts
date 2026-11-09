@@ -274,6 +274,17 @@ export const GOLDEN_CASES: GoldenCase[] = [
     customerNameForTitleBlock: '架空の株式会社 第二製造工場 敷地内高圧受電設備（北側・南側）',
     drawingName: 'キュービクル式高圧受電設備単線結線図（増設工事後の姿・全体）',
   }),
+  mk('27-pcs-pick', '変圧器12台・PCS2台を、PCSごとに選んだ変圧器（3台目・9台目）につなぐ。PV容量も、PCSごと', ['tr-3p-dy=12', 'pcs=2', 'pv=2'], CB, {
+    transformerCount: 12,
+    hasPv: 'yes',
+    pvGroupCount: '1',
+    pcsCapacity: 50,
+    pcsCount: '2',
+    pcsDest1: '3',
+    pcsDest2: '9',
+    pvKwPcs1: 100,
+    pvKwPcs2: 60,
+  }),
   // ---- 赤いレイヤー（停電範囲図・絶縁耐力試験範囲図・追加したレイヤー）の印刷 ----
   withLayer(mk('L1-outage', '赤いレイヤー：停電範囲図（メモ・×印・接地・停電範囲の枠・点と印加点の矢印・渡り線）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), outageLayer),
   withLayer(mk('L2-withstand', '赤いレイヤー：絶縁耐力試験範囲図（充電範囲の斜線・印加範囲・4つの形の渡り線・印加点の矢印）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), withstandLayer),

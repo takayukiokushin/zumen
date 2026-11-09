@@ -1,14 +1,18 @@
-import type { Question } from './types.ts';
+import type { Question, Choice } from './types.ts';
+import { MAX_COUNT, PCS_INPUT_MAX, COUNT_LIMITS } from '../counts.ts';
 import { COUNT_OPTIONS, YES_NO, YES_NO_Q, TRANSFORMER_CHOICES, RELAY_COUNT_OPTIONS } from './common.ts';
 
-/** 質問の定義：特殊設備、補助変圧器、発電機、太陽光 */
 /**
- * PCSをつなげる変圧器は、8台目まで（入力欄も、図面に描くPCS・PVも、8台目まで）。変圧器そのものは、もっと多く入れられる。
- * その注意を、8台目の欄に出す（この欄が出るのは、変圧器が8台以上のとき）
+ * PCSをつなぐ変圧器の選択肢（「1台目」〜変圧器の台数の上限）。
+ * 変圧器の台数より大きい番号は、一覧に出さない（Choice.showIf）。どの質問も、同じ一覧を使う
  */
-export const PCS_LIMIT_NOTE =
-  'PCSは8台目の変圧器までしかつなげません（9台目以降は不可。図面のPCS・PVも8台目まで。入れ残した台数は、1台目に数えます）';
+const DEST_OPTIONS: Choice[] = Array.from({ length: COUNT_LIMITS.transformerCount ?? MAX_COUNT }, (_, j): Choice => ({
+  value: String(j + 1),
+  label: `${j + 1}台目`,
+  showIf: { key: 'transformerCount', gt: j },
+}));
 
+/** 質問の定義：特殊設備、補助変圧器、発電機、太陽光 */
 export const EQUIPMENT_QUESTIONS: Question[] = [
   /* ---------------- 特殊設備 ---------------- */
   { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
@@ -188,36 +192,73 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     ask: 'always',
     required: true,
   },
-  // 容量ごとに「何台目の変圧器に何台つなぐか」を入れる。
+  // PCSのつなぎ先の入れ方は、2通り。入力欄の数が少ないほうを、自動で出す（pcsMode。engine.ts の pcsInputMode）。
+  //   ① PCSごとに、「何台目の変圧器につなぐか」を一覧から選ぶ（PCSの台数が、変圧器の台数以下のとき）
+  //   ② 変圧器ごとに、「何台つなぐか」を入れる（PCSのほうが多いとき）
+  // どちらも、図面を組み立てるときは、「変圧器ごとの台数」に直して使う。
   // 変圧器が1台しかないときは聞かない（全部その1台につながる）。
-  ...Array.from({ length: 8 }, (_, t) => ({
+  // AI（スケッチ・音声）には、①の欄と、②の9台目以降の欄は渡さない（数が多く、指示文が長くなりすぎるため）。
+
+  // ① PCSごと（「1台目のPCS」「2台目のPCS」…）。何も選ばなければ、1台目の変圧器につながる
+  ...Array.from({ length: PCS_INPUT_MAX }, (_, k) => ({
+    id: `pcsDest${k + 1}`,
+    group: 'pv' as const,
+    label: `${k + 1}台目のPCSをつなぐ変圧器`,
+    type: 'select' as const,
+    options: DEST_OPTIONS,
+    showIf: { all: [{ key: 'pcsMode', eq: 'perPcs' }, { key: 'pcsCount', gt: k }] },
+    ask: 'always' as const,
+    noAi: true,
+    help: k === 0 ? '選ばなければ、1台目の変圧器につながる' : undefined,
+  })),
+  // ① PCSごとの、PV（太陽電池パネル）の容量。任意。同じ変圧器につなぐPCSのぶんは、足して、1つの枠の下に書く
+  ...Array.from({ length: PCS_INPUT_MAX }, (_, k) => ({
+    id: `pvKwPcs${k + 1}`,
+    group: 'pv' as const,
+    label: `${k + 1}台目のPCSの下の、PVの容量`,
+    type: 'number' as const,
+    unit: 'kW',
+    showIf: { all: [{ key: 'pcsMode', eq: 'perPcs' }, { key: 'pcsCount', gt: k }] },
+    ask: 'always' as const,
+    noAi: true,
+    help:
+      k === 0
+        ? '任意。入れると、PCSの枠の真下のPVの下に「100kW」のように書く（同じ変圧器につなぐPCSが2台以上あるときは、足した値）。空欄なら「PV」だけ'
+        : '任意。空欄なら「PV」だけ書く',
+  })),
+
+  // ② 変圧器ごと
+  ...Array.from({ length: PCS_INPUT_MAX }, (_, t) => ({
     id: `pcsToTr${t + 1}`,
     group: 'pv' as const,
     label: `うち ${t + 1}台目の変圧器につなぐ台数`,
     type: 'number' as const,
     unit: '台',
-    showIf: { all: [{ key: 'transformerCount', gt: Math.max(1, t) }] },
+    showIf: { all: [{ key: 'transformerCount', gt: Math.max(1, t) }, { key: 'pcsMode', eq: 'perTr' }] },
     ask: 'always' as const,
+    ...(t >= 8 ? { noAi: true } : {}),
     help:
       t === 0
         ? 'どの変圧器にも入れなければ、全部1台目の変圧器につながる'
-        : t === 7
-          ? PCS_LIMIT_NOTE
+        : t === PCS_INPUT_MAX - 1
+          ? '変圧器が31台以上あるときは、ここまでです。PCSの台数を30台以下にすると、PCSごとに、つなぐ変圧器を選べます'
           : undefined,
   })),
 
-  // PCSの枠の真下に描くPV（太陽電池パネル）の容量。任意。変圧器ごとの枠に1つずつなので、容量の種類ごとには繰り返さず、1回だけ聞く
-  ...Array.from({ length: 8 }, (_, t) => ({
+  // PCSの枠の真下に描くPV（太陽電池パネル）の容量。任意。② のときの入力欄（変圧器ごとの枠に1つずつなので、容量の種類ごとには繰り返さず、1回だけ聞く）。
+  // ① のときは、PCSごと（pvKwPcs）に入れる
+  ...Array.from({ length: PCS_INPUT_MAX }, (_, t) => ({
     id: `pvKw${t + 1}`,
     group: 'pv' as const,
     label: `${t + 1}台目の変圧器につなぐPCSの下の、PVの容量`,
     type: 'number' as const,
     unit: 'kW',
     shared: true,
-    showIf: { all: [{ key: 'transformerCount', gt: Math.max(0, t) }] },
+    showIf: { all: [{ key: 'transformerCount', gt: Math.max(0, t) }, { key: 'pcsMode', ne: 'perPcs' }] },
     ask: 'always' as const,
+    ...(t >= 8 ? { noAi: true } : {}),
     help: t === 0
       ? '任意。入れると、PCSの枠の真下のPVの下に「PV」と並べて、「100kW」のように書く。空欄なら「PV」だけ。変圧器が1台のときは、この1つだけ'
-      : '任意。空欄なら「PV」だけ書く',
+      : t >= 8 ? undefined : '任意。空欄なら「PV」だけ書く',
   })),
 ];

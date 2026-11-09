@@ -19,6 +19,15 @@ export const COUNT_LIMITS: Readonly<Record<string, number>> = {
   pcsCount: 100,
 };
 
+/**
+ * PCSのつなぎ先を入れる欄の数の上限。
+ *   ・PCSごとに「何台目の変圧器か」を選ぶ欄は、PCSの30台目まで
+ *   ・変圧器ごとに「何台つなぐか」を入れる欄は、変圧器の30台目まで
+ * 入力欄の数が少ないほうを、自動で出す（engine.ts の pcsInputMode）。
+ * 図面にPCS・PVを描ける変圧器は、変圧器の台数の上限（100台）まで。
+ */
+export const PCS_INPUT_MAX = 30;
+
 /** その項目の件数の上限 */
 export function maxCountOf(id: string): number {
   return Object.hasOwn(COUNT_LIMITS, id) ? COUNT_LIMITS[id]! : MAX_COUNT;

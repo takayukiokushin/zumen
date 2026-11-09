@@ -21,7 +21,7 @@ import { DOMAIN_RULES } from './prompt.ts';
 export const VOICE_FORMAT = 'zumen-voice';
 
 /** Claude に聞いてよい項目（アプリで手入力する項目は除く） */
-const voiceQuestions = (): Question[] => QUESTIONS.filter((q) => !q.manualOnly);
+const voiceQuestions = (): Question[] => QUESTIONS.filter((q) => !q.manualOnly && !q.noAi);
 
 const QUESTION_BY_ID = new Map(QUESTIONS.map((q) => [q.id, q]));
 const GROUP_BY_ID = new Map(QUESTION_GROUPS.map((g) => [g.id, g]));
@@ -30,6 +30,7 @@ const GROUP_BY_ID = new Map(QUESTION_GROUPS.map((g) => [g.id, g]));
 const DERIVED_KEY_TEXT: Record<string, string> = {
   areaNo: '受電設備エリアの番号',
   unitNo: '何件目（何台目・何個目）か',
+  pcsMode: 'PCSのつなぎ先の入れ方（アプリが、PCSと変圧器の台数から決める）',
   intakeDs: '受電側にDSがある',
   intakeVcb: '受電側にVCBがある',
   intakeLbs: '受電側にLBSがある',
@@ -118,7 +119,7 @@ function digest(text: string): string {
 export const VOICE_VERSION: string = `v${digest(buildQuestionList())}`;
 
 /** 手入力にする項目の名前（指示文に書く） */
-const manualLabels = (): string => QUESTIONS.filter((q) => q.manualOnly).map((q) => q.label).join('・');
+const manualLabels = (): string => QUESTIONS.filter((q) => q.manualOnly && !q.noAi).map((q) => q.label).join('・');
 
 /**
  * Claude のプロジェクトに入れる指示文。
@@ -329,6 +330,7 @@ export function checkKey(key: string): { q?: Question; reason?: string } {
   const { area, id, unit } = splitKey(key);
   const q = QUESTION_BY_ID.get(id);
   if (!q) return { reason: 'アプリにない項目です（指示文が古い可能性があります）' };
+  if (q.noAi) return { reason: 'AIには渡さない項目です（アプリの画面で入力してください）' };
   if (area !== undefined && (area < 2 || area > 20)) return { reason: 'エリアの番号（a2: など）が正しくありません' };
   if (area !== undefined && !PER_AREA_QUESTION_IDS.has(id)) return { reason: 'エリアごとに答える項目ではないので、a2: は付けられません' };
   if (unit !== undefined) {

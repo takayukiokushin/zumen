@@ -8,7 +8,7 @@
  *   node --experimental-strip-types scripts/check-spec.ts
  */
 import { readFileSync } from 'node:fs';
-import { AREA_KINDS, ARROW_LABEL_DEFAULT, COUNT_LIMITS, FIXED_LAYERS, MAX_COUNT, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH } from '../packages/knowledge/src/index.ts';
+import { AREA_KINDS, ARROW_LABEL_DEFAULT, COUNT_LIMITS, FIXED_LAYERS, MAX_COUNT, MAX_CUSTOM_LAYERS, PCS_INPUT_MAX, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH } from '../packages/knowledge/src/index.ts';
 import { ARROW_LEN_DEFAULT, ARROW_LEN_MAX, ARROW_LEN_MIN, ARROW_STROKE, AREA_STROKE, CROSS_SPECS, DOT_RADIUS, GROUND_STROKE, HATCH_GAP, HATCH_STROKE, LINK_SHAPES, LINK_STROKE, TEXT_SIZE_MAX, TEXT_SIZE_MIN } from '../packages/layout/src/index.ts';
 
 const root = new URL('../', import.meta.url);
@@ -64,6 +64,7 @@ row('受電設備のエリア数', COUNT_LIMITS.areaCount!);
 row('変圧器の台数', COUNT_LIMITS.transformerCount!);
 row('高圧コンデンサの台数', COUNT_LIMITS.capacitorCount!);
 row('PCSの台数', COUNT_LIMITS.pcsCount!);
+row('PCSのつなぎ先を入れる欄の数（PCSごとに選ぶ欄・変圧器ごとの台数の欄とも）', PCS_INPUT_MAX);
 row('ほかの台数・組数', MAX_COUNT);
 row('文字を入れる欄の文字数', MAX_TEXT_LENGTH);
 row('パスワードの文字数', numFrom('apps/server/src/password-policy.ts', /MAX_PASSWORD = (\d+)/));

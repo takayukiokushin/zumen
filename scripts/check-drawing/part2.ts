@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { removeItem, fromLayout, moveItem, docBounds } from '../../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
-import { buildComposition, indexedKey } from '../../packages/knowledge/src/index.ts';
+import { buildComposition, indexedKey, pcsInputMode, visibleQuestions, withAutoValues, QUESTION_DEFAULTS } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { rotatedBox, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
@@ -151,6 +151,78 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
     } else {
       console.log(`  2種類をまとめた枠：1台目「${first.label.join(' / ')}」／2台目「${boxes.find((i) => i.role === 'pcs-tr2')?.label.join(' / ')}」`);
     }
+  }
+
+  // PCSのつなぎ先の入れ方：入力欄の少ないほうを、自動で出す。どちらの入れ方でも、図面は同じになる
+  {
+    const pv = { ...common, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50 } as Answers;
+    const mode = (a: Answers) => pcsInputMode(withAutoValues({ ...QUESTION_DEFAULTS, ...a }));
+    const cases: [string, Answers, string][] = [
+      ['太陽光なし', { ...common, hasPv: 'no', transformerCount: 20 }, 'none'],
+      ['変圧器1台', { ...pv, transformerCount: 1, pcsCount: '3' }, 'none'],
+      ['変圧器20台・PCS2台（需要設備）', { ...pv, transformerCount: 20, pcsCount: '2' }, 'perPcs'],
+      ['変圧器4台・PCS20台（発電所）', { ...pv, transformerCount: 4, pcsCount: '20' }, 'perTr'],
+      ['変圧器5台・PCS5台（同数）', { ...pv, transformerCount: 5, pcsCount: '5' }, 'perPcs'],
+      ['変圧器5台・PCS6台（PCSが1台多い）', { ...pv, transformerCount: 5, pcsCount: '6' }, 'perTr'],
+      ['変圧器40台・PCS25台（変圧器が30台超）', { ...pv, transformerCount: 40, pcsCount: '25' }, 'perPcs'],
+      ['変圧器40台・PCS35台（PCSも30台超）', { ...pv, transformerCount: 40, pcsCount: '35' }, 'perTr'],
+      ['入れ方が決まっている案件（変圧器ごとの台数が入っている）は、そのまま', { ...pv, transformerCount: 5, pcsCount: '2', pcsToTr3: 1 }, 'perTr'],
+      ['PCSごとの選択が入っている案件は、そのまま', { ...pv, transformerCount: 4, pcsCount: '9', pcsDest1: '2' }, 'perPcs'],
+    ];
+    let bad = 0;
+    for (const [name, a, want] of cases) {
+      const got = mode(a);
+      if (got !== want) {
+        fail(`PCSの入れ方（${name}）：${got}（${want}のはず）`);
+        bad++;
+      }
+    }
+    if (bad === 0) console.log(`  PCSの入れ方：${cases.length}通りで、入力欄の少ないほうが選ばれる（入れた答えがあるときは、その入れ方を続ける）`);
+
+    // 変圧器20台・PCS2台：選んだ変圧器（3台目・15台目）の下にだけ、PCS・PVが描かれる
+    const a20: Answers = { ...pv, transformerCount: 20, pcsCount: '2', pcsDest1: '3', pcsDest2: '15', pvKwPcs1: 100, pvKwPcs2: 60 };
+    const comp = buildComposition(spreadUnits(a20));
+    const boxes = comp.filter((i) => i.role.startsWith('pcs-tr')).map((i) => `${i.role}:${i.label.join('/')}`);
+    const pvs = comp.filter((i) => i.role.startsWith('pv-tr')).map((i) => `${i.role}:${i.label.join(' ')}`);
+    if (boxes.join(',') !== 'pcs-tr3:50kW×1台,pcs-tr15:50kW×1台') fail(`変圧器20台・PCS2台：PCSの枠が「${boxes.join(',')}」です`);
+    else if (pvs.join(',') !== 'pv-tr3:PV 100kW,pv-tr15:PV 60kW') fail(`変圧器20台・PCS2台：PVの枠が「${pvs.join(',')}」です`);
+    else console.log('  変圧器20台・PCS2台：選んだ3台目・15台目の変圧器の下にだけ、PCSとPV（100kW・60kW）が描かれる');
+
+    // 選んでいないPCSは、1台目の変圧器。同じ変圧器につなぐPCSのPVは、足す
+    const aSame: Answers = { ...pv, transformerCount: 6, pcsCount: '3', pcsDest1: '2', pcsDest2: '2', pvKwPcs1: 10, pvKwPcs2: 20 };
+    const same = buildComposition(spreadUnits(aSame));
+    const tr1 = same.find((i) => i.role === 'pcs-tr1')?.label.join('/');
+    const tr2 = same.find((i) => i.role === 'pcs-tr2')?.label.join('/');
+    const pv2 = same.find((i) => i.role === 'pv-tr2')?.label.join(' ');
+    if (tr1 !== '50kW×1台' || tr2 !== '50kW×2台' || pv2 !== 'PV 30kW') fail(`同じ変圧器に2台：1台目「${tr1}」・2台目「${tr2}」・PV「${pv2}」`);
+    else console.log('  選んでいないPCSは1台目の変圧器につながる／同じ変圧器の2台のPVは足して「30kW」と書く');
+
+    // 同じつなぎ方なら、PCSごとに選んでも、変圧器ごとの台数で入れても、同じ図面になる
+    const byPcs: Answers = { ...pv, transformerCount: 4, pcsCount: '6', pcsDest1: '1', pcsDest2: '1', pcsDest3: '2', pcsDest4: '2', pcsDest5: '3', pcsDest6: '4' };
+    const byTr: Answers = { ...pv, transformerCount: 4, pcsCount: '6', pcsToTr1: 2, pcsToTr2: 2, pcsToTr3: 1, pcsToTr4: 1 };
+    const sig = (a: Answers) => JSON.stringify(buildComposition(spreadUnits(a)).map((i) => [i.role, i.symbolId, i.label, i.lane]));
+    if (sig(byPcs) !== sig(byTr)) fail('同じつなぎ方なのに、PCSごとに選んだときと、変圧器ごとの台数で入れたときで、図面の組み立てが違います');
+    else console.log('  PCSごとに選んでも、変圧器ごとの台数で入れても、同じつなぎ方なら、同じ図面になる');
+
+    // 変圧器100台目にも、PCSを描ける。図面に重なり・突き抜けなどが出ない
+    const a100: Answers = { ...pv, transformerCount: 100, pcsCount: '1', pcsDest1: '100' };
+    const sp100 = spreadUnits(a100);
+    const d100 = fromLayout(layout(buildComposition(sp100), sp100));
+    const has100 = buildComposition(sp100).some((i) => i.role === 'pcs-tr100');
+    const probs = inspectDrawing(d100, 'A3', 'landscape').filter((x) => x.kind !== 'paper');
+    if (!has100) fail('変圧器100台目の下に、PCSが描かれていません');
+    else if (probs.length > 0) fail(`変圧器100台・100台目にPCS：図面に問題が ${probs.length}件（${probs[0]?.message}）`);
+    else console.log('  変圧器100台のとき、100台目の変圧器の下にも、PCSを描ける（図面に、重なり・突き抜けはない）');
+
+    // 入力欄の出し分け：選ぶ入れ方のときは、PCSごとの欄だけ。台数の入れ方のときは、変圧器ごとの欄だけ
+    const shown = (a: Answers) => visibleQuestions(withAutoValues({ ...QUESTION_DEFAULTS, ...a })).map((q) => q.id).filter((id) => /^(pcsDest|pvKwPcs|pcsToTr|pvKw)\d+$/.test(id));
+    const sPcs = shown({ ...pv, transformerCount: 20, pcsCount: '2' });
+    const sTr = shown({ ...pv, transformerCount: 4, pcsCount: '20' });
+    const okPcs = sPcs.join() === 'pcsDest1,pcsDest2,pvKwPcs1,pvKwPcs2';
+    const okTr = sTr.join() === 'pcsToTr1,pcsToTr2,pcsToTr3,pcsToTr4,pvKw1,pvKw2,pvKw3,pvKw4';
+    if (!okPcs) fail(`PCS2台のときに出る欄が「${sPcs.join()}」です`);
+    else if (!okTr) fail(`PCS20台・変圧器4台のときに出る欄が「${sTr.join()}」です`);
+    else console.log('  入力欄の出し分け：PCS2台・変圧器20台は「PCSごとに選ぶ」2欄＋PV2欄、PCS20台・変圧器4台は「変圧器ごとの台数」4欄＋PV4欄');
   }
 
   // 低圧開閉器（MCCB）は描かないこと

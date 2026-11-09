@@ -1,4 +1,5 @@
 import type { Condition } from './condition.ts';
+import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
 const MAIN_GROUND_ON: Condition = {
@@ -792,12 +793,20 @@ export const TRANSFORMER: Placement[] = [
  * 変圧器ごとに1つの枠にまとめて（例「50kW×2台 / 5kW×1台」）ぶら下げる。
  * 低圧開閉器（MCCB）の記号は、いまのところ描かない。
  */
-export const FEEDERS: Placement[] = Array.from({ length: 8 }, (_, t): Placement[] => [
+/**
+ * t+1台目の変圧器に、PCSをつなぐか（PCSのぶんの内訳の文字があるか）。
+ * 2台目以降は、変圧器がその台数あることも見る（無いときは、内訳の文字そのものが作られず、空と区別できないため）
+ */
+const onTransformer = (t: number): Condition => ({
+  all: [...(t > 0 ? [{ key: 'transformerCount', gt: t }] : []), { key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }],
+});
+
+export const FEEDERS: Placement[] = Array.from({ length: COUNT_LIMITS.transformerCount ?? MAX_COUNT }, (_, t): Placement[] => [
   {
     role: `pcs-tr${t + 1}`,
     symbolId: 'pcs',
     kind: 'feeder' as const,
-    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }] },
+    when: onTransformer(t),
     labelTemplate: [`{pcsAtTr${t + 1}}`],
     props: { transformer: `pcsTrNo${t + 1}` },
     laneBase: 200 + t,
@@ -808,7 +817,7 @@ export const FEEDERS: Placement[] = Array.from({ length: 8 }, (_, t): Placement[
     role: `pv-tr${t + 1}`,
     symbolId: 'pv',
     kind: 'feeder' as const,
-    when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: `pcsAtTr${t + 1}`, ne: '' }] },
+    when: onTransformer(t),
     labelTemplate: ['PV', `{pvKwText${t + 1}}`],
     props: { transformer: `pcsTrNo${t + 1}` },
     laneBase: 200 + t,

@@ -51,7 +51,7 @@ console.log('■ Claude用の指示文');
   ok(!text.includes('現地の設備を教えてください'), '最初の一言の指示が残っています（やめる）');
   ok(text.includes('細かい項目は、聞かないでください'), '細かい項目（定格など）は聞かない、という指示がありません');
   // そのほかの項目は、すべて載っている
-  const missing = QUESTIONS.filter((q) => !q.manualOnly && !text.includes(`- ${q.id}：`));
+  const missing = QUESTIONS.filter((q) => !q.manualOnly && !q.noAi && !text.includes(`- ${q.id}：`));
   ok(missing.length === 0, `項目の一覧に載っていない項目があります（${missing.map((q) => q.id).slice(0, 5).join('、')}）`);
   // 出力の形と、版
   ok(text.includes(`"format": "${VOICE_FORMAT}"`) && text.includes(`"version": "${VOICE_VERSION}"`), '指示文に、形の目印と版が書かれていません');
