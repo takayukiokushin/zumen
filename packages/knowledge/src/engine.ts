@@ -336,17 +336,20 @@ export function withDerived(rawAnswers: Answers): Answers {
   // LAも入るときは、LAの接地を使い、ZPDの接地は描かない（ZPDの縦線を、外箱まで伸ばす）
   d.pasZpdSymbol = answers.pasBuiltinLa === 'yes' ? 'zpd-pas-boxed' : 'zpd-pas';
 
-  // PASの定格（例: 7200V300A）。片方しか分からないときは分かる方だけ書く
+  // PASの定格（例: 7200V 300A）。電圧と電流のあいだは半角スペース（LBS・DS・VCBの書き方と同じ）。
+  // 片方しか分からないときは分かる方だけ書く
   d.pasRatingText = [
     answers.pasRatedVoltage ? `${answers.pasRatedVoltage}V` : '',
     answers.pasRatedCurrent ? `${answers.pasRatedCurrent}A` : '',
-  ].join('');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   // 送り出しのLBSのパワーヒューズ（例: PF 30A）。定格電流が分からないときは、書かない
   d.sendoutFuseText = answers.sendoutFuseCurrent ? `PF ${answers.sendoutFuseCurrent}A` : '';
 
-  // 2か所目以降のPAS・ASの定格（例: 7200V300A）。片方しか分からないときは分かる方だけ書く
-  const rating = (v: unknown, a: unknown) => `${v ? `${v}V` : ''}${a ? `${a}A` : ''}`;
+  // 2か所目以降のPAS・ASの定格（例: 7200V 300A）。片方しか分からないときは分かる方だけ書く
+  const rating = (v: unknown, a: unknown) => [v ? `${v}V` : '', a ? `${a}A` : ''].filter(Boolean).join(' ');
   d.areaPasRatingText = rating(answers.areaPasRatedVoltage, answers.areaPasRatedCurrent);
   d.areaAsRatingText = rating(answers.areaAsRatedVoltage, answers.areaAsRatedCurrent);
 

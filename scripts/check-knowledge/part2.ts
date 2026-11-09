@@ -309,12 +309,12 @@ console.log('\n■ 区分開閉器の定格電圧');
   if (q?.type !== 'select' || !q.dropdown || JSON.stringify(vals) !== JSON.stringify(['3300', '6600', '7200'])) {
     fail(`区分開閉器の定格電圧が、3300・6600・7200のドロップダウンになっていません（${q?.type}／${vals.join('・')}）`);
   } else console.log('  ドロップダウン（3300V／6600V／7200V）');
-  // 選んだ値が、図面の「PAS 3300V200A」のように書かれる
+  // 選んだ値が、図面の「PAS 3300V 200A」のように書かれる
   for (const v of ['3300', '6600', '7200']) {
     const t = String(withDerived({ sectionalizer: 'pas', pasRatedVoltage: v, pasRatedCurrent: '200' }).pasRatingText);
-    if (t !== `${v}V${200}A`) fail(`定格 ${v}V の書き方が違います（${t}）`);
+    if (t !== `${v}V 200A`) fail(`定格 ${v}V の書き方が違います（${t}）`);
   }
-  console.log('  図面の書き方：7200V200A／3300V200A のように、選んだ電圧が書かれる');
+  console.log('  図面の書き方：7200V 200A／3300V 200A のように、選んだ電圧が書かれる');
 }
 
 console.log('\n■ 引込ケーブル（埋設・架空・なし）と定格電圧');
@@ -486,13 +486,13 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(frameLabel({}, 'a2:area-frame')?.startsWith('第') !== true, '名前が空のとき、枠の文字に名前が入っています');
   const nameQ = QUESTIONS.find((q) => q.id === 'areaName');
   ok(nameQ?.group === 'area' && evaluate(nameQ.showIf, { unitNo: 2 }) && evaluate(nameQ.showIf, { unitNo: 3 }) && !evaluate(nameQ.showIf, { unitNo: 1 }), 'エリアの名前の質問が、2か所目以降だけに出る形になっていません');
-    // 定格（電圧・電流）：「ある」のときだけ聞き、図面には 7200V200A のように書く
+    // 定格（電圧・電流）：「ある」のときだけ聞き、図面には 7200V 200A のように書く
   const asked = (extra: Answers) => ids(areaView({ areaCount: 2, ...extra }, 1));
   ok(!asked({}).has('areaPasRatedVoltage') && !asked({}).has('areaAsRatedCurrent'), 'PAS・ASが「ない」のに、定格を聞いています');
   ok(asked({ 'a2:areaPas': 'yes' }).has('areaPasRatedVoltage') && asked({ 'a2:areaPas': 'yes' }).has('areaPasRatedCurrent') && !asked({ 'a2:areaPas': 'yes' }).has('areaAsRatedVoltage'), 'PASが「ある」とき、PASの定格だけを聞いていません');
   ok(asked({ 'a2:areaAs': 'yes' }).has('areaAsRatedVoltage') && asked({ 'a2:areaAs': 'yes' }).has('areaAsRatedCurrent') && !asked({ 'a2:areaAs': 'yes' }).has('areaPasRatedCurrent'), 'ASが「ある」とき、ASの定格だけを聞いていません');
   const rated = withAreaSwitch({ 'a2:areaPas': 'yes', 'a2:areaPasRatedVoltage': '7200', 'a2:areaPasRatedCurrent': '200', 'a2:areaAs': 'yes', 'a2:areaAsRatedVoltage': '6600' });
-  ok(rated.find((i) => i.role === 'a2:area-pas')?.label.join('|') === 'PAS|7200V200A', `PASの文字が違います（${rated.find((i) => i.role === 'a2:area-pas')?.label.join('|')}）`);
+  ok(rated.find((i) => i.role === 'a2:area-pas')?.label.join('|') === 'PAS|7200V 200A', `PASの文字が違います（${rated.find((i) => i.role === 'a2:area-pas')?.label.join('|')}）`);
   ok(rated.find((i) => i.role === 'a2:area-as')?.label.join('|') === 'AS|6600V', `ASの文字（片方だけ分かるとき）が違います（${rated.find((i) => i.role === 'a2:area-as')?.label.join('|')}）`);
   ok(withAreaSwitch({ 'a2:areaPas': 'yes' }).find((i) => i.role === 'a2:area-pas')?.label.join('|') === 'PAS', '定格が未入力のとき、PASの文字が「PAS」だけになっていません');
   // 受電側の開閉器で、聞くことが変わる

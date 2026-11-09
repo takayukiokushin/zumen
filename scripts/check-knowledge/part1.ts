@@ -448,7 +448,7 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
     if (!ugsAsked({ sourceType: 'cabinet' }) || !ugsAsked({ sourceType: 'pole', sectionalizer: 'ugs' })) fail('UGSのとき、UGSのキャビネット名称を聞いていません');
     if (ugsAsked({ sourceType: 'pole', sectionalizer: 'pas' }) || ugsAsked({ sourceType: 'pole', sectionalizer: 'pgs' })) fail('UGSでないのに、UGSのキャビネット名称を聞いています');
     const ugsLines = secLabel({ sourceType: 'cabinet', ugsCabinetName: 'キャビネット番号：地下西3号', pasRatedVoltage: '7200', pasRatedCurrent: '300' })?.label.slice(0, 3).join('|');
-    if (ugsLines !== 'キャビネット番号：地下西3号|UGS|7200V300A') fail(`UGSの文字の並びが違います（${ugsLines}）`);
+    if (ugsLines !== 'キャビネット番号：地下西3号|UGS|7200V 300A') fail(`UGSの文字の並びが違います（${ugsLines}）`);
     const ugsBlank = secLabel({ sourceType: 'cabinet', ugsCabinetName: 'キャビネット番号：' })?.label[0];
     if (ugsBlank !== 'UGS') fail(`UGSのキャビネット名称が空のとき、先頭が「${ugsBlank}」です（UGSのはず）`);
     const notUgs = secLabel({ sourceType: 'pole', sectionalizer: 'pas', ugsCabinetName: 'キャビネット番号：残り' })?.label.join('|');

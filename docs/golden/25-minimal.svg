@@ -60,7 +60,7 @@
       <line x1="28" y1="84" x2="16" y2="66" stroke-width="1" />
       <line x1="28" y1="84" x2="28" y2="148" stroke-width="1" />
     </g>
-    <text x="68" y="174" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="68" dy="0">PAS</tspan><tspan x="68" dy="12.5">7200V200A</tspan></text>
+    <text x="68" y="174" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="68" dy="0">PAS</tspan><tspan x="68" dy="12.5">7200V 200A</tspan></text>
     <g transform="translate(-68 221)">
       <circle cx="16" cy="16" r="14" fill="none" stroke-width="1" />
       <line x1="3.7" y1="9.313" x2="3.7" y2="22.687" stroke-width="0.7" />

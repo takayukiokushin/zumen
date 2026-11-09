@@ -151,7 +151,7 @@ const pasDef = (
     status: 'confirmed',
     statusNote:
       '実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。',
-    note: '記載例「PAS 7200V300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。',
+    note: '記載例「PAS 7200V 300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。',
   };
 };
 
@@ -179,7 +179,7 @@ const switchgearRaw: SymbolDef[] = [
     fields: [RATED_VOLTAGE, RATED_CURRENT, { key: 'place', label: '設置場所', type: 'text', help: '図面の記載例: 屋側' }],
     status: 'confirmed',
     statusNote: '見本図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃にしました。',
-    note: '記載例「屋側 / AS / 7200V200A」。電柱パターンのとき、引込元〜責任分界点の間に入る場合がある。',
+    note: '記載例「屋側 / AS / 7200V 200A」。電柱パターンのとき、引込元〜責任分界点の間に入る場合がある。',
   },
   {
     id: 'mccb',
