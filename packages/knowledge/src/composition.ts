@@ -510,7 +510,8 @@ export const INSTRUMENTS: Placement[] = [
     symbolId: 'trip-coil',
     kind: 'coil',
     attachTo: 'main-breaker',
-    labelTemplate: ['トリップコイル'],
+    // 記号の枠の中に「TC」と入っているので、横に名前の文字は付けない
+    labelTemplate: [],
     note: 'VCBのトリップコイル。OCRの出力とつなぐ',
   },
 ];
