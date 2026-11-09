@@ -174,7 +174,10 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
 
 .editor-body { display: grid; grid-template-columns: 1fr 280px; flex: 1; min-height: 0; }
 /* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 900px 以下のとき（html の data-uw に 900 が入る） */
- :where(html[data-uw~="900"]) .editor-body { grid-template-columns: 1fr; } 
+ :where(html[data-uw~="900"]) .editor-body { grid-template-columns: 1fr; }
+/* 縦に並べるときは、図面の高さに下限（260px）を付ける。画面全体の倍率を大きくしたノートパソコンなどで、図面が細い帯になってしまわないように。
+   高さが足りないときは、図面と記号の一覧をまとめて、上下に動かして見る（上のボタンの列は、そのまま残る）。スマホ（700px以下）は、下の専用の決めが優先される */
+ :where(html[data-uw~="900"]) .editor-body { grid-template-rows: minmax(260px, 3fr) minmax(150px, 2fr); overflow-y: auto; } 
 
 .canvas-wrap { overflow: auto; background: var(--paper); padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
 .canvas { background: #fff; border: 1px solid var(--rule); width: auto; max-width: none; flex: 0 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
