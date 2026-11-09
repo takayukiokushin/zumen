@@ -340,6 +340,7 @@ const data: Record<string, string> = {
   "うち 6台目の変圧器につなぐ台数": "Of these, number connected to the 6th transformer",
   "うち 7台目の変圧器につなぐ台数": "Of these, number connected to the 7th transformer",
   "うち 8台目の変圧器につなぐ台数": "Of these, number connected to the 8th transformer",
+  "PCSは8台目の変圧器までしかつなげません（9台目以降は不可。図面のPCS・PVも8台目まで。入れ残した台数は、1台目に数えます）": "PCS can be connected only up to the 8th transformer (not to the 9th or later; the PCS and PV drawn are also limited to the 8th; any number left unassigned is counted for the 1st)",
   "図面名称": "Drawing title",
   "記載がなければ自動で表示させます。（例：キュービクル式高圧受電設備単線結線図）。ここに入力された場合は、この入力内容を優先して表示させます。": "If left blank, it is displayed automatically (e.g. 「キュービクル式高圧受電設備単線結線図」 (= Cubicle-type high-voltage receiving equipment single-line diagram)). If you enter something here, it takes priority and is displayed as entered.",
   "送り出しに開閉器はありますか？": "Is there a switch at the feed-out?",

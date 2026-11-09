@@ -340,6 +340,7 @@ const data: Record<string, string> = {
   "うち 6台目の変圧器につなぐ台数": "Dont nombre raccordé au 6e transformateur",
   "うち 7台目の変圧器につなぐ台数": "Dont nombre raccordé au 7e transformateur",
   "うち 8台目の変圧器につなぐ台数": "Dont nombre raccordé au 8e transformateur",
+  "PCSは8台目の変圧器までしかつなげません（9台目以降は不可。図面のPCS・PVも8台目まで。入れ残した台数は、1台目に数えます）": "Les PCS ne peuvent être raccordés que jusqu’au 8e transformateur (pas aux 9e et suivants ; les PCS et PV dessinés sont aussi limités au 8e ; le nombre non attribué est compté pour le 1er)",
   "図面名称": "Titre du schéma",
   "記載がなければ自動で表示させます。（例：キュービクル式高圧受電設備単線結線図）。ここに入力された場合は、この入力内容を優先して表示させます。": "S’il est vide, il s’affiche automatiquement (ex. : キュービクル式高圧受電設備単線結線図, « schéma unifilaire d’installation de réception haute tension de type cubicle »). Si vous saisissez un texte ici, il est affiché en priorité.",
   "送り出しに開閉器はありますか？": "Y a-t-il un interrupteur au départ ?",

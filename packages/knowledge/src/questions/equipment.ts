@@ -2,6 +2,13 @@ import type { Question } from './types.ts';
 import { COUNT_OPTIONS, YES_NO, YES_NO_Q, TRANSFORMER_CHOICES, RELAY_COUNT_OPTIONS } from './common.ts';
 
 /** 質問の定義：特殊設備、補助変圧器、発電機、太陽光 */
+/**
+ * PCSをつなげる変圧器は、8台目まで（入力欄も、図面に描くPCS・PVも、8台目まで）。変圧器そのものは、もっと多く入れられる。
+ * その注意を、8台目の欄に出す（この欄が出るのは、変圧器が8台以上のとき）
+ */
+export const PCS_LIMIT_NOTE =
+  'PCSは8台目の変圧器までしかつなげません（9台目以降は不可。図面のPCS・PVも8台目まで。入れ残した台数は、1台目に数えます）';
+
 export const EQUIPMENT_QUESTIONS: Question[] = [
   /* ---------------- 特殊設備 ---------------- */
   { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
@@ -191,7 +198,12 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     unit: '台',
     showIf: { all: [{ key: 'transformerCount', gt: Math.max(1, t) }] },
     ask: 'always' as const,
-    help: t === 0 ? 'どの変圧器にも入れなければ、全部1台目の変圧器につながる' : undefined,
+    help:
+      t === 0
+        ? 'どの変圧器にも入れなければ、全部1台目の変圧器につながる'
+        : t === 7
+          ? PCS_LIMIT_NOTE
+          : undefined,
   })),
 
   // PCSの枠の真下に描くPV（太陽電池パネル）の容量。任意。変圧器ごとの枠に1つずつなので、容量の種類ごとには繰り返さず、1回だけ聞く
