@@ -669,6 +669,16 @@ export const PER_UNIT_QUESTION_IDS: ReadonlySet<string> = (() => {
   return ids;
 })();
 
+/** 2件目以降の、件ごとの答えのキー（trCapacity__2 など。エリアごとの a2:trCapacity__2 も含む） */
+const UNIT_KEY = /__\d+$/;
+
+/** 件ごとの答え（2件目以降）を除いた回答 */
+function withoutUnitKeys(answers: Answers): Answers {
+  const out: Answers = {};
+  for (const key in answers) if (!UNIT_KEY.test(key)) out[key] = answers[key];
+  return out;
+}
+
 /**
  * n 件目の回答として見た集まりを作る。
  *
@@ -679,8 +689,10 @@ export const PER_UNIT_QUESTION_IDS: ReadonlySet<string> = (() => {
  */
 export function viewAt(answers: Answers, index: number): Answers {
   // 何件目か（1始まり）は unitNo に入れる（1個目はOCR、2個目はUVR、のように、件ごとの初期値の条件に使う）
-  if (index === 0) return { ...answers, unitNo: 1 };
-  const out: Answers = { ...answers, unitNo: index + 1 };
+  // 件ごとの答え（trCapacity__3 など）は、この件の分だけを、下で取り出す。ほかの件の分まで写すと、台数が増えるほど、
+  // 1件ごとに写す量が増えて、全体の時間が台数の2乗で増える（変圧器100台で、組み立てに0.2秒かかっていた）
+  if (index === 0) return { ...withoutUnitKeys(answers), unitNo: 1 };
+  const out: Answers = { ...withoutUnitKeys(answers), unitNo: index + 1 };
   for (const id of PER_UNIT_QUESTION_IDS) {
     const v = answers[indexedKey(id, index)];
     if (v !== undefined) out[id] = v;

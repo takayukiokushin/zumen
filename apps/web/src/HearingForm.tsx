@@ -166,10 +166,21 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     : [];
   const totalQuestions = visible.length + areaBlocks.slice(1).reduce((a, b) => a + b.total, 0);
 
-  /** 入力欄1つ。選択肢を絞る条件は、そのエリア・その件の答えで見る */
-  const field = (r: Row) => (
-    <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={viewAt(views[r.area]!, r.unit)} />
-  );
+  /**
+   * 入力欄1つ。選択肢を絞る条件は、そのエリア・その件の答えで見る。
+   * 「その件の答え」は、同じ件の入力欄どうしで同じなので、この描き直しの間は、1回だけ作って使い回す
+   * （入力欄ごとに作ると、変圧器が100台のとき、1文字入れるたびに、何千回も作り直して、0.1秒近くかかっていた）
+   */
+  const unitViews = new Map<string, Answers>();
+  const field = (r: Row) => {
+    const cacheKey = `${r.area}:${r.unit}`;
+    let context = unitViews.get(cacheKey);
+    if (!context) {
+      context = viewAt(views[r.area]!, r.unit);
+      unitViews.set(cacheKey, context);
+    }
+    return <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={context} />;
+  };
 
   /**
    * 質問の並びを描く。質問に section（小見出し）が付いているものは、同じ名前が続くところを1つの「行」にまとめて、

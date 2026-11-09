@@ -321,13 +321,44 @@ const COLLAPSED = 0.001;
 /** 動かしている途中、この距離まで近づいたら、まっすぐになる位置に吸い寄せる */
 const ASSIST_RANGE = 10;
 
+/**
+ * 記号の種類・大きさ・向きから決まる、接続点の、記号の原点からの位置。
+ * 同じ組み合わせは、何度も同じ答えになるので、覚えておく（「結線を整える」や確認で、1本ずつの線の端について、
+ * 全部の記号の接続点を調べるため、記号が多いと、ここが一番時間を使っていた）
+ */
+interface PortOffsets {
+  offs: { id: string; px: number; py: number }[];
+  /** 原点から、いちばん遠い接続点までの距離（この記号が、ある点から遠いかを、すぐ判断するため） */
+  reach: number;
+}
+const PORT_OFFSETS = new Map<string, PortOffsets>();
+/** 覚えておく組み合わせの上限（図面の上で大きさを変え続けても、覚える量が増え続けないように） */
+const PORT_OFFSETS_MAX = 2000;
+/** 記号1つずつに、いまの種類・大きさ・向きで調べた結果を、紐づけて覚える（記号を書き換えたら、条件が合わず、調べ直す） */
+const PORTS_OF_ITEM = new WeakMap<DocSymbol, { symbolId: string; w: number | undefined; h: number | undefined; rotate: number; po: PortOffsets }>();
+
+function portOffsetsOf(it: DocSymbol): PortOffsets {
+  const c = PORTS_OF_ITEM.get(it);
+  if (c && c.symbolId === it.symbolId && c.w === it.w && c.h === it.h && c.rotate === it.rotate) return c.po;
+  const key = `${it.symbolId}|${it.w ?? ''}|${it.h ?? ''}|${it.rotate}`;
+  let po = PORT_OFFSETS.get(key);
+  if (!po) {
+    const def = defOf(it);
+    const offs = def.ports.map((p) => {
+      const [px, py] = rotatedPort(def.box, p.x, p.y, it.rotate);
+      return { id: p.id, px, py };
+    });
+    po = { offs, reach: offs.reduce((m, o) => Math.max(m, Math.hypot(o.px, o.py)), 0) };
+    if (PORT_OFFSETS.size >= PORT_OFFSETS_MAX) PORT_OFFSETS.clear();
+    PORT_OFFSETS.set(key, po);
+  }
+  PORTS_OF_ITEM.set(it, { symbolId: it.symbolId, w: it.w, h: it.h, rotate: it.rotate, po });
+  return po;
+}
+
 /** 記号の接続点の絶対座標 */
 export function portsOf(it: DocSymbol): { id: string; x: number; y: number }[] {
-  const def = defOf(it);
-  return def.ports.map((p) => {
-    const [px, py] = rotatedPort(def.box, p.x, p.y, it.rotate);
-    return { id: p.id, x: it.x + px, y: it.y + py };
-  });
+  return portOffsetsOf(it).offs.map((o) => ({ id: o.id, x: it.x + o.px, y: it.y + o.py }));
 }
 
 /** つなぎ先の、いまの座標。記号が消えていれば null */
@@ -367,11 +398,16 @@ export function nearestPort(
   let bestD = radius;
   for (const it of doc.items) {
     if (it.kind !== 'symbol') continue;
-    for (const p of portsOf(it)) {
-      const d = Math.hypot(p.x - x, p.y - y);
+    const { offs, reach } = portOffsetsOf(it);
+    // この記号の接続点は、どれも、原点から reach 以内。点が、それより遠ければ、1つずつ調べるまでもない
+    if (Math.hypot(it.x - x, it.y - y) > reach + bestD) continue;
+    for (const o of offs) {
+      const px = it.x + o.px;
+      const py = it.y + o.py;
+      const d = Math.hypot(px - x, py - y);
       if (d <= bestD) {
         bestD = d;
-        best = { item: it.id, port: p.id, x: p.x, y: p.y };
+        best = { item: it.id, port: o.id, x: px, y: py };
       }
     }
   }
