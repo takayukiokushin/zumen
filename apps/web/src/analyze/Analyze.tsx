@@ -100,7 +100,11 @@ export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing 
   // この画面を閉じたら、待つのをやめる（サーバーへの問い合わせも、そこで止まる）
   useEffect(() => () => abortRef.current?.ctl.abort(), []);
 
+  /** 読み取りを頼んでいる最中か（ボタンを素早く2回押しても、二重に頼まない） */
+  const asking = useRef(false);
   const run = async () => {
+    if (asking.current) return;
+    asking.current = true;
     setBusy(true);
     setError(null);
     onStatus?.('busy');
@@ -129,6 +133,7 @@ export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing 
       else setError(e instanceof Error ? e.message : t('an.err.fail'));
     } finally {
       window.clearTimeout(timer);
+      asking.current = false;
       if (abortRef.current === mine) abortRef.current = null;
       setBusy(false);
       onStatus?.(ok ? 'done' : 'idle');

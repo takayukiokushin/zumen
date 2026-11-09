@@ -76,12 +76,10 @@ function logUsage(usage: Anthropic.Usage, imageCount: number): void {
 }
 
 /**
- * 手書きメモを読み取って、ヒアリング項目を埋める。
- *
- * 出力はJSONスキーマで縛っているので、選択式の項目に勝手な値が入ることはない。
- * そのうえで構成ルールと突き合わせ、人が確認すべき点を一覧にして返す。
+ * 送る前の確認（形式・合計の大きさ・PDFのページ数）。問題があれば、利用者への案内の文で、失敗させる。
+ * AI に送る前に、すぐ断るため（待たされない・料金がかからない）。読み取りを頼むときに、まず呼ぶ。
  */
-export async function analyze(images: SketchImage[], answers: Answers, clientGone?: AbortSignal): Promise<AnalyzeResponse> {
+export function validateImages(images: SketchImage[]): void {
   const unsupported = images.find((i) => !SUPPORTED.includes(i.mediaType));
   if (unsupported) {
     throw new Error(`対応していない形式です（${unsupported.mediaType}）。JPEG・PNG・GIF・WebP の画像、または PDF にしてください。`);
@@ -95,6 +93,16 @@ export async function analyze(images: SketchImage[], answers: Answers, clientGon
       throw new Error(`PDF のページ数が多すぎます（1つの PDF は ${MAX_PDF_PAGES} ページまで）。読み取りたいページだけの PDF にしてから、もう一度お試しください。`);
     }
   }
+}
+
+/**
+ * 手書きメモを読み取って、ヒアリング項目を埋める。
+ *
+ * 出力はJSONスキーマで縛っているので、選択式の項目に勝手な値が入ることはない。
+ * そのうえで構成ルールと突き合わせ、人が確認すべき点を一覧にして返す。
+ */
+export async function analyze(images: SketchImage[], answers: Answers, clientGone?: AbortSignal): Promise<AnalyzeResponse> {
+  validateImages(images);
 
   const content: Anthropic.ContentBlockParam[] = [
     ...images.map(

@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { AnalyzeTimeoutError, analyze } from './analyze.ts';
+import { analyze, validateImages } from './analyze.ts';
+import { cancelJob, getJob, purgeAnalyzeJobs, runningJobOf, startJob } from './analyze-jobs.ts';
 import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
 import { currentUser, login, logout, purgeExpiredSessions, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
@@ -115,26 +116,46 @@ app.post('/api/analyze', requireAuth, async (c) => {
   if (!body.images?.length) return c.json({ error: '画像が選ばれていません。画像を1枚以上選んでから、もう一度お試しください。' }, 400);
   if (body.images.length > 10) return c.json({ error: '画像は一度に10枚までです。何回かに分けて、読み取ってください。' }, 400);
 
-  // 同じ人が、読み取りの途中で、もう一度押した（別の画面から・通信が切れて押し直した）ときは、断る。
-  // 二重に AI を使って、料金が二重にかかるのを防ぐ（先の読み取りは、決めた時間で必ず終わる）
-  const who = c.get('user').id;
-  if (analyzing.has(who)) {
-    return c.json({ error: '前の読み取りが、まだ続いています。終わるまで、少しお待ちください（長くても数分です）。' }, 429);
-  }
-  analyzing.add(who);
+  // 送る前の確認（形式・大きさ・PDFのページ数）。問題があれば、AI に送らず、すぐ断る
   try {
-    // 画面が閉じられた・「やめる」を押されて接続が切れたら、AI への問い合わせも、そこでやめる
-    return c.json(await analyze(body.images, body.answers ?? {}, c.req.raw.signal));
+    validateImages(body.images);
   } catch (e) {
-    console.error('解析に失敗しました', e);
-    return c.json({ error: describeAnalyzeFailure(e) }, e instanceof AnalyzeTimeoutError ? 504 : 502);
-  } finally {
-    analyzing.delete(who);
+    return c.json({ error: describeAnalyzeFailure(e) }, 400);
   }
+
+  // 同じ人の、前の読み取りがまだ動いているとき（画面を読み込み直して、押し直した・別の画面から押した）は、前のものをやめて、
+  // 今回のものを始める（前の結果は、もう受け取れない。続けると、AI の料金だけがかかる）
+  const who = c.get('user').id;
+  const prev = runningJobOf(who);
+  if (prev) cancelJob(who, prev.id);
+
+  // 裏で読み取りを始めて、すぐ「受け付けました」と返す（外から入る設定の、約100秒の制限に、引っかからないように）。
+  // 結果は、画面が、GET /api/analyze/:id で受け取る
+  const answers = body.answers ?? {};
+  const images = body.images;
+  const job = startJob(who, (signal) => analyze(images, answers, signal));
+  return c.json({ jobId: job.id }, 202);
 });
 
-/** いま読み取りの途中の人（1人に1つまで） */
-const analyzing = new Set<string>();
+/** 読み取りの様子を聞く。画面が、2〜3秒おきに呼ぶ */
+app.get('/api/analyze/:id', requireAuth, (c) => {
+  const job = getJob(c.get('user').id, c.req.param('id') ?? '');
+  if (!job) {
+    return c.json(
+      { error: '読み取りの記録が見つかりません。サーバーが再起動したか、時間がたって消えました。お手数ですが、もう一度「読み取る」を押してください。' },
+      404,
+    );
+  }
+  if (job.state === 'running') return c.json({ state: 'running', elapsedSec: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.state === 'error') return c.json({ state: 'error', error: job.error, code: job.code });
+  return c.json({ state: 'done', ...job.result });
+});
+
+/** 読み取りをやめる（途中なら、AI への問い合わせもやめる）。受け取り済みの記録を消すのにも使う */
+app.delete('/api/analyze/:id', requireAuth, (c) => {
+  cancelJob(c.get('user').id, c.req.param('id') ?? '');
+  return c.json({ ok: true });
+});
 
 /* ---------------- 画面の配信 ---------------- */
 
@@ -213,6 +234,7 @@ serve({ fetch: app.fetch, port, ...(listenHost ? { hostname: listenHost } : {}) 
       purgeExpiredTrash();
       purgeOldDrafts();
       purgeStrayFiles();
+      purgeAnalyzeJobs();
       purgeExpiredSessions();
       rotateByCopy(SERVER_LOG);
     } catch (e) {

@@ -239,9 +239,18 @@ export const api = {
   /** サーバーの状態。手書きメモの読み取りが使えるかどうかもここで分かる */
   health: () => call<{ ok: true; hasApiKey: boolean; userCount: number; version?: string; webBuild?: string | null }>('/api/health'),
   me: () => call<{ user: User | null }>('/api/auth/me'),
-  /** 手書きメモの読み取り。通信の失敗も、ほかの呼び出しと同じ言葉で伝える */
-  analyze: (body: { images: { mediaType: string; data: string }[]; answers: Answers }, signal?: AbortSignal) =>
-    call<{ result: unknown; review: unknown }>('/api/analyze', { method: 'POST', body: JSON.stringify(body), ...(signal ? { signal } : {}) }),
+  /**
+   * 手書きメモの読み取り。通信の失敗も、ほかの呼び出しと同じ言葉で伝える。
+   * 「頼む」と「結果を受け取る」を分けてある（サーバー側は apps/server/src/analyze-jobs.ts）。
+   * 頼むと、すぐ「受け付けました」と返り、そのあと、2〜3秒おきに「終わったか」を聞きに行く。
+   * 1回ずつの通信は短いので、外から入る設定（Cloudflare）の、約100秒の制限に、引っかからない。
+   * signal で中断すると、サーバーの読み取りも、やめてもらう。
+   */
+  analyze: async (body: { images: { mediaType: string; data: string }[]; answers: Answers }, signal?: AbortSignal) => {
+    // 頼むとき（写真を送る）は、通信が遅くても、時間がかかる。決めた時間では打ち切らず、呼び出した側の「やめる」に任せる
+    const { jobId } = await call<{ jobId: string }>('/api/analyze', { method: 'POST', body: JSON.stringify(body), signal: signal ?? new AbortController().signal });
+    return waitForJob(jobId, signal);
+  },
   login: (userId: string, password: string) =>
     call<{ user: User }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId, password }) }),
   logout: () => call<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
@@ -319,3 +328,62 @@ export const api = {
   removeUser: (id: string) =>
     call<{ ok: true }>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
+
+/** 読み取りの様子を聞く間隔（ミリ秒）。最初は短く、そのあとは少し長く */
+const POLL_FIRST_MS = 1500;
+const POLL_MS = 2500;
+/** 聞きに行く通信が、続けて失敗しても、あきらめない時間（読み取りは、サーバーで続いている）。これを超えたら、つながらないと伝える */
+const POLL_GIVE_UP_MS = 90_000;
+
+function abortError(): Error {
+  return new DOMException('aborted', 'AbortError');
+}
+
+/** 待つ。中断されたら、すぐ止めて、中断として伝える */
+function pause(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(abortError());
+    const t = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(abortError());
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/** 読み取りが終わるまで、2〜3秒おきに聞く。やめたら、サーバーの読み取りも、やめてもらう */
+async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result: unknown; review: unknown }> {
+  const stop = () => void call(`/api/analyze/${jobId}`, { method: 'DELETE' }).catch(() => undefined);
+  let failingSince: number | null = null;
+  let first = true;
+  try {
+    for (;;) {
+      await pause(first ? POLL_FIRST_MS : POLL_MS, signal);
+      first = false;
+      let r: { state: 'running' | 'done' | 'error'; error?: string; result?: unknown; review?: unknown };
+      try {
+        r = await call(`/api/analyze/${jobId}`);
+        failingSince = null;
+      } catch (e) {
+        // 通信が不安定なだけなら、読み取りは、サーバーで続いている。しばらくは、あきらめずに聞き直す
+        if (e instanceof ConnectionError) {
+          failingSince ??= Date.now();
+          if (Date.now() - failingSince < POLL_GIVE_UP_MS) continue;
+        }
+        throw e;
+      }
+      if (r.state === 'running') continue;
+      if (r.state === 'error') throw new Error(r.error || describeFailure(502));
+      // 受け取れたので、サーバーの記録（読み取った内容）は、もう要らない
+      void call(`/api/analyze/${jobId}`, { method: 'DELETE' }).catch(() => undefined);
+      return { result: r.result, review: r.review };
+    }
+  } catch (e) {
+    if ((e as { name?: string })?.name === 'AbortError') stop();
+    throw e;
+  }
+}

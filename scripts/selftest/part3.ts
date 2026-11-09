@@ -891,14 +891,44 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
       const c2 = await loginA('ai2');
       const png = Buffer.from('dummy').toString('base64');
       const body = (images: { mediaType: string; data: string }[] = [{ mediaType: 'image/png', data: png }]) => JSON.stringify({ images, answers: {} });
-      const post = async (cookie: string, b = body(), signal?: AbortSignal) => {
-        const t0 = Date.now();
-        const r = await fetch(`${ab}/api/analyze`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: b, ...(signal ? { signal } : {}) }).catch((e: Error & { cause?: { message?: string } }) => {
-          if (/other side closed|ECONNRESET/.test(e.cause?.message ?? e.message)) return fetch(`${ab}/api/analyze`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: b });
+      const fetchRetry = async (url: string, init: RequestInit) =>
+        fetch(url, init).catch((e: Error & { cause?: { message?: string } }) => {
+          // サーバーが、本文を読み終える前に答えたときの、接続の使い回しの癖（アプリの不具合ではない）。1回だけやり直す
+          if (/other side closed|ECONNRESET/.test(e.cause?.message ?? e.message)) return fetch(url, init);
           throw e;
         });
-        const j = (await J(r).catch(() => ({}))) as { error?: string; result?: unknown };
-        return { status: r.status, error: j.error ?? '', result: j.result, ms: Date.now() - t0 };
+      /** 読み取りを頼む（受け付けられたら、状態 202 と jobId。断られたら、その理由） */
+      const ask = async (cookie: string, b = body()) => {
+        const t0 = Date.now();
+        const r = await fetchRetry(`${ab}/api/analyze`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: b });
+        const j = (await J(r).catch(() => ({}))) as { error?: string; jobId?: string };
+        return { status: r.status, error: j.error ?? '', jobId: j.jobId ?? '', ms: Date.now() - t0 };
+      };
+      /** 読み取りの様子を聞く */
+      const peek = async (cookie: string, id: string) => {
+        const t0 = Date.now();
+        const r = await fetchRetry(`${ab}/api/analyze/${id}`, { headers: { cookie } });
+        const j = (await J(r).catch(() => ({}))) as { state?: string; error?: string; code?: number; result?: unknown; review?: unknown };
+        return { http: r.status, ...j, ms: Date.now() - t0 };
+      };
+      /** 画面と同じに、頼んでから、終わるまで聞き続ける。返す状態は、これまでの形（成功 200・失敗は理由の番号）にそろえる */
+      const post = async (cookie: string, b = body()) => {
+        const t0 = Date.now();
+        const q = await ask(cookie, b);
+        if (q.status !== 202) return { status: q.status, error: q.error, result: undefined as unknown, ms: Date.now() - t0, maxReqMs: q.ms, polls: 0 };
+        let maxReqMs = q.ms;
+        let polls = 0;
+        for (;;) {
+          await sleep(150);
+          const r = await peek(cookie, q.jobId);
+          polls++;
+          maxReqMs = Math.max(maxReqMs, r.ms);
+          if (r.http === 404) return { status: 404, error: r.error ?? '', result: undefined as unknown, ms: Date.now() - t0, maxReqMs, polls };
+          if (r.state === 'running') continue;
+          if (r.state === 'error') return { status: r.code ?? 502, error: r.error ?? '', result: undefined as unknown, ms: Date.now() - t0, maxReqMs, polls };
+          await fetch(`${ab}/api/analyze/${q.jobId}`, { method: 'DELETE', headers: { cookie } });
+          return { status: 200, error: '', result: r.result, ms: Date.now() - t0, maxReqMs, polls };
+        }
       };
       const reset = (mode: Mode) => {
         fake.mode = mode;
@@ -937,34 +967,61 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
       const tooLong = await post(c1);
       check('結果が長すぎて途中で止まったとき、枚数やページ数を減らすよう伝える', tooLong.status === 502 && /途中で止まりました/.test(tooLong.error) && /減らして/.test(tooLong.error), tooLong.error);
 
-      // 7. 画面が「やめる」を押した（接続が切れた）：AI への問い合わせも止まり、すぐに次を使える
+      // 7. 画面が「やめる」を押した：AI への問い合わせも止まり、すぐに次を使える
       reset('hang');
-      const ctl = new AbortController();
-      const pending = post(c1, body(), ctl.signal).catch(() => null);
+      const q7 = await ask(c1);
       await sleep(700);
-      ctl.abort();
-      await pending;
+      const del7 = await fetch(`${ab}/api/analyze/${q7.jobId}`, { method: 'DELETE', headers: { cookie: c1 } });
       let stopped = false;
       for (let i = 0; i < 20 && !stopped; i++) {
         await sleep(200);
         stopped = fake.aborted >= 1;
       }
-      check('「やめる」を押す（接続が切れる）と、AI への問い合わせも、そこでやめる（待ち続けて料金がかからない）', stopped, `切れた問い合わせ ${fake.aborted}回`);
+      check('「やめる」を押すと、AI への問い合わせも、そこでやめる（待ち続けて料金がかからない）', del7.ok && stopped, `切れた問い合わせ ${fake.aborted}回`);
+      check('やめた読み取りの記録は、消えている', (await peek(c1, q7.jobId)).http === 404);
       reset('ok');
       const afterCancel = await post(c1);
       check('やめたあと、すぐにもう一度、読み取れる', afterCancel.status === 200, `${afterCancel.status}`);
 
-      // 8. 読み取りの途中でもう一度押す（二重に押す・通信が切れて押し直す）：断る。別の人は、そのまま使える
+      // 8. 通信が切れても、読み取りは続く。1回ずつの通信は短い（外から入る設定の、約100秒の制限に、引っかからない作り）
       reset('slow');
       fake.slowMs = 1000;
-      const first = post(c1);
+      const q8 = await ask(c1);
+      check('読み取りを頼むと、すぐに「受け付けました」と返る（読み取りが終わるのを待たない）', q8.status === 202 && q8.jobId !== '' && q8.ms < 500, `${q8.status}・${q8.ms}ms`);
+      // ここで、画面の通信が途切れたとする（何も聞きに行かない）。読み取りは、サーバーで続いている
       await sleep(300);
-      const second = await post(c1);
+      const mid = await peek(c1, q8.jobId);
+      check('読み取りの途中は、「読み取り中」と答える（すぐ返る）', mid.state === 'running' && mid.ms < 500, `${mid.state}・${mid.ms}ms`);
+      await sleep(1100);
+      const late = await peek(c1, q8.jobId);
+      check('通信が途切れていた間に、読み取りが終わっていても、つながり直せば、結果を受け取れる', late.state === 'done' && late.result !== undefined, `${late.state}`);
+      check('ほかの人の読み取りの記録は、見えない・やめられない', (await peek(c2, q8.jobId)).http === 404 && (await (await fetch(`${ab}/api/analyze/${q8.jobId}`, { method: 'DELETE', headers: { cookie: c2 } })).json()).ok === true && (await peek(c1, q8.jobId)).state === 'done');
+      await fetch(`${ab}/api/analyze/${q8.jobId}`, { method: 'DELETE', headers: { cookie: c1 } });
+      check('受け取ったあとに記録を消すと、もう受け取れない（読み取った内容が、サーバーに残らない）', (await peek(c1, q8.jobId)).http === 404);
+      check('ログインしていない人は、読み取りの様子を聞けない', (await fetch(`${ab}/api/analyze/${q8.jobId}`)).status === 401);
+      // 全体として1秒以上かかる読み取りでも、1回ごとの通信は、短い
+      reset('slow');
+      fake.slowMs = 1200;
+      const longJob = await post(c1);
+      check('読み取りに1.2秒以上かかっても、1回ごとの通信は、0.5秒以内に終わる（つなぎっぱなしにならない）', longJob.status === 200 && longJob.ms >= 1100 && longJob.maxReqMs < 500 && longJob.polls >= 3, `全体 ${longJob.ms}ms・いちばん長い1回 ${longJob.maxReqMs}ms・聞いた回数 ${longJob.polls}`);
+
+      // 9. 読み取りの途中でもう一度押す（画面を読み込み直して押し直した・別の画面から押した）：前のものはやめて、今回のものを始める。別の人は、そのまま使える
+      reset('slow');
+      fake.slowMs = 1000;
+      const first = await ask(c1);
+      await sleep(300);
+      const second = await ask(c1);
       const other = await post(c2);
-      const firstDone = await first;
-      check('読み取りの途中でもう一度押しても、二重には AI を使わず、「前の読み取りが続いている」と伝える（429）', second.status === 429 && /前の読み取り/.test(second.error) && firstDone.status === 200, `${second.status}・先のもの ${firstDone.status}`);
+      const firstPeek = await peek(c1, first.jobId);
+      let secondPeek = await peek(c1, second.jobId);
+      for (let i = 0; i < 30 && secondPeek.state === 'running'; i++) {
+        await sleep(150);
+        secondPeek = await peek(c1, second.jobId);
+      }
+      check('読み取りの途中でもう一度押すと、前のものはやめて、今回のものが最後まで読み取られる', second.status === 202 && firstPeek.http === 404 && secondPeek.state === 'done', `前 ${firstPeek.http}・今回 ${secondPeek.state}`);
+      check('前の読み取りは、AI への問い合わせも、やめている（料金が二重にかかり続けない）', fake.aborted >= 1, `切れた問い合わせ ${fake.aborted}回`);
       check('別の人の読み取りは、止められない', other.status === 200, `${other.status}`);
-      check('二重に押しても、AI への問い合わせは、読み取りの数だけ（2回）', fake.hits === 2, `${fake.hits}回`);
+      await fetch(`${ab}/api/analyze/${second.jobId}`, { method: 'DELETE', headers: { cookie: c1 } });
       fake.slowMs = 600;
 
       // 9. 大きすぎる・多すぎる：AI に送る前に、すぐ断る（待たされない・料金がかからない）
@@ -973,12 +1030,25 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
       check('画像が11枚以上のとき、すぐ断る', eleven.status === 400 && /10枚/.test(eleven.error) && fake.hits === 0, `${eleven.status}`);
       const pages = '/Type /Page '.repeat(11);
       const pdf = await post(c1, body([{ mediaType: 'application/pdf', data: Buffer.from(pages).toString('base64') }]));
-      check('PDF が11ページ以上のとき、AI に送らず、すぐ断る', pdf.status === 502 && /ページ数が多すぎ/.test(pdf.error) && fake.hits === 0 && pdf.ms < 3000, `${pdf.status}・${pdf.ms}ms`);
+      check('PDF が11ページ以上のとき、AI に送らず、すぐ断る', pdf.status === 400 && /ページ数が多すぎ/.test(pdf.error) && fake.hits === 0 && pdf.ms < 3000, `${pdf.status}・${pdf.ms}ms`);
       const huge = await post(c1, body([{ mediaType: 'image/png', data: 'A'.repeat(31 * 1024 * 1024) }]));
-      check('巨大なファイル（合計30MB超）のとき、AI に送らず、すぐ断る（待たされない）', [400, 413, 502].includes(huge.status) && /大きすぎ/.test(huge.error) && fake.hits === 0 && huge.ms < 15_000, `${huge.status}・${huge.ms}ms・${huge.error.slice(0, 40)}`);
+      check('巨大なファイル（合計30MB超）のとき、AI に送らず、すぐ断る（待たされない）', [400, 413].includes(huge.status) && /大きすぎ/.test(huge.error) && fake.hits === 0 && huge.ms < 15_000, `${huge.status}・${huge.ms}ms・${huge.error.slice(0, 40)}`);
       const badType = await post(c1, body([{ mediaType: 'image/bmp', data: png }]));
-      check('対応していない形式のとき、AI に送らず、すぐ断る', badType.status === 502 && /対応していない形式/.test(badType.error) && fake.hits === 0, `${badType.status}`);
+      check('対応していない形式のとき、AI に送らず、すぐ断る', badType.status === 400 && /対応していない形式/.test(badType.error) && fake.hits === 0, `${badType.status}`);
       check('断ったあとも、サーバーは動いている', await fetch(`${ab}/api/health`).then((r) => r.ok).catch(() => false));
+
+      // 読み取りの記録（サーバーの記憶の中）の、片づけ・上限・やめる
+      const jp = await runNode(['scripts/selftest/job-purge.ts'], {});
+      const jr = (() => {
+        try {
+          return JSON.parse(jp.out.trim().split('\n').pop() ?? '{}') as Record<string, boolean>;
+        } catch {
+          return {} as Record<string, boolean>;
+        }
+      })();
+      check('終わった読み取りの記録は、1人に5件まで（古いものから消える）。別の人の記録は、巻き込まれない', jr.perUserCap === true && jr.otherUserSeen === true, jp.out.trim().slice(-120));
+      check('30分を過ぎた記録は消えるが、読み取りの途中のものは、消えない', jr.expiredRemoved === true && jr.runningKept === true && jr.runningFound === true && jr.doneAfterRelease === true, '');
+      check('「やめる」と、AI への問い合わせを止める合図が出て、記録が消える。ほかの人の記録は、やめられない', jr.cancelOk === true && jr.cancelOther === true, '');
     } finally {
       srv.kill();
       for (const sk of sockets) sk.destroy();
