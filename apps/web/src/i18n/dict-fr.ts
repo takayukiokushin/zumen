@@ -264,7 +264,7 @@ export const fr: Dict = {
   'help.6.t': 'Saisir les équipements et créer',
   'help.6.b': 'En répondant aux questions, le récapitulatif à droite et le schéma sont mis à jour. Sur un écran étroit, « Masquer le sommaire » ou « Masquer le récapitulatif » élargit la zone de saisie.',
   'help.7.t': 'Modifier le schéma',
-  'help.7.b': 'Cliquez sur un symbole pour le sélectionner : vous pouvez le déplacer ou le supprimer. « Tracer un trait » ajoute une connexion. En cas d’erreur, utilisez « Annuler ». « Remettre les liaisons d’aplomb » recale les liaisons sur leurs points de connexion. « Appliquer les saisies » redessine le schéma à partir de vos saisies (une confirmation s’affiche ; vous pouvez encore annuler).',
+  'help.7.b': 'Cliquez sur un symbole pour le sélectionner : vous pouvez le déplacer ou le supprimer. « Tracer un trait » ajoute une connexion. En cas d’erreur, utilisez « Annuler ». « Remettre les liaisons d’aplomb » recale les liaisons sur leurs points de connexion. Lorsque vous modifiez vos saisies, le schéma est redessiné automatiquement (cela est aussi vérifié à l’ouverture de cet écran). Vos retouches manuelles sont conservées autant que possible (elles peuvent ne pas l’être dans un schéma d’ancien format), et un message indique que le schéma a été redessiné. « Annuler » permet de revenir au schéma d’avant.',
   'help.8.t': 'Exporter et réglages d’affichage',
   'help.8.b': 'Utilisez « Imprimer / PDF » dans l’onglet du schéma pour exporter. La langue, la luminosité et la taille du texte se règlent avec l’engrenage (réglages d’affichage) en haut à droite.',
   'help.9.t': 'Calques (zone de coupure, zone d’essai de tenue diélectrique, etc.)',

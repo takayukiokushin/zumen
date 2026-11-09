@@ -263,7 +263,7 @@ export const en: Dict = {
   'help.6.t': 'Enter equipment and create',
   'help.6.b': 'As you answer the questions, the summary on the right and the drawing are updated. On a narrow screen, use “Hide contents” or “Hide summary” to widen the input area.',
   'help.7.t': 'Editing the drawing',
-  'help.7.b': 'Click a symbol to select it; you can move it or “Delete” it. Use “Draw a line” to add a connection. Use “Undo” if you make a mistake. “Tidy connections” snaps wires back onto their connection points. “Apply entered content” redraws the drawing from what you entered (a confirmation appears; you can still undo it).',
+  'help.7.b': 'Click a symbol to select it; you can move it or “Delete” it. Use “Draw a line” to add a connection. Use “Undo” if you make a mistake. “Tidy connections” snaps wires back onto their connection points. When you change what you entered, the drawing is redrawn automatically (it is also checked when you open this screen). Your manual edits are kept as far as possible (in drawings of an old format they may not be kept), and a notice tells you the drawing was redrawn. Use “Undo” to go back to the drawing as it was before.',
   'help.8.t': 'Output and display settings',
   'help.8.b': 'Use “Print / PDF” in the drawing tab to export. Language, brightness and text size can be changed with the gear icon (display settings) at the top right.',
   'help.9.t': 'Layers (outage range, insulation withstand test range, etc.)',
