@@ -18,7 +18,7 @@ import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
 import { SERVER_VERSION } from './version.ts';
 import { bodyLimits, securityHeaders } from './security.ts';
-import { installProcessHandlers, logError, onUnexpectedError } from './errors.ts';
+import { installProcessHandlers, logError, onUnexpectedError, rotateByCopy, SERVER_LOG } from './errors.ts';
 import { readBody, text } from './input.ts';
 
 /**
@@ -214,6 +214,7 @@ serve({ fetch: app.fetch, port, ...(listenHost ? { hostname: listenHost } : {}) 
       purgeOldDrafts();
       purgeStrayFiles();
       purgeExpiredSessions();
+      rotateByCopy(SERVER_LOG);
     } catch (e) {
       logError('片づけの失敗（動作は続けます）', e);
     }

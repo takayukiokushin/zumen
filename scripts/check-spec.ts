@@ -73,7 +73,7 @@ row('パスワードをまちがえて止まる回数', numFrom('apps/server/src
 row('画像1枚の大きさ（MB）', numFrom('apps/server/src/projects.ts', /MAX_FILE_BYTES = (\d+) \* 1024 \* 1024/));
 row('PDFの大きさ（MB）', numFrom('apps/server/src/projects.ts', /MAX_PDF_BYTES = (\d+) \* 1024 \* 1024/));
 row('PDFのページ数', numFrom('apps/server/src/analyze.ts', /MAX_PDF_PAGES = (\d+)/));
-row('エラー記録（server.log）の大きさ（MB）', numFrom('apps/server/src/errors.ts', /LOG_MAX_BYTES = (\d+) \* 1024 \* 1024/));
+row('記録ファイル（error.log・server.log）を入れ替える大きさ（MB）', numFrom('apps/server/src/errors.ts', /LOG_MAX_BYTES = (\d+) \* 1024 \* 1024/));
 console.log('  レイヤーの寸法・形・上限と、付録Aの数の上限が、プログラムの値と一致');
 
 // 付録B 動作を確かめた環境：決めた環境が、すべて載っていること

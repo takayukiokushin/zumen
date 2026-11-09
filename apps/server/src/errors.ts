@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, renameSync, statSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, renameSync, statSync, truncateSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -19,6 +19,8 @@ import { DATA_DIR } from './data-dir.ts';
 export const LOG_MAX_BYTES = 5 * 1024 * 1024;
 
 export const ERROR_LOG = resolve(DATA_DIR, 'error.log');
+/** 自動起動のとき、画面に出る文字（console）が、macOS の自動起動の仕組みによって書き込まれる先（install-autostart.command が決める） */
+export const SERVER_LOG = resolve(DATA_DIR, 'server.log');
 
 /** 日本時間の「2026-11-03 14:05:09」 */
 function nowText(): string {
@@ -32,6 +34,23 @@ export function rotateIfBig(file: string, max: number = LOG_MAX_BYTES): void {
     if (existsSync(file) && statSync(file).size > max) renameSync(file, `${file}.1`);
   } catch {
     // 移せなくても、記録は続ける
+  }
+}
+
+/**
+ * 他のものが、開きっぱなしで書き込んでいるファイル（server.log）の入れ替え。
+ * 名前を変えて入れ替えると、書いているほうは、名前を変えたあとのファイルに書き続けてしまう。
+ * そこで、中身を .1 に写してから、元のファイルを空にする（書いているほうは、そのまま、空になった先頭から書き続ける）。
+ * 入れ替えたら true。1世代だけ残す。失敗しても、記録は続ける。
+ */
+export function rotateByCopy(file: string, max: number = LOG_MAX_BYTES): boolean {
+  try {
+    if (!existsSync(file) || statSync(file).size <= max) return false;
+    copyFileSync(file, `${file}.1`);
+    truncateSync(file, 0);
+    return true;
+  } catch {
+    return false;
   }
 }
 

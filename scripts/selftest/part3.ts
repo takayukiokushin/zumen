@@ -1390,6 +1390,54 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     }
   }
 
+  /* ---------- 9a9. 記録ファイルの入れ替え：error.log・server.log が、大きくなり続けない ---------- */
+  say('\n■ 記録ファイルの入れ替え（エラーが大量に起きても、記録が、ディスクを使い切らない）');
+  {
+    const { spawn } = await import('node:child_process');
+    const { openSync, closeSync, appendFileSync } = await import('node:fs');
+    const { ROOT, sleep } = await import('./common.ts');
+    const { rotateByCopy, LOG_MAX_BYTES } = await import('../../apps/server/src/errors.ts');
+    const flags = ['--experimental-strip-types', '--disable-warning=ExperimentalWarning'];
+    const MB = 1024 * 1024;
+
+    // error.log：エラーが2万回起きても、5MB＋5MB（1世代）までしか増えない。新しい記録は残る
+    const ldir = mkdtempSync(join(tmpdir(), 'zumen-log-'));
+    const storm = await runNode(['scripts/selftest/log-storm.ts', '20000'], { DATA_DIR: ldir });
+    const el = join(ldir, 'error.log');
+    const sz = (f: string) => (existsSync(f) ? statSync(f).size : 0);
+    const written = 20000 * 600; // おおよそ（1件が数百バイト以上）
+    check('エラーが2万回起きても、error.log は、決めた大きさ（5MB）を大きく超えない', storm.out.includes('done') && sz(el) <= LOG_MAX_BYTES + 4096, `${(sz(el) / MB).toFixed(1)}MB`);
+    check('古い記録は error.log.1 に移り、それも5MB程度まで（全部で、約10MBを超えない）', written > 5 * MB ? existsSync(`${el}.1`) && sz(`${el}.1`) <= LOG_MAX_BYTES + 4096 && sz(el) + sz(`${el}.1`) < 11 * MB : true, `${(sz(`${el}.1`) / MB).toFixed(1)}MB`);
+    const lastLine = readFileSync(el, 'utf8').trimEnd().split('\n');
+    check('いちばん新しいエラー（19999回目）は、error.log の最後に残っている', lastLine.some((l) => l.includes('嵐 19999')) || lastLine.slice(-12).join('\n').includes('嵐 19999'), '');
+    rmSync(ldir, { recursive: true, force: true });
+
+    // server.log：自動起動の仕組みが、追記で開いたまま書き続けるファイル。中身を写して、空にする
+    const sdir = mkdtempSync(join(tmpdir(), 'zumen-slog-'));
+    const sl = join(sdir, 'server.log');
+    const fd = openSync(sl, 'a');
+    const wr = spawn(process.execPath, [...flags, 'scripts/selftest/log-writer.ts'], { cwd: ROOT, stdio: ['ignore', fd, fd] });
+    closeSync(fd);
+    const MAXT = 300 * 1024;
+    let waited = 0;
+    while (sz(sl) <= MAXT && waited < 20_000) {
+      await sleep(100);
+      waited += 100;
+    }
+    const before = sz(sl);
+    const did = rotateByCopy(sl, MAXT);
+    check('大きくなった server.log を入れ替えると、server.log は空になり、中身は server.log.1 に残る', did && sz(sl) < MAXT / 2 && sz(`${sl}.1`) >= before, `${(before / 1024).toFixed(0)}KB → ${sz(sl)}B・.1 ${(sz(`${sl}.1`) / 1024).toFixed(0)}KB`);
+    await sleep(600);
+    const after = readFileSync(sl);
+    check('入れ替えたあとも、書き続けているほうは、そのまま、新しい server.log の先頭から書き続ける（途中に空白のデータが混ざらない）', after.length > 1000 && !after.includes(0), `${after.length}B`);
+    check('サイズが上限以下のときは、何もしない', !rotateByCopy(sl, 100 * MB));
+    wr.kill('SIGTERM');
+    await new Promise((r) => wr.on('close', r));
+    check('ファイルが無いときも、何も起きない（失敗しない）', !rotateByCopy(join(sdir, 'none.log'), 1));
+    appendFileSync(sl, '');
+    rmSync(sdir, { recursive: true, force: true });
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {
