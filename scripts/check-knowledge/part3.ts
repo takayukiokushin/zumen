@@ -371,7 +371,7 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     ['結線方式を自分で選んだら、それを優先（電圧は6600/だけ）', { trUsage: '動力', trConnection: 'tr-3p-dy' }, { trConnection: 'tr-3p-dy', trVoltage: '6600/' }],
     ['結線方式を単相に変えると、電圧も変わる', { trUsage: '動力', trConnection: 'tr-1p' }, { trVoltage: '6600/210-105V' }],
     ['用途が未入力でも、電圧は「6600/」が入る', {}, { trVoltage: '6600/' }],
-    ['自分で書いた電圧は、そのまま', { trUsage: '電灯', trVoltage: '6600V/210-105V' }, { trVoltage: '6600V/210-105V' }],
+    ['自分で書いた電圧は、そのまま', { trUsage: '電灯', trVoltage: '6600/210-105V' }, { trVoltage: '6600/210-105V' }],
     ['電圧を空にしたら、空のまま（また自動で入らない）', { trUsage: '電灯', trVoltage: '' }, { trVoltage: '' }],
     ['受電電圧が6600V以外のときは、電圧を自動で入れない', { receivingVoltage: '3300', trUsage: '電灯' }, { trVoltage: undefined, trConnection: 'tr-1p' }],
     ['受電電圧が数（6600）で入っていても同じ', { receivingVoltage: 6600, trUsage: '動力' }, { trVoltage: '6600/210V' }],
@@ -484,16 +484,16 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   ok(!shownAux(base) && shownAux({ ...base, hasBattery: 'yes' }), '補助変圧器の項目が、蓄電所のときだけ出るはずです');
   const aux: Answers = {
     ...base, hasBattery: 'yes', transformerCount: 2, trConnection: 'tr-3p-dy', trConnection__2: 'tr-3p-dy', auxTrCount: '2',
-    auxTrFrom: '1', auxTrUsage: '動力', auxTrConnection: 'tr-3p-dy', auxTrCapacity: 150, auxTrVoltage: '550V/220V', auxTrMccb: '400',
-    auxTrFrom__2: '2', auxTrUsage__2: '電灯', auxTrConnection__2: 'tr-1p', auxTrCapacity__2: 50, auxTrVoltage__2: '210V/105V', auxTrMccb__2: '100',
+    auxTrFrom: '1', auxTrUsage: '動力', auxTrConnection: 'tr-3p-dy', auxTrCapacity: 150, auxTrVoltage: '550/220V', auxTrMccb: '400',
+    auxTrFrom__2: '2', auxTrUsage__2: '電灯', auxTrConnection__2: 'tr-1p', auxTrCapacity__2: 50, auxTrVoltage__2: '210/105V', auxTrMccb__2: '100',
   };
   const ax = buildComposition(aux);
   const mc1 = ax.find((i) => i.id === 'aux-mccb-1');
   const tr1 = ax.find((i) => i.id === 'aux-tr-1');
   const tr2 = ax.find((i) => i.id === 'aux-tr-2');
   ok(mc1?.label.join('|') === '補助変圧器盤|MCCB400A', `補助変圧器盤のMCCBの文字が違います（${mc1?.label.join('|')}）`);
-  ok(tr1?.label.join('|') === '動力用 Tr|3φ150kVA|550V/220V' && tr1.symbolId === 'tr-3p-dy', `補助変圧器の文字・記号が違います（${tr1?.label.join('|')}／${tr1?.symbolId}）`);
-  ok(tr2?.label.join('|') === '電灯用 Tr|1φ50kVA|210V/105V' && tr2.symbolId === 'tr-1p', `2台目の補助変圧器が、その台の答えになっていません（${tr2?.label.join('|')}）`);
+  ok(tr1?.label.join('|') === '動力用 Tr|3φ150kVA|550/220V' && tr1.symbolId === 'tr-3p-dy', `補助変圧器の文字・記号が違います（${tr1?.label.join('|')}／${tr1?.symbolId}）`);
+  ok(tr2?.label.join('|') === '電灯用 Tr|1φ50kVA|210/105V' && tr2.symbolId === 'tr-1p', `2台目の補助変圧器が、その台の答えになっていません（${tr2?.label.join('|')}）`);
   ok(mc1?.props.transformer === '1' && ax.find((i) => i.id === 'aux-mccb-2')?.props.transformer === '2', '補助変圧器のつなぎ先（どの変圧器か）が違います');
   ok(mc1?.lane === 400 && tr1?.lane === 400 && tr2?.lane === 401, '補助変圧器の列（MCCBと補助変圧器が同じ列）が違います');
   ok(!buildComposition({ ...aux, auxTrCount: '0' }).some((i) => i.role.startsWith('aux-')), '補助変圧器0台なのに、描かれています');

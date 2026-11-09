@@ -170,8 +170,8 @@ console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／�
   if (!req({ trUsage: '電灯・動力', trConnection: 'tr-vv' }).includes('trCapacityLight') || req({ trUsage: '電灯・動力', trConnection: 'tr-vv' }).includes('trCapacity')) fail('必須の扱いが違います');
   // 図面の文字
   const lbl = (a: Answers) => buildComposition({ ...answers, transformerCount: 1, ...a }).find((i) => i.role === 'transformer')?.label ?? [];
-  const m = lbl({ trUsage: '電灯・動力', trConnection: 'tr-vv', trCapacityLight: 30, trCapacityPower: 50, trVoltage: '6600V/210-105V', trComposition: '' });
-  const wantM = ['Tr', '電灯 30kVA', '動力 50kVA', '6600V/210-105V'];
+  const m = lbl({ trUsage: '電灯・動力', trConnection: 'tr-vv', trCapacityLight: 30, trCapacityPower: 50, trVoltage: '6600/210-105V', trComposition: '' });
+  const wantM = ['Tr', '電灯 30kVA', '動力 50kVA', '6600/210-105V'];
   if (JSON.stringify(m) !== JSON.stringify(wantM)) fail(`電灯および動力のV結線の文字が違います（${m.join(' / ')}）`);
   else console.log(`  図面の文字（電灯および動力・V結線）：${m.join(' / ')}`);
   const only = lbl({ trUsage: '電灯・動力', trConnection: 'tr-vv', trCapacityLight: 30, trVoltage: '', trComposition: '' });

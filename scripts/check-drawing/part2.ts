@@ -701,7 +701,7 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
   };
   const battery: Answers = {
     ...base, hasBattery: 'yes', batteryCapacity: '2,000kW', batteryTransformer: '1', transformerCount: 2, trConnection__2: 'tr-3p-dy', trCapacity__2: 300,
-    auxTrCount: '2', auxTrFrom: '1', auxTrCapacity: 150, auxTrVoltage: '550V/220V', auxTrMccb: '400', auxTrFrom__2: '2', auxTrCapacity__2: 50, auxTrMccb__2: '100',
+    auxTrCount: '2', auxTrFrom: '1', auxTrCapacity: 150, auxTrVoltage: '550/220V', auxTrMccb: '400', auxTrFrom__2: '2', auxTrCapacity__2: 50, auxTrMccb__2: '100',
   };
   const twoAreas: Answers = {
     ...base, areaCount: 2, areaForm__2: 'room-open', areaPlacement__2: 'indoor',

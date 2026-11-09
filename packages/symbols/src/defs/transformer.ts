@@ -66,7 +66,7 @@ const VOLTAGE: FieldDef = {
   key: 'voltage',
   label: '電圧',
   type: 'text',
-  help: '図面の記載例: 6600V/210-105V',
+  help: '図面の記載例: 6600/210-105V',
 };
 const USAGE: FieldDef = {
   key: 'usage',
@@ -152,7 +152,7 @@ export const transformerSymbols: SymbolDef[] = [
     fields: [USAGE, CAPACITY, VOLTAGE],
     status: 'confirmed',
     statusNote: '見本図面のとおり。上の円は常に横線1本、下の円は二次側が三線式なので3本。',
-    note: '記載例「電灯 / Tr / 1φ200kVA / 6600V/210-105V」。',
+    note: '記載例「電灯 / Tr / 1φ200kVA / 6600/210-105V」。',
   },
   {
     id: 'tr-1p-2w',
@@ -193,7 +193,7 @@ export const transformerSymbols: SymbolDef[] = [
     ],
     status: 'confirmed',
     statusNote: '見本図面のとおり、丸を縦に2つ並べそれぞれの中にVを記載する形で確定。',
-    note: '単相変圧器2台で三相を構成する。2台の定格容量が異なる場合があるため容量は2台分を別々に記載する。記載例「V結線 / Tr / 1φ50kVA / 1φ75kVA / 6600V/210-105V」。',
+    note: '単相変圧器2台で三相を構成する。2台の定格容量が異なる場合があるため容量は2台分を別々に記載する。記載例「V結線 / Tr / 1φ50kVA / 1φ75kVA / 6600/210-105V」。',
   },
   {
     id: 'tr-1p-parallel',

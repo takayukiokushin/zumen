@@ -77,7 +77,7 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     group: 'transformer',
     label: '電圧',
     type: 'text',
-    placeholder: '6600V/210-105V',
+    placeholder: '6600/210-105V',
     // 受電電圧が6600Vのとき、結線方式に合わせた電圧が最初から入る（単相三線式・V結線＝6600/210-105V、Y-Δ＝6600/210V、
     // ほかの結線方式は「6600/」だけ）。消しても書き換えてもよい
     autoValue: [

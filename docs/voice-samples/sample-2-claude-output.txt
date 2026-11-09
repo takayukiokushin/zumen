@@ -52,7 +52,7 @@
     "auxTrFrom": "1",
     "auxTrUsage": "動力",
     "auxTrCapacity": 150,
-    "auxTrVoltage": "550V/220V",
+    "auxTrVoltage": "550/220V",
     "auxTrMccb": "400",
     "a2:linkCable": "yes",
     "a2:linkTap": "ds-vcb",

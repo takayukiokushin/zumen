@@ -60,7 +60,7 @@ export const SAMPLE_ANSWERS: Answers = {
   trUsage: '動力',
   trConnection: 'tr-3p-dy',
   trCapacity: 300,
-  trVoltage: '6600V/440-254V',
+  trVoltage: '6600/440-254V',
 
   feederCount: 2,
   feederName: 'PCSNo1〜No5',

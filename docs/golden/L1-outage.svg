@@ -6,9 +6,9 @@
   </g>
   <text x="380" y="45" font-size="14" font-weight="700" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">見本工場　停電範囲図</text>
   <text x="728" y="1045" font-size="9" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">株式会社フジエレックス</text>
-  <g transform="translate(390.8 70) scale(0.8713)">
+  <g transform="translate(393.77 70) scale(0.8713)">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">
-    <path d="M -200 432 L 299.2 432 M -200 432 L -200 458 M 299.2 432 L 299.2 458" fill="none" stroke-width="1" />
+    <path d="M -200 432 L 292.4 432 M -200 432 L -200 458 M 292.4 432 L 292.4 458" fill="none" stroke-width="1" />
     <text x="-200" y="426" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
     <line x1="0" y1="48" x2="0" y2="64" stroke-width="1" />
     <line x1="0" y1="108" x2="0" y2="124" stroke-width="1" />
@@ -237,7 +237,7 @@
       <line x1="24" y1="49.5" x2="31.794" y2="54" stroke-width="1" />
       <line x1="24" y1="49.5" x2="16.206" y2="54" stroke-width="1" />
     </g>
-    <text x="-126" y="1041" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-126" dy="0">動力</tspan><tspan x="-126" dy="12.5">Tr</tspan><tspan x="-126" dy="12.5">3φ300kVA</tspan><tspan x="-126" dy="12.5">6600V/440-254V</tspan></text>
+    <text x="-126" y="1041" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-126" dy="0">動力</tspan><tspan x="-126" dy="12.5">Tr</tspan><tspan x="-126" dy="12.5">3φ300kVA</tspan><tspan x="-126" dy="12.5">6600/440-254V</tspan></text>
     <g transform="translate(-24 1031)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
@@ -247,7 +247,7 @@
       <line x1="24" y1="49.5" x2="31.794" y2="54" stroke-width="1" />
       <line x1="24" y1="49.5" x2="16.206" y2="54" stroke-width="1" />
     </g>
-    <text x="34" y="1041" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="34" dy="0">動力</tspan><tspan x="34" dy="12.5">Tr</tspan><tspan x="34" dy="12.5">3φ300kVA</tspan><tspan x="34" dy="12.5">6600V/440-254V</tspan></text>
+    <text x="34" y="1041" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="34" dy="0">動力</tspan><tspan x="34" dy="12.5">Tr</tspan><tspan x="34" dy="12.5">3φ300kVA</tspan><tspan x="34" dy="12.5">6600/440-254V</tspan></text>
     <g transform="translate(136 1031)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
@@ -257,7 +257,7 @@
       <line x1="24" y1="49.5" x2="31.794" y2="54" stroke-width="1" />
       <line x1="24" y1="49.5" x2="16.206" y2="54" stroke-width="1" />
     </g>
-    <text x="194" y="1041" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="194" dy="0">動力</tspan><tspan x="194" dy="12.5">Tr</tspan><tspan x="194" dy="12.5">3φ300kVA</tspan><tspan x="194" dy="12.5">6600V/440-254V</tspan></text>
+    <text x="194" y="1041" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="194" dy="0">動力</tspan><tspan x="194" dy="12.5">Tr</tspan><tspan x="194" dy="12.5">3φ300kVA</tspan><tspan x="194" dy="12.5">6600/440-254V</tspan></text>
     <rect x="-84" y="714" width="220" height="200" fill="none" stroke="#d40000" stroke-width="2" stroke-linejoin="miter" />
     <polygon points="-30,770 -21.51,770 0,791.51 21.51,770 30,770 30,778.49 8.49,800 30,821.51 30,830 21.51,830 0,808.49 -21.51,830 -30,830 -30,821.51 -8.49,800 -30,778.49" fill="#d40000" stroke="none" />
     <g transform="translate(0 764)" stroke="#d40000" fill="none" stroke-linecap="butt">

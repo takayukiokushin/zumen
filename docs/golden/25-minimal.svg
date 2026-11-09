@@ -147,7 +147,7 @@
       <line x1="24" y1="49.5" x2="31.794" y2="54" stroke-width="1" />
       <line x1="24" y1="49.5" x2="16.206" y2="54" stroke-width="1" />
     </g>
-    <text x="34" y="722" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="34" dy="0">動力</tspan><tspan x="34" dy="12.5">Tr</tspan><tspan x="34" dy="12.5">3φ300kVA</tspan><tspan x="34" dy="12.5">6600V/440-254V</tspan></text>
+    <text x="34" y="722" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="34" dy="0">動力</tspan><tspan x="34" dy="12.5">Tr</tspan><tspan x="34" dy="12.5">3φ300kVA</tspan><tspan x="34" dy="12.5">6600/440-254V</tspan></text>
     </g>
   </g>
 </svg>

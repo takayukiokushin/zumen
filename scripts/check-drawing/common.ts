@@ -48,7 +48,7 @@ export const answers: Answers = {
   trConnection: 'tr-3p-dy',
   trUsage: '動力',
   trCapacity: 300,
-  trVoltage: '6600V/210V',
+  trVoltage: '6600/210V',
   hasCapacitor: 'yes',
   capacitorCount: 2,
   hasPv: 'yes',

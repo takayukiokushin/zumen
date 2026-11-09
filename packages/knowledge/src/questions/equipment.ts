@@ -88,7 +88,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     help: '決まっていなければ空のままでよい（円の中が空の記号で描く。勝手にΔやYは描かない）',
   },
   { id: 'auxTrCapacity', group: 'auxtr', label: '容量', type: 'number', unit: 'kVA', ask: 'always', placeholder: '150' },
-  { id: 'auxTrVoltage', group: 'auxtr', label: '定格電圧（一次/二次）', type: 'text', placeholder: '550V/220V', ask: 'always', help: '図面の記載例：550V/220V' },
+  { id: 'auxTrVoltage', group: 'auxtr', label: '定格電圧（一次/二次）', type: 'text', placeholder: '550/220V', ask: 'always', help: '図面の記載例：550/220V' },
   { id: 'auxTrMccb', group: 'auxtr', label: '補助変圧器盤のMCCBの定格', type: 'text', unit: 'A', placeholder: '400', ask: 'always', help: '数字だけでよい。図面には「MCCB400A」のように書く' },
 
   /* ---------------- 発電機（台ごと） ---------------- */
