@@ -19,7 +19,7 @@ export const ja = {
   'tab.hearing.help': '必要事項を入力して、そこから図面を作成します',
   'tab.voice': '音声入力から作成',
   'tab.voice.help': 'Claude に声で話した内容から、図面を作成します',
-  'tab.drawing.help': '現在作成中の図面のプレビューを表示します',
+  'tab.drawing.help': '作成中の図面を確認・編集して、印刷・PDF化します',
 
   'nav.settings': '表示の設定',
   'nav.settings.label': '設定',

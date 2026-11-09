@@ -18,7 +18,7 @@ export const zh: Dict = {
   'tab.hearing.help': '填写必要事项，据此生成图纸',
   'tab.voice': '语音输入创建',
   'tab.voice.help': '根据对 Claude 口述的内容创建图纸',
-  'tab.drawing.help': '显示正在制作的图纸',
+  'tab.drawing.help': '确认并编辑正在制作的图纸，然后打印或保存为PDF',
 
   'nav.settings': '显示设置',
   'nav.settings.label': '设置',

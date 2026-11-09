@@ -18,7 +18,7 @@ export const fr: Dict = {
   'tab.hearing.help': 'Répondez aux questions : le schéma en est déduit',
   'tab.voice': 'Créer par la voix',
   'tab.voice.help': 'Créer un schéma à partir de ce que vous avez dit à Claude',
-  'tab.drawing.help': 'Affiche le schéma en cours de création',
+  'tab.drawing.help': 'Vérifiez et modifiez le schéma en cours, puis imprimez-le ou enregistrez-le en PDF',
 
   'nav.settings': 'Affichage',
   'nav.settings.label': 'Réglages',

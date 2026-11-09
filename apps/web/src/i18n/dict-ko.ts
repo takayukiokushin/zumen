@@ -18,7 +18,7 @@ export const ko: Dict = {
   'tab.hearing.help': '필요한 항목을 입력하면 그것으로 도면을 만듭니다',
   'tab.voice': '음성 입력으로 작성',
   'tab.voice.help': 'Claude에게 말로 설명한 내용으로 도면을 작성합니다',
-  'tab.drawing.help': '지금 만들고 있는 도면을 보여줍니다',
+  'tab.drawing.help': '지금 만들고 있는 도면을 확인·편집하고, 인쇄하거나 PDF로 저장합니다',
 
   'nav.settings': '화면 설정',
   'nav.settings.label': '설정',

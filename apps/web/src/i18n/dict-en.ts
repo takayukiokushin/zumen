@@ -18,7 +18,7 @@ export const en: Dict = {
   'tab.hearing.help': 'Answer the questions, and a diagram is built from them',
   'tab.voice': 'Create by voice',
   'tab.voice.help': 'Create a drawing from what you told Claude by voice',
-  'tab.drawing.help': 'Shows the diagram you are working on',
+  'tab.drawing.help': 'Check and edit the diagram you are working on, then print it or save it as PDF',
 
   'nav.settings': 'Display settings',
   'nav.settings.label': 'Settings',
