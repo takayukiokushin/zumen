@@ -1,6 +1,7 @@
 import type { Answers } from '@zumen/knowledge';
 import type { Doc } from '../editor/doc.ts';
-import { describeFailure, isGateway } from './messages.ts';
+import { describeFailure, isGateway, networkTimeout } from './messages.ts';
+import { CALL_TIMEOUT_MS } from './timing.ts';
 
 /** サーバーとのやり取り。認証はCookieなので、どの呼び出しも credentials: 'include' で行う */
 
@@ -61,7 +62,11 @@ export class LoginError extends Error {
  * 入力した内容は画面に残っているので、つながってからやり直せばよい。
  */
 export class ConnectionError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    /** 返事が決めた時間たっても来なかった（届いたかどうかも分からない）。この文言には、どうするかまで含まれている */
+    readonly timedOut: boolean = false,
+  ) {
     super(message);
     this.name = 'ConnectionError';
   }
@@ -171,19 +176,38 @@ const NO_REAUTH = new Set(['/api/auth/login', '/api/auth/logout', '/api/auth/me'
 
 async function call<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
   let res: Response;
+  let json: unknown;
+  // 呼び出し側が、自分で中断する仕組み（読み取りの「やめる」など）を持っているときは、そちらに任せる
+  const own = init?.signal != null;
+  const ctl = own ? null : new AbortController();
+  let timedOut = false;
+  const timer = ctl
+    ? setTimeout(() => {
+        timedOut = true;
+        ctl.abort();
+      }, CALL_TIMEOUT_MS)
+    : null;
   try {
     res = await fetch(path, {
       credentials: 'include',
       headers: init?.body ? { 'content-type': 'application/json' } : undefined,
       ...init,
+      ...(ctl ? { signal: ctl.signal } : {}),
+    });
+    // 返事の中身が、途中で止まったときも、同じ時間で打ち切る
+    json = await res.json().catch((e: unknown) => {
+      if (timedOut) throw e;
+      return {};
     });
   } catch (e) {
+    if (timedOut) throw new ConnectionError(networkTimeout(), true);
     // 利用者が「やめる」を押した・決めた時間を過ぎて自分で打ち切った（中断）は、通信の失敗とは別に伝える
     if ((e as { name?: string })?.name === 'AbortError') throw e;
     // ブラウザは「Failed to fetch」のような英語の文を返すだけなので、分かる言葉に置き換える
     throw new ConnectionError(describeFailure(null));
+  } finally {
+    if (timer) clearTimeout(timer);
   }
-  const json = await res.json().catch(() => ({}));
   if (res.status === 401 && !retried && reauth && !NO_REAUTH.has(path)) {
     // ログインの有効期限が切れた。窓でログインし直せたら、同じ操作を1回だけやり直す
     if (await reauth()) return call<T>(path, init, true);

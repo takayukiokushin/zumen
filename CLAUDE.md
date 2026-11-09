@@ -22,7 +22,7 @@ pnpm typecheck   # 型を見る
 pnpm check       # ナレッジベースと作図の検証（図面の見本との比較・仕様書の数値の照合を含む）
 pnpm fuzz        # でたらめな入力・操作の大量テストを、10倍の回数で行う（ふだんの pnpm check にも、短い版が入っている）
 pnpm golden      # 図面の見本を保存し直す（意図して図面を変えたときだけ。docs/golden/）
-pnpm selftest    # サーバーまで通した自己診断（376件）
+pnpm selftest    # サーバーまで通した自己診断（384件）
 pnpm build       # 画面を組み立てる
 pnpm start       # 組み立ててサーバーを起動
 ```

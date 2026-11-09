@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ConnectionError, LockedError, setReauthHandler, StaleError } from './session/api.ts';
 import { saveRetry } from './session/messages.ts';
+import { sameContent } from './session/saveRecovery.ts';
 import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
@@ -325,17 +326,27 @@ export function App() {
     if (!projectId) return false;
     setSaving(true);
     setError(null);
+    const patch = {
+      name: projectName,
+      answers,
+      // 付けた開閉器が無くなった×印は、保存するときに、データから外す
+      drawing: drawing ? purgeOrphanMarks(drawing) : drawing,
+      // 読み取った案件か（写真は、この保存のときに消えるので、印だけ残す）
+      ...(sketchRead ? { sketchRead: true } : {}),
+      ...(baseUpdatedAt ? { baseUpdatedAt } : {}),
+      ...(force ? { force: true } : {}),
+    };
     try {
-      const r = await api.saveProject(projectId, {
-        name: projectName,
-        answers,
-        // 付けた開閉器が無くなった×印は、保存するときに、データから外す
-        drawing: drawing ? purgeOrphanMarks(drawing) : drawing,
-        // 読み取った案件か（写真は、この保存のときに消えるので、印だけ残す）
-        ...(sketchRead ? { sketchRead: true } : {}),
-        ...(baseUpdatedAt ? { baseUpdatedAt } : {}),
-        ...(force ? { force: true } : {}),
-      });
+      let r: { updatedAt: string };
+      try {
+        r = await api.saveProject(projectId, patch);
+      } catch (e) {
+        if (!(e instanceof StaleError)) throw e;
+        // 前の保存は届いていたのに、返事だけ戻らなかった（通信が不安定）のかもしれない。サーバーの内容が、いま保存する内容と同じなら、保存できている
+        const now = await api.getProject(projectId).catch(() => null);
+        if (!now || !sameContent(patch, { name: now.name, answers: now.answers, drawing: now.drawing })) throw e;
+        r = { updatedAt: now.updatedAt };
+      }
       setSavedAt(r.updatedAt);
       setBaseUpdatedAt(r.updatedAt);
       setStale(null);
@@ -352,7 +363,7 @@ export function App() {
       }
       if (e instanceof LockedError) setLockedBy(e.lock);
       // 通信が届かなかったときは、つながってからもう一度保存すればよいと伝える
-      const retry = e instanceof ConnectionError ? saveRetry() : '';
+      const retry = e instanceof ConnectionError && !e.timedOut ? saveRetry() : '';
       setError(`${e instanceof Error ? e.message : t('err.save')}${retry}`);
       return false;
     } finally {

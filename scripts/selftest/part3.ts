@@ -1164,6 +1164,102 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     rmSync(cbackup, { recursive: true, force: true });
   }
 
+  /* ---------- 9a6. 通信が不安定：途中で切れる・とても遅い・返事だけが戻らない ---------- */
+  say('\n■ 通信が不安定なとき（送っている途中で切れる・とても遅い・返事だけが戻らない・つなぎっぱなし）');
+  {
+    const { connect } = await import('node:net');
+    const { sleep } = await import('./common.ts');
+    const u = new URL(base);
+    const nm = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '通信不安定の試験' }) })).json()) as { id: string; updatedAt: string };
+    const get = async () => (await (await call(a, `/api/projects/${nm.id}`)).json()) as { name: string; updatedAt: string; answers: Record<string, unknown> };
+    /** 生の通信で、PUT を送る。bodyParts を、間をあけて送り、最後に何をするか（end：送り終えて返事を待つ／drop：返事を待たずに切る／cut：途中で切る） */
+    const rawPut = (body: string, opts: { declared?: number; chunk?: number; gap?: number; finish: 'end' | 'drop' | 'cut' }) =>
+      new Promise<{ status: number | null }>((done) => {
+        const buf = Buffer.from(body);
+        const sock = connect({ host: u.hostname, port: Number(u.port) });
+        let resp = '';
+        let finished = false;
+        const out = (status: number | null) => {
+          if (finished) return;
+          finished = true;
+          sock.destroy();
+          done({ status });
+        };
+        sock.on('data', (d) => {
+          resp += String(d);
+          const m = /^HTTP\/1\.1 (\d{3})/.exec(resp);
+          if (m && opts.finish === 'end') out(Number(m[1]));
+        });
+        sock.on('error', () => out(null));
+        sock.on('close', () => out(/^HTTP\/1\.1 (\d{3})/.exec(resp) ? Number(/^HTTP\/1\.1 (\d{3})/.exec(resp)![1]) : null));
+        sock.on('connect', async () => {
+          sock.write(`PUT /api/projects/${nm.id} HTTP/1.1\r\nHost: ${u.host}\r\nCookie: ${a}\r\nContent-Type: application/json\r\nContent-Length: ${opts.declared ?? buf.length}\r\n\r\n`);
+          const step = opts.chunk ?? buf.length;
+          const sendable = opts.finish === 'cut' ? Math.floor(buf.length / 2) : buf.length;
+          for (let i = 0; i < sendable; i += step) {
+            sock.write(buf.subarray(i, Math.min(i + step, sendable)));
+            if (opts.gap) await sleep(opts.gap);
+          }
+          if (opts.finish === 'cut') {
+            await sleep(50);
+            out(null);
+          } else if (opts.finish === 'drop') {
+            await sleep(30);
+            out(null);
+          }
+          setTimeout(() => out(null), 15_000).unref();
+        });
+      });
+
+    // 1. 送っている途中で切れた：何も保存されない・サーバーは動いている
+    const before = await get();
+    const whole = JSON.stringify({ name: '途中で切れた', answers: { siteName: 'x'.repeat(60_000) } });
+    await rawPut(whole, { declared: whole.length, finish: 'cut' });
+    await sleep(300);
+    const afterCut = await get();
+    check('保存を送っている途中で通信が切れても、案件は何も変わらない（途中までの内容が保存されない）', afterCut.name === before.name && afterCut.updatedAt === before.updatedAt && afterCut.answers.siteName === before.answers.siteName, afterCut.name);
+    check('切れたあとも、サーバーは動いている', await fetch(`${base}/api/health`).then((r) => r.ok).catch(() => false));
+
+    // 2. とても遅い通信（少しずつ届く）：そのまま、ちゃんと保存できる
+    const slowBody = JSON.stringify({ name: '遅い通信の試験', answers: { siteName: '遅い' } });
+    const slow = await rawPut(slowBody, { chunk: 8, gap: 25, finish: 'end' });
+    const afterSlow = await get();
+    check('とても遅い通信（少しずつ届く）でも、保存できて、内容が欠けない', slow.status === 200 && afterSlow.name === '遅い通信の試験' && afterSlow.answers.siteName === '遅い', `${slow.status}`);
+
+    // 3. 保存は届いたが、返事を受け取る前に切れた → 保存はできている。もう一度、前の時刻のまま保存すると断られる。サーバーの内容は、保存した内容と同じ
+    const baseAt = (await get()).updatedAt;
+    const lost = JSON.stringify({ name: '返事が戻らない試験', answers: { siteName: '届いた', rev: 1 }, baseUpdatedAt: baseAt });
+    await rawPut(lost, { finish: 'drop' });
+    await sleep(400);
+    const afterLost = await get();
+    check('保存が届いたあとで、返事を受け取る前に切れても、保存はできている', afterLost.name === '返事が戻らない試験' && afterLost.answers.rev === 1, afterLost.name);
+    const retry = await call(a, `/api/projects/${nm.id}`, { method: 'PUT', body: lost });
+    const retryJson = (await retry.json()) as { stale?: boolean };
+    check('そのまま、もう一度押すと、前の読み込み時刻のため「更新されている」と断られる（画面が、サーバーの内容と同じかを見て、保存できていると判断する）', retry.status === 409 && retryJson.stale === true, `${retry.status}`);
+    const forced = await call(a, `/api/projects/${nm.id}`, { method: 'PUT', body: JSON.stringify({ name: '返事が戻らない試験', answers: { siteName: '届いた', rev: 1 }, baseUpdatedAt: afterLost.updatedAt }) });
+    check('サーバーから読み直した時刻で保存すれば、保存できる', forced.status === 200, `${forced.status}`);
+
+    // 4. つなぎっぱなしで何も送らない・途中まで送って止まる接続が、たくさんあっても、ほかの人の操作が遅れない
+    const idle: import('node:net').Socket[] = [];
+    for (let i = 0; i < 60; i++) {
+      const sk = connect({ host: u.hostname, port: Number(u.port) });
+      sk.on('error', () => undefined);
+      if (i % 2) sk.on('connect', () => sk.write('PUT /api/projects/x HTTP/1.1\r\nHost: x\r\nContent-Length: 100\r\n'));
+      idle.push(sk);
+    }
+    await sleep(300);
+    const t0 = Date.now();
+    const h = await call(a, '/api/projects?limit=5');
+    check('何も送らない・途中で止まった接続が60本あっても、ほかの人の操作は、すぐ返る', h.ok && Date.now() - t0 < 2000, `${h.status}・${Date.now() - t0}ms`);
+    for (const sk of idle) sk.destroy();
+
+    // 5. 壊れた・途中で切れた JSON を受け取っても、エラー（500）にならず、何も変わらない
+    const cur = await get();
+    const trunc = await call(a, `/api/projects/${nm.id}`, { method: 'PUT', body: '{"name":"壊れ","answers":{"siteName":"途' });
+    const after = await get();
+    check('途中で切れた JSON は、分かる言葉で断り（400）、案件は何も変わらない', trunc.status === 400 && after.updatedAt === cur.updatedAt && after.name === cur.name, `${trunc.status}`);
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {

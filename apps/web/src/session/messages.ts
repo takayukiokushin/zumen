@@ -12,6 +12,9 @@ import { translateServerMessage } from './serverMessages.ts';
 /** サーバーに届かなかった（電波・Wi-Fi・社内ネットワーク・サーバーの停止など）。入力した内容は画面に残っていることも伝える */
 export const networkDown = (): string => tr('msg.networkDown');
 
+/** 返事が決めた時間（30秒）たっても来なかった（電波が途中で切れて、切れた知らせも来ない、など）。保存は、届いていたかもしれないことも伝える */
+export const networkTimeout = (): string => tr('msg.timeout');
+
 /** 「サーバーまで届かなかった」ことを表す状態の番号（中継の502・503・504、Cloudflare の520番台） */
 export function isGateway(status: number): boolean {
   return status === 502 || status === 503 || status === 504 || (status >= 520 && status <= 527);

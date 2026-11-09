@@ -7,7 +7,9 @@
  *   node --experimental-strip-types scripts/check-messages.ts
  */
 import { readFileSync } from 'node:fs';
-import { describeFailure, isGateway, networkDown, saveRetry } from '../apps/web/src/session/messages.ts';
+import { describeFailure, isGateway, networkDown, networkTimeout, saveRetry } from '../apps/web/src/session/messages.ts';
+import { sameContent } from '../apps/web/src/session/saveRecovery.ts';
+import { CALL_TIMEOUT_MS } from '../apps/web/src/session/timing.ts';
 import { Anthropic, describeAnalyzeFailure } from '../apps/server/src/analyze-errors.ts';
 
 let failed = 0;
@@ -56,6 +58,30 @@ else console.log('  500番台・401・413・その他：どれも次にするこ
 if (!saveRetry().includes('「保存」')) fail('保存のやり直しの案内に、ボタンの名前がありません');
 else console.log(`  保存に失敗したときの案内：${saveRetry()}`);
 
+// 返事が来ないとき（電波が途中で切れて、切れた知らせも来ない）
+{
+  const m = networkTimeout();
+  if (hasAscii(m)) fail('返事が来ないときの文言に、英語が混ざっています');
+  if (!m.includes(`${CALL_TIMEOUT_MS / 1000}秒`)) fail(`待つ時間（${CALL_TIMEOUT_MS / 1000}秒）が文言に書かれていません`);
+  if (!m.includes('入力した内容は')) fail('返事が来ないときの文言に、「入力した内容は残っている」がありません');
+  if (!m.includes('保存できているかもしれません')) fail('返事が来ないときの文言に、「保存できているかもしれない」がありません');
+  if (!NEXT.test(m)) fail('返事が来ないときの文言に、次にすることがありません');
+  if (CALL_TIMEOUT_MS < 10_000 || CALL_TIMEOUT_MS > 60_000) fail('返事を待つ時間が、短すぎる・長すぎる（10〜60秒）');
+  if (!m.includes('「保存」')) fail('返事が来ないときの文言に、ボタンの名前がありません');
+  else console.log('  返事が来ない：待つ時間・入力が残ること・保存できているかもしれないこと・次にすること、を伝える');
+}
+
+// 「保存は届いていたのに、返事だけが戻らなかった」ときの見分け（もう一度押した保存が、自分の保存と衝突しないように）
+{
+  const stored = { name: '満杯1', answers: { siteName: 'A工場', n: 2 }, drawing: { items: [1, 2], rev: 3 } };
+  const same = { name: '満杯1 ', answers: { siteName: 'A工場', n: 2 }, drawing: { items: [1, 2], rev: 3 } };
+  if (!sameContent(same, stored)) fail('サーバーの内容と同じ保存が、「同じ」と見分けられていません');
+  if (sameContent({ ...same, answers: { siteName: 'A工場', n: 3 } }, stored)) fail('回答が違うのに、「同じ」と見分けています（ほかの人の更新を、上書きしてしまう）');
+  if (sameContent({ ...same, drawing: { items: [1], rev: 3 } }, stored)) fail('図面が違うのに、「同じ」と見分けています（ほかの人の更新を、上書きしてしまう）');
+  if (sameContent({ ...same, name: '別の名前' }, stored)) fail('案件名が違うのに、「同じ」と見分けています');
+  if (!sameContent({ name: '満杯1', answers: stored.answers, drawing: null }, { ...stored, drawing: null })) fail('図面が無い案件で、「同じ」と見分けられていません');
+  console.log('  保存の返事が戻らなかったとき：サーバーの内容と同じなら「保存できている」、違えば、これまでどおり、上書きか読み直しを選んでもらう');
+}
 
 console.log('\n■ 手書きメモの読み取りが失敗したときの文言');
 
