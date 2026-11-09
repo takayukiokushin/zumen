@@ -259,7 +259,7 @@ export const en: Dict = {
   'help.4.t': 'When you delete or want to restore a job',
   'help.4.b': 'Pressing “Delete” does not remove a job at once. For 30 days anyone can press “Restore” in “Deleted jobs” below the list. After 30 days it is removed for good, photos included.',
   'help.5.t': 'Sketch reading',
-  'help.5.b': 'A draft of the input is made from photos or images. What is read does not go into the drawing as it is. Review the table and bring in only the checked items with “Apply the selected items and go to Enter equipment”. A person must always make the final check.',
+  'help.5.b': 'A draft of the input is made from photos or images (PDFs too). After you press “Read N file(s)”, it takes from several tens of seconds to a few minutes (you can stop it with “Cancel”). When it finishes, press “Apply what was read” and the content goes into “Enter equipment”. Items that are needed to make the drawing but could not be read can be answered on the same screen. The AI can make mistakes. After applying, a person must always check and correct the result in “Enter equipment” and “Diagram”.',
   'help.6.t': 'Enter equipment and create',
   'help.6.b': 'As you answer the questions, the summary on the right and the drawing are updated. On a narrow screen, use “Hide contents” or “Hide summary” to widen the input area.',
   'help.7.t': 'Editing the drawing',

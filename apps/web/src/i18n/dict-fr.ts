@@ -260,7 +260,7 @@ export const fr: Dict = {
   'help.4.t': 'Supprimer ou restaurer une affaire',
   'help.4.b': '« Supprimer » n’efface pas l’affaire tout de suite. Pendant 30 jours, tout le monde peut la « Restaurer » depuis « Affaires supprimées » sous la liste. Après 30 jours, elle est effacée définitivement, photos comprises.',
   'help.5.t': 'Lecture du croquis',
-  'help.5.b': 'Un brouillon de la saisie est créé à partir de photos ou d’images. Ce qui est lu n’entre pas tel quel dans le schéma. Vérifiez le tableau et n’importez que les éléments cochés avec « Appliquer les éléments choisis et passer à la saisie des équipements ». Une personne doit toujours faire la vérification finale.',
+  'help.5.b': 'Un brouillon de la saisie est créé à partir de photos ou d’images (PDF compris). Après avoir cliqué sur « Lire N fichier(s) », comptez de quelques dizaines de secondes à quelques minutes (« Annuler » permet d’arrêter). Une fois terminé, cliquez sur « Appliquer le contenu lu » : le contenu lu passe dans « Saisir les équipements ». Les éléments nécessaires au schéma mais non lus peuvent être renseignés sur le même écran. L’IA peut se tromper. Après l’application, une personne doit toujours vérifier et corriger le résultat dans « Saisir les équipements » et « Schéma ».',
   'help.6.t': 'Saisir les équipements et créer',
   'help.6.b': 'En répondant aux questions, le récapitulatif à droite et le schéma sont mis à jour. Sur un écran étroit, « Masquer le sommaire » ou « Masquer le récapitulatif » élargit la zone de saisie.',
   'help.7.t': 'Modifier le schéma',
