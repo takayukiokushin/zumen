@@ -30,7 +30,7 @@ export const ja = {
 
   'project.choose': '案件を選ぶ',
   'project.list': '図面一覧',
-  'project.nameLabel': '図面：',
+  'project.nameLabel': '案件：',
   'project.new': '案件を追加',
   'project.newName': '案件の名前を入れてください。',
   'project.search': '案件名・事業場名称・お客様番号で探す',
@@ -170,7 +170,7 @@ export const ja = {
   'hearing.hidePreview': 'いまの構成を隠す',
   'hearing.showPreview': 'いまの構成を出す',
 
-  'project.rename': '図面の名称を変更',
+  'project.rename': '案件名を変更',
   'project.readonly': '閲覧のみ',
   'project.hasUnsaved': '未保存の変更があります',
   'project.savedAt': 'に保存',

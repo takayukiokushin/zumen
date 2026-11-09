@@ -29,7 +29,7 @@ export const zh: Dict = {
 
   'project.choose': '选择项目',
   'project.list': '图纸一览',
-  'project.nameLabel': '图纸：',
+  'project.nameLabel': '项目：',
   'project.new': '新建项目',
   'project.newName': '请输入项目名称。',
   'project.search': '按项目名称、事业场名称或客户编号查找',
@@ -166,7 +166,7 @@ export const zh: Dict = {
   'hearing.hidePreview': '隐藏当前构成',
   'hearing.showPreview': '显示当前构成',
 
-  'project.rename': '修改图纸名称',
+  'project.rename': '修改项目名称',
   'project.readonly': '仅查看',
   'project.hasUnsaved': '有未保存的修改',
   'project.savedAt': '已保存',

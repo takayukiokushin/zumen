@@ -29,7 +29,7 @@ export const fr: Dict = {
 
   'project.choose': 'Choisir une affaire',
   'project.list': 'Tous les schémas',
-  'project.nameLabel': 'Schéma : ',
+  'project.nameLabel': 'Affaire : ',
   'project.new': 'Nouvelle affaire',
   'project.newName': 'Saisissez un nom pour l’affaire.',
   'project.search': 'Rechercher par nom d’affaire, de site ou numéro de client',
@@ -170,7 +170,7 @@ export const fr: Dict = {
   'hearing.hidePreview': 'Masquer le récapitulatif',
   'hearing.showPreview': 'Afficher le récapitulatif',
 
-  'project.rename': 'Renommer le schéma',
+  'project.rename': 'Renommer l’affaire',
   'project.readonly': 'Lecture seule',
   'project.hasUnsaved': 'Modifications non enregistrées',
   'project.savedAt': 'enregistré',

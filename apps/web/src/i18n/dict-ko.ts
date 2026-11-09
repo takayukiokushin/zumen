@@ -29,7 +29,7 @@ export const ko: Dict = {
 
   'project.choose': '건을 고르기',
   'project.list': '도면 목록',
-  'project.nameLabel': '도면: ',
+  'project.nameLabel': '건: ',
   'project.new': '새 건',
   'project.newName': '건의 이름을 입력하세요.',
   'project.search': '건 이름·사업장 명칭·고객 번호로 찾기',
@@ -168,7 +168,7 @@ export const ko: Dict = {
   'hearing.hidePreview': '현재 구성 숨기기',
   'hearing.showPreview': '현재 구성 보이기',
 
-  'project.rename': '도면 이름 변경',
+  'project.rename': '건 이름 변경',
   'project.readonly': '보기 전용',
   'project.hasUnsaved': '저장하지 않은 변경이 있습니다',
   'project.savedAt': '에 저장',

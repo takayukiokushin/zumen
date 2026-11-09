@@ -29,7 +29,7 @@ export const en: Dict = {
 
   'project.choose': 'Choose a job',
   'project.list': 'All drawings',
-  'project.nameLabel': 'Drawing: ',
+  'project.nameLabel': 'Job: ',
   'project.new': 'New job',
   'project.newName': 'Enter a name for the job.',
   'project.search': 'Search by job name, site name or customer number',
@@ -169,7 +169,7 @@ export const en: Dict = {
   'hearing.hidePreview': 'Hide summary',
   'hearing.showPreview': 'Show summary',
 
-  'project.rename': 'Rename drawing',
+  'project.rename': 'Rename job',
   'project.readonly': 'View only',
   'project.hasUnsaved': 'You have unsaved changes',
   'project.savedAt': 'saved',
