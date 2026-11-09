@@ -194,27 +194,36 @@
 
 ## 5. データモデル
 
-`packages/core/src/index.ts` が正。仕様書初版のモデルに対し、ナレッジベースの必須要件である
-**受電設備エリア（`substationAreas`）** を追加している。
+実際に保存しているデータの形。仕様書初版にあった、機器・接続を1つずつ細かく持つ「ドメインモデル」は、採用しなかった。
+**ヒアリングの回答**と**図面**だけを持ち、図面は、回答から自動で組み立てる（手で直した内容は、別に覚えておく）簡単な形にした。
+保存先は、サーバーの SQLite のデータベース（`data/zumen.db`）。定義は `apps/server/src/db.ts`。
 
 ```
-Project
- ├─ id, name, createdAt, updatedAt
- ├─ hearingAnswers
- ├─ sourceFiles[]
- ├─ substationAreas[]   ← エリアごとに形態（キュービクル式／電気室／オープンフレーム式）と設置場所
- ├─ equipment[]         ← areaId でエリアに所属
- ├─ connections[]       ← ケーブル諸元を持てる
- ├─ incomingCable
- └─ drawing { sheet, titleBlock, annotations[], layers[] }   ← layers は 4.9
+案件（projects の1行）
+ ├─ id、案件名（name）、作った日時・更新した日時と更新した人、作った人（owner。練習用のアカウントは自分のものだけ）
+ ├─ answers   … ヒアリングの回答（1つのJSON。質問のID → 値。質問の定義は packages/knowledge）
+ │              ・受電設備エリアが2か所以上のとき、2か所目以降の答えは、前に「a2:」「a3:」を付けたキーで持つ（例：a2:trCapacity）
+ │              ・繰り返す項目（変圧器・PCSの容量の種類など）の2件目以降は、後ろに「__2」「__3」を付けたキーで持つ（例：trCapacity__2）
+ │              ・エリアごとの形態・設置場所（キュービクル式／電気室／オープンフレーム式）も、回答として持つ
+ ├─ drawing   … 編集した図面（1つのJSON。まだ手を入れていなければ null）
+ │              items[]（記号・線・文字・区分枠）、basis（組み立てたときの回答の印）、edited（手で直したか）、
+ │              base（自動で作った図面の控え）、overrides（手で直した内容）、orientation（印刷の向き）、layers[]（4.9）
+ ├─ 写真・PDF（project_files）… 読み取りに使ったもの。「保存」を押すと消える（読み取った案件かの印 sketch_read は残る）
+ ├─ 下書き（project_drafts）  … 「保存」を押す前の入力を、画面が自動で控えたもの。案件ごとに1つ。「保存」を押すと消える
+ ├─ 編集中の印（locked_by・locked_at）… 同時に編集できるのは1人だけ（10b）
+ └─ 消した日時・消した人（deleted_at・deleted_by）… 「ごみ箱」の状態。30日たつと、写真も含めて完全に消える
+利用者（users）とログイン（sessions）は、案件とは別の表で持つ
 ```
+
+複数の受電設備エリア（1つの現場で、受電設備が3〜4箇所に分かれる場合）は、回答の `areaCount`（エリアの数）と、上の「a2:」の
+キーで持つ。エリアの区分枠（一点鎖線の四角）は、エリアが2か所以上のときだけ描く（`shouldDrawAreaFrames`、`packages/knowledge/src/engine.ts`）。
 
 ## 6. 技術スタック
 
 - モノレポ：pnpm workspaces + TypeScript
-- フロント：React + Vite、状態管理 Zustand + Immer（Immerのパッチでundo/redo）
+- フロント：React + Vite。状態は React の標準の仕組み（useState）で持つ。「操作を戻す」は、図面の履歴（200手まで）を持って戻す
 - 作図キャンバス：SVGを自作コンポーネントで実装（接続点への吸着・直交配線・記号差し替え時の結線維持のため、汎用図形ライブラリは使わない）
-- サーバー：Node + Hono、PostgreSQL、オブジェクトストレージ
+- サーバー：Node + Hono。案件は、Node 標準の SQLite（`node:sqlite`）に、写真・PDFは、データ置き場のファイルとして保存する（社内数名の利用で、これで足りる）
 - AI解析：サーバーからClaude API（画像入力＋構造化出力）
 - PDF出力：ブラウザの印刷機能（「印刷実行 / PDF化」）で、SVGをそのままベクタのPDFにする
 - デスクトップ：Electron（macOS / Windows インストーラ）。
@@ -243,7 +252,7 @@ Project
 | # | 内容 | 状態 |
 |---|---|---|
 | 1 | モノレポ基盤・ドキュメント・CI | 完了 |
-| 2 | ドメインモデル | 完了 |
+| 2 | データの形（回答と図面。5. データモデル） | 完了 |
 | 3 | 記号ライブラリ（独自SVG 72種）＋ カタログ | 完了（全記号確定） |
 | 4 | ナレッジベースのルール・質問定義 | 完了 |
 | 5 | ヒアリングフォーム | 完了 |

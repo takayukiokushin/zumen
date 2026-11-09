@@ -345,8 +345,8 @@ VCT以降の受電設備（キュービクル等）は、建物内の「どこ�
 
 - 1つの建物・現場であっても、受電設備が複数箇所（例：3〜4箇所）に分かれて設置されることがある。
 - 各エリアごとに形態と設置場所が異なる場合がある。
-- → データ構造上、`Project.substationAreas[]` として複数登録できるようにし、
-  エリアごとに形態・設置場所のラベルを持たせている（`packages/core/src/index.ts`）。
+- → データ構造上、回答の `areaCount`（エリアの数）と、2か所目以降の「a2:」を付けたキーで、複数のエリアを持てるようにし、
+  エリアごとに形態・設置場所（`areaForm`・`areaPlacement`）を持たせている（`docs/spec.md` の「5. データモデル」）。
 
 ---
 
@@ -357,7 +357,7 @@ VCT以降の受電設備（キュービクル等）は、建物内の「どこ�
 - 受電設備が**2箇所以上ある場合のみ**、各エリアを**一点鎖線の四角**で囲う。
 - **1箇所しかない場合は全体を囲わない。** かえって分かりにくくなるため。
 - 枠の具体的な形は代表図面を参照する（図面到着待ち）。
-- 実装：`shouldDrawAreaFrames()`（`packages/core`）／`substation-area`（`packages/symbols`）
+- 実装：`shouldDrawAreaFrames()`（`packages/knowledge/src/engine.ts`）／`substation-area`（`packages/symbols`）
 
 ### 接続点・分岐点
 

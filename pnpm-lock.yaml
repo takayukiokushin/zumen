@@ -47,9 +47,6 @@ importers:
       '@zumen/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@zumen/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@zumen/knowledge':
         specifier: workspace:*
         version: link:../../packages/knowledge
@@ -87,8 +84,6 @@ importers:
       '@zumen/symbols':
         specifier: workspace:*
         version: link:../symbols
-
-  packages/core: {}
 
   packages/knowledge: {}
 
