@@ -10,7 +10,7 @@ import { Hono } from 'hono';
 import { AnalyzeTimeoutError, analyze } from './analyze.ts';
 import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
-import { currentUser, login, logout, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
+import { currentUser, login, logout, purgeExpiredSessions, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
 import type { User } from './auth.ts';
 import { projects, purgeExpiredTrash, purgeOldDrafts, purgeStrayFiles } from './projects.ts';
 import { admin } from './admin.ts';
@@ -213,6 +213,7 @@ serve({ fetch: app.fetch, port, ...(listenHost ? { hostname: listenHost } : {}) 
       purgeExpiredTrash();
       purgeOldDrafts();
       purgeStrayFiles();
+      purgeExpiredSessions();
     } catch (e) {
       logError('片づけの失敗（動作は続けます）', e);
     }

@@ -46,6 +46,11 @@ const fails = new Map<string, { count: number; last: number; until: number }>();
 /** 存在しないIDでも同じだけ時間をかけるための、形だけのハッシュ */
 const DUMMY_HASH = hashPassword(randomBytes(16).toString('hex'));
 
+/** 期限が切れたログインの記録を消す（使われないまま、たまり続けないように）。消した件数を返す */
+export function purgeExpiredSessions(): number {
+  return Number(db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(new Date().toISOString()).changes);
+}
+
 /** いま止められているか。止められていれば、あと何秒かを返す */
 function lockedFor(id: string): number {
   const f = fails.get(id);

@@ -1321,6 +1321,75 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     check('2人が同時に編集の印を取りに来ても、印を持つのは1人だけ', new Set(holders).size === 1, `${l1.status}/${l2.status}`);
   }
 
+  /* ---------- 9a8. 長時間つけっぱなし：動き続けても、記憶が増え続けない・古い記録がたまらない ---------- */
+  say('\n■ 長時間つけっぱなし（連続して大量に操作しても、サーバーの記憶が増え続けないか）');
+  {
+    const { spawn } = await import('node:child_process');
+    const { ROOT, sleep, freePort } = await import('./common.ts');
+    // 期限が切れたログインの記録だけが消え、有効なものは残る
+    const sp = await runNode(['scripts/selftest/session-purge.ts'], { DATA_DIR: mkdtempSync(join(tmpdir(), 'zumen-purge-')) });
+    const sj = (() => {
+      try {
+        return JSON.parse(sp.out.trim().split('\n').pop() ?? '{}') as { removed?: number; left?: number };
+      } catch {
+        return {};
+      }
+    })();
+    check('期限が切れたログインの記録（5件）だけが消え、有効なもの（3件）は残る', sj.removed === 5 && sj.left === 3, sp.out.trim().slice(-80));
+
+    if (process.platform !== 'linux') {
+      say('  － サーバーの記憶の増え方の試験は、Linux のときだけ行う（この環境では省略）');
+    } else {
+      const sdata = mkdtempSync(join(tmpdir(), 'zumen-soak-'));
+      const senv = { DATA_DIR: sdata };
+      await runNode(['apps/server/src/cli.ts', 'add', 'sk', 'ソーク', 'Tulip-River-4821'], senv);
+      const sport = await freePort();
+      const sb = `http://127.0.0.1:${sport}`;
+      const srv = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'apps/server/src/index.ts'], { cwd: ROOT, env: { ...process.env, ...senv, PORT: String(sport) } });
+      srv.stdout?.on('data', () => undefined);
+      srv.stderr?.on('data', () => undefined);
+      try {
+        let up = false;
+        for (let i = 0; i < 60 && !up; i++) {
+          await sleep(200);
+          up = await fetch(`${sb}/api/health`).then((r) => r.ok).catch(() => false);
+        }
+        const rss = () => Number(/VmRSS:\s+(\d+)/.exec(readFileSync(`/proc/${srv.pid}/status`, 'utf8'))?.[1] ?? 0) / 1024;
+        const lr = await fetch(`${sb}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: 'sk', password: 'Tulip-River-4821' }) });
+        const H = { cookie: (lr.headers.get('set-cookie') ?? '').split(';')[0]!, 'content-type': 'application/json' };
+        const pids: string[] = [];
+        for (let i = 0; i < 12; i++) pids.push(((await (await fetch(`${sb}/api/projects`, { method: 'POST', headers: H, body: JSON.stringify({ name: `p${i}` }) })).json()) as { id: string }).id);
+        const N = Number(process.env.SOAK_REQUESTS ?? 1500);
+        const round = async () => {
+          let n = 0;
+          const worker = async () => {
+            while (n < N) {
+              const i = n++;
+              const id = pids[i % pids.length];
+              const op = i % 6;
+              if (op === 0) await fetch(`${sb}/api/health`);
+              else if (op === 1) await fetch(`${sb}/api/projects?limit=20`, { headers: H }).then((r) => r.arrayBuffer());
+              else if (op === 2) await fetch(`${sb}/api/projects/${id}`, { headers: H }).then((r) => r.arrayBuffer());
+              else if (op === 3) await fetch(`${sb}/api/projects/${id}`, { method: 'PUT', headers: H, body: JSON.stringify({ answers: { siteName: `S${i}`, pad: 'x'.repeat(50_000) }, drawing: { n: i } }) });
+              else if (op === 4) await fetch(`${sb}/api/projects/${id}/draft`, { method: 'PUT', headers: H, body: JSON.stringify({ name: 'd', answers: { pad: 'y'.repeat(20_000) }, drawing: null, sketchRead: false, baseUpdatedAt: null }) });
+              else await fetch(`${sb}/api/projects/${id}/lock`, { method: 'POST', headers: H, body: '{}' });
+            }
+          };
+          await Promise.all(Array.from({ length: 12 }, worker));
+          return rss();
+        };
+        const r1 = await round();
+        const r2 = await round();
+        const r3 = await round();
+        check(`連続して大量に操作しても（${N}回ずつ3回）、サーバーの記憶は増え続けない（1回目→3回目で、増えたのが 40MB 以内）`, up && r3 - r1 < 40, `${r1.toFixed(0)}MB → ${r2.toFixed(0)}MB → ${r3.toFixed(0)}MB`);
+        check('大量に操作したあとも、サーバーは普通に答える', await fetch(`${sb}/api/health`).then((r) => r.ok).catch(() => false));
+      } finally {
+        srv.kill('SIGKILL');
+        rmSync(sdata, { recursive: true, force: true });
+      }
+    }
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {

@@ -1,3 +1,4 @@
+import { pushPast } from './history.ts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
@@ -48,7 +49,7 @@ interface History {
   future: Doc[];
 }
 
-const commit = (h: History, next: Doc): History => ({ past: [...h.past, h.present], present: next, future: [] });
+const commit = (h: History, next: Doc): History => ({ past: pushPast(h.past, h.present), present: next, future: [] });
 /** 矢印キーで1回に動かす距離（図面の座標。格子の間隔 2 の倍数） */
 const ARROW_STEP = 4;
 /** Shift キーを押しながら矢印キーを押したときは、この倍数だけ大きく動かす */
@@ -64,7 +65,7 @@ const ARROW_MOVE: Record<string, [number, number]> = {
 const undo = (h: History): History =>
   h.past.length === 0 ? h : { past: h.past.slice(0, -1), present: h.past[h.past.length - 1]!, future: [h.present, ...h.future] };
 const redo = (h: History): History =>
-  h.future.length === 0 ? h : { past: [...h.past, h.present], present: h.future[0]!, future: h.future.slice(1) };
+  h.future.length === 0 ? h : { past: pushPast(h.past, h.present), present: h.future[0]!, future: h.future.slice(1) };
 
 interface EditorProps {
   answers: Answers;
@@ -320,7 +321,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     const cur = layerOf(docRef.current, layerId)?.items ?? [];
     setLayerHist((h) => {
       const e = h[layerId] ?? { past: [], future: [] };
-      return { ...h, [layerId]: { past: merge ? e.past : [...e.past, cur], future: [] } };
+      return { ...h, [layerId]: { past: merge ? e.past : pushPast(e.past, cur), future: [] } };
     });
     applyLayers(setLayerItems(docRef.current, layerId, items));
   };
@@ -339,7 +340,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       setLayerHist({ ...layerHist, [activeId]: { past: e.past.slice(0, -1), future: [cur, ...e.future] } });
       applyLayers(setLayerItems(doc, activeId, e.past[e.past.length - 1]!));
     } else if (kind === 'redo' && e.future.length > 0) {
-      setLayerHist({ ...layerHist, [activeId]: { past: [...e.past, cur], future: e.future.slice(1) } });
+      setLayerHist({ ...layerHist, [activeId]: { past: pushPast(e.past, cur), future: e.future.slice(1) } });
       applyLayers(setLayerItems(doc, activeId, e.future[0]!));
     } else return;
     setSelection([]);

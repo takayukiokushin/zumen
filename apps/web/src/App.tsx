@@ -171,7 +171,18 @@ export function App() {
       });
     };
     const timer = setInterval(beat, 60_000);
-    return () => clearInterval(timer);
+    // パソコンのスリープ明け・別のタブから戻ったとき・通信が戻ったときは、1分待たずに、すぐ確かめる
+    // （寝ている間に、編集中の印が切れたり、ログインが切れたりしていないか）
+    const onBack = () => {
+      if (document.visibilityState === 'visible') beat();
+    };
+    document.addEventListener('visibilitychange', onBack);
+    window.addEventListener('online', beat);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onBack);
+      window.removeEventListener('online', beat);
+    };
   }, [projectId, readOnly]);
 
   /** 画面を閉じるときは編集中の印を外す（他の人が待たされないように） */

@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { describeFailure, isGateway, networkDown, networkTimeout, saveRetry } from '../apps/web/src/session/messages.ts';
 import { sameContent } from '../apps/web/src/session/saveRecovery.ts';
 import { makeOnce } from '../apps/web/src/session/once.ts';
+import { MAX_UNDO, pushPast } from '../apps/web/src/editor/history.ts';
 import { CALL_TIMEOUT_MS } from '../apps/web/src/session/timing.ts';
 import { Anthropic, describeAnalyzeFailure } from '../apps/server/src/analyze-errors.ts';
 
@@ -122,6 +123,18 @@ else console.log(`  保存に失敗したときの案内：${saveRetry()}`);
   if (!threw || once.running) fail('失敗したあとも「動いている」のままです（以降の操作が、ずっと効かなくなる）');
   if ((await once(async () => 'ok')) !== 'ok') fail('失敗のあとに、また使えません');
   if (!failed) console.log('  連打の入口：動いている間の呼び出しは、何もしない／終わったら、また使える／失敗しても、詰まらない');
+}
+
+// 長時間つけっぱなし：「操作を戻す」の履歴は、上限を超えたら、古いものから忘れる（増え続けない）
+{
+  let past: number[] = [];
+  for (let i = 0; i < MAX_UNDO * 5; i++) past = pushPast(past, i);
+  if (past.length !== MAX_UNDO) fail(`履歴が ${past.length} 件です（上限 ${MAX_UNDO} 件のはず）`);
+  if (past[past.length - 1] !== MAX_UNDO * 5 - 1) fail('いちばん新しい操作が、履歴の最後にありません');
+  if (past[0] !== MAX_UNDO * 4) fail('古いものから忘れていません');
+  if (pushPast([1, 2], 3).join() !== '1,2,3') fail('上限に達するまでは、全部残るはずです');
+  if (MAX_UNDO < 50 || MAX_UNDO > 1000) fail('「操作を戻す」の上限が、少なすぎる・多すぎる（50〜1000）');
+  else console.log(`  操作を戻す履歴：${MAX_UNDO}手まで。超えたら、古いものから忘れる（新しい操作は、必ず残る）`);
 }
 
 console.log('\n■ 手書きメモの読み取りが失敗したときの文言');
