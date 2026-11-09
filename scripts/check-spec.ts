@@ -8,12 +8,14 @@
  *   node --experimental-strip-types scripts/check-spec.ts
  */
 import { readFileSync } from 'node:fs';
-import { AREA_KINDS, ARROW_LABEL_DEFAULT, COUNT_LIMITS, FIXED_LAYERS, MAX_COUNT, MAX_CUSTOM_LAYERS, PCS_INPUT_MAX, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH } from '../packages/knowledge/src/index.ts';
+import { AREA_CHAIN, AREA_KINDS, ARROW_LABEL_DEFAULT, CB_CHAIN, DOWNSTREAM, EXTRAS, FEEDERS, PFS_CHAIN, QUESTIONS, TRANSFORMER, UPSTREAM, COUNT_LIMITS, FIXED_LAYERS, MAX_COUNT, MAX_CUSTOM_LAYERS, PCS_INPUT_MAX, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH } from '../packages/knowledge/src/index.ts';
+import { SYMBOLS } from '../packages/symbols/src/index.ts';
 import { ARROW_LEN_DEFAULT, ARROW_LEN_MAX, ARROW_LEN_MIN, ARROW_STROKE, AREA_STROKE, CROSS_SPECS, DOT_RADIUS, GROUND_STROKE, HATCH_GAP, HATCH_STROKE, LINK_SHAPES, LINK_STROKE, TEXT_SIZE_MAX, TEXT_SIZE_MIN } from '../packages/layout/src/index.ts';
 
 const root = new URL('../', import.meta.url);
 const read = (p: string) => readFileSync(new URL(p, root), 'utf8');
 const spec = read('docs/spec.md');
+const readme = read('README.md');
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -76,6 +78,26 @@ row('PDFの大きさ（MB）', numFrom('apps/server/src/projects.ts', /MAX_PDF_B
 row('PDFのページ数', numFrom('apps/server/src/analyze.ts', /MAX_PDF_PAGES = (\d+)/));
 row('記録ファイル（error.log・server.log）を入れ替える大きさ（MB）', numFrom('apps/server/src/errors.ts', /LOG_MAX_BYTES = (\d+) \* 1024 \* 1024/));
 console.log('  レイヤーの寸法・形・上限と、付録Aの数の上限が、プログラムの値と一致');
+
+// README・仕様書に書いてある、記号・質問・構成ルールの件数（増やしたのに、書き直し忘れるのを防ぐ）
+{
+  const roles = new Set(
+    [...UPSTREAM, ...DOWNSTREAM, ...EXTRAS, ...FEEDERS, ...TRANSFORMER, ...AREA_CHAIN, ...PFS_CHAIN, ...CB_CHAIN].map((p) => p.role.replace(/^(pcs|pv)-tr\d+$/, '$1-tr')),
+  );
+  const want = { 記号: SYMBOLS.length, 質問: QUESTIONS.filter((q) => !q.noAi).length, 構成ルール: roles.size };
+  const num = (text: string, re: RegExp) => Number(re.exec(text)?.[1] ?? NaN);
+  const checks: [string, string, RegExp, number][] = [
+    ['README', readme, /独自SVG (\d+)種/, want.記号],
+    ['README', readme, /質問(\d+)件/, want.質問],
+    ['README', readme, /構成ルール(\d+)件/, want.構成ルール],
+    ['仕様書', spec, /独自SVG (\d+)種/, want.記号],
+  ];
+  for (const [where, text, re, expected] of checks) {
+    const got = num(text, re);
+    if (got !== expected) fail(`${where}に書いてある件数（${re.source.replace('(\\d+)', '○')}＝${got}）が、プログラムの値（${expected}）と違います`);
+  }
+  console.log(`  記号${want.記号}種・質問${want.質問}件・構成ルール${want.構成ルール}件：README・仕様書の数字と一致`);
+}
 
 // 付録B 動作を確かめた環境：決めた環境が、すべて載っていること
 for (const env of ['パソコンの Chrome（Chromium）', '画面の幅（390〜1440px の6通り）', 'Safari（Mac）', 'Firefox', 'iPhone・iPad の実機', 'Android の実機', 'Windows のパソコン', 'Electron 版（apps/desktop）', 'AI 読み取りの結果の人による確認']) {
