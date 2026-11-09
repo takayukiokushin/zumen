@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { analyze } from './analyze.ts';
+import { AnalyzeTimeoutError, analyze } from './analyze.ts';
 import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
 import { currentUser, login, logout, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
@@ -115,13 +115,26 @@ app.post('/api/analyze', requireAuth, async (c) => {
   if (!body.images?.length) return c.json({ error: '画像が選ばれていません。画像を1枚以上選んでから、もう一度お試しください。' }, 400);
   if (body.images.length > 10) return c.json({ error: '画像は一度に10枚までです。何回かに分けて、読み取ってください。' }, 400);
 
+  // 同じ人が、読み取りの途中で、もう一度押した（別の画面から・通信が切れて押し直した）ときは、断る。
+  // 二重に AI を使って、料金が二重にかかるのを防ぐ（先の読み取りは、決めた時間で必ず終わる）
+  const who = c.get('user').id;
+  if (analyzing.has(who)) {
+    return c.json({ error: '前の読み取りが、まだ続いています。終わるまで、少しお待ちください（長くても数分です）。' }, 429);
+  }
+  analyzing.add(who);
   try {
-    return c.json(await analyze(body.images, body.answers ?? {}));
+    // 画面が閉じられた・「やめる」を押されて接続が切れたら、AI への問い合わせも、そこでやめる
+    return c.json(await analyze(body.images, body.answers ?? {}, c.req.raw.signal));
   } catch (e) {
     console.error('解析に失敗しました', e);
-    return c.json({ error: describeAnalyzeFailure(e) }, 502);
+    return c.json({ error: describeAnalyzeFailure(e) }, e instanceof AnalyzeTimeoutError ? 504 : 502);
+  } finally {
+    analyzing.delete(who);
   }
 });
+
+/** いま読み取りの途中の人（1人に1つまで） */
+const analyzing = new Set<string>();
 
 /* ---------------- 画面の配信 ---------------- */
 

@@ -819,6 +819,174 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     }
   }
 
+  /* ---------- 9a4. AI の読み取り：応答が来ない・遅い・途中で切れる・大きすぎる ---------- */
+  say('\n■ AI の読み取り（本物の AI は使わず、わざと応答しない・遅い・途中で切れる、疑似の AI サーバーで確かめる）');
+  {
+    const J = (r: Response) => r.json() as Promise<any>;
+    const { spawn } = await import('node:child_process');
+    const { createServer } = await import('node:http');
+    const { ROOT, sleep, freePort } = await import('./common.ts');
+    // 疑似の AI サーバー（Anthropic の messages API のふりをする）
+    type Mode = 'ok' | 'slow' | 'hang' | 'cut' | 'overloaded' | 'maxtokens';
+    const fake = { mode: 'ok' as Mode, slowMs: 600, hits: 0, aborted: 0 };
+    const reply = (stop: string) =>
+      JSON.stringify({ id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5', content: [{ type: 'text', text: JSON.stringify({ answers: [], evidence: [], uncertain: [], notes: ['試験'], questions: [] }) }], stop_reason: stop, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 } });
+    const sockets = new Set<import('node:net').Socket>();
+    const fakeSrv = createServer((req, res) => {
+      fake.hits++;
+      let done = false;
+      req.on('close', () => {
+        if (!done) fake.aborted++;
+      });
+      req.resume();
+      req.on('end', () => {
+        const send = (code: number, body: string) => {
+          done = true;
+          res.writeHead(code, { 'content-type': 'application/json' });
+          res.end(body);
+        };
+        if (fake.mode === 'ok') send(200, reply('end_turn'));
+        else if (fake.mode === 'maxtokens') send(200, reply('max_tokens'));
+        else if (fake.mode === 'overloaded') send(529, JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }));
+        else if (fake.mode === 'slow') setTimeout(() => send(200, reply('end_turn')), fake.slowMs);
+        else if (fake.mode === 'cut') {
+          res.writeHead(200, { 'content-type': 'application/json', 'content-length': '5000' });
+          res.write('{"id":"msg_1","type":"mess');
+          setTimeout(() => {
+            done = true;
+            res.socket?.destroy();
+          }, 100);
+        }
+        // hang：何も返さない
+      });
+    });
+    fakeSrv.on('connection', (sk) => {
+      sockets.add(sk);
+      sk.on('close', () => sockets.delete(sk));
+    });
+    await new Promise<void>((r) => fakeSrv.listen(0, '127.0.0.1', r));
+    const fakePort = (fakeSrv.address() as { port: number }).port;
+
+    const aiData = mkdtempSync(join(tmpdir(), 'zumen-ai-'));
+    const aenv = { DATA_DIR: aiData, ANTHROPIC_API_KEY: 'sk-ant-fake-for-test', ANTHROPIC_BASE_URL: `http://127.0.0.1:${fakePort}`, ANALYZE_TIMEOUT_MS: '1500' };
+    await runNode(['apps/server/src/cli.ts', 'add', 'ai1', 'AI一', 'testpass123'], aenv);
+    await runNode(['apps/server/src/cli.ts', 'add', 'ai2', 'AI二', 'testpass123'], aenv);
+    const aport = await freePort();
+    const ab = `http://127.0.0.1:${aport}`;
+    const srv = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'apps/server/src/index.ts'], { cwd: ROOT, env: { ...process.env, ...aenv, PORT: String(aport) } });
+    srv.stdout?.on('data', () => undefined);
+    srv.stderr?.on('data', () => undefined);
+    try {
+      let up = false;
+      for (let i = 0; i < 40 && !up; i++) {
+        await sleep(500);
+        up = await fetch(`${ab}/api/health`).then((r) => r.ok).catch(() => false);
+      }
+      check('読み取りの試験用のサーバーが起動する', up);
+      const loginA = async (id: string) => {
+        const r = await fetch(`${ab}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: id, password: 'testpass123' }) });
+        return (r.headers.get('set-cookie') ?? '').split(';')[0]!;
+      };
+      const c1 = await loginA('ai1');
+      const c2 = await loginA('ai2');
+      const png = Buffer.from('dummy').toString('base64');
+      const body = (images: { mediaType: string; data: string }[] = [{ mediaType: 'image/png', data: png }]) => JSON.stringify({ images, answers: {} });
+      const post = async (cookie: string, b = body(), signal?: AbortSignal) => {
+        const t0 = Date.now();
+        const r = await fetch(`${ab}/api/analyze`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: b, ...(signal ? { signal } : {}) }).catch((e: Error & { cause?: { message?: string } }) => {
+          if (/other side closed|ECONNRESET/.test(e.cause?.message ?? e.message)) return fetch(`${ab}/api/analyze`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: b });
+          throw e;
+        });
+        const j = (await J(r).catch(() => ({}))) as { error?: string; result?: unknown };
+        return { status: r.status, error: j.error ?? '', result: j.result, ms: Date.now() - t0 };
+      };
+      const reset = (mode: Mode) => {
+        fake.mode = mode;
+        fake.hits = 0;
+        fake.aborted = 0;
+      };
+
+      // 1. 応答が来ない：「ずっと待たされる」のではなく、決めた時間で止まって、分かる言葉で伝える
+      reset('hang');
+      const hang = await post(c1);
+      check('AI が応答しないとき、ずっと待たされず、決めた時間のうちに止まる（時間切れの状態 504）', hang.status === 504 && hang.ms < 15_000, `${hang.status}・${hang.ms}ms`);
+      check('時間切れの案内は、「時間がかかりすぎたので止めた」ことと、どうするかを伝える（「つながらなかった」とは言わない）', /時間がかかりすぎ/.test(hang.error) && /お試しください/.test(hang.error) && !/つながりませんでした/.test(hang.error), hang.error);
+      check('やり直しは1回だけ（無駄に長く待たず、料金も二重に増やさない）', fake.hits === 2, `AI への問い合わせ ${fake.hits}回`);
+      // 2. 止まったあとは、すぐ、もう一度使える
+      reset('ok');
+      const again = await post(c1);
+      check('時間切れのあと、すぐにもう一度、読み取れる', again.status === 200 && again.result !== undefined, `${again.status}`);
+
+      // 3. 遅いが、時間内に返る
+      reset('slow');
+      const slow = await post(c1);
+      check('時間内に返ってくる遅い応答は、ふつうに読み取れる', slow.status === 200 && slow.ms >= 500, `${slow.status}・${slow.ms}ms`);
+
+      // 4. 途中で切れる
+      reset('cut');
+      const cut = await post(c1);
+      check('AI の応答が途中で切れたとき、すぐに、分かる言葉（日本語）で伝える', cut.status === 502 && /[ぁ-んァ-ン一-龥]/.test(cut.error) && !/ECONN|socket|fetch failed|undefined/i.test(cut.error) && cut.ms < 15_000, `${cut.status}・${cut.ms}ms・${cut.error.slice(0, 50)}`);
+
+      // 5. AI が混み合っている（529）
+      reset('overloaded');
+      const over = await post(c1);
+      check('AI が混み合っているとき、1回だけやり直して、分かる言葉で伝える', over.status === 502 && /混み合って/.test(over.error) && fake.hits === 2, `${over.status}・問い合わせ ${fake.hits}回・${over.error.slice(0, 40)}`);
+
+      // 6. 結果が長すぎて途中で止まった
+      reset('maxtokens');
+      const tooLong = await post(c1);
+      check('結果が長すぎて途中で止まったとき、枚数やページ数を減らすよう伝える', tooLong.status === 502 && /途中で止まりました/.test(tooLong.error) && /減らして/.test(tooLong.error), tooLong.error);
+
+      // 7. 画面が「やめる」を押した（接続が切れた）：AI への問い合わせも止まり、すぐに次を使える
+      reset('hang');
+      const ctl = new AbortController();
+      const pending = post(c1, body(), ctl.signal).catch(() => null);
+      await sleep(700);
+      ctl.abort();
+      await pending;
+      let stopped = false;
+      for (let i = 0; i < 20 && !stopped; i++) {
+        await sleep(200);
+        stopped = fake.aborted >= 1;
+      }
+      check('「やめる」を押す（接続が切れる）と、AI への問い合わせも、そこでやめる（待ち続けて料金がかからない）', stopped, `切れた問い合わせ ${fake.aborted}回`);
+      reset('ok');
+      const afterCancel = await post(c1);
+      check('やめたあと、すぐにもう一度、読み取れる', afterCancel.status === 200, `${afterCancel.status}`);
+
+      // 8. 読み取りの途中でもう一度押す（二重に押す・通信が切れて押し直す）：断る。別の人は、そのまま使える
+      reset('slow');
+      fake.slowMs = 1000;
+      const first = post(c1);
+      await sleep(300);
+      const second = await post(c1);
+      const other = await post(c2);
+      const firstDone = await first;
+      check('読み取りの途中でもう一度押しても、二重には AI を使わず、「前の読み取りが続いている」と伝える（429）', second.status === 429 && /前の読み取り/.test(second.error) && firstDone.status === 200, `${second.status}・先のもの ${firstDone.status}`);
+      check('別の人の読み取りは、止められない', other.status === 200, `${other.status}`);
+      check('二重に押しても、AI への問い合わせは、読み取りの数だけ（2回）', fake.hits === 2, `${fake.hits}回`);
+      fake.slowMs = 600;
+
+      // 9. 大きすぎる・多すぎる：AI に送る前に、すぐ断る（待たされない・料金がかからない）
+      reset('ok');
+      const eleven = await post(c1, body(Array.from({ length: 11 }, () => ({ mediaType: 'image/png', data: png }))));
+      check('画像が11枚以上のとき、すぐ断る', eleven.status === 400 && /10枚/.test(eleven.error) && fake.hits === 0, `${eleven.status}`);
+      const pages = '/Type /Page '.repeat(11);
+      const pdf = await post(c1, body([{ mediaType: 'application/pdf', data: Buffer.from(pages).toString('base64') }]));
+      check('PDF が11ページ以上のとき、AI に送らず、すぐ断る', pdf.status === 502 && /ページ数が多すぎ/.test(pdf.error) && fake.hits === 0 && pdf.ms < 3000, `${pdf.status}・${pdf.ms}ms`);
+      const huge = await post(c1, body([{ mediaType: 'image/png', data: 'A'.repeat(31 * 1024 * 1024) }]));
+      check('巨大なファイル（合計30MB超）のとき、AI に送らず、すぐ断る（待たされない）', [400, 413, 502].includes(huge.status) && /大きすぎ/.test(huge.error) && fake.hits === 0 && huge.ms < 15_000, `${huge.status}・${huge.ms}ms・${huge.error.slice(0, 40)}`);
+      const badType = await post(c1, body([{ mediaType: 'image/bmp', data: png }]));
+      check('対応していない形式のとき、AI に送らず、すぐ断る', badType.status === 502 && /対応していない形式/.test(badType.error) && fake.hits === 0, `${badType.status}`);
+      check('断ったあとも、サーバーは動いている', await fetch(`${ab}/api/health`).then((r) => r.ok).catch(() => false));
+    } finally {
+      srv.kill();
+      for (const sk of sockets) sk.destroy();
+      await new Promise<void>((r) => fakeSrv.close(() => r()));
+      rmSync(aiData, { recursive: true, force: true });
+    }
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {

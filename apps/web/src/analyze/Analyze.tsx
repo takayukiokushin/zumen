@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Answers } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
 import { api } from '../session/api.ts';
@@ -84,27 +84,63 @@ export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing 
     setImages((prev) => [...prev, ...next].slice(0, 10));
   };
 
+  /** 読み取りの返事を待つ、いちばん長い時間。サーバーが必ず打ち切る時間（約5分15秒）より、少し長く待つ */
+  const CLIENT_WAIT_MS = 330_000;
+  /** いまの読み取りを、画面から打ち切るためのもの（「やめる」・時間切れ） */
+  const abortRef = useRef<{ ctl: AbortController; why: 'user' | 'timeout' | null } | null>(null);
+  /** 読み取りを始めてから、何秒たったか */
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!busy) return;
+    const started = Date.now();
+    setElapsed(0);
+    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [busy]);
+  // この画面を閉じたら、待つのをやめる（サーバーへの問い合わせも、そこで止まる）
+  useEffect(() => () => abortRef.current?.ctl.abort(), []);
+
   const run = async () => {
     setBusy(true);
     setError(null);
     onStatus?.('busy');
     let ok = false;
+    const mine = { ctl: new AbortController(), why: null as 'user' | 'timeout' | null };
+    abortRef.current = mine;
+    const timer = window.setTimeout(() => {
+      mine.why = 'timeout';
+      mine.ctl.abort();
+    }, CLIENT_WAIT_MS);
     try {
-      const json = await api.analyze({
-        images: images.map((i) => ({ mediaType: i.mediaType, data: i.data })),
-        answers,
-      });
+      const json = await api.analyze(
+        {
+          images: images.map((i) => ({ mediaType: i.mediaType, data: i.data })),
+          answers,
+        },
+        mine.ctl.signal,
+      );
       setResult(json.result as AnalysisResult);
       ok = true;
       onAnalyzed?.();
       setRunId((n) => n + 1);
       // 読み取りに使った写真・PDFは、サーバーには預けない（この画面の中で確認に使うだけ。画面を閉じれば消える）
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('an.err.fail'));
+      if ((e as { name?: string })?.name === 'AbortError') setError(mine.why === 'timeout' ? t('an.err.clientTimeout') : t('an.cancelled'));
+      else setError(e instanceof Error ? e.message : t('an.err.fail'));
     } finally {
+      window.clearTimeout(timer);
+      if (abortRef.current === mine) abortRef.current = null;
       setBusy(false);
       onStatus?.(ok ? 'done' : 'idle');
     }
+  };
+
+  /** 読み取りを、途中でやめる（サーバーへの問い合わせも止まる） */
+  const cancel = () => {
+    const cur = abortRef.current;
+    if (!cur) return;
+    cur.why = 'user';
+    cur.ctl.abort();
   };
 
 
@@ -173,6 +209,16 @@ export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing 
             <button type="button" className="primary" disabled={busy} onClick={() => void run()}>
               {busy ? t('an.busy') : t('an.run', { n: images.length })}
             </button>
+            {busy && (
+              <>
+                <button type="button" className="btn" onClick={cancel}>
+                  {t('an.cancel')}
+                </button>
+                <p className="hint" role="status">
+                  {t('an.busyElapsed', { n: elapsed })}
+                </p>
+              </>
+            )}
           </>
         )}
 

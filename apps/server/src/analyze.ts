@@ -3,7 +3,28 @@ import { buildAnalysisSchema, buildReview, buildSystemPrompt, buildUserPrompt, p
 import type { AnalysisResult, ReviewItem } from '@zumen/ai';
 import type { Answers } from '@zumen/knowledge';
 
-const client = new Anthropic();
+/**
+ * AI の応答を待つ時間の決まり。
+ * 何も決めないと、SDK の標準は「1回10分・失敗したら2回やり直し」で、AI が応答しないとき、最大30分、画面が待たされ続ける。
+ *   ・1回の応答を待つのは、ANALYZE_TIMEOUT_MS（標準 150秒）まで
+ *   ・失敗したときのやり直しは、1回だけ
+ *   ・全体では、（待つ時間 × 2回）＋15秒 で、必ず打ち切る（標準で約5分）
+ * 試験や調整のために、環境変数 ANALYZE_TIMEOUT_MS で変えられる。
+ */
+const parsed = Number(process.env.ANALYZE_TIMEOUT_MS);
+export const ANALYZE_TIMEOUT_MS = Number.isFinite(parsed) && parsed >= 200 ? parsed : 150_000;
+export const ANALYZE_RETRIES = 1;
+export const ANALYZE_DEADLINE_MS = ANALYZE_TIMEOUT_MS * (ANALYZE_RETRIES + 1) + 15_000;
+
+const client = new Anthropic({ timeout: ANALYZE_TIMEOUT_MS, maxRetries: ANALYZE_RETRIES });
+
+/** 決めた時間のうちに、読み取りが終わらなかった（AI が応答しない・遅すぎる） */
+export class AnalyzeTimeoutError extends Error {
+  constructor() {
+    super('読み取りに時間がかかりすぎたので、止めました。もう一度お試しください。何度も続くときは、ファイルの枚数やページ数を減らすか、小さくしてから試してください。続くときは、管理者に伝えてください。');
+    this.name = 'AnalyzeTimeoutError';
+  }
+}
 
 /** 手書きメモの画像 */
 export interface SketchImage {
@@ -60,7 +81,7 @@ function logUsage(usage: Anthropic.Usage, imageCount: number): void {
  * 出力はJSONスキーマで縛っているので、選択式の項目に勝手な値が入ることはない。
  * そのうえで構成ルールと突き合わせ、人が確認すべき点を一覧にして返す。
  */
-export async function analyze(images: SketchImage[], answers: Answers): Promise<AnalyzeResponse> {
+export async function analyze(images: SketchImage[], answers: Answers, clientGone?: AbortSignal): Promise<AnalyzeResponse> {
   const unsupported = images.find((i) => !SUPPORTED.includes(i.mediaType));
   if (unsupported) {
     throw new Error(`対応していない形式です（${unsupported.mediaType}）。JPEG・PNG・GIF・WebP の画像、または PDF にしてください。`);
@@ -85,21 +106,36 @@ export async function analyze(images: SketchImage[], answers: Answers): Promise<
     { type: 'text', text: buildUserPrompt(answers) },
   ];
 
-  const response = await client.messages.create({
-    model: 'claude-opus-5',
-    max_tokens: 16000,
-    thinking: { type: 'adaptive' },
-    system: [{ type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral' } }],
-    output_config: {
-      format: { type: 'json_schema', schema: buildAnalysisSchema() },
-    },
-    messages: [{ role: 'user', content }],
-  });
+  // 全体の打ち切り（時間切れ）と、画面側がやめた（接続が切れた）ときの中断を、まとめて渡す
+  const deadline = AbortSignal.timeout(ANALYZE_DEADLINE_MS);
+  let response: Anthropic.Message;
+  try {
+    response = await client.messages.create(
+      {
+        model: 'claude-opus-5',
+        max_tokens: 16000,
+        thinking: { type: 'adaptive' },
+        system: [{ type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral' } }],
+        output_config: {
+          format: { type: 'json_schema', schema: buildAnalysisSchema() },
+        },
+        messages: [{ role: 'user', content }],
+      },
+      { signal: clientGone ? AbortSignal.any([deadline, clientGone]) : deadline },
+    );
+  } catch (e) {
+    // 時間切れ（1回の待ち時間を超えた・全体の打ち切り）は、「つながらなかった」ではなく、「時間がかかりすぎた」と伝える
+    if (e instanceof Anthropic.APIConnectionTimeoutError || (deadline.aborted && !clientGone?.aborted)) throw new AnalyzeTimeoutError();
+    throw e;
+  }
 
   logUsage(response.usage, images.length);
 
   if (response.stop_reason === 'refusal') {
     throw new Error('解析を実行できませんでした。別の画像でお試しください。');
+  }
+  if (response.stop_reason === 'max_tokens') {
+    throw new Error('読み取る内容が多すぎて、結果が途中で止まりました。ファイルの枚数やページ数を減らして、何回かに分けてお試しください。');
   }
 
   const text = response.content.find((b) => b.type === 'text');

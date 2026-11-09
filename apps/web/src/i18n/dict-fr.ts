@@ -752,4 +752,11 @@ export const fr: Dict = {
   'status.banner.open': 'Voir l’état',
   'status.banner.close': 'Fermer',
   'srv.diskFull': 'Le disque du serveur est plein : il est impossible d’enregistrer ou de se connecter. Ce que vous avez saisi reste sur cet écran (cela sera perdu si vous le fermez ou le rechargez). Demandez à l’administrateur du serveur de libérer de l’espace disque.',
+  'srv.analyzeTimeout': 'La lecture a pris trop de temps et a été arrêtée. Veuillez réessayer. Si cela se répète, réduisez le nombre de fichiers ou de pages, ou rendez-les plus petits. Si cela continue, prévenez l’administrateur.',
+  'srv.analyzeTooLong': 'Il y avait trop de contenu à lire et le résultat s’est arrêté en cours de route. Réduisez le nombre de fichiers ou de pages et essayez en plusieurs fois.',
+  'srv.analyzeBusy': 'La lecture précédente est encore en cours. Veuillez patienter jusqu’à sa fin (quelques minutes au plus).',
+  'an.cancel': 'Annuler',
+  'an.cancelled': 'La lecture a été annulée.',
+  'an.busyElapsed': 'Lecture en cours ({n} secondes écoulées). La lecture par l’IA peut prendre de quelques dizaines de secondes à quelques minutes. Si c’est trop long, appuyez sur « Annuler » et réessayez avec moins de fichiers.',
+  'an.err.clientTimeout': 'Aucune réponse à la lecture n’est arrivée dans le délai prévu (environ 5 minutes). Veuillez réessayer. Si cela se répète, réduisez le nombre de fichiers ou de pages, ou rendez-les plus petits.',
 };

@@ -751,4 +751,11 @@ export const en: Dict = {
   'status.banner.open': 'View status',
   'status.banner.close': 'Close',
   'srv.diskFull': 'The server’s disk is full, so saving and logging in are not possible. What you entered is still on this screen (it will be lost if you close or reload it). Please ask the server administrator to free up disk space.',
+  'srv.analyzeTimeout': 'The reading took too long, so it was stopped. Please try again. If this keeps happening, reduce the number of files or pages, or make them smaller. If it continues, tell the administrator.',
+  'srv.analyzeTooLong': 'There was too much to read, so the result stopped partway. Reduce the number of files or pages and try in several batches.',
+  'srv.analyzeBusy': 'The previous reading is still in progress. Please wait a little until it finishes (a few minutes at most).',
+  'an.cancel': 'Cancel',
+  'an.cancelled': 'The reading was cancelled.',
+  'an.busyElapsed': 'Reading in progress ({n} seconds so far). The AI reading can take from tens of seconds to a few minutes. If it takes too long, press “Cancel” and try again with fewer files.',
+  'an.err.clientTimeout': 'No reply to the reading arrived within the set time (about 5 minutes). Please try again. If it keeps happening, reduce the number of files or pages, or make them smaller.',
 };
