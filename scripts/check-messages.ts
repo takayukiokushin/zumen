@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { describeFailure, isGateway, networkDown, networkTimeout, saveRetry } from '../apps/web/src/session/messages.ts';
 import { sameContent } from '../apps/web/src/session/saveRecovery.ts';
+import { makeOnce } from '../apps/web/src/session/once.ts';
 import { CALL_TIMEOUT_MS } from '../apps/web/src/session/timing.ts';
 import { Anthropic, describeAnalyzeFailure } from '../apps/server/src/analyze-errors.ts';
 
@@ -81,6 +82,46 @@ else console.log(`  保存に失敗したときの案内：${saveRetry()}`);
   if (sameContent({ ...same, name: '別の名前' }, stored)) fail('案件名が違うのに、「同じ」と見分けています');
   if (!sameContent({ name: '満杯1', answers: stored.answers, drawing: null }, { ...stored, drawing: null })) fail('図面が無い案件で、「同じ」と見分けられていません');
   console.log('  保存の返事が戻らなかったとき：サーバーの内容と同じなら「保存できている」、違えば、これまでどおり、上書きか読み直しを選んでもらう');
+}
+
+// 連打の入口：動いている間に呼ばれても、何もしない。終わったら、また使える。失敗しても、詰まらない
+{
+  const once = makeOnce();
+  let runs = 0;
+  let release: () => void = () => undefined;
+  const first = once(
+    () =>
+      new Promise<string>((done) => {
+        runs++;
+        release = () => done('1回目');
+      }),
+  );
+  const second = once(async () => {
+    runs++;
+    return '2回目';
+  });
+  const third = once(async () => {
+    runs++;
+    return '3回目';
+  });
+  if (!once.running) fail('動いている間なのに、「動いていない」になっています');
+  if ((await second) !== undefined || (await third) !== undefined) fail('動いている間に呼ばれた操作が、動いてしまいました（連打で二重になる）');
+  release();
+  if ((await first) !== '1回目') fail('1回目の操作の結果が返りません');
+  if (runs !== 1) fail(`3回呼んで、実際に動いたのが ${runs} 回です（1回のはず）`);
+  if (once.running) fail('終わったのに、「動いている」のままです');
+  if ((await once(async () => 'また使える')) !== 'また使える') fail('終わったあとに、また使えません');
+  let threw = false;
+  try {
+    await once(async () => {
+      throw new Error('失敗');
+    });
+  } catch {
+    threw = true;
+  }
+  if (!threw || once.running) fail('失敗したあとも「動いている」のままです（以降の操作が、ずっと効かなくなる）');
+  if ((await once(async () => 'ok')) !== 'ok') fail('失敗のあとに、また使えません');
+  if (!failed) console.log('  連打の入口：動いている間の呼び出しは、何もしない／終わったら、また使える／失敗しても、詰まらない');
 }
 
 console.log('\n■ 手書きメモの読み取りが失敗したときの文言');

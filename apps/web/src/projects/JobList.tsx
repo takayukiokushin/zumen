@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../session/api.ts';
+import { makeOnce } from '../session/once.ts';
 import type { PracticeSource, ProjectSummary, Role, TrashItem } from '../session/api.ts';
 import { useDialogs } from '../Dialogs.tsx';
 import { useLang, useT } from '../i18n/useT.ts';
@@ -182,84 +183,92 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
     }
   };
 
-  const create = async () => {
-    // 名前を聞く前に確かめる（入力した名前が無駄にならないように）
-    if (!(await canLeave())) return;
-    const name = await input({
-      title: t('project.new'),
-      message: [t('project.newName')],
-      defaultValue: q.trim() || t('project.newDefault'),
-      // 案件名は必須。空のままでは作らせない
-      validate: (v) => (v.trim() === '' ? t('project.nameRequired') : null),
-    });
-    if (name !== null) onNew(name.trim(), name.trim() !== t('project.newDefault'));
-  };
+  /** この画面の操作（追加・複製・消す・戻す・開く）は、同時に2つ動かさない（素早く2回押しても、窓や案件が二重にならない） */
+  const once = useRef(makeOnce()).current;
 
-  const remove = async (p: ProjectSummary) => {
-    if (!(await ask({ title: t('project.delete'), message: [`「${p.name}」${t('project.deleteConfirm')}`], confirmLabel: t('project.delete') }))) return;
-    try {
-      setError(null);
-      await api.deleteProject(p.id);
-      setNotice({ id: p.id, name: p.name, text: `${t('project.quote', { name: p.name })}${t('project.deletedNote')}`, undo: true });
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err.delete'));
-    }
-  };
+  const create = () =>
+    once(async () => {
+      // 名前を聞く前に確かめる（入力した名前が無駄にならないように）
+      if (!(await canLeave())) return;
+      const name = await input({
+        title: t('project.new'),
+        message: [t('project.newName')],
+        defaultValue: q.trim() || t('project.newDefault'),
+        // 案件名は必須。空のままでは作らせない
+        validate: (v) => (v.trim() === '' ? t('project.nameRequired') : null),
+      });
+      if (name !== null) onNew(name.trim(), name.trim() !== t('project.newDefault'));
+    });
+
+  const remove = (p: ProjectSummary) =>
+    once(async () => {
+      if (!(await ask({ title: t('project.delete'), message: [`「${p.name}」${t('project.deleteConfirm')}`], confirmLabel: t('project.delete') }))) return;
+      try {
+        setError(null);
+        await api.deleteProject(p.id);
+        setNotice({ id: p.id, name: p.name, text: `${t('project.quote', { name: p.name })}${t('project.deletedNote')}`, undo: true });
+        await reload();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t('err.delete'));
+      }
+    });
 
   /** 本番の案件を練習用にコピーして、そのまま開く。本番の案件は変わらない */
-  const copyToPractice = async (src: PracticeSource) => {
-    if (!(await ask({ message: [`${t('project.quote', { name: src.name })}${t('project.practice.confirm')}`] }))) return;
-    if (!(await canLeave())) return;
-    try {
-      setError(null);
-      const r = await api.copyToPractice(src.id);
-      onOpen(r.id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err.copy'));
-    }
-  };
+  const copyToPractice = (src: PracticeSource) =>
+    once(async () => {
+      if (!(await ask({ message: [`${t('project.quote', { name: src.name })}${t('project.practice.confirm')}`] }))) return;
+      if (!(await canLeave())) return;
+      try {
+        setError(null);
+        const r = await api.copyToPractice(src.id);
+        onOpen(r.id);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t('err.copy'));
+      }
+    });
 
   /** 過去の図面を複製して、新しい案件として開く。もとの案件は変わらない */
-  const duplicate = async (src: { id: string; name: string }) => {
-    if (!(await ask({ message: [`${t('project.quote', { name: src.name })}${t('project.duplicate.confirm')}`] }))) return;
-    if (!(await canLeave())) return;
-    try {
-      setError(null);
-      // レイヤー（停電範囲図など）があるときは、複製するかを、レイヤーごとに尋ねる（最初は、すべて「複製しない」）
-      const { layers } = await api.projectLayers(src.id);
-      let keep: string[] = [];
-      if (layers.length > 0) {
-        const chosen = await pick({
-          title: t('project.duplicate.layersTitle'),
-          message: [t('project.duplicate.layersMessage')],
-          options: layers.map((l) => ({
-            id: l.id,
-            label: l.name === null ? t(FIXED_LAYER_KEY[l.id] ?? 'layer.outage') : l.name,
-            hint: l.count > 0 ? t('project.duplicate.layerCount', { n: l.count }) : undefined,
-          })),
-          confirmLabel: t('project.duplicate.layersOk'),
-        });
-        if (chosen === null) return;
-        keep = chosen;
+  const duplicate = (src: { id: string; name: string }) =>
+    once(async () => {
+      if (!(await ask({ message: [`${t('project.quote', { name: src.name })}${t('project.duplicate.confirm')}`] }))) return;
+      if (!(await canLeave())) return;
+      try {
+        setError(null);
+        // レイヤー（停電範囲図など）があるときは、複製するかを、レイヤーごとに尋ねる（最初は、すべて「複製しない」）
+        const { layers } = await api.projectLayers(src.id);
+        let keep: string[] = [];
+        if (layers.length > 0) {
+          const chosen = await pick({
+            title: t('project.duplicate.layersTitle'),
+            message: [t('project.duplicate.layersMessage')],
+            options: layers.map((l) => ({
+              id: l.id,
+              label: l.name === null ? t(FIXED_LAYER_KEY[l.id] ?? 'layer.outage') : l.name,
+              hint: l.count > 0 ? t('project.duplicate.layerCount', { n: l.count }) : undefined,
+            })),
+            confirmLabel: t('project.duplicate.layersOk'),
+          });
+          if (chosen === null) return;
+          keep = chosen;
+        }
+        const r = await api.duplicateProject(src.id, keep);
+        onOpen(r.id);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t('err.duplicate'));
       }
-      const r = await api.duplicateProject(src.id, keep);
-      onOpen(r.id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err.duplicate'));
-    }
-  };
+    });
 
-  const restore = async (id: string, name: string) => {
-    try {
-      setError(null);
-      await api.restoreProject(id);
-      setNotice({ id, name, text: `${t('project.quote', { name })}${t('project.restoredNote')}`, undo: false });
-      await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err.restore'));
-    }
-  };
+  const restore = (id: string, name: string) =>
+    once(async () => {
+      try {
+        setError(null);
+        await api.restoreProject(id);
+        setNotice({ id, name, text: `${t('project.quote', { name })}${t('project.restoredNote')}`, undo: false });
+        await reload();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t('err.restore'));
+      }
+    });
 
   return (
     <div className="analyze joblist">
@@ -352,10 +361,10 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
                       aria-label={t('project.openLabel', { name: p.name })}
                       onClick={() => {
                         // 開いている案件に戻るだけなら、何も失わないので確認しない
-                        void (async () => {
+                        void once(async () => {
                           if (p.id !== currentId && !(await canLeave())) return;
                           onOpen(p.id);
-                        })();
+                        });
                       }}
                     >
                       {t('project.open')}

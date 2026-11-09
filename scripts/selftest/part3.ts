@@ -1260,6 +1260,67 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     check('途中で切れた JSON は、分かる言葉で断り（400）、案件は何も変わらない', trunc.status === 400 && after.updatedAt === cur.updatedAt && after.name === cur.name, `${trunc.status}`);
   }
 
+  /* ---------- 9a7. 連打・同時操作：同じ操作が、同時に何回も届いても、二重にならない・壊れない ---------- */
+  say('\n■ 連打・同時操作（同じ操作を、同時に何回も送る）');
+  {
+    const J = (r: Response) => r.json() as Promise<any>;
+    const many = <T,>(n: number, fn: (i: number) => Promise<T>) => Promise.all(Array.from({ length: n }, (_, i) => fn(i)));
+    const total = async (q: string) => ((await J(await call(a, `/api/projects?limit=1&q=${encodeURIComponent(q)}`))) as { total: number }).total;
+
+    // 案件を作る：10回同時に送れば、別々の10件ができる（二重にまとまることも、欠けることもない）
+    const made = await many(10, () => call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '同時に作る試験' }) }));
+    const ids = await Promise.all(made.map(async (r) => ((await J(r)) as { id: string }).id));
+    check('10回同時に「作る」と、別々の案件が10件でき、番号は重ならない', made.every((r) => r.status === 201) && new Set(ids).size === 10 && (await total('同時に作る試験')) === 10, `${made.filter((r) => r.status === 201).length}件・番号 ${new Set(ids).size}種類`);
+
+    // 消す：5回同時に送れば、1回だけ成功し、残りは「見つかりません」（エラー500にならない）
+    const del = await many(5, () => call(a, `/api/projects/${ids[0]}`, { method: 'DELETE' }));
+    const delCodes = del.map((r) => r.status).sort();
+    check('同じ案件を5回同時に「消す」と、1回だけ成功し、残りは「見つかりません」（500にならない）', delCodes.filter((x) => x === 200).length === 1 && delCodes.filter((x) => x === 404).length === 4, delCodes.join(','));
+    check('消した案件は、一覧から1件だけ減っている', (await total('同時に作る試験')) === 9);
+
+    // 戻す：5回同時に送れば、1回だけ成功し、案件は1件として戻る
+    const res = await many(5, () => call(a, `/api/projects/${ids[0]}/restore`, { method: 'POST' }));
+    const resCodes = res.map((r) => r.status).sort();
+    check('同じ案件を5回同時に「戻す」と、1回だけ成功し、残りは「ごみ箱にありません」（500にならない）', resCodes.filter((x) => x === 200).length === 1 && resCodes.filter((x) => x === 404).length === 4, resCodes.join(','));
+    check('戻した案件は、一覧に1件として戻っている（二重にならない）', (await total('同時に作る試験')) === 10);
+
+    // 複製：5回同時に送れば、5件できる。もとの案件は変わらない
+    const srcId = ids[1]!;
+    await call(a, `/api/projects/${srcId}`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '複製もと', rev: 1 } }) });
+    const dup = await many(5, () => call(a, `/api/projects/${srcId}/duplicate`, { method: 'POST', body: JSON.stringify({ layers: [] }) }));
+    const dupIds = await Promise.all(dup.map(async (r) => ((await J(r)) as { id: string }).id));
+    const srcAfter = (await J(await call(a, `/api/projects/${srcId}`))) as { answers: { siteName?: string } };
+    check('5回同時に「複製」すると、別々の5件ができ、もとの案件は変わらない', dup.every((r) => r.status === 201) && new Set(dupIds).size === 5 && srcAfter.answers.siteName === '複製もと', `${dup.map((r) => r.status).join(',')}`);
+
+    // 保存：同じ案件に、30回同時に保存しても、全部成功し、最後の内容は、送ったもののどれか1つ（混ざらない）
+    const target = ids[2]!;
+    const saves = await many(30, (i) => call(a, `/api/projects/${target}`, { method: 'PUT', body: JSON.stringify({ name: `同時保存${i}`, answers: { siteName: `S${i}`, n: i, pad: String(i).repeat(2000) }, drawing: { n: i } }) }));
+    const fin = (await J(await call(a, `/api/projects/${target}`))) as { name: string; answers: { n: number; siteName: string; pad: string }; drawing: { n: number } };
+    const n = fin.answers.n;
+    check('同じ案件に30回同時に保存しても、全部成功し、最後の内容は1回分そのまま（名前・回答・図面が、別々の保存のものに混ざらない）', saves.every((r) => r.status === 200) && fin.name === `同時保存${n}` && fin.answers.siteName === `S${n}` && fin.drawing.n === n && fin.answers.pad === String(n).repeat(2000), `${saves.filter((r) => r.status === 200).length}/30・最後は ${n}`);
+    const found = await J(await call(a, `/api/projects?limit=50&q=${encodeURIComponent(`S${n}`)}`));
+    check('一覧の検索も、最後の保存の内容になっている（検索用の文字が、混ざらない）', (found.projects as { id: string }[]).some((p) => p.id === target));
+
+    // 写真を同時に預ける：全部、別々のファイルとして、中身も欠けずに預かる
+    const png = (k: number) => Buffer.alloc(3000 + k * 1000, k + 1);
+    const ups = await many(8, (k) => call(a, `/api/projects/${ids[3]}/files`, { method: 'POST', body: JSON.stringify({ fileName: `p${k}.png`, mediaType: 'image/png', data: png(k).toString('base64') }) }));
+    const fids = await Promise.all(ups.map(async (r) => ((await J(r)) as { id: string }).id));
+    let intact = true;
+    for (let k = 0; k < 8; k++) {
+      const g = await call(a, `/api/projects/${ids[3]}/files/${fids[k]}`);
+      if (g.status !== 200 || !Buffer.from(await g.arrayBuffer()).equals(png(k))) intact = false;
+    }
+    check('写真を8枚同時に預けても、別々に預かり、中身も欠けない', ups.every((r) => r.status === 201) && new Set(fids).size === 8 && intact);
+
+    // 編集中の印：2人が同時に取りに来たら、先の1人だけが取れる（もう1人は「編集中」と断られる）
+    const lk = ids[4]!;
+    const [l1, l2] = await Promise.all([call(a, `/api/projects/${lk}/lock`, { method: 'POST', body: '{}' }), call(b, `/api/projects/${lk}/lock`, { method: 'POST', body: '{}' })]);
+    const lj1 = await J(l1);
+    const lj2 = await J(l2);
+    const holders = [lj1.lock?.userId, lj2.lock?.userId].filter(Boolean);
+    check('2人が同時に編集の印を取りに来ても、印を持つのは1人だけ', new Set(holders).size === 1, `${l1.status}/${l2.status}`);
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {

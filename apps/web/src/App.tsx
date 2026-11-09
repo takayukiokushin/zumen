@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ConnectionError, LockedError, setReauthHandler, StaleError } from './session/api.ts';
 import { saveRetry } from './session/messages.ts';
 import { sameContent } from './session/saveRecovery.ts';
+import { makeOnce } from './session/once.ts';
 import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
@@ -238,88 +239,93 @@ export function App() {
     if (yes) updateAnswers((prev) => ({ ...prev, siteName: next }));
   };
 
+  /** 案件を開く・新しく作る操作は、同時に2つ動かさない（素早く2回押しても、二重に開いたり、二重に作ったりしない） */
+  const nav = useRef(makeOnce()).current;
+
   /** 開いている案件から離れるとき、編集中の印を外しておく */
   const leaveCurrent = async () => {
     if (projectId && !readOnly) await api.releaseLock(projectId).catch(() => undefined);
   };
 
-  const openProject = async (id: string, force = false) => {
-    try {
-      await leaveCurrent();
-      const p = await api.getProject(id);
-      // 保存していない入力を、自動で控えた下書きがあれば、復元するか尋ねる（他の人が編集中で、自分は見るだけのときは、尋ねない）
-      const busyByOther = p.lock && user && p.lock.userId !== user.id && user.role !== 'admin';
-      const draft = !busyByOther && p.draft ? p.draft : null;
-      const restore = draft
-        ? await ask({
-            title: t('draft.restore.title'),
-            message: [
-              t('draft.restore.msg1', { when: new Date(draft.savedAt).toLocaleString(lang) }),
-              t('draft.restore.msg2'),
-              t('draft.restore.msg3'),
-            ],
-            confirmLabel: t('draft.restore.yes'),
-            cancelLabel: t('draft.restore.no'),
-          })
-        : false;
-      const base = restore && draft ? draft : null;
-      setProjectId(p.id);
-      setProjectName(base?.name ?? p.name);
-      setAnswers(base ? base.answers : (p.answers ?? {}));
-      // 形の合わないレイヤーのデータ（古い版・壊れたもの）で、案件が開けなくならないよう、読み込むときに整理する
-      setDrawing(withCleanLayers(base ? base.drawing : p.drawing));
-      setSketchRead(
-        base?.sketchRead || (p.sketchRead ?? p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf')),
-      );
-      // 復元したときは、「保存していない」状態で開く（「保存」を押すまで確定しない）。
-      // 下書きをとったあとに、別の人が保存していたら、保存のときに、上書きしてよいか尋ねられる
-      setDirty(base !== null);
-      setDraftAt(base ? base.savedAt : null);
-      setSavedAt(null);
-      setError(null);
-      setWarning(null);
-      setStale(null);
-      setBaseUpdatedAt(base ? (base.baseUpdatedAt ?? p.updatedAt) : p.updatedAt);
-      setShowList(false);
+  const openProject = (id: string, force = false) =>
+    nav(async () => {
       try {
-        await api.takeLock(id, force);
-        setLockedBy(null);
+        await leaveCurrent();
+        const p = await api.getProject(id);
+        // 保存していない入力を、自動で控えた下書きがあれば、復元するか尋ねる（他の人が編集中で、自分は見るだけのときは、尋ねない）
+        const busyByOther = p.lock && user && p.lock.userId !== user.id && user.role !== 'admin';
+        const draft = !busyByOther && p.draft ? p.draft : null;
+        const restore = draft
+          ? await ask({
+              title: t('draft.restore.title'),
+              message: [
+                t('draft.restore.msg1', { when: new Date(draft.savedAt).toLocaleString(lang) }),
+                t('draft.restore.msg2'),
+                t('draft.restore.msg3'),
+              ],
+              confirmLabel: t('draft.restore.yes'),
+              cancelLabel: t('draft.restore.no'),
+            })
+          : false;
+        const base = restore && draft ? draft : null;
+        setProjectId(p.id);
+        setProjectName(base?.name ?? p.name);
+        setAnswers(base ? base.answers : (p.answers ?? {}));
+        // 形の合わないレイヤーのデータ（古い版・壊れたもの）で、案件が開けなくならないよう、読み込むときに整理する
+        setDrawing(withCleanLayers(base ? base.drawing : p.drawing));
+        setSketchRead(
+          base?.sketchRead || (p.sketchRead ?? p.files.some((f) => f.media_type.startsWith('image/') || f.media_type === 'application/pdf')),
+        );
+        // 復元したときは、「保存していない」状態で開く（「保存」を押すまで確定しない）。
+        // 下書きをとったあとに、別の人が保存していたら、保存のときに、上書きしてよいか尋ねられる
+        setDirty(base !== null);
+        setDraftAt(base ? base.savedAt : null);
+        setSavedAt(null);
+        setError(null);
+        setWarning(null);
+        setStale(null);
+        setBaseUpdatedAt(base ? (base.baseUpdatedAt ?? p.updatedAt) : p.updatedAt);
+        setShowList(false);
+        try {
+          await api.takeLock(id, force);
+          setLockedBy(null);
+        } catch (e) {
+          if (!(e instanceof LockedError)) throw e;
+          setLockedBy(e.lock);
+        }
       } catch (e) {
-        if (!(e instanceof LockedError)) throw e;
-        setLockedBy(e.lock);
+        setError(e instanceof Error ? e.message : t('err.openProject'));
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err.openProject'));
-    }
-  };
+    });
 
   /**
    * useAsSite：図面の名称を、ヒアリングの「事業場名称」の初期値にする（あとから自由に変えられる）。
    * 名前を決めていないとき（標準の名前のまま）は、空のままにする
    */
-  const newProject = async (name: string, useAsSite = false) => {
-    try {
-      await leaveCurrent();
-      // 新しい案件は、初期設定（NEW_PROJECT_ANSWERS）の答えを入れた状態で始める。保存済みの案件は変わらない
-      const initial: Answers = { ...NEW_PROJECT_ANSWERS, ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}) };
-      const { id, updatedAt } = await api.createProject(name, initial);
-      setProjectId(id);
-      setProjectName(name || t('project.untitled'));
-      setAnswers(initial);
-      setDrawing(null);
-      setSketchRead(false);
-      setDirty(false);
-      setDraftAt(null);
-      setError(null);
-      setWarning(null);
-      setStale(null);
-      setBaseUpdatedAt(updatedAt);
-      setLockedBy(null);
-      setShowList(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('err.createProject'));
-    }
-  };
+  const newProject = (name: string, useAsSite = false) =>
+    nav(async () => {
+      try {
+        await leaveCurrent();
+        // 新しい案件は、初期設定（NEW_PROJECT_ANSWERS）の答えを入れた状態で始める。保存済みの案件は変わらない
+        const initial: Answers = { ...NEW_PROJECT_ANSWERS, ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}) };
+        const { id, updatedAt } = await api.createProject(name, initial);
+        setProjectId(id);
+        setProjectName(name || t('project.untitled'));
+        setAnswers(initial);
+        setDrawing(null);
+        setSketchRead(false);
+        setDirty(false);
+        setDraftAt(null);
+        setError(null);
+        setWarning(null);
+        setStale(null);
+        setBaseUpdatedAt(updatedAt);
+        setLockedBy(null);
+        setShowList(false);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t('err.createProject'));
+      }
+    });
 
   /** 保存する。保存できたら true（別の端末で更新されていた・通信できなかったなどのときは false） */
   const save = async (force = false): Promise<boolean> => {
