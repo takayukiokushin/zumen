@@ -16,6 +16,8 @@ export const db = new DatabaseSync(resolve(DATA_DIR, 'zumen.db'));
 
 db.exec(`
   PRAGMA journal_mode = WAL;
+  -- 書き込みのたびに、ディスクまで確かに書いてから「保存できた」と返す（停電で、保存できたはずのものが消えないように）
+  PRAGMA synchronous = FULL;
 
   CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
@@ -133,3 +135,23 @@ if (userVersion < 3) {
 if (userVersion < 3) db.exec('PRAGMA user_version = 3');
 
 export const now = (): string => new Date().toISOString();
+
+/**
+ * 複数の書き込みを、「全部できた」か「全部できなかった」のどちらかにする。
+ * 途中で止まっても（失敗・強制終了・停電）、中途半端な状態は残らない。
+ */
+export function inTransaction<T>(fn: () => T): T {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const r = fn();
+    db.exec('COMMIT');
+    return r;
+  } catch (e) {
+    try {
+      db.exec('ROLLBACK');
+    } catch {
+      // すでに取り消されている
+    }
+    throw e;
+  }
+}

@@ -12,7 +12,7 @@ import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
 import { currentUser, login, logout, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
 import type { User } from './auth.ts';
-import { projects, purgeExpiredTrash, purgeOldDrafts } from './projects.ts';
+import { projects, purgeExpiredTrash, purgeOldDrafts, purgeStrayFiles } from './projects.ts';
 import { admin } from './admin.ts';
 import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
@@ -212,6 +212,7 @@ serve({ fetch: app.fetch, port, ...(listenHost ? { hostname: listenHost } : {}) 
     try {
       purgeExpiredTrash();
       purgeOldDrafts();
+      purgeStrayFiles();
     } catch (e) {
       logError('片づけの失敗（動作は続けます）', e);
     }

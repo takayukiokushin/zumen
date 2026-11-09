@@ -987,6 +987,183 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     }
   }
 
+  /* ---------- 9a5. 停電・強制終了：書き込みの途中でサーバーを止めても、データが壊れないか ---------- */
+  say('\n■ 停電・強制終了（保存・写真の預かり・控えを作る途中で、サーバーを強制終了することを繰り返す）');
+  {
+    const { spawn } = await import('node:child_process');
+    const { DatabaseSync: DB } = await import('node:sqlite');
+    const { ROOT, sleep, freePort } = await import('./common.ts');
+    const { utimesSync } = await import('node:fs');
+    const ROUNDS = Number(process.env.CRASH_ROUNDS ?? 6);
+    const cdata = mkdtempSync(join(tmpdir(), 'zumen-crash-'));
+    const cbackup = mkdtempSync(join(tmpdir(), 'zumen-crash-bk-'));
+    const cenv = { DATA_DIR: cdata };
+    const flags = ['--experimental-strip-types', '--disable-warning=ExperimentalWarning'];
+    await runNode(['apps/server/src/cli.ts', 'add', 'cr', 'クラッシュ', 'testpass123'], cenv);
+    const bad: string[] = [];
+    let acked = 0;
+    let projectId = '';
+    const ackedFiles: { id: string; size: number }[] = [];
+    let stray = '';
+    let lastSaved = 0;
+    let startedOk = 0;
+    let killedMid = 0;
+    for (let round = 0; round < ROUNDS; round++) {
+      const port = await freePort();
+      const base = `http://127.0.0.1:${port}`;
+      const srv = spawn(process.execPath, [...flags, 'apps/server/src/index.ts'], { cwd: ROOT, env: { ...process.env, ...cenv, PORT: String(port) } });
+      srv.stdout?.on('data', () => undefined);
+      srv.stderr?.on('data', () => undefined);
+      let up = false;
+      for (let i = 0; i < 80 && !up; i++) {
+        await sleep(150);
+        up = await fetch(`${base}/api/health`).then((r) => r.ok).catch(() => false);
+      }
+      if (!up) {
+        bad.push(`${round + 1}回目：強制終了のあと、サーバーが起動しない`);
+        srv.kill('SIGKILL');
+        break;
+      }
+      startedOk++;
+      const lr = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: 'cr', password: 'testpass123' }) });
+      const cookie = (lr.headers.get('set-cookie') ?? '').split(';')[0]!;
+      const H = { cookie, 'content-type': 'application/json' };
+      if (!projectId) {
+        const r = await fetch(`${base}/api/projects`, { method: 'POST', headers: H, body: JSON.stringify({ name: '停電試験' }) });
+        projectId = ((await r.json()) as { id: string }).id;
+      }
+      // 起動し直した直後：保存できたと返した内容が、残っているか。途中の形になっていないか
+      const g = await fetch(`${base}/api/projects/${projectId}`, { headers: H });
+      const gj = (await g.json()) as { answers?: { rev?: number; pad?: string }; drawing?: { rev?: number } | null };
+      const rev = Number(gj.answers?.rev ?? 0);
+      if (g.status !== 200) bad.push(`${round + 1}回目：案件が開けない（${g.status}）`);
+      else {
+        if (rev < acked) bad.push(`${round + 1}回目：「保存できた」と返した版 ${acked} が、${rev} に戻っている`);
+        if (gj.answers?.pad !== undefined && gj.answers.pad.length !== rev * 1000) bad.push(`${round + 1}回目：回答が途中の形になっている`);
+        if (gj.drawing && gj.drawing.rev !== rev) bad.push(`${round + 1}回目：回答と図面の版が食い違っている（${rev} / ${gj.drawing.rev}）`);
+        acked = Math.max(acked, rev);
+      }
+      for (const f of ackedFiles) {
+        const r = await fetch(`${base}/api/projects/${projectId}/files/${f.id}`, { headers: H });
+        if (r.status === 200 && (await r.arrayBuffer()).byteLength !== f.size) bad.push(`${round + 1}回目：預けた写真の大きさが違う`);
+      }
+      // 前の回に作っておいた「持ち主のいないファイル」（古いもの）が、起動の片づけで消えているか
+      if (stray) {
+        if (existsSync(stray.split('|')[0]!)) bad.push('古い持ち主のいないファイルが、片づけられていない');
+        if (!existsSync(stray.split('|')[1]!)) bad.push('できたばかりのファイルまで、消されている');
+        stray = '';
+      }
+      // 書き込みを続けて、途中で強制終了する
+      let n = acked;
+      let stop = false;
+      const saver = (async () => {
+        while (!stop) {
+          n++;
+          const pad = 'x'.repeat(n * 1000);
+          const r = await fetch(`${base}/api/projects/${projectId}`, { method: 'PUT', headers: H, body: JSON.stringify({ answers: { rev: n, pad }, drawing: { rev: n } }) }).catch(() => null);
+          if (!r) break;
+          if (r.status === 200) {
+            acked = Math.max(acked, n);
+            lastSaved++;
+          }
+        }
+      })();
+      const uploader = (async () => {
+        let k = 0;
+        while (!stop) {
+          const size = 5000 + (k++ % 7) * 20000;
+          const r = await fetch(`${base}/api/projects/${projectId}/files`, { method: 'POST', headers: H, body: JSON.stringify({ fileName: 'p.png', mediaType: 'image/png', data: Buffer.alloc(size, 7).toString('base64') }) }).catch(() => null);
+          if (!r) break;
+          if (r.status === 201) ackedFiles.push({ id: ((await r.json()) as { id: string }).id, size });
+        }
+      })();
+      await sleep(250 + Math.floor(Math.random() * 900));
+      srv.kill('SIGKILL');
+      killedMid++;
+      stop = true;
+      await Promise.all([saver, uploader]);
+      await sleep(100);
+      // 止まったままの状態で、データベースを点検する
+      const d = new DB(join(cdata, 'zumen.db'));
+      const ic = (d.prepare('PRAGMA integrity_check').get() as { integrity_check: string }).integrity_check;
+      if (ic !== 'ok') bad.push(`${round + 1}回目：データベースの点検で異常（${ic}）`);
+      const rows = d.prepare('SELECT id, size FROM project_files').all() as { id: string; size: number }[];
+      for (const r of rows) {
+        const pth = join(cdata, 'files', r.id);
+        if (!existsSync(pth)) bad.push(`${round + 1}回目：記録だけあって、写真の中身が無い`);
+        else if (statSync(pth).size !== r.size) bad.push(`${round + 1}回目：写真の大きさが、記録と違う`);
+      }
+      d.close();
+      // 次の起動の片づけを確かめるために、持ち主のいないファイルを2つ置く（古いもの・できたばかりのもの）
+      const oldF = join(cdata, 'files', `stray-old-${round}`);
+      const newF = join(cdata, 'files', `stray-new-${round}`);
+      writeFileSync(oldF, 'x');
+      writeFileSync(newF, 'x');
+      const past = new Date(Date.now() - 3 * 3600_000);
+      utimesSync(oldF, past, past);
+      stray = `${oldF}|${newF}`;
+    }
+    check(`強制終了を ${killedMid} 回繰り返しても、そのたびに、サーバーが起動し直せる`, startedOk === ROUNDS && killedMid === ROUNDS, `${startedOk}/${ROUNDS}回`);
+    check(`書き込みの途中で強制終了しても、データベースが壊れない・「保存できた」と返した内容が消えない・途中の形にならない（保存 ${lastSaved} 回・写真 ${ackedFiles.length} 枚）`, bad.length === 0, bad.slice(0, 3).join(' ／ '));
+    check('写真を預かる途中で止まって残った、持ち主のいないファイルは、起動の片づけで消える（できたばかりのものは残す）', !bad.some((b) => b.includes('片づけ') || b.includes('できたばかり')), bad.filter((b) => b.includes('ファイル')).join(' ／ '));
+
+    // 控えを作る途中で強制終了：作りかけが、本物の控えとして残らない
+    const cdest = join(cbackup, 'dest');
+    const badB: string[] = [];
+    // 控えに時間がかかるよう、大きめの案件を入れておく
+    {
+      const port = await freePort();
+      const base = `http://127.0.0.1:${port}`;
+      const srv = spawn(process.execPath, [...flags, 'apps/server/src/index.ts'], { cwd: ROOT, env: { ...process.env, ...cenv, PORT: String(port) } });
+      srv.stdout?.on('data', () => undefined);
+      srv.stderr?.on('data', () => undefined);
+      let up = false;
+      for (let i = 0; i < 80 && !up; i++) {
+        await sleep(150);
+        up = await fetch(`${base}/api/health`).then((r) => r.ok).catch(() => false);
+      }
+      if (up) {
+        const lr = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId: 'cr', password: 'testpass123' }) });
+        const H = { cookie: (lr.headers.get('set-cookie') ?? '').split(';')[0]!, 'content-type': 'application/json' };
+        for (let i = 0; i < 6; i++) {
+          const r = await fetch(`${base}/api/projects`, { method: 'POST', headers: H, body: JSON.stringify({ name: `大きめ${i}`, answers: { memo: 'y'.repeat(1_500_000) } }) });
+          if (r.status !== 201) break;
+        }
+      }
+      srv.kill('SIGKILL');
+      await sleep(200);
+    }
+    let backupKills = 0;
+    for (let round = 0; round < ROUNDS; round++) {
+      const p = spawn(process.execPath, [...flags, 'scripts/selftest/backup-loop.ts', cdest], { cwd: ROOT, env: { ...process.env, ...cenv } });
+      p.stdout?.on('data', () => undefined);
+      p.stderr?.on('data', () => undefined);
+      await sleep(700 + Math.floor(Math.random() * 2300));
+      p.kill('SIGKILL');
+      backupKills++;
+      await new Promise((r) => p.on('close', r));
+      // 控えの名前になっているものは、全部、開けて、案件が読めること
+      for (const name of existsSync(cdest) ? readdirSync(cdest) : []) {
+        if (!/^\d{8}-\d{6}$/.test(name)) continue;
+        try {
+          const dd = new DB(join(cdest, name, 'zumen.db'), { readOnly: true });
+          const q = (dd.prepare('PRAGMA quick_check').get() as { quick_check: string }).quick_check;
+          dd.prepare('SELECT COUNT(*) FROM projects').get();
+          dd.close();
+          if (q !== 'ok') badB.push(`${name}：${q}`);
+        } catch (e) {
+          badB.push(`${name}：開けない（${e instanceof Error ? e.message.slice(0, 60) : e}）`);
+        }
+      }
+    }
+    const names = existsSync(cdest) ? readdirSync(cdest) : [];
+    check(`控えを作っている途中で強制終了を ${backupKills} 回繰り返しても、控えの名前が付いたものは、全部開けて、案件が読める（控え ${names.filter((x) => /^\d{8}-\d{6}$/.test(x)).length} 個）`, badB.length === 0, badB.slice(0, 2).join(' ／ '));
+    const again = await runNode(['apps/server/src/cli.ts', 'backup', cdest], cenv);
+    check('そのあと、もう一度控えを作ると、成功して、作りかけの残りが片づく', again.code === 0 && !readdirSync(cdest).some((x) => x.endsWith('.作成中')), again.out.split('\n').slice(-2).join(' ').slice(0, 80));
+    rmSync(cdata, { recursive: true, force: true });
+    rmSync(cbackup, { recursive: true, force: true });
+  }
+
   /* ---------- 9b. 保存されている写真・PDFの一括削除 ---------- */
   say('\n■ 写真・PDFの一括削除（以前の版が預かった分の片付け）');
   {

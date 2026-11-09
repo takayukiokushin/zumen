@@ -30,6 +30,20 @@ export interface BackupResult {
 
 /** 作っている途中の写しの置き場所の印（控えの名前の形ではないので、控えとしては数えられず、間引きの対象にもならない） */
 const PARTIAL = '.作成中';
+/** 消している途中のものの置き場所の印（同じ理由で、控えとしては数えない） */
+const GONE = '.削除中';
+
+/**
+ * フォルダを消す。いきなり消さず、まず名前を「削除中」に変えてから消す。
+ * 消している途中で止まっても（強制終了・停電）、半分だけ消えたものが、控えの名前のまま残らないようにするため。
+ */
+function discard(path: string): void {
+  if (!existsSync(path)) return;
+  const gone = `${path}${GONE}`;
+  rmSync(gone, { recursive: true, force: true });
+  renameSync(path, gone);
+  rmSync(gone, { recursive: true, force: true });
+}
 
 /** 控えのデータベースが、ちゃんと開けて、案件を読めるか（空・途中で切れたものを、控えとして残さないための確認） */
 function verifyCopy(file: string): void {
@@ -53,7 +67,7 @@ export function backup(destRoot: string): BackupResult {
   mkdirSync(root, { recursive: true });
 
   // 前に失敗して残った作りかけがあれば、片づける
-  for (const n of readdirSync(root)) if (n.endsWith(PARTIAL)) rmSync(resolve(root, n), { recursive: true, force: true });
+  for (const n of readdirSync(root)) if (n.endsWith(PARTIAL) || n.endsWith(GONE)) rmSync(resolve(root, n), { recursive: true, force: true });
 
   const name = stamp(new Date(), TIMEZONE);
   const work = resolve(root, `${name}${PARTIAL}`);
@@ -66,7 +80,7 @@ export function backup(destRoot: string): BackupResult {
     db.exec(`VACUUM INTO '${dbCopy.replaceAll("'", "''")}'`);
     verifyCopy(dbCopy);
     // 同じ秒に二度実行された場合に備えて、同じ名前のものは、確認が済んでから入れ替える
-    rmSync(dir, { recursive: true, force: true });
+    discard(dir);
     renameSync(work, dir);
   } catch (e) {
     rmSync(work, { recursive: true, force: true });
@@ -80,14 +94,14 @@ export function backup(destRoot: string): BackupResult {
 
 /** 古い写しを間引く（同じ日は新しい1つだけ、新しい日から10日分） */
 function prune(root: string): void {
-  for (const old of pickToDelete(readdirSync(root))) rmSync(resolve(root, old), { recursive: true, force: true });
+  for (const old of pickToDelete(readdirSync(root))) discard(resolve(root, old));
 }
 
 /** 今日（控えの時間帯での今日）の控えが、もうあるか */
 function hasBackupOfToday(root: string): boolean {
   if (!existsSync(root)) return false;
   const today = dayOf(new Date(), TIMEZONE);
-  return readdirSync(root).some((n) => /^\d{8}-\d{6}$/.test(n) && n.startsWith(today));
+  return readdirSync(root).some((n) => /^\d{8}-\d{6}$/.test(n) && n.startsWith(today) && existsSync(resolve(root, n, 'zumen.db')));
 }
 
 /**

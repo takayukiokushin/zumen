@@ -36,7 +36,8 @@ function diskOf(path: string): DiskInfo | null {
 function backupsIn(dir: string): { count: number; lastAt: number | null } {
   try {
     if (!existsSync(dir)) return { count: 0, lastAt: null };
-    const names = readdirSync(dir).filter((n) => /^\d{8}-\d{6}$/.test(n));
+    // 中身（zumen.db）の無いものは、控えとして数えない
+    const names = readdirSync(dir).filter((n) => /^\d{8}-\d{6}$/.test(n) && existsSync(resolve(dir, n, 'zumen.db')));
     let lastAt: number | null = null;
     for (const n of names) {
       const t = statSync(resolve(dir, n)).mtimeMs;

@@ -1,7 +1,7 @@
-import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, fsyncSync, openSync, readdirSync, readFileSync, statSync, unlinkSync, writeSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Hono } from 'hono';
-import { FILES_DIR, db, now } from './db.ts';
+import { FILES_DIR, db, inTransaction, now } from './db.ts';
 import { isPlainObject, parseObject, readBody, text } from './input.ts';
 import { keepOnlyLayers, summarizeLayers, wouldDropLayers } from './layers.ts';
 import { searchFields, searchTerms } from './search.ts';
@@ -10,10 +10,20 @@ import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
 import { clearForDuplicate, MAX_TEXT_LENGTH } from '@zumen/knowledge';
 
-/** ファイルを書く。途中で失敗（ディスクがいっぱいなど）したら、書きかけのファイルを消してから、失敗を伝える */
+/**
+ * ファイルを書く。ディスクまで確かに書いてから戻る（停電のあとに、記録だけあって中身が空、にならないように）。
+ * 途中で失敗（ディスクがいっぱいなど）したら、書きかけのファイルを消してから、失敗を伝える
+ */
 function writeWhole(path: string, data: Buffer): void {
   try {
-    writeFileSync(path, data);
+    const fd = openSync(path, 'w');
+    try {
+      let off = 0;
+      while (off < data.length) off += writeSync(fd, data, off);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
   } catch (e) {
     try {
       unlinkSync(path);
@@ -116,16 +126,56 @@ function visibleTo(user: User): { where: string; args: string[] } {
  * 読み取りに使った画像は、図面を作って「保存」を押したあとは要らないので、残さない。
  */
 function removeProjectFiles(projectId: string): number {
+  return unlinkFiles(dropProjectFileRows(projectId));
+}
+
+/** その案件の写真・PDFの記録だけを消す（ファイルは、記録の削除が確定してから、unlinkFiles で消す） */
+function dropProjectFileRows(projectId: string): string[] {
   const rows = db.prepare('SELECT id FROM project_files WHERE project_id = ?').all(projectId) as { id: string }[];
   db.prepare('DELETE FROM project_files WHERE project_id = ?').run(projectId);
-  for (const f of rows) {
+  return rows.map((r) => r.id);
+}
+
+function unlinkFiles(ids: string[]): number {
+  for (const id of ids) {
     try {
-      unlinkSync(resolve(FILES_DIR, f.id));
+      unlinkSync(resolve(FILES_DIR, id));
     } catch {
       // ファイルが既に無くても、データベースから消せていれば問題ない
     }
   }
-  return rows.length;
+  return ids.length;
+}
+
+/** 記録の無いファイルが、この時間より長く残っていたら、持ち主のいない残骸として消す */
+const STRAY_FILE_MINUTES = 60;
+
+/**
+ * データベースに記録が無いまま、ディスクに残っているファイルを消す（写真を預かる途中で、サーバーが止まったときの残り）。
+ * 預かっている最中のファイルを消さないよう、作ってから1時間たったものだけを消す。消した数を返す
+ */
+export function purgeStrayFiles(): number {
+  const known = new Set((db.prepare('SELECT id FROM project_files').all() as { id: string }[]).map((r) => r.id));
+  const limit = Date.now() - STRAY_FILE_MINUTES * 60_000;
+  let n = 0;
+  let names: string[] = [];
+  try {
+    names = readdirSync(FILES_DIR);
+  } catch {
+    return 0;
+  }
+  for (const name of names) {
+    if (known.has(name)) continue;
+    try {
+      const st = statSync(resolve(FILES_DIR, name));
+      if (!st.isFile() || st.mtimeMs > limit) continue;
+      unlinkSync(resolve(FILES_DIR, name));
+      n++;
+    } catch {
+      // 消せなければ、次の機会に
+    }
+  }
+  return n;
 }
 
 /** 下書きを、保存の期限（日数）。これを過ぎた下書きは、消す */
@@ -462,10 +512,12 @@ projects.post('/:id/duplicate', async (c) => {
   const id = newId();
   const t = now();
   const name = '無題の案件';
-  db.prepare(
-    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, name, t, t, user.id, JSON.stringify(clearForDuplicate(answers as never)), keepOnlyLayers(withoutHandwrittenMemos(src.drawing), layerIds), user.id);
-  refreshSearch(id);
+  inTransaction(() => {
+    db.prepare(
+      'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    ).run(id, name, t, t, user.id, JSON.stringify(clearForDuplicate(answers as never)), keepOnlyLayers(withoutHandwrittenMemos(src.drawing), layerIds), user.id);
+    refreshSearch(id);
+  });
   takeLock(id, user.id);
   return c.json({ id, name, updatedAt: t }, 201);
 });
@@ -495,10 +547,12 @@ projects.post('/', async (c) => {
   const t = now();
   // 最初から入れておく回答（図面の名称を事業場名称の初期値にするなど）。オブジェクト以外は無視する
   const initial = answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
-  db.prepare(
-    'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, owner) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, name, t, t, c.get('user').id, JSON.stringify(initial), c.get('user').id);
-  refreshSearch(id);
+  inTransaction(() => {
+    db.prepare(
+      'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, owner) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run(id, name, t, t, c.get('user').id, JSON.stringify(initial), c.get('user').id);
+    refreshSearch(id);
+  });
   takeLock(id, c.get('user').id);
   return c.json({ id, updatedAt: t }, 201);
 });
@@ -611,18 +665,24 @@ projects.put('/:id', async (c) => {
     sets.push('drawing = ?');
     args.push(body.drawing === null ? null : JSON.stringify(body.drawing));
   }
-  db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
-  // 案件名・回答が変わったので、一覧の検索用の文字も、作り直す
-  refreshSearch(id);
-  // 「保存」を押したら、読み取りに使った写真・PDFは消す（図面の元になる内容は、回答と図面として、いま保存した）。
-  // 「読み取った案件か」の印は、写真が無くなっても残す
-  let removed = 0;
-  if (body.answers !== undefined) {
-    removed = removeProjectFiles(id);
-    // 保存できたので、自動で控えた下書きは、もう要らない
-    db.prepare('DELETE FROM project_drafts WHERE project_id = ?').run(id);
-  }
-  if (removed > 0 || body.sketchRead === true) db.prepare('UPDATE projects SET sketch_read = 1 WHERE id = ?').run(id);
+  // ここからの書き込みは、全部できたか、全部できなかったかのどちらかにする（途中で止まっても、中途半端にならない）
+  const droppedFiles = inTransaction(() => {
+    db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
+    // 案件名・回答が変わったので、一覧の検索用の文字も、作り直す
+    refreshSearch(id);
+    // 「保存」を押したら、読み取りに使った写真・PDFは消す（図面の元になる内容は、回答と図面として、いま保存した）。
+    // 「読み取った案件か」の印は、写真が無くなっても残す
+    let dropped: string[] = [];
+    if (body.answers !== undefined) {
+      dropped = dropProjectFileRows(id);
+      // 保存できたので、自動で控えた下書きは、もう要らない
+      db.prepare('DELETE FROM project_drafts WHERE project_id = ?').run(id);
+    }
+    if (dropped.length > 0 || body.sketchRead === true) db.prepare('UPDATE projects SET sketch_read = 1 WHERE id = ?').run(id);
+    return dropped;
+  });
+  // 記録の削除が確定してから、ファイルを消す
+  unlinkFiles(droppedFiles);
   return c.json({ ok: true, updatedAt: args[0] });
 });
 
