@@ -530,7 +530,7 @@ projects.post('/:id/restore', (c) => {
   const { where, args } = visibleTo(c.get('user'));
   const row = db.prepare(`SELECT p.id FROM projects p WHERE p.id = ? AND p.deleted_at IS NOT NULL AND ${where}`).get(id, ...args);
   if (!row) {
-    return c.json({ error: 'その案件は、ごみ箱にありません。30日を過ぎて完全に消えたか、すでに戻されています。「図面一覧」を見直してください。' }, 404);
+    return c.json({ error: 'その案件は、「消した案件」にありません。30日を過ぎて完全に消えたか、すでに戻されています。「図面一覧」を見直してください。' }, 404);
   }
   db.prepare('UPDATE projects SET deleted_at = NULL, deleted_by = NULL WHERE id = ?').run(id);
   return c.json({ ok: true });

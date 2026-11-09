@@ -140,14 +140,14 @@ export async function analyze(images: SketchImage[], answers: Answers, clientGon
   logUsage(response.usage, images.length);
 
   if (response.stop_reason === 'refusal') {
-    throw new Error('解析を実行できませんでした。別の画像でお試しください。');
+    throw new Error('読み取りを実行できませんでした。別の画像でお試しください。');
   }
   if (response.stop_reason === 'max_tokens') {
     throw new Error('読み取る内容が多すぎて、結果が途中で止まりました。ファイルの枚数やページ数を減らして、何回かに分けてお試しください。');
   }
 
   const text = response.content.find((b) => b.type === 'text');
-  if (!text || text.type !== 'text') throw new Error('解析結果を受け取れませんでした。もう一度お試しください。');
+  if (!text || text.type !== 'text') throw new Error('読み取りの結果を受け取れませんでした。もう一度お試しください。');
 
   let result: AnalysisResult;
   try {
@@ -156,7 +156,7 @@ export async function analyze(images: SketchImage[], answers: Answers, clientGon
     result = parsed.result;
     if (parsed.rejected.length > 0) console.warn('解析：取り込まなかった項目', JSON.stringify(parsed.rejected));
   } catch {
-    throw new Error('解析結果を読み取れませんでした。もう一度お試しください。');
+    throw new Error('読み取りの結果を、うまく取り込めませんでした。もう一度お試しください。');
   }
 
   // 念のため既定値で埋めておく（人が確認する画面が壊れないように）

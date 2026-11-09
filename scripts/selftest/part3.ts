@@ -1352,7 +1352,7 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     // 戻す：5回同時に送れば、1回だけ成功し、案件は1件として戻る
     const res = await many(5, () => call(a, `/api/projects/${ids[0]}/restore`, { method: 'POST' }));
     const resCodes = res.map((r) => r.status).sort();
-    check('同じ案件を5回同時に「戻す」と、1回だけ成功し、残りは「ごみ箱にありません」（500にならない）', resCodes.filter((x) => x === 200).length === 1 && resCodes.filter((x) => x === 404).length === 4, resCodes.join(','));
+    check('同じ案件を5回同時に「戻す」と、1回だけ成功し、残りは「消した案件にありません」（500にならない）', resCodes.filter((x) => x === 200).length === 1 && resCodes.filter((x) => x === 404).length === 4, resCodes.join(','));
     check('戻した案件は、一覧に1件として戻っている（二重にならない）', (await total('同時に作る試験')) === 10);
 
     // 複製：5回同時に送れば、5件できる。もとの案件は変わらない

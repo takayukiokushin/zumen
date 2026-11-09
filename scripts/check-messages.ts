@@ -163,8 +163,8 @@ for (const [name, e] of cases) {
   else if (/https?:\/\//.test(m)) fail(`${name}：管理画面のURLが画面に出ます：${m}`);
   else console.log(`  ${name}：${m}`);
 }
-const own = describeAnalyzeFailure(new Error('解析結果を受け取れませんでした。もう一度お試しください。'));
-if (!own.startsWith('解析結果を受け取れませんでした')) fail('こちらで書いた日本語の文言が、そのまま使われていません');
+const own = describeAnalyzeFailure(new Error('読み取りの結果を受け取れませんでした。もう一度お試しください。'));
+if (!own.startsWith('読み取りの結果を受け取れませんでした')) fail('こちらで書いた日本語の文言が、そのまま使われていません');
 
 console.log('\n■ サーバーが返す文言に「次にすること」があるか（ソースを走査）');
 
