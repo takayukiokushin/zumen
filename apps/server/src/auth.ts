@@ -87,11 +87,6 @@ function clearFails(id: string): void {
   fails.delete(id);
 }
 
-/** 試験用。失敗の記録をすべて忘れる */
-export function resetLoginAttempts(): void {
-  fails.clear();
-}
-
 /** アカウントの種類 */
 export type Role =
   /** 管理用。すべての案件を扱え、利用者の管理もできる */

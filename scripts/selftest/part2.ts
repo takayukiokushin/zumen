@@ -10,7 +10,7 @@ import { say, check, dataDir, backupDir } from './common.ts';
 import type { part1 } from './part1.ts';
 
 export async function part2(c: Awaited<ReturnType<typeof part1>>) {
-  const { base, login, login2, call, a, b, tryLogin } = c;
+  const { login, login2, call, a, b, tryLogin } = c;
   /* ---------- 6. 案件の保存と呼び出し ---------- */
   say('\n■ 案件の保存と呼び出し');
   const created = (await (

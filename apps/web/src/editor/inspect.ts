@@ -1238,7 +1238,3 @@ export function tidyDrawing(
   }
   return { doc: next, fixed, issues };
 }
-
-/** 接続点の一覧（検査の説明に使う） */
-export const portCount = (doc: Doc): number =>
-  symbolsOf(doc).reduce((n, s) => n + portsOf(s).length, 0);

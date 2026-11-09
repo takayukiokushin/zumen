@@ -1,7 +1,7 @@
 import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sizedSymbol } from '@zumen/symbols';
 import type { SizeRange, SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
-import type { DrawingLayout, Orientation, PaperSize } from '@zumen/layout';
+import type { DrawingLayout, Orientation } from '@zumen/layout';
 import type { GroundAnchor, Layer } from './layers.ts';
 
 /**

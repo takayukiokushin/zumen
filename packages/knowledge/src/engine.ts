@@ -1,7 +1,7 @@
 import type { Answers, Value } from './condition.ts';
 import { PCS_INPUT_MAX, countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
-import { evaluate, fillTemplate, referencedKeys } from './condition.ts';
+import { evaluate, fillTemplate } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
 import { AREA_CHAIN, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
@@ -215,21 +215,6 @@ export function suggestMainBreakerForm(totalKva: number): 'pfs' | 'cb' | null {
   if (!Number.isFinite(totalKva) || totalKva <= 0) return null;
   return totalKva <= 300 ? 'pfs' : 'cb';
 }
-
-/**
- * 他の質問の表示条件や、構成の分岐・繰り返し件数が参照している質問。
- * これらは答えが変わると図面の中身が変わるため、画面で畳んではいけない。
- */
-export const DRIVER_QUESTION_IDS: ReadonlySet<string> = (() => {
-  const ids = new Set<string>();
-  for (const q of QUESTIONS) for (const k of referencedKeys(q.showIf)) ids.add(k);
-  for (const p of [...UPSTREAM, ...Object.values(CHAIN_BY_FORM).flat(), ...DOWNSTREAM, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]) {
-    for (const k of referencedKeys(p.when)) ids.add(k);
-    if (p.repeatCountKey) ids.add(p.repeatCountKey);
-  }
-  for (const g of QUESTION_GROUPS) if (g.repeatCountKey) ids.add(g.repeatCountKey);
-  return ids;
-})();
 
 /* ------------------------------------------------------------------ */
 /* 回答から導出する値（図面の文字に使う）                                 */

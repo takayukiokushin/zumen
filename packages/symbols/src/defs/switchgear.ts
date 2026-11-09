@@ -1,5 +1,5 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
-import { blade, contact, hline, line, loadContact, path, rect, tiltedBar, vline } from '../shape.ts';
+import { contact, hline, line, loadContact, path, rect, tiltedBar, vline } from '../shape.ts';
 
 /** 遮断器を表す×印 */
 /**

@@ -13,7 +13,7 @@ import { say, ok, ng, check, runNode, dataDir, backupDir } from './common.ts';
 import type { part2 } from './part2.ts';
 
 export async function part3(c: Awaited<ReturnType<typeof part2>>) {
-  const { env, base, login, login2, call, a, b, other, created, answers, kanri } = c;
+  const { env, base, login2, call, a, b, created, answers, kanri } = c;
   /* ---------- 8. 現地写真 ---------- */
   say('\n■ 現地写真');
 

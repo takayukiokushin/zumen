@@ -414,7 +414,6 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
   const base: Answers = { ...answers, mainBreakerForm: 'cb', ctRatio: '300', transformerCount: 1, hasBattery: 'no' };
   const ids = (a: Answers) => buildComposition(a).map((i) => i.id);
-  const find = (a: Answers, id: string) => buildComposition(a).find((i) => i.id === id);
 
   // 標準（CB形）：OCRが1個、試験端子つき。トリップコイルがOCRとつながる
   const std = buildComposition(base);

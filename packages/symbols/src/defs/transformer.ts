@@ -1,6 +1,6 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
 import type { Shape } from '../shape.ts';
-import { circle, deltaMark, hline, line, starMark, text, vline } from '../shape.ts';
+import { circle, deltaMark, hline, starMark, text, vline } from '../shape.ts';
 import { CELL } from './switchgear.ts';
 
 /**

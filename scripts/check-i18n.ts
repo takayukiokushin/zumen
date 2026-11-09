@@ -26,8 +26,6 @@ const fail = (msg: string) => {
 };
 
 const KANA = /[぀-ヿ]/;
-const KANJI = /[一-鿿]/;
-const HANGUL = /[가-힯]/;
 /** 「」の中（図面に印刷される日本語の例）を除く */
 const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!).sort().join(',');
 

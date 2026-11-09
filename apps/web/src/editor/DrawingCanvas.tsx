@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
-import { FONT_FAMILY, getSymbol, shapesToSvg } from '@zumen/symbols';
+import { FONT_FAMILY, shapesToSvg } from '@zumen/symbols';
 import { AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';

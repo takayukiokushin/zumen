@@ -11,7 +11,7 @@ import { chooseSheet, inspectDrawing, tidyDrawing } from '../apps/web/src/editor
 import { buildSheetSvg } from '../apps/web/src/editor/exportSheet.ts';
 import { GOLDEN_CASES } from './golden/cases.ts';
 import { spreadUnits } from './check-drawing/common.ts';
-import { buildComposition, resolveDrawingName, normalizeAnswers, withDerived } from '../packages/knowledge/src/index.ts';
+import { buildComposition, resolveDrawingName } from '../packages/knowledge/src/index.ts';
 import { COMPANY_NAME, layout } from '../packages/layout/src/index.ts';
 
 const base = GOLDEN_CASES.find((c) => c.id === '15-tr8-pv')!.answers;
@@ -46,7 +46,7 @@ for (const n of sizes.length ? sizes : [8, 20, 50, 100]) {
   const issues = inspectDrawing(doc, paper, orientation);
   const tInspect = ms(t);
   t = performance.now();
-  const tidy = tidyDrawing(doc, paper, orientation);
+  tidyDrawing(doc, paper, orientation);
   const tTidy = ms(t);
   t = performance.now();
   const svg = buildSheetSvg(doc, title, paper, orientation);

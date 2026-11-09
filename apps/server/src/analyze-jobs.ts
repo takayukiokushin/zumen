@@ -117,9 +117,3 @@ export function cancelJob(userId: string, id: string): boolean {
   if (j.state === 'running') j.ctl.abort();
   return true;
 }
-
-/** 試験用：記録を全部忘れる */
-export function resetAnalyzeJobs(): void {
-  for (const j of jobs.values()) if (j.state === 'running') j.ctl.abort();
-  jobs.clear();
-}

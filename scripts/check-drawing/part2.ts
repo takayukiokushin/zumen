@@ -10,8 +10,7 @@ import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { rotatedBox, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { inspectDrawing, tidyDrawing } from '../../apps/web/src/editor/inspect.ts';
-import { fail, answers, spreadUnits, wires } from './common.ts';
-import { base } from './part1.ts';
+import { fail, answers, spreadUnits } from './common.ts';
 
 /* ---------- 14. 高圧進相設備（SC・SR）の図記号 ---------- */
 console.log('\n■ 高圧コンデンサ（SC）と直列リアクトル（SR）の図記号');

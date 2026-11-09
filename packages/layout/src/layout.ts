@@ -1418,7 +1418,6 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const base = next ? next.part.result.bounds.x0 + next.dx - gapBefore(tr.from + 1) / 2 : moved[tr.from]!.part.result.bounds.x1 + moved[tr.from]!.dx + AREA_GAP / 2;
     return base + TRUNK_STEP * tr.index;
   };
-  const flip = (def: SymbolDef, x: number, y: number, r: number): [number, number] => rotatedPort(def.box, x, y, r);
 
   for (const tr of trunks) {
     const from = moved[tr.from]!;

@@ -1,6 +1,6 @@
 import type { Shape } from '../shape.ts';
 import type { SymbolDef } from '../types.ts';
-import { contact, hline, line, poly, rect, vline } from '../shape.ts';
+import { hline, line, poly, rect, vline } from '../shape.ts';
 
 /** 円の左半分を縦線でハッチングする（電柱の記号） */
 const hatchLeftHalf = (cx: number, cy: number, r: number, step = 1.7): Shape[] => {

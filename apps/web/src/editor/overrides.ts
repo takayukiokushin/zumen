@@ -1,4 +1,3 @@
-import { getSymbol } from '@zumen/symbols';
 import { rotatedBox } from '@zumen/layout';
 import { applyAnchors, baselineOf, defOf, freshId, moveItem, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
 import type { AddedItem, Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire, FrameEdit, Overrides, Placement, SymbolEdit } from './doc.ts';

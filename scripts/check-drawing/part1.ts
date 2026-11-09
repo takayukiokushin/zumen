@@ -9,7 +9,7 @@ import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { rotatedBox, findLabelCollisions, layout } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { chooseSheet, inspectDrawing, tidyDrawing } from '../../apps/web/src/editor/inspect.ts';
-import { portX, portY, fail, answers, spreadUnits, answersSpread, build, wires, symbols, worstGap, skewed, anchoredEnds } from './common.ts';
+import { portY, fail, answers, spreadUnits, answersSpread, build, wires, symbols, worstGap, skewed, anchoredEnds } from './common.ts';
 
 /* ---------- 1. 取り込んだ時点でつながっているか ---------- */
 console.log('■ 取り込み');
@@ -853,7 +853,7 @@ console.log('\n■ PASに内蔵したLA・VTが母線につながっているか
       (w) =>
         Math.abs(w.x1 - w.x2) + Math.abs(w.y1 - w.y2) > 0.5 &&
         [[w.x1, w.y1], [w.x2, w.y2]].some(([x, y]) => Math.hypot(x! - inPort.x, y! - inPort.y) <= 1) &&
-        [[w.x1, w.y1], [w.x2, w.y2]].some(([x, y]) => Math.abs(x! - spine.x) <= 1),
+        [[w.x1, w.y1], [w.x2, w.y2]].some(([x]) => Math.abs(x! - spine.x) <= 1),
     );
   };
 
