@@ -356,7 +356,7 @@ function pause(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /** 読み取りが終わるまで、2〜3秒おきに聞く。やめたら、サーバーの読み取りも、やめてもらう */
-async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result: unknown; review: unknown }> {
+async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result: unknown }> {
   const stop = () => void call(`/api/analyze/${jobId}`, { method: 'DELETE' }).catch(() => undefined);
   let failingSince: number | null = null;
   let first = true;
@@ -364,7 +364,7 @@ async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result
     for (;;) {
       await pause(first ? POLL_FIRST_MS : POLL_MS, signal);
       first = false;
-      let r: { state: 'running' | 'done' | 'error'; error?: string; result?: unknown; review?: unknown };
+      let r: { state: 'running' | 'done' | 'error'; error?: string; result?: unknown };
       try {
         r = await call(`/api/analyze/${jobId}`);
         failingSince = null;
@@ -380,7 +380,7 @@ async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result
       if (r.state === 'error') throw new Error(r.error || describeFailure(502));
       // 受け取れたので、サーバーの記録（読み取った内容）は、もう要らない
       void call(`/api/analyze/${jobId}`, { method: 'DELETE' }).catch(() => undefined);
-      return { result: r.result, review: r.review };
+      return { result: r.result };
     }
   } catch (e) {
     if ((e as { name?: string })?.name === 'AbortError') stop();

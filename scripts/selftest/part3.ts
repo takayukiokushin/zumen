@@ -908,7 +908,7 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
       const peek = async (cookie: string, id: string) => {
         const t0 = Date.now();
         const r = await fetchRetry(`${ab}/api/analyze/${id}`, { headers: { cookie } });
-        const j = (await J(r).catch(() => ({}))) as { state?: string; error?: string; code?: number; result?: unknown; review?: unknown };
+        const j = (await J(r).catch(() => ({}))) as { state?: string; error?: string; code?: number; result?: unknown };
         return { http: r.status, ...j, ms: Date.now() - t0 };
       };
       /** 画面と同じに、頼んでから、終わるまで聞き続ける。返す状態は、これまでの形（成功 200・失敗は理由の番号）にそろえる */
@@ -995,6 +995,7 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
       await sleep(1100);
       const late = await peek(c1, q8.jobId);
       check('通信が途切れていた間に、読み取りが終わっていても、つながり直せば、結果を受け取れる', late.state === 'done' && late.result !== undefined, `${late.state}`);
+      check('読み取りの返事には、画面で使わない「確認してほしいこと」の一覧は、含まれない（無駄な計算と通信を、しない）', !('review' in late), Object.keys(late).join(','));
       check('ほかの人の読み取りの記録は、見えない・やめられない', (await peek(c2, q8.jobId)).http === 404 && (await (await fetch(`${ab}/api/analyze/${q8.jobId}`, { method: 'DELETE', headers: { cookie: c2 } })).json()).ok === true && (await peek(c1, q8.jobId)).state === 'done');
       await fetch(`${ab}/api/analyze/${q8.jobId}`, { method: 'DELETE', headers: { cookie: c1 } });
       check('受け取ったあとに記録を消すと、もう受け取れない（読み取った内容が、サーバーに残らない）', (await peek(c1, q8.jobId)).http === 404);

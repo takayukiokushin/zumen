@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { buildAnalysisSchema, buildReview, buildSystemPrompt, buildUserPrompt, parseAnalysisOutput } from '@zumen/ai';
-import type { AnalysisResult, ReviewItem } from '@zumen/ai';
+import { buildAnalysisSchema, buildSystemPrompt, buildUserPrompt, parseAnalysisOutput } from '@zumen/ai';
+import type { AnalysisResult } from '@zumen/ai';
 import type { Answers } from '@zumen/knowledge';
 
 /**
@@ -33,9 +33,9 @@ export interface SketchImage {
   data: string;
 }
 
+/** 読み取りの返事。確認の一覧（「確認してほしいこと」）は、スケッチ読み取りの画面では使わないので、返さない（音声入力は、画面側で作る） */
 export interface AnalyzeResponse {
   result: AnalysisResult;
-  review: ReviewItem[];
 }
 
 const SUPPORTED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'];
@@ -99,7 +99,7 @@ export function validateImages(images: SketchImage[]): void {
  * 手書きメモを読み取って、ヒアリング項目を埋める。
  *
  * 出力はJSONスキーマで縛っているので、選択式の項目に勝手な値が入ることはない。
- * そのうえで構成ルールと突き合わせ、人が確認すべき点を一覧にして返す。
+ * 返した結果は、画面で、人が確認してから反映する（反映したあと、「設備を入力して作成」と「図面」で、見直して直せる）。
  */
 export async function analyze(images: SketchImage[], answers: Answers, clientGone?: AbortSignal): Promise<AnalyzeResponse> {
   validateImages(images);
@@ -166,5 +166,5 @@ export async function analyze(images: SketchImage[], answers: Answers, clientGon
   result.notes ??= [];
   result.questions ??= [];
 
-  return { result, review: buildReview(result, answers) };
+  return { result };
 }

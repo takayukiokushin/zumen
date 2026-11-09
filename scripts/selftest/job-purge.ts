@@ -5,7 +5,7 @@
  */
 process.env.ANTHROPIC_API_KEY ??= 'sk-ant-fake-for-test';
 const { startJob, getJob, cancelJob, runningJobOf, purgeAnalyzeJobs, JOB_RETAIN_MS, JOBS_PER_USER } = await import('../../apps/server/src/analyze-jobs.ts');
-const ok = { result: { answers: {}, evidence: {}, uncertain: [], notes: [], questions: [] }, review: [] } as never;
+const ok = { result: { answers: {}, evidence: {}, uncertain: [], notes: [], questions: [] } } as never;
 const tick = () => new Promise((r) => setTimeout(r, 20));
 const out: Record<string, unknown> = {};
 
