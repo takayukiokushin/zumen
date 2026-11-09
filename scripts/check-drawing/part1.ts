@@ -6,7 +6,7 @@ import { applyAnchors, descendantsOf, digest, groupRootOf, removeItem, addWire, 
 import type { Doc, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildComposition } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
-import { rotatedBox, findLabelCollisions, layout } from '../../packages/layout/src/index.ts';
+import { rotatedBox, findLabelCollisions, layout, LABEL_FONT, LABEL_LINE } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { chooseSheet, inspectDrawing, tidyDrawing } from '../../apps/web/src/editor/inspect.ts';
 import { portY, fail, answers, spreadUnits, answersSpread, build, wires, symbols, worstGap, skewed, anchoredEnds } from './common.ts';
@@ -730,6 +730,24 @@ console.log('\n■ 図面を整える');
     if (!found.some((i) => i.kind === kind)) fail(`壊した図面の「${kind}」を見つけられませんでした`);
   }
   console.log(`  わざと壊した図面：${found.length}件の問題を見つけました`);
+
+  // 文字の重なりは、1行ずつ見る：外側の四角だけが重なっていて、実際の文字は、ぶつかっていないものは、重なりに数えない。
+  // 本当にぶつかっているものは、数える
+  {
+    const long = 'あいうえおかきくけこさしすせそたちつてと';
+    const txt = (id: string, x: number, y: number, lines: string[]) => ({ kind: 'text', id, x, y, lines, anchor: 'start' }) as unknown as Doc['items'][number];
+    const overlapsOf = (items: Doc['items']) => inspectDrawing({ items } as Doc, 'A3', 'landscape').filter((i) => i.kind === 'overlap').length;
+    // A：1行目が長く、2行目が短い。B：A の2行目の、右の空いたところに置く（A の外側の四角の中だが、文字は、ぶつからない）
+    const a = txt('a', 0, 100, [long, 'あ']);
+    const b = txt('b', LABEL_FONT * 12, 100 + LABEL_LINE + 2.5, ['B']);
+    // C：A の1行目の文字の上に、重ねる
+    const c = txt('c', LABEL_FONT * 3, 100, ['C']);
+    const noHit = overlapsOf([a, b]);
+    const hit = overlapsOf([a, c]);
+    if (noHit !== 0) fail(`行の長さがそろわない文字の、外側の四角だけが重なるものを、重なりに数えています（${noHit}件）`);
+    else if (hit !== 1) fail(`実際に重なっている文字を、1件として見つけられません（${hit}件）`);
+    else console.log('  文字の重なり：外側の四角だけが触れるもの（行の長さがそろわない文字）は数えず、実際にぶつかっているものは数える');
+  }
 
   const r = tidyDrawing(brokenDoc, 'A4', 'portrait');
   if (r.doc.items.some((i) => i.id === 'bad-zero')) fail('長さ0の線が消えていません');

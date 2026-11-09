@@ -101,6 +101,21 @@ function textBox(x: number, y: number, lines: string[], anchor: 'start' | 'middl
   return { x0, y0: y - font, x1: x0 + w, y1: y + (lines.length - 1) * LABEL_LINE * scale + 3 };
 }
 
+/**
+ * 文字の並びの、1行ずつの範囲（textBox と同じ決まりで、行ごとに分けたもの）。
+ * 行の長さがそろわない文字どうしは、外側の四角が重なっても、実際の文字は、ぶつかっていないことがある。
+ * 重なりの確認では、行ごとに見る（textBox は、外側の四角だけ）
+ */
+function lineBoxes(x: number, y: number, lines: string[], anchor: 'start' | 'middle' | 'end', scale = 1): Box[] {
+  const font = LABEL_FONT * scale;
+  return lines.map((l, i) => {
+    const w = textWidth(l, font);
+    const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+    const base = y + i * LABEL_LINE * scale;
+    return { x0, y0: base - font, x1: x0 + w, y1: base + 3 };
+  });
+}
+
 /** 記号が占める範囲（絵のぶんだけ。文字は別に数える） */
 function symbolBox(it: DocSymbol): Box {
   const def = defOf(it);
@@ -1117,21 +1132,25 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
   }
 
   // 文字の重なり
-  const boxes: { box: Box; id: string; head: string }[] = [];
+  const boxes: { box: Box; rows: Box[]; id: string; head: string }[] = [];
   for (const it of symbols) {
     if (it.label.length === 0) continue;
     boxes.push({
       box: textBox(it.x + it.labelDx, it.y + it.labelDy, it.label, it.labelAnchor),
+      rows: lineBoxes(it.x + it.labelDx, it.y + it.labelDy, it.label, it.labelAnchor),
       id: it.id,
       head: it.label[0] ?? '',
     });
   }
   for (const it of textsOf(doc)) {
-    boxes.push({ box: textBox(it.x, it.y, it.lines, it.anchor, clampTextSize(it.size)), id: it.id, head: it.lines[0] ?? '' });
+    const size = clampTextSize(it.size);
+    boxes.push({ box: textBox(it.x, it.y, it.lines, it.anchor, size), rows: lineBoxes(it.x, it.y, it.lines, it.anchor, size), id: it.id, head: it.lines[0] ?? '' });
   }
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
       if (!overlaps(boxes[i]!.box, boxes[j]!.box, 1)) continue;
+      // 外側の四角が重なっていても、1行ずつ見て、ぶつかっている行が無ければ、重なりとは数えない
+      if (!boxes[i]!.rows.some((a) => boxes[j]!.rows.some((b) => overlaps(a, b, 1)))) continue;
       issues.push({
         kind: 'overlap',
         message: tr('insp.overlapTwo', { a: boxes[i]!.head, b: boxes[j]!.head }),
