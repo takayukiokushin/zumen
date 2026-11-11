@@ -198,8 +198,8 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>72</b><span>記号</span></div>
-      <div class="stat"><b>72</b><span>確定</span></div>
+      <div class="stat"><b>73</b><span>記号</span></div>
+      <div class="stat"><b>73</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
       <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
@@ -229,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>20</i></a><a class="navchip" href="#cat-transformer">変圧器<i>10</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>20</i></a><a class="navchip" href="#cat-transformer">変圧器<i>11</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -1855,7 +1855,7 @@
     <section class="group" id="cat-transformer" data-cat="transformer">
       <header class="group-head">
         <h2>変圧器</h2>
-        <span class="count">10</span>
+        <span class="count">11</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-tr-blank" data-search="変圧器（結線方式はこれから）  tr tr-blank 変圧器 未入力" data-status="confirmed">
@@ -2190,6 +2190,37 @@
           
           <p class="statusnote">見本図面のとおり、上の円に「⊥」、下の円に「L」を入れる形にしました。</p>
           <p class="note">ほとんどが低圧から低圧への変換のため、通常は単線結線図に記載しない。指示があったときだけ配置する。記載例「低圧スコット（常時励磁）20kVA」。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-tr-3w" data-search="三巻線変圧器  tr tr-3w 変圧器 三巻線 3巻線 三次巻線" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" width="149.6" height="149.6" role="img" aria-label="三巻線変圧器">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="36" y1="0" x2="36" y2="6.309" stroke-width="1" />
+    <circle cx="36" cy="24.309" r="18" fill="none" stroke-width="1" />
+    <circle cx="22.5" cy="47.691" r="18" fill="none" stroke-width="1" />
+    <circle cx="49.5" cy="47.691" r="18" fill="none" stroke-width="1" />
+    <g class="ports">
+      <circle cx="36" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="22.5" cy="65.69134295108992" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="49.5" cy="65.69134295108992" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">Tr</span>
+            <h3>三巻線変圧器</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>tr-3w</code> ・ 接続点 3</p>
+          
+          
+          
+          <p class="statusnote">丸を3つ、正三角形の形に重ねた形（確認済み）。丸の大きさと重なり具合は二巻線と同じ。接続点・入力項目・図面の文字は、これから決める。</p>
+          <p class="note">巻線が3つある変圧器。図面に置いて、記号を確かめるための段階で、入力項目・図面の文字は、まだ無い。</p>
           
         </div>
       </article></div>

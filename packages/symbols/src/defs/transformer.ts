@@ -115,6 +115,30 @@ const threePhase = (id: string, primary: Conn, secondary: Conn, label: string): 
       : '使用用途によって巻線の結線方式が異なる。基本は Y-Y / Δ-Δ / Y-Δ / Δ-Y の4種類。',
 });
 
+/*
+ * 三巻線変圧器（丸が3つ）。
+ *
+ * 丸の大きさ（R）と、丸の中心どうしの距離（D）は、二巻線と同じ。
+ * 3つの丸の中心は正三角形になる（上の丸が頂点、下の2つが底辺側）ので、
+ * 3組すべての丸の重なり具合が、二巻線の2つの丸と同じになる。
+ *   下の2つの丸の中心 ＝ 上の丸の中心から、真下に D×√3/2、左右に D/2 ずつ
+ *
+ * 絵の幅は D + 2R = 63 で、二巻線の枠（幅48）に収まらない。
+ * そこで、この記号だけ枠の幅を広げ（72）、主回路の線は枠の中央（x = 36）を通す。
+ * 枠の高さは二巻線と同じ（72）で、絵は上下中央に置く。
+ */
+const D = 2 * SEP;
+const TRI_H = (D * Math.sqrt(3)) / 2;
+const BOX3 = { w: 72, h: CELL.h };
+const CX3 = BOX3.w / 2;
+/** 上の丸の中心。3つの丸の外側全体（高さ TRI_H + 2R）が、枠の上下中央に来る */
+const CY3_TOP = CELL.h / 2 - TRI_H / 2;
+/** 下の2つの丸の中心の高さ・左右のずれ */
+const CY3_LOW = CY3_TOP + TRI_H;
+const DX3 = D / 2;
+/** 下の丸の下端。ここから、低圧側の線が出る */
+const OUT3_Y = CY3_LOW + R;
+
 export const transformerSymbols: SymbolDef[] = [
   {
     /*
@@ -248,5 +272,31 @@ export const transformerSymbols: SymbolDef[] = [
     status: 'confirmed',
     statusNote: '見本図面のとおり、上の円に「⊥」、下の円に「L」を入れる形にしました。',
     note: 'ほとんどが低圧から低圧への変換のため、通常は単線結線図に記載しない。指示があったときだけ配置する。記載例「低圧スコット（常時励磁）20kVA」。',
+  },
+  {
+    id: 'tr-3w',
+    abbr: 'Tr',
+    nameJa: '三巻線変圧器',
+    category: 'transformer',
+    tags: ['変圧器', '三巻線', '3巻線', '三次巻線'],
+    box: BOX3,
+    shapes: [
+      vline(CX3, 0, CY3_TOP - R),
+      circle(CX3, CY3_TOP, R),
+      circle(CX3 - DX3, CY3_LOW, R),
+      circle(CX3 + DX3, CY3_LOW, R),
+    ],
+    /*
+     * 接続点は仮の置き方（上の丸の上＝高圧側、下の2つの丸の下＝残りの2つの巻線）。
+     * どこに線をつなぐかは、次の項目で決める。
+     */
+    ports: [
+      { id: 'in', x: CX3, y: 0, dir: 'up', role: 'line' },
+      { id: 'out-l', x: CX3 - DX3, y: OUT3_Y, dir: 'down', role: 'line' },
+      { id: 'out-r', x: CX3 + DX3, y: OUT3_Y, dir: 'down', role: 'line' },
+    ],
+    status: 'confirmed',
+    statusNote: '丸を3つ、正三角形の形に重ねた形（確認済み）。丸の大きさと重なり具合は二巻線と同じ。接続点・入力項目・図面の文字は、これから決める。',
+    note: '巻線が3つある変圧器。図面に置いて、記号を確かめるための段階で、入力項目・図面の文字は、まだ無い。',
   },
 ];
