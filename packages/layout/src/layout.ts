@@ -227,6 +227,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   let feederAnchorY: number | null = null;
   /** 変圧器ごとの低圧側の出口（1台目から順に）。低圧の回線はここからぶら下げる */
   const transformerOut: { x: number; y: number }[] = [];
+  /** 下の出口を決めていない変圧器（三巻線変圧器）の番号（0始まり） */
+  const transformerNoOut = new Set<number>();
 
   /** 高圧母線を引き、変圧器や高圧進相設備をそこから下へ並列にぶら下げる */
   function drawParallelSection(): void {
@@ -325,7 +327,11 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
         wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: top });
         add(item, def, x, yy, 0, 'right');
         ly = exit ? yy + exit.y : yy + def.box.h;
-        if (item.role === 'transformer') transformerOut[item.unit ?? 0] = { x: laneX(lane), y: ly };
+        if (item.role === 'transformer') {
+          transformerOut[item.unit ?? 0] = { x: laneX(lane), y: ly };
+          // 三巻線変圧器のように、下の出口が決まっていないものは、下にぶら下げる回線を線でつながない
+          if (!exit) transformerNoOut.add(item.unit ?? 0);
+        }
       }
       // 低圧の回線は、1台目の変圧器の真下から出す
       if (lane === lanes[0]) {
@@ -788,6 +794,11 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     }
 
     for (const [t, lanes] of [...byTransformer.entries()].sort((a, b) => a[0] - b[0])) {
+      // 三巻線変圧器の下へつなぐ回線は、線をつながずに置く（つなぎ先は、図面の上で手で結ぶ）
+      if (transformerNoOut.has(t)) {
+        for (const lane of lanes) frees.push(...feeders.filter((f) => (f.lane ?? 0) === lane));
+        continue;
+      }
       // 変圧器が見つからないときだけ、主回路の末端からぶら下げる
       const anchor = transformerOut[t] ?? { x: feederAnchorX, y: feederAnchorY ?? spineY };
       const busY = anchor.y + GAP;

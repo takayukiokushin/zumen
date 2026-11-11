@@ -532,6 +532,16 @@ export function withDerived(rawAnswers: Answers): Answers {
       .filter(([, v]) => v !== undefined && v !== null && v !== '')
       .map(([name, v]) => `${name} ${v}kVA`)
       .join('\n');
+  } else if (answers.trConnection === 'tr-3w-yyd' || answers.trConnection === 'tr-3w-ddy') {
+    // 三巻線変圧器：一次・二次・三次の容量は、どれも任意。
+    //   3つとも入力：3φ300/300/100kVA ／ 一次だけ：3φ300kVA ／ ほか：入力した巻線だけ「一次300kVA / 三次100kVA」
+    const w = [answers.trCapacityW1, answers.trCapacityW2, answers.trCapacityW3].map((v) =>
+      v === undefined || v === null || String(v).trim() === '' ? '' : String(v).trim(),
+    );
+    const names = ['一次', '二次', '三次'];
+    if (w.every((v) => v)) d.trCapacityLine = `${phase}${w.join('/')}kVA`;
+    else if (w[0] && !w[1] && !w[2]) d.trCapacityLine = `${phase}${w[0]}kVA`;
+    else d.trCapacityLine = w.map((v, i) => (v ? `${names[i]}${v}kVA` : '')).filter(Boolean).join(' / ');
   } else if (answers.trConnection === 'tr-vv') {
     d.trCapacityLine = [answers.trCapacity, answers.trCapacity2]
       .filter((v) => v !== undefined && v !== null && v !== '')

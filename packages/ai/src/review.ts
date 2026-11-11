@@ -94,7 +94,9 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
   // 受電設備エリアが2か所以上のときは、すべてのエリアの変圧器の合計で見る
   const areaKva = (v: Record<string, unknown>) => {
     const mixed = v.trConnection === 'tr-vv' && v.trUsage === '電灯・動力';
-    const unit = mixed ? num(v.trCapacityLight) + num(v.trCapacityPower) : num(v.trCapacity);
+    const threeWinding = v.trConnection === 'tr-3w-yyd' || v.trConnection === 'tr-3w-ddy';
+    // 三巻線変圧器は、一次巻線の容量で見る
+    const unit = mixed ? num(v.trCapacityLight) + num(v.trCapacityPower) : num(threeWinding ? v.trCapacityW1 : v.trCapacity);
     return unit * Math.max(1, num(v.transformerCount) || 1);
   };
   const parts = [areaKva(a)];

@@ -17,6 +17,9 @@ export const MIXED_V: Condition = {
   all: [{ key: 'trUsage', eq: '電灯・動力' }, { key: 'trConnection', eq: 'tr-vv' }],
 };
 
+/** 結線方式が三巻線変圧器のとき（容量を、一次・二次・三次の巻線ごとに聞く） */
+export const THREE_WINDING: Condition = { key: 'trConnection', in: ['tr-3w-yyd', 'tr-3w-ddy'] };
+
 /** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
 export const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
 

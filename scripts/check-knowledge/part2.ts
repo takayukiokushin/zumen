@@ -121,12 +121,14 @@ console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／�
   const offered = (a: Answers) => (conn.options ?? []).filter((o) => evaluate(o.showIf, a)).map((o) => o.value);
   const single = ['tr-1p', 'tr-1p-2w', 'tr-1p-parallel'];
   const three = ['tr-3p-dy', 'tr-3p-yd', 'tr-3p-dd', 'tr-3p-dd-1p3', 'tr-3p-yy'];
+  // 三巻線変圧器（動力・電灯および動力・未入力のときだけ出る。電灯だけのときは出ない）
+  const threeWinding = ['tr-3w-yyd', 'tr-3w-ddy'];
   const sameSet = (x: string[], y: string[]) => JSON.stringify([...x].sort()) === JSON.stringify([...y].sort());
   const rows: [string, Answers, string[]][] = [
     ['電灯', { trUsage: '電灯' }, [...single, 'tr-vv']],
-    ['動力', { trUsage: '動力' }, [...three, 'tr-vv']],
-    ['電灯および動力', { trUsage: '電灯・動力' }, [...single, ...three, 'tr-vv']],
-    ['まだ用途を選んでいない', {}, [...single, ...three, 'tr-vv']],
+    ['動力', { trUsage: '動力' }, [...three, ...threeWinding, 'tr-vv']],
+    ['電灯および動力', { trUsage: '電灯・動力' }, [...single, ...three, ...threeWinding, 'tr-vv']],
+    ['まだ用途を選んでいない', {}, [...single, ...three, ...threeWinding, 'tr-vv']],
   ];
   for (const [name, a, want] of rows) {
     const got = offered(a);
@@ -154,6 +156,19 @@ console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／�
   const ddPlain = buildComposition({ ...answers, transformerCount: 1, trUsage: '動力', trConnection: 'tr-3p-dd', trCapacity: 300 }).find((i) => i.role === 'transformer');
   ok(ddPlain?.label.join('|').includes('単相変圧器×3') !== true, '通常のΔ-Δ結線に、「単相変圧器×3」が入っています');
   ok(!offered({ trUsage: '電灯' }).includes('tr-3p-dd-1p3'), '用途が電灯なのに、単相変圧器×3のΔ-Δ結線が出ています');
+  // 三巻線変圧器：結線方式の名前・容量（巻線ごと、任意）・図面の文字
+  ok(conn.options?.find((o) => o.value === 'tr-3w-yyd')?.label === '三巻線変圧器 Y-Y-Δ結線', '「三巻線変圧器 Y-Y-Δ結線」の選択肢の名前が違います');
+  ok(conn.options?.find((o) => o.value === 'tr-3w-ddy')?.label === '三巻線変圧器 Δ-Δ-Y結線', '「三巻線変圧器 Δ-Δ-Y結線」の選択肢の名前が違います');
+  ok(!offered({ trUsage: '電灯' }).some((v) => v.startsWith('tr-3w')), '用途が電灯なのに、三巻線変圧器が出ています');
+  const shown3 = new Set(visibleQuestions({ trUsage: '動力', trConnection: 'tr-3w-yyd' }, {}).map((q) => q.id));
+  ok(['trCapacityW1', 'trCapacityW2', 'trCapacityW3'].every((id) => shown3.has(id)) && !shown3.has('trCapacity'), '三巻線変圧器：容量は、一次・二次・三次の3つだけを聞くはず');
+  ok(!missingRequired({ trUsage: '動力', trConnection: 'tr-3w-yyd' }).some((q) => q.id.startsWith('trCapacity')), '三巻線変圧器の容量は、任意のはず（入力しなくても、足りない項目に出ない）');
+  const lbl3 = (a: Answers) => buildComposition({ ...answers, transformerCount: 1, trUsage: '動力', trConnection: 'tr-3w-yyd', trCapacity: undefined, ...a }).find((i) => i.role === 'transformer');
+  ok(lbl3({})?.symbolId === 'tr-3w-yyd', '三巻線変圧器の記号になっていません');
+  ok(lbl3({ trCapacityW1: 300, trCapacityW2: 300, trCapacityW3: 100, trVoltage: '6600/210/3300V' })?.label.join('|') === '動力|Tr|3φ300/300/100kVA|6600/210/3300V', `三巻線変圧器の文字（3つとも）が違います（${lbl3({ trCapacityW1: 300, trCapacityW2: 300, trCapacityW3: 100, trVoltage: '6600/210/3300V' })?.label.join('|')}）`);
+  ok(lbl3({ trCapacityW1: 300 })?.label.join('|').includes('3φ300kVA') === true, '三巻線変圧器の文字（一次だけ）が違います');
+  ok(lbl3({ trCapacityW2: 200, trCapacityW3: 100 })?.label.join('|').includes('二次200kVA / 三次100kVA') === true, '三巻線変圧器の文字（二次・三次だけ）が違います');
+  ok(lbl3({ trVoltage: '6600/' })?.label.join('|') === '動力|Tr', '三巻線変圧器：電圧が「6600/」だけのとき、書かないはず');
   // 容量の聞き方
   const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
   const mixedV = shown({ trUsage: '電灯・動力', trConnection: 'tr-vv' });

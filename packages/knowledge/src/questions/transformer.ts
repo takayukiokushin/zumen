@@ -1,5 +1,5 @@
 import type { Question } from './types.ts';
-import { COUNT_OPTIONS, NOT_POWER_ONLY, NOT_LIGHT_ONLY, RECEIVING_6600, MIXED_V, YES_NO } from './common.ts';
+import { COUNT_OPTIONS, NOT_POWER_ONLY, NOT_LIGHT_ONLY, RECEIVING_6600, MIXED_V, THREE_WINDING, YES_NO } from './common.ts';
 
 /** 質問の定義：変圧器、高圧進相設備 */
 export const TRANSFORMER_QUESTIONS: Question[] = [
@@ -46,6 +46,9 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
       { value: 'tr-3p-yy', label: '三相 Y-Y結線', showIf: NOT_LIGHT_ONLY },
       { value: 'tr-vv', label: 'V結線（単相変圧器2台）' },
       { value: 'tr-1p-parallel', label: '単相変圧器 並行運転（倍容量）', showIf: NOT_POWER_ONLY },
+      // 三巻線変圧器（調整用・力率改善用などの特殊なもの）。丸だけの記号は、記号の一覧から手で置く
+      { value: 'tr-3w-yyd', label: '三巻線変圧器 Y-Y-Δ結線', showIf: NOT_LIGHT_ONLY },
+      { value: 'tr-3w-ddy', label: '三巻線変圧器 Δ-Δ-Y結線', showIf: NOT_LIGHT_ONLY },
     ],
     // 用途を選ぶと、結線方式の初期値が決まる（あとから自由に変えられる）
     autoValue: [
@@ -63,11 +66,15 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     label: '容量',
     type: 'number',
     unit: 'kVA',
-    showIf: { not: MIXED_V },
+    showIf: { all: [{ not: MIXED_V }, { not: THREE_WINDING }] },
     ask: 'ai-uncertain',
     required: true,
     help: '単相変圧器3台を組み合わせたΔ-Δ結線の場合は、3台の合計値を入力する',
   },
+  // 三巻線変圧器は、巻線ごとに容量を書ける（どれも任意。入力した巻線だけ図面に書く）
+  { id: 'trCapacityW1', group: 'transformer', label: '一次巻線の容量', type: 'number', unit: 'kVA', showIf: THREE_WINDING, ask: 'always', help: '三巻線変圧器の一次巻線（上）。入力しなくてもよい' },
+  { id: 'trCapacityW2', group: 'transformer', label: '二次巻線の容量', type: 'number', unit: 'kVA', showIf: THREE_WINDING, ask: 'always', help: '三巻線変圧器の二次巻線（左下）。入力しなくてもよい' },
+  { id: 'trCapacityW3', group: 'transformer', label: '三次巻線の容量', type: 'number', unit: 'kVA', showIf: THREE_WINDING, ask: 'always', help: '三巻線変圧器の三次巻線（右下）。入力しなくてもよい' },
   { id: 'trCapacity2', group: 'transformer', label: '2台目の容量', type: 'number', unit: 'kVA', showIf: { all: [{ key: 'trConnection', eq: 'tr-vv' }, { not: MIXED_V }] }, ask: 'always', help: 'V結線は2台の容量が異なる場合がある' },
   // 電灯および動力のV結線だけは、変圧器ごとではなく、全体の容量を電灯・動力に分けて聞く
   { id: 'trCapacityLight', group: 'transformer', label: '電灯の容量', type: 'number', unit: 'kVA', showIf: MIXED_V, ask: 'always', required: true, help: 'V結線（単相変圧器2台）全体のうち、電灯の分の容量' },
