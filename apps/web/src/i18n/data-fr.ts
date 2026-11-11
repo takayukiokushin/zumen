@@ -502,6 +502,8 @@ const data: Record<string, string> = {
   "1台目の容量": "Puissance du 1er transformateur",
   "スコット変圧器（低圧）": "Transformateur Scott (basse tension)",
   "三巻線変圧器": "Transformateur à trois enroulements",
+  "三巻線変圧器（Y-Y-Δ結線）": "Transformateur à trois enroulements (couplage Y-Y-Δ)",
+  "三巻線変圧器（Δ-Δ-Y結線）": "Transformateur à trois enroulements (couplage Δ-Δ-Y)",
   "直列リアクトル": "Réactance série",
   "相": "Phase",
   "進相コンデンサ": "Condensateur de compensation du facteur de puissance",

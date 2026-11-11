@@ -139,6 +139,53 @@ const DX3 = D / 2;
 /** 下の丸の下端。ここから、低圧側の線が出る */
 const OUT3_Y = CY3_LOW + R;
 
+/**
+ * 三巻線変圧器の、丸の中の結線の印（Y・Δ）。印そのものは、二巻線・三相変圧器と同じもの（大きさも同じ）。
+ *
+ * 丸が互いに重なっているので、丸の中心に置くと、隣の丸の線に近づく（Δで、線まで0.7しかない）。
+ * そこで、3つの丸の真ん中から離れる向きに、MARK_SHIFT だけずらして置く。
+ * こうすると、自分の丸の線からも、隣の丸の線からも、3.5以上離れる。
+ *   上の丸は真上へ、左下の丸は左下へ、右下の丸は右下へ（どの印も、向きは上向きのまま）
+ */
+const MARK_SHIFT = 3.5;
+const markAt = (conn: Conn, cx: number, cy: number): Shape[] =>
+  conn === 'y' ? starMark(cx, cy, 6 * SCALE) : [deltaMark(cx, cy, 7 * SCALE)];
+/** 三巻線変圧器の3つの丸（一次＝上、二次＝左下、三次＝右下）の印の位置 */
+const MARK3 = {
+  primary: { x: CX3, y: CY3_TOP - MARK_SHIFT },
+  secondary: { x: CX3 - DX3 - MARK_SHIFT * (Math.sqrt(3) / 2), y: CY3_LOW + MARK_SHIFT / 2 },
+  tertiary: { x: CX3 + DX3 + MARK_SHIFT * (Math.sqrt(3) / 2), y: CY3_LOW + MARK_SHIFT / 2 },
+};
+
+const PORTS3 = [
+  { id: 'in', x: CX3, y: 0, dir: 'up' as const, role: 'line' as const },
+  { id: 'out-l', x: CX3 - DX3, y: OUT3_Y, dir: 'down' as const, role: 'line' as const },
+  { id: 'out-r', x: CX3 + DX3, y: OUT3_Y, dir: 'down' as const, role: 'line' as const },
+];
+
+/** 三巻線変圧器（結線方式違い）を1つの定義から生成する。conns は一次・二次・三次の順 */
+const threeWinding = (id: string, conns: [Conn, Conn, Conn], label: string): SymbolDef => ({
+  id,
+  abbr: 'Tr',
+  nameJa: `三巻線変圧器（${label}）`,
+  category: 'transformer',
+  tags: ['変圧器', '三巻線', '3巻線', '三次巻線', label],
+  box: BOX3,
+  shapes: [
+    vline(CX3, 0, CY3_TOP - R),
+    circle(CX3, CY3_TOP, R),
+    circle(CX3 - DX3, CY3_LOW, R),
+    circle(CX3 + DX3, CY3_LOW, R),
+    ...markAt(conns[0], MARK3.primary.x, MARK3.primary.y),
+    ...markAt(conns[1], MARK3.secondary.x, MARK3.secondary.y),
+    ...markAt(conns[2], MARK3.tertiary.x, MARK3.tertiary.y),
+  ],
+  ports: PORTS3,
+  status: 'confirmed',
+  statusNote: `一次（上の丸）・二次（左下の丸）・三次（右下の丸）の順に、${label}。Y・Δの印は、二巻線・三相変圧器と同じもの。接続点・入力項目・図面の文字は、これから決める。`,
+  note: '巻線が3つある変圧器。丸が重なっているため、印は、丸の中心から少しずらして置いている（線に触れないように）。',
+});
+
 export const transformerSymbols: SymbolDef[] = [
   {
     /*
@@ -290,13 +337,12 @@ export const transformerSymbols: SymbolDef[] = [
      * 接続点は仮の置き方（上の丸の上＝高圧側、下の2つの丸の下＝残りの2つの巻線）。
      * どこに線をつなぐかは、次の項目で決める。
      */
-    ports: [
-      { id: 'in', x: CX3, y: 0, dir: 'up', role: 'line' },
-      { id: 'out-l', x: CX3 - DX3, y: OUT3_Y, dir: 'down', role: 'line' },
-      { id: 'out-r', x: CX3 + DX3, y: OUT3_Y, dir: 'down', role: 'line' },
-    ],
+    ports: PORTS3,
     status: 'confirmed',
     statusNote: '丸を3つ、正三角形の形に重ねた形（確認済み）。丸の大きさと重なり具合は二巻線と同じ。接続点・入力項目・図面の文字は、これから決める。',
-    note: '巻線が3つある変圧器。図面に置いて、記号を確かめるための段階で、入力項目・図面の文字は、まだ無い。',
+    note: '巻線が3つある変圧器。結線方式がまだ決まっていないときの形で、丸の中は空。',
   },
+  // 一次（上）・二次（左下）・三次（右下）の順
+  threeWinding('tr-3w-yyd', ['y', 'y', 'd'], 'Y-Y-Δ結線'),
+  threeWinding('tr-3w-ddy', ['d', 'd', 'y'], 'Δ-Δ-Y結線'),
 ];

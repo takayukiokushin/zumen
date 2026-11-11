@@ -502,6 +502,8 @@ const data: Record<string, string> = {
   "1台目の容量": "Capacity of the 1st unit",
   "スコット変圧器（低圧）": "Scott transformer (low voltage)",
   "三巻線変圧器": "Three-winding transformer",
+  "三巻線変圧器（Y-Y-Δ結線）": "Three-winding transformer (Y-Y-Δ connection)",
+  "三巻線変圧器（Δ-Δ-Y結線）": "Three-winding transformer (Δ-Δ-Y connection)",
   "直列リアクトル": "Series reactor",
   "相": "Phase",
   "進相コンデンサ": "Power factor correction capacitor",
