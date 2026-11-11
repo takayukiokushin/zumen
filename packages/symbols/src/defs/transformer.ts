@@ -157,10 +157,17 @@ const MARK3 = {
   tertiary: { x: CX3 + DX3 + MARK_SHIFT * (Math.sqrt(3) / 2), y: CY3_LOW + MARK_SHIFT / 2 },
 };
 
+/**
+ * 三巻線変圧器の接続点。
+ *   in    … 一次（高圧側）。上の丸の真上。今までの変圧器と同じ名前・同じ位置（枠の上端の中央）
+ *   out-2 … 二次。左下の丸の真下
+ *   out-3 … 三次。右下の丸の真下
+ * 二次・三次は、下につなぐものがあるときだけ線を引く（二巻線と同じ。何もつながないときは、線を描かない）。
+ */
 const PORTS3 = [
   { id: 'in', x: CX3, y: 0, dir: 'up' as const, role: 'line' as const },
-  { id: 'out-l', x: CX3 - DX3, y: OUT3_Y, dir: 'down' as const, role: 'line' as const },
-  { id: 'out-r', x: CX3 + DX3, y: OUT3_Y, dir: 'down' as const, role: 'line' as const },
+  { id: 'out-2', x: CX3 - DX3, y: OUT3_Y, dir: 'down' as const, role: 'line' as const },
+  { id: 'out-3', x: CX3 + DX3, y: OUT3_Y, dir: 'down' as const, role: 'line' as const },
 ];
 
 /** 三巻線変圧器（結線方式違い）を1つの定義から生成する。conns は一次・二次・三次の順 */
@@ -182,7 +189,7 @@ const threeWinding = (id: string, conns: [Conn, Conn, Conn], label: string): Sym
   ],
   ports: PORTS3,
   status: 'confirmed',
-  statusNote: `一次（上の丸）・二次（左下の丸）・三次（右下の丸）の順に、${label}。Y・Δの印は、二巻線・三相変圧器と同じもの。接続点・入力項目・図面の文字は、これから決める。`,
+  statusNote: `一次（上の丸）・二次（左下の丸）・三次（右下の丸）の順に、${label}。Y・Δの印は、二巻線・三相変圧器と同じもの。接続点は、一次＝上の丸の上、二次＝左下の丸の下、三次＝右下の丸の下。入力項目・図面の文字は、これから決める。`,
   note: '巻線が3つある変圧器。丸が重なっているため、印は、丸の中心から少しずらして置いている（線に触れないように）。',
 });
 
@@ -339,7 +346,7 @@ export const transformerSymbols: SymbolDef[] = [
      */
     ports: PORTS3,
     status: 'confirmed',
-    statusNote: '丸を3つ、正三角形の形に重ねた形（確認済み）。丸の大きさと重なり具合は二巻線と同じ。接続点・入力項目・図面の文字は、これから決める。',
+    statusNote: '丸を3つ、正三角形の形に重ねた形（確認済み）。丸の大きさと重なり具合は二巻線と同じ。接続点は、一次＝上の丸の上、二次＝左下の丸の下、三次＝右下の丸の下。入力項目・図面の文字は、これから決める。',
     note: '巻線が3つある変圧器。結線方式がまだ決まっていないときの形で、丸の中は空。',
   },
   // 一次（上）・二次（左下）・三次（右下）の順
