@@ -25,6 +25,9 @@ export function WritebackBanner({
   const t = useT();
   const tx = useTx();
   const [open, setOpen] = useState(false);
+  /** 反映した内容が3件を超えるときは、最初は1行だけ見せる */
+  const [openApplied, setOpenApplied] = useState(false);
+  const foldApplied = applied.length > 3 && !openApplied;
   const total = leftovers.reduce((n, l) => n + l.n, 0);
   return (
     <div className="wb" role="status">
@@ -37,11 +40,16 @@ export function WritebackBanner({
               {t('wb.undo')}
             </button>
           )}
+          {applied.length > 3 && (
+            <button type="button" className="btn" aria-expanded={openApplied} onClick={() => setOpenApplied((v) => !v)}>
+              {openApplied ? t('wb.left.hide') : t('wb.left.show')}
+            </button>
+          )}
           <button type="button" className="btn" onClick={onClose}>
             {t('wb.close')}
           </button>
           <ul className="wb-list">
-            {applied.map((a, i) => (
+            {(foldApplied ? applied.slice(0, 1) : applied).map((a, i) => (
               <li key={i}>
                 {tx(a.question)}
                 {a.unit > 0 ? t('wb.unit', { n: a.unit }) : ''}：{tx(a.from)} → {tx(a.to)}
