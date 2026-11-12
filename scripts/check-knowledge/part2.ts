@@ -3,7 +3,7 @@
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
 import { fillLabelLines, findSymbol, initialLabelValues, labelFields, SYMBOLS } from '../../packages/symbols/src/index.ts';
-import { buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, withDerived } from '../../packages/knowledge/src/index.ts';
+import { buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, NEW_PROJECT_ANSWERS, withDerived } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { fail } from './common.ts';
 import { answers } from './part1.ts';
@@ -321,11 +321,12 @@ console.log('\n■ 区分開閉器の定格電圧');
 {
   const q = QUESTIONS.find((x) => x.id === 'pasRatedVoltage');
   const vals = q?.options?.map((o) => o.value) ?? [];
-  if (q?.type !== 'select' || !q.dropdown || JSON.stringify(vals) !== JSON.stringify(['3300', '6600', '7200'])) {
-    fail(`区分開閉器の定格電圧が、3300・6600・7200のドロップダウンになっていません（${q?.type}／${vals.join('・')}）`);
-  } else console.log('  ドロップダウン（3300V／6600V／7200V）');
+  if (q?.type !== 'select' || !q.dropdown || JSON.stringify(vals) !== JSON.stringify(['3300', '6600', '7200', '22000', '23000', '33000', '34500'])) {
+    fail(`区分開閉器の定格電圧が、3300・6600・7200・22000・23000・33000・34500のドロップダウンになっていません（${q?.type}／${vals.join('・')}）`);
+  } else console.log('  ドロップダウン（3300V／6600V／7200V／22000V／23000V／33000V／34500V）');
+  if (NEW_PROJECT_ANSWERS.pasRatedVoltage !== '7200') fail('区分開閉器の定格電圧の初期値が、7200Vではありません');
   // 選んだ値が、図面の「PAS 3300V 200A」のように書かれる
-  for (const v of ['3300', '6600', '7200']) {
+  for (const v of ['3300', '6600', '7200', '22000', '34500']) {
     const t = String(withDerived({ sectionalizer: 'pas', pasRatedVoltage: v, pasRatedCurrent: '200' }).pasRatingText);
     if (t !== `${v}V 200A`) fail(`定格 ${v}V の書き方が違います（${t}）`);
   }
@@ -352,9 +353,9 @@ console.log('\n■ 引込ケーブル（埋設・架空・なし）と定格電�
   if (JSON.stringify(opts) !== JSON.stringify(['buried', 'overhead', 'none'])) fail(`付設方法の選択肢が違います（${opts.join('・')}）`);
   const volt = QUESTIONS.find((q) => q.id === 'cableVoltage');
   const vOpts = volt?.options?.map((o) => o.value) ?? [];
-  if (volt?.type !== 'select' || !volt.dropdown || JSON.stringify(vOpts) !== JSON.stringify(['3300', '6600'])) {
-    fail(`定格電圧が、3300・6600のドロップダウンになっていません（${volt?.type}／${vOpts.join('・')}）`);
-  } else console.log('  定格電圧：ドロップダウン（3300V／6600V）。初期値は6600V');
+  if (volt?.type !== 'select' || !volt.dropdown || JSON.stringify(vOpts) !== JSON.stringify(['3300', '6600', '22000', '33000'])) {
+    fail(`定格電圧が、3300・6600・22000・33000のドロップダウンになっていません（${volt?.type}／${vOpts.join('・')}）`);
+  } else console.log('  引込ケーブルの定格電圧：ドロップダウン（3300V／6600V／22000V／33000V）。初期値は6600V');
   // 古い案件の数値（6600）も、ケーブルの注記にそのまま出る
   const spec = String(withDerived({ cableVoltage: 6600, cableCrossSection: '38', cableLength: 14 }).cableSpecLine);
   const spec2 = String(withDerived({ cableVoltage: '3300', cableCrossSection: '38', cableLength: 14 }).cableSpecLine);

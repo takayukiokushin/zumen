@@ -106,7 +106,8 @@ export const RECEIVING_QUESTIONS: Question[] = [
     label: '定格電圧は？',
     type: 'select',
     dropdown: true,
-    options: [3300, 6600, 7200].map((v) => ({ value: String(v), label: `${v}V` })),
+    // 7200V・6600V・3300Vのほか、特別高圧の電圧（22000・23000・33000・34500V）も選べる（初期値は7200V）
+    options: [3300, 6600, 7200, 22000, 23000, 33000, 34500].map((v) => ({ value: String(v), label: `${v}V` })),
     showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
   },
@@ -185,7 +186,8 @@ export const RECEIVING_QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     unit: 'V',
-    options: [3300, 6600].map((v) => ({ value: String(v), label: `${v}V` })),
+    // 3300V・6600Vのほか、22000V・33000Vも選べる（初期値は6600V）
+    options: [3300, 6600, 22000, 33000].map((v) => ({ value: String(v), label: `${v}V` })),
     defaultValue: '6600',
     showIf: CABLE_EXISTS,
     ask: 'always',
