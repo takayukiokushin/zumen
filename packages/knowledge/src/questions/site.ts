@@ -46,7 +46,7 @@ export const SITE_QUESTIONS: Question[] = [
   {
     id: 'poleName',
     group: 'source',
-    label: '電柱名称',
+    label: '引込元の名称',
     type: 'text',
     clearOnDuplicate: true,
     // 「中電柱：」を最初から入れておき、その後ろに電柱の名称を入力する

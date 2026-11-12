@@ -372,11 +372,11 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
   for (const gone of ['polePrefix', 'cabinetPrefix']) {
     if (ids.has(gone)) fail(`1つにまとめたはずの質問 ${gone} が残っています`);
   }
-  if (labels('poleName') !== '電柱名称') fail(`「電柱名称」の名前が違います（${labels('poleName')}）`);
+  if (labels('poleName') !== '引込元の名称') fail(`「引込元の名称」の名前が違います（${labels('poleName')}）`);
   if (labels('cabinetName') !== 'キャビネット名称') fail(`「キャビネット名称」の名前が違います（${labels('cabinetName')}）`);
   const poleName = QUESTIONS.find((q) => q.id === 'poleName');
   const cabName = QUESTIONS.find((q) => q.id === 'cabinetName');
-  if (poleName?.defaultValue !== '中電柱：') fail(`電柱名称の最初の文字が「中電柱：」ではありません（${poleName?.defaultValue}）`);
+  if (poleName?.defaultValue !== '中電柱：') fail(`引込元の名称の最初の文字が「中電柱：」ではありません（${poleName?.defaultValue}）`);
   if (cabName?.defaultValue !== 'キャビネット番号：') fail(`キャビネット名称の最初の文字が「キャビネット番号：」ではありません（${cabName?.defaultValue}）`);
   if (/（分）|（幹）/.test(cabName?.help ?? '')) fail('キャビネット名称に、電柱の（分）（幹）の注意書きが残っています');
   const visibleIds = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
@@ -472,7 +472,7 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
       else console.log(`  ${name}：${want || '（書かない）'}`);
     }
   }
-  console.log('  引込元：電柱 → 電柱名称（「中電柱：」入り）・ASの有無／地上キャビネット → キャビネット名称（「キャビネット番号：」入り）（ASは無し）');
+  console.log('  引込元：電柱 → 引込元の名称（「中電柱：」入り）・ASの有無／地上キャビネット → キャビネット名称（「キャビネット番号：」入り）（ASは無し）');
   // 古い回答（hasPas だけ入っている）を読み替える
   const legacyNo = normalizeAnswers({ hasPas: 'no' });
   const legacyYes = normalizeAnswers({ hasPas: 'yes' });

@@ -46,6 +46,7 @@ const data: Record<string, string> = {
   "図面の一番上に描く、電力会社側の引込元。電柱か、地上の電力会社キャビネットのどちらか": "The utility-side service source drawn at the very top of the diagram: either a utility pole or a utility cabinet on the ground",
   "電柱": "Utility pole",
   "地上キャビネット": "Ground cabinet",
+  "引込元の名称": "Name of incoming source",
   "電柱名称": "Pole name",
   "電柱番号を入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。": "Enter the pole number (e.g. 猪子山（分）81 (= Inokoyama (branch) 81)). Classifications such as （分）（幹）（支）（連絡） are copied as written on the pole.",
   "AS（気中開閉器）はありますか？": "Is there an AS (air switch)?",

@@ -46,6 +46,7 @@ const data: Record<string, string> = {
   "図面の一番上に描く、電力会社側の引込元。電柱か、地上の電力会社キャビネットのどちらか": "Origine du branchement côté compagnie d’électricité, dessinée tout en haut du schéma : un poteau ou une armoire de la compagnie au sol.",
   "電柱": "Poteau",
   "地上キャビネット": "Armoire au sol",
+  "引込元の名称": "Nom de la source d’alimentation",
   "電柱名称": "Nom du poteau",
   "電柱番号を入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。": "Saisissez le numéro du poteau (ex. : 猪子山（分）81). Les mentions （分）（幹）（支）（連絡） etc. sont reprises telles qu’elles sont inscrites sur le poteau.",
   "AS（気中開閉器）はありますか？": "Y a-t-il un AS (interrupteur aérien) ?",
