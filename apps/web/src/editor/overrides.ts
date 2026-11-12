@@ -147,8 +147,14 @@ function parentsFirst(doc: Doc, ids: string[]): string[] {
  * 自動で作った図面（generated）の上に、いまの図面（current）の手で直した内容を重ねる。
  * 重ねた図面には、新しい控え（generated）と、手で直した内容の記録がつく。
  */
-export function rebuildWithOverrides(generated: Doc, current: Doc | null): { doc: Doc; report: RebuildReport } {
-  const ov = current?.base ? collectOverrides(current) : EMPTY;
+export function rebuildWithOverrides(
+  generated: Doc,
+  current: Doc | null,
+  /** 手で直した内容を、重ねる前に、差し引く・直すとき（図面の変更を入力に書き戻したぶんを、外すのに使う） */
+  adjust?: (ov: Overrides) => Overrides,
+): { doc: Doc; report: RebuildReport } {
+  const ov0 = current?.base ? collectOverrides(current) : EMPTY;
+  const ov = adjust ? adjust(ov0) : ov0;
   const gen = new Map<string, DocSymbol>();
   for (const it of generated.items) if (it.kind === 'symbol') gen.set(sameName(it.id), it);
 

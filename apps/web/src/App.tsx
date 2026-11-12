@@ -11,6 +11,10 @@ import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
 import { purgeOrphanMarks, withCleanLayers } from './editor/layers.ts';
+import { collectOverrides } from './editor/overrides.ts';
+import { leftoversOf, writeBack } from './editor/writeback.ts';
+import type { WritebackResult } from './editor/writeback.ts';
+import { WritebackBanner } from './WritebackBanner.tsx';
 import { useHeavyJob } from './editor/useHeavyJob.tsx';
 import { useNewVersion } from './session/useNewVersion.ts';
 import { useServerStatus } from './session/useServerStatus.ts';
@@ -207,6 +211,50 @@ export function App() {
     setAnswers((prev) => (typeof next === 'function' ? next(prev) : next));
     setDirty(true);
   }, []);
+
+  /**
+   * 図面で直した内容を、入力に書き戻した結果の知らせ（第13弾 項目1）。図面の画面から「設備を入力して作成」へ移ったときに出す。
+   * undo：書き戻す前の答えと図面（「取り消す」で戻す）。applied が空のときは、取り消すものが無い
+   */
+  const [wb, setWb] = useState<{ result: WritebackResult; undo: { answers: Answers; drawing: Doc } | null } | null>(null);
+  /** 「取り消す」を押した、書き戻しの内容の印。同じ内容は、もう一度は自動で書き戻さない */
+  const wbIgnored = useRef('');
+  const toEffective = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+
+  /** 図面の画面から、「設備を入力して作成」の画面へ移るとき、図面で直した内容を、入力に書き戻す（手で直した図面を優先する） */
+  const runWriteback = () => {
+    if (!drawing || readOnly) {
+      setWb(null);
+      return;
+    }
+    const r = writeBack(answers, drawing, toEffective);
+    if (!r) {
+      setWb(null);
+      return;
+    }
+    const sig = JSON.stringify(r.applied);
+    if (r.applied.length > 0 && sig !== wbIgnored.current) {
+      docVersion.current++;
+      setAnswers(r.answers);
+      setDrawing(r.doc);
+      setDirty(true);
+      setWb({ result: r, undo: { answers, drawing } });
+      return;
+    }
+    // 書き戻すものが無い（または、取り消した内容と同じ）。図面にだけ残る内容を知らせる
+    const leftovers = r.applied.length > 0 ? leftoversOf(collectOverrides(drawing)) : r.leftovers;
+    setWb(r.rejected.length > 0 || leftovers.length > 0 ? { result: { ...r, applied: [], leftovers }, undo: null } : null);
+  };
+
+  const undoWriteback = () => {
+    if (!wb?.undo) return;
+    wbIgnored.current = JSON.stringify(wb.result.applied);
+    docVersion.current++;
+    setAnswers(wb.undo.answers);
+    setDrawing(wb.undo.drawing);
+    setDirty(true);
+    setWb(null);
+  };
 
   /**
    * 保存していない変更があるとき、別の案件へ移ってよいかを確かめる。
@@ -463,6 +511,8 @@ export function App() {
         user={user}
         tab={tab}
         onTab={(id) => {
+          if (tab === 'drawing' && id === 'hearing') runWriteback();
+          else if (id !== 'hearing') setWb(null);
           setTab(id);
           setShowList(false);
         }}
@@ -625,6 +675,16 @@ export function App() {
             {t('lock.takeover')}
           </button>
         </p>
+      )}
+
+      {wb && tab === 'hearing' && !listing && (
+        <WritebackBanner
+          applied={wb.result.applied}
+          rejected={wb.result.rejected}
+          leftovers={wb.result.leftovers}
+          onUndo={wb.undo ? undoWriteback : null}
+          onClose={() => setWb(null)}
+        />
       )}
 
       <div className="body">

@@ -1117,6 +1117,11 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 /* 画面を開きっぱなしのあいだに、サーバーが新しい版に入れ替わったときの帯（保存してから、読み込み直してもらう） */
 .bar-update { display: flex; align-items: center; flex-wrap: wrap; gap: calc(10px * var(--text-scale)); margin: 0; padding: calc(8px * var(--text-scale)) calc(16px * var(--text-scale)); background: var(--accent-soft); border-bottom: 1px solid var(--accent); color: var(--ink); font-size: calc(12.5px * var(--text-scale)); flex: 0 0 auto; }
 .shell > .bar-update { flex: 0 0 auto; }
+/* 図面の変更を入力に書き戻したときの知らせ（WritebackBanner） */
+.wb { flex: 0 0 auto; }
+.wb-row { flex-wrap: wrap; }
+.wb-list { flex: 1 0 100%; margin: calc(4px * var(--text-scale)) 0 0; padding-left: calc(18px * var(--text-scale)); font-weight: normal; }
+.wb-list li { margin: calc(2px * var(--text-scale)) 0; }
 
 /* レイヤー（図面の種類）の切り替え。印刷のボタンの近くに置く */
 .layer-menu { position: relative; display: inline-block; }
