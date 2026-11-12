@@ -1,5 +1,5 @@
 import type { Question } from './types.ts';
-import { COUNT_OPTIONS, NOT_POWER_ONLY, NOT_LIGHT_ONLY, RECEIVING_6600, MIXED_V, THREE_WINDING, YES_NO } from './common.ts';
+import { COUNT_OPTIONS, NOT_POWER_ONLY, NOT_LIGHT_ONLY, RECEIVING_NOT_3300, MIXED_V, THREE_WINDING, YES_NO } from './common.ts';
 
 /** 質問の定義：変圧器、高圧進相設備 */
 export const TRANSFORMER_QUESTIONS: Question[] = [
@@ -85,12 +85,12 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     label: '電圧',
     type: 'text',
     placeholder: '6600/210-105V',
-    // 受電電圧が6600Vのとき、結線方式に合わせた電圧が最初から入る（単相三線式・V結線＝6600/210-105V、Y-Δ＝6600/210V、
+    // 受電電圧は6600V（入力欄は無い。3300Vの現場は、電圧を手で入力する）。結線方式に合わせた電圧が最初から入る（単相三線式・V結線＝6600/210-105V、Y-Δ＝6600/210V、
     // ほかの結線方式は「6600/」だけ）。消しても書き換えてもよい
     autoValue: [
-      { when: { all: [RECEIVING_6600, { key: 'trConnection', in: ['tr-1p', 'tr-vv'] }] }, value: '6600/210-105V' },
-      { when: { all: [RECEIVING_6600, { key: 'trConnection', eq: 'tr-3p-yd' }] }, value: '6600/210V' },
-      { when: RECEIVING_6600, value: '6600/' },
+      { when: { all: [RECEIVING_NOT_3300, { key: 'trConnection', in: ['tr-1p', 'tr-vv'] }] }, value: '6600/210-105V' },
+      { when: { all: [RECEIVING_NOT_3300, { key: 'trConnection', eq: 'tr-3p-yd' }] }, value: '6600/210V' },
+      { when: RECEIVING_NOT_3300, value: '6600/' },
     ],
     keepEmpty: true,
     ask: 'ai-uncertain',

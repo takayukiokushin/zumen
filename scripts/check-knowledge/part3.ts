@@ -229,7 +229,7 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       return v === undefined ? undefined : String(v);
     };
     const table: [string, string, string, number?][] = [
-      ['受電電圧', 'receivingVoltage', '6600'], ['引込元', 'sourceType', 'pole'], ['AS', 'hasAs', 'no'], ['3点一致', 'boundaryPattern', 'coincident'],
+      ['引込元', 'sourceType', 'pole'], ['AS', 'hasAs', 'no'], ['3点一致', 'boundaryPattern', 'coincident'],
       ['区分開閉器', 'sectionalizer', 'pas'], ['制御装置', 'pasControl', 'dgr'], ['内蔵VT', 'pasBuiltinVt', 'yes'], ['内蔵LA', 'pasBuiltinLa', 'yes'],
       ['区分開閉器の定格電圧', 'pasRatedVoltage', '7200'], ['区分開閉器の定格電流', 'pasRatedCurrent', '200'],
       ['VCTの位置', 'vctLocation', 'indoor'], ['VCTの台数', 'vctCount', '1'],
@@ -373,8 +373,9 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     ['用途が未入力でも、電圧は「6600/」が入る', {}, { trVoltage: '6600/' }],
     ['自分で書いた電圧は、そのまま', { trUsage: '電灯', trVoltage: '6600/210-105V' }, { trVoltage: '6600/210-105V' }],
     ['電圧を空にしたら、空のまま（また自動で入らない）', { trUsage: '電灯', trVoltage: '' }, { trVoltage: '' }],
-    ['受電電圧が6600V以外のときは、電圧を自動で入れない', { receivingVoltage: '3300', trUsage: '電灯' }, { trVoltage: undefined, trConnection: 'tr-1p' }],
-    ['受電電圧が数（6600）で入っていても同じ', { receivingVoltage: 6600, trUsage: '動力' }, { trVoltage: '6600/210V' }],
+    ['以前に、受電電圧を3300Vで保存した案件は、電圧を自動で入れない', { receivingVoltage: '3300', trUsage: '電灯' }, { trVoltage: undefined, trConnection: 'tr-1p' }],
+    ['以前に、受電電圧を3300（数）で保存した案件も同じ', { receivingVoltage: 3300, trUsage: '動力' }, { trVoltage: undefined, trConnection: 'tr-3p-yd' }],
+    ['以前に、受電電圧を6600（数）で保存した案件も、6600V', { receivingVoltage: 6600, trUsage: '動力' }, { trVoltage: '6600/210V' }],
     [
       '2台目以降は、その台の用途で決まる',
       { transformerCount: 2, trUsage: '電灯', trUsage__2: '動力' },
@@ -387,6 +388,13 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     const bad = Object.entries(want).filter(([k, v]) => got[k] !== v);
     if (bad.length > 0) fail(`${name}：${bad.map(([k, v]) => `${k}=${JSON.stringify(got[k])}（期待：${JSON.stringify(v)}）`).join('、')}`);
     else console.log(`  ${name}`);
+  }
+  // 受電電圧の入力欄は無い。何も入れていない案件は、いつも6600V
+  {
+    const none = withAutoValues({ trUsage: '動力' });
+    if (none.trVoltage !== '6600/210V') fail(`受電電圧を入れていない案件で、変圧器の電圧が6600Vで入っていません（${JSON.stringify(none.trVoltage)}）`);
+    if (QUESTIONS.some((q) => q.id === 'receivingVoltage')) fail('受電電圧の質問が、まだ残っています');
+    console.log('  受電電圧の入力欄は無い。何も入れていない案件は、いつも6600V（変圧器の電圧は「6600/…」が入る）');
   }
   // 電圧が「6600/」だけ（後ろが未入力）のときは、図面に書かない。書き終えたものは書く
   {

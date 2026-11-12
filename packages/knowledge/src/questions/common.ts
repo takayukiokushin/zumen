@@ -11,8 +11,12 @@ export const COUNT_OPTIONS: Choice[] = Array.from({ length: 50 }, (_, i) => ({
 export const NOT_POWER_ONLY: Condition = { not: { key: 'trUsage', eq: '動力' } };
 export const NOT_LIGHT_ONLY: Condition = { not: { key: 'trUsage', eq: '電灯' } };
 /** 用途が「電灯および動力」で、結線方式がV結線のとき（容量を電灯・動力に分けて聞く） */
-/** 受電電圧が6600V（一覧から選ぶと文字、サンプルでは数で入っている） */
-export const RECEIVING_6600: Condition = { key: 'receivingVoltage', in: ['6600', 6600] };
+/**
+ * 受電電圧が、3300Vではないとき（＝6600V。いまは、受電電圧を入力する欄は無く、新しい案件は、いつも6600Vとして扱う）。
+ * 受電電圧を入力する欄があったころに、3300Vで保存した案件（回答に receivingVoltage が残っているもの。文字か数で入っている）だけは、
+ * これまでどおり、変圧器の電圧を自動では入れない。
+ */
+export const RECEIVING_NOT_3300: Condition = { not: { key: 'receivingVoltage', in: ['3300', 3300] } };
 export const MIXED_V: Condition = {
   all: [{ key: 'trUsage', eq: '電灯・動力' }, { key: 'trConnection', eq: 'tr-vv' }],
 };

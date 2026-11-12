@@ -26,18 +26,6 @@ export const SITE_QUESTIONS: Question[] = [
     ask: 'always',
     help: '事業場名称と異なる書き方（略称など）をする場合に入力する',
   },
-  {
-    id: 'receivingVoltage',
-    group: 'customer',
-    label: '受電電圧',
-    type: 'select',
-    dropdown: true,
-    unit: 'V',
-    // 高圧受電だけを扱う
-    options: [3300, 6600].map((v) => ({ value: String(v), label: `${v}V` })),
-    defaultValue: '6600',
-    ask: 'always',
-  },
 
   /* ---------------- 引込元 ---------------- */
   {
