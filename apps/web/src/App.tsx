@@ -26,7 +26,6 @@ import { TabBar } from './TabBar.tsx';
 import type { Tab } from './TabBar.tsx';
 import { UserAdmin } from './projects/UserAdmin.tsx';
 import { SettingsPanel } from './settings/SettingsPanel.tsx';
-import { isNarrowScreen } from './settings/settings.tsx';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { Relogin } from './session/Relogin.tsx';
 import { HelpPanel } from './help/HelpPanel.tsx';
@@ -103,8 +102,8 @@ export function App() {
    * 読み取りを実行した直後も、ここを「はい」にする
    */
   const [sketchRead, setSketchRead] = useState(false);
-  // スマホ（幅の狭い画面）では、入力欄を広く使うため、「いまの構成」は最初は隠しておく
-  const [showPreview, setShowPreview] = useState(() => !isNarrowScreen());
+  // 右の「いまの構成」は、最初は隠しておく（「いまの構成を出す」で開く。入力欄を広く使うため。左の目次と同じ考え方）
+  const [showPreview, setShowPreview] = useState(false);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   // 別の案件を開いたら、読み取りの状態の印は、消す

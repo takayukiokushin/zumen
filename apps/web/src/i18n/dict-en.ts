@@ -261,7 +261,7 @@ export const en: Dict = {
   'help.5.t': 'Sketch reading',
   'help.5.b': 'A draft of the input is made from photos or images (PDFs too). After you press “Read N file(s)”, it takes from several tens of seconds to a few minutes (you can stop it with “Cancel”). When it finishes, press “Apply what was read” and the content goes into “Enter equipment”. Items that are needed to make the drawing but could not be read can be answered on the same screen. The AI can make mistakes. After applying, a person must always check and correct the result in “Enter equipment” and “Diagram”.',
   'help.6.t': 'Enter equipment and create',
-  'help.6.b': 'As you answer the questions, the summary on the right and the drawing are updated. On a narrow screen, use “Hide contents” or “Hide summary” to widen the input area.',
+  'help.6.b': 'As you answer the questions, the drawing is updated. The summary on the right is hidden at first; press “Show summary” to see the list of equipment built from your answers. To change the width of the input area, use “Show contents” and “Hide summary”.',
   'help.7.t': 'Editing the drawing',
   'help.7.b': 'Click a symbol to select it; you can move it or “Delete” it. Use “Draw a line” to add a connection. Use “Undo” if you make a mistake. “Tidy connections” snaps wires back onto their connection points. When you change what you entered, the drawing is redrawn automatically (it is also checked when you open this screen). Your manual edits are kept as far as possible (in drawings of an old format they may not be kept), and a notice tells you the drawing was redrawn. Use “Undo” to go back to the drawing as it was before.',
   'help.8.t': 'Output and display settings',
