@@ -216,8 +216,10 @@ export const RECEIVING_QUESTIONS: Question[] = [
   {
     id: 'cableLengthApprox',
     group: 'cable',
-    label: '図面に「約」を付ける',
+    label: '長さに「約」を付ける',
     type: 'boolean',
+    // 名前が途中で折り返されないよう、横幅をふつう（m）にする（日本語の11字が、1行に収まる）
+    size: 'm',
     // 既定値を持たせると「既定のままでよい質問」として畳まれてしまうので置かない。
     // 未回答は「付けない」と同じ扱いになる
     showIf: { all: [CABLE_EXISTS, { key: 'cableLength', gt: 0 }] },

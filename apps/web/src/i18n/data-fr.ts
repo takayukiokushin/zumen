@@ -97,7 +97,7 @@ const data: Record<string, string> = {
   "断面積は？": "Section ?",
   "長さは？": "Longueur ?",
   "不明な場合は空欄にする（図面には「- m」と記載する）": "Si inconnue, laissez vide (le schéma indique « - m »).",
-  "図面に「約」を付ける": "Ajouter « 約 » (environ) sur le schéma",
+  "長さに「約」を付ける": "Ajouter « 約 » (environ) devant la longueur",
   "歩測などで、きっちりした実測ではないとき。「約20m」と書かれる": "Quand la longueur est estimée (au pas, par exemple) et non mesurée avec précision. Le schéma indique « 約20m ».",
   "電気設備（受電設備）は何箇所に分かれていますか？": "En combien de sites l’installation électrique (installation de réception) est-elle répartie ?",
   "このエリアの名前（任意）": "Nom de cette zone (facultatif)",

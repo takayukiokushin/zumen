@@ -97,7 +97,7 @@ const data: Record<string, string> = {
   "断面積は？": "Cross-sectional area?",
   "長さは？": "Length?",
   "不明な場合は空欄にする（図面には「- m」と記載する）": "If unknown, leave blank (the drawing shows 「- m」)",
-  "図面に「約」を付ける": "Add 「約」 (= “approx.”) on the drawing",
+  "長さに「約」を付ける": "Add 「約」 (= “approx.”) to the length",
   "歩測などで、きっちりした実測ではないとき。「約20m」と書かれる": "For when the length is paced off or otherwise not a precise measurement. It is written as 「約20m」",
   "電気設備（受電設備）は何箇所に分かれていますか？": "How many sites is the electrical equipment (receiving equipment) divided into?",
   "このエリアの名前（任意）": "Name of this area (optional)",
