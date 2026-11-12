@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { api, LoginError } from './api.ts';
 import { useT } from '../i18n/useT.ts';
 import { Rich } from '../i18n/Rich.tsx';
-import { LANGS, LANG_LABEL, tr } from '../i18n/index.ts';
-import type { Lang } from '../i18n/index.ts';
+import { tr } from '../i18n/index.ts';
+import { LangSelect } from '../settings/LangSelect.tsx';
 import { EyeIcon, EyeOffIcon } from '../icons.tsx';
 import { useSettings } from '../settings/settings.tsx';
 import { APP_VERSION } from '../version.ts';
@@ -132,27 +132,11 @@ export function Login({ onDone }: { onDone: (user: User) => void }) {
           {busy ? t('login.busy') : t('login.submit')}
         </button>
 
-        {/* 言葉も、ログインする前に選べる（ここで選んだ言葉は、ログインしたあとの画面にも引き継がれる） */}
+        {/* 言葉も、ログインする前に選べる（ここで選んだ言葉は、ログインしたあとの画面にも引き継がれる。注意書きは、一覧を開いたときだけ出る） */}
         <div className="login-size login-lang">
           <span className="lbl">{t('settings.lang')}</span>
-          <div className="seg">
-            {LANGS.map((l: Lang) => (
-              <button
-                key={l}
-                type="button"
-                className="btn"
-                lang={l}
-                aria-pressed={settings.lang === l}
-                onClick={() => set('lang', l)}
-              >
-                {LANG_LABEL[l]}
-              </button>
-            ))}
-          </div>
+          <LangSelect />
         </div>
-        <p className="hint ref-note">
-          <Rich text={t('settings.langRef')} />
-        </p>
 
         {/*
           文字が小さくて読めない人が、ログインする前に大きくできるようにしておく。
