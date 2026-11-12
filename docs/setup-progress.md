@@ -1,11 +1,12 @@
-# 会社の Mac mini の設置：進み具合のメモ（2026-11-11 時点）
+# 会社の Mac mini の設置：進み具合のメモ（2026-11-12 時点）
 
 `docs/server-setup.md` 第2部の、どこまで終わったかを残すメモ。
 **パスワードも APIキーも、ここには書かない。**
 
 ## 場所・環境
 
-- アプリのフォルダ：`/Users/takayukiokushin/Downloads/zumen`（手順書は「デスクトップ」の前提。ここはダウンロードの中）
+- アプリのフォルダ：`/Users/takayukiokushin/Downloads/zumen-claude-single-line-diagram-app-h1mp73`（ZIP を展開したときの名前のまま。`.env` と `data` が入っている。手順書は「デスクトップ」の前提。ここはダウンロードの中）
+  - 入るとき：`cd ~/Downloads/zumen-claude-single-line-diagram-app-h1mp73`（ホームの `~` のまま `pnpm` を打つと、「Operation not permitted」で止まる）
 - Node.js：v26.13.0
 - pnpm：`sudo npm install -g pnpm` で導入済み（`pnpm -v` は 10.33.0 と出る）
 - 控え（バックアップ）の置き場所（ドロップボックスの中）：
@@ -21,6 +22,7 @@
 | 2-4 | `./test-mac.command` | 済み（411件すべて正常） |
 | 2-5 | APIキーを `.env` に置く | 済み（`pnpm --filter @zumen/server apikey` で「利用券は使えます」と確認） |
 | 2-6 | 控えの置き場所 | **途中**（下の「次にやること」） |
+| 2-7 | 利用者（アカウント）の登録 | **済み**（2026-11-12。管理用・保安・事務・練習用の4つ。`user:list` で4つ並ぶことを利用者が確認。パスワードは利用者のメモ） |
 
 ## 次にやること（ここから再開）
 
@@ -67,7 +69,7 @@ grep '^BACKUP_DIR' .env
 pnpm --filter @zumen/server apikey
 ```
 
-### 3. 2-7 利用者（アカウント）の登録
+### 3. 2-7 利用者（アカウント）の登録 ← 済み（2026-11-12）
 
 `docs/setup-memo.md` の表のとおり。パスワードは本人が決める。
 **管理用の ID は、リポジトリに書いていない名前を本人が決める**（`zumen_kanri` はそのまま使わない）。
