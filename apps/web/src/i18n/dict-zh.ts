@@ -65,7 +65,7 @@ export const zh: Dict = {
   'project.delete': '删除',
   'project.duplicate': '复制为新图纸',
   'project.duplicate.title': '复制此图纸并新建',
-  'project.duplicate.confirm': '将被复制为新的案件。设备内容和手动修改的图纸会保留。场所名称、电线杆名称、图纸名称、特别事项和手写备注会被清空。照片不会复制。原案件不会改变。要继续吗？',
+  'project.duplicate.confirm': '将被复制。图纸会原样沿用，但客户信息等各项目专有的内容不会被复制。',
   'project.duplicate.layersTitle': '是否一并复制图层？',
   'project.duplicate.layersMessage': '此图纸有图层（如停电范围图）。请勾选要复制的图层。未勾选的不会被复制（以免其他现场的范围被误带入）。',
   'project.duplicate.layerCount': '（已放置 {n} 个）',

@@ -66,7 +66,7 @@ export const ja = {
   'project.delete': '消す',
   'project.duplicate': '複製して新規作成',
   'project.duplicate.title': 'この図面を複製して新しく作る',
-  'project.duplicate.confirm': 'を複製して、新しい案件を作ります。設備の内容と、手で直した図面は、そのまま使います。事業場名称・電柱名称・図面の名称・特記事項と、手で足したメモは、空になります。写真は、コピーしません。もとの案件は変わりません。よろしいですか？',
+  'project.duplicate.confirm': 'を複製します。図面はそのまま流用されますが、お客様情報などの固有の内容は複製されません。',
   'project.duplicate.layersTitle': 'レイヤーも複製しますか？',
   'project.duplicate.layersMessage': 'この図面には、レイヤー（停電範囲図など）があります。複製するものに、チェックを入れてください。チェックを入れなければ、複製されません（別の現場の範囲が、紛れ込まないようにするためです）。',
   'project.duplicate.layerCount': '（置いたもの {n}個）',

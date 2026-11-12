@@ -65,7 +65,7 @@ export const en: Dict = {
   'project.delete': 'Delete',
   'project.duplicate': 'Duplicate as new',
   'project.duplicate.title': 'Duplicate this drawing as a new job',
-  'project.duplicate.confirm': 'will be duplicated as a new job. The equipment settings and your manual edits to the drawing are kept. The site name, pole name, drawing name, special notes and handwritten memos are cleared. Photos are not copied. The original is not changed. Continue?',
+  'project.duplicate.confirm': 'will be duplicated. The drawing is reused as it is, but customer information and other job-specific content are not copied.',
   'project.duplicate.layersTitle': 'Duplicate the layers too?',
   'project.duplicate.layersMessage': 'This drawing has layers (such as the outage area diagram). Tick the ones to duplicate. Anything left unticked is not copied (so that the areas of another site do not get mixed in by mistake).',
   'project.duplicate.layerCount': '({n} items placed)',

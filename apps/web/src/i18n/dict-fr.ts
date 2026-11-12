@@ -65,7 +65,7 @@ export const fr: Dict = {
   'project.delete': 'Supprimer',
   'project.duplicate': 'Dupliquer en nouveau',
   'project.duplicate.title': 'Dupliquer ce schéma en un nouveau dossier',
-  'project.duplicate.confirm': 'sera dupliqué en un nouveau dossier. Les équipements et vos retouches manuelles sont conservés. Le nom du site, le nom du poteau, le nom du schéma, les remarques et les mémos manuscrits sont vidés. Les photos ne sont pas copiées. L’original ne change pas. Continuer ?',
+  'project.duplicate.confirm': 'sera dupliqué. Le dessin est réutilisé tel quel, mais les informations client et les autres contenus propres au dossier ne sont pas copiés.',
   'project.duplicate.layersTitle': 'Dupliquer aussi les calques ?',
   'project.duplicate.layersMessage': 'Ce schéma comporte des calques (comme la zone hors tension). Cochez ceux à dupliquer. Ceux qui ne sont pas cochés ne sont pas copiés (pour éviter que les zones d’un autre site ne s’y glissent par erreur).',
   'project.duplicate.layerCount': '({n} éléments placés)',

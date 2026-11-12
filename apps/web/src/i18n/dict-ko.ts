@@ -65,7 +65,7 @@ export const ko: Dict = {
   'project.delete': '지우기',
   'project.duplicate': '복제해서 새로 만들기',
   'project.duplicate.title': '이 도면을 복제해서 새로 만들기',
-  'project.duplicate.confirm': '을(를) 복제하여 새 안건을 만듭니다. 설비 내용과 손으로 고친 도면은 그대로 사용합니다. 사업장 명칭, 전주 명칭, 도면 명칭, 특기사항과 손으로 추가한 메모는 비워집니다. 사진은 복사하지 않습니다. 원래 안건은 바뀌지 않습니다. 계속할까요?',
+  'project.duplicate.confirm': '을(를) 복제합니다. 도면은 그대로 이어 쓰지만, 고객 정보 등 고유한 내용은 복제되지 않습니다.',
   'project.duplicate.layersTitle': '레이어도 복제할까요?',
   'project.duplicate.layersMessage': '이 도면에는 레이어(정전 범위도 등)가 있습니다. 복제할 것에 체크하세요. 체크하지 않은 것은 복제되지 않습니다(다른 현장의 범위가 잘못 섞이지 않도록 하기 위해서입니다).',
   'project.duplicate.layerCount': '(놓은 것 {n}개)',
