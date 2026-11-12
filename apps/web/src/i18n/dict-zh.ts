@@ -147,6 +147,7 @@ export const zh: Dict = {
   'editor.zoomIn': '放大',
   'editor.zoomOut': '缩小',
   'editor.wireHint': '画线：先点起点，再点终点。可连续画任意多条；按 Esc 或再次点击“画线”即可结束。线会自动变成横向或纵向，并自动吸附到附近的接点、线端和线上（按住 Alt / option 可关闭吸附）。',
+  'editor.sideResize': '拖动可调整此面板的宽度（双击恢复原宽度）',
   'editor.palette': '添加·替换符号',
   'editor.palette.replace': '已选中一个符号。从下方选择即可替换（接线保持连接，长度自动调整）。',
   'editor.palette.add': '从下方选择会添加到图纸下方。先选中符号再点击则为替换。',

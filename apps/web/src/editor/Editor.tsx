@@ -19,6 +19,7 @@ import { WireKindWindow } from './WireKindWindow.tsx';
 import type { Pos } from './WireKindWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
+import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
 import { addExtraCross, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
@@ -137,6 +138,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   /** スマホ（幅の狭い画面）で、ほかの操作のボタン列・記号パレットを開いているか */
   const [moreOpen, setMoreOpen] = useState(false);
   const [sideOpen, setSideOpen] = useState(false);
+  /** 右の「記号を追加・差し替え」の枠の幅（ドラッグで変える。画面を開いているあいだは覚えている） */
+  const [sideW, setSideW] = useState(rememberedSideWidth);
   /** 「結線を整える」で直しきれなかったところ */
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
@@ -1200,7 +1203,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         />
       )}
 
-      <div className="editor-body">
+      <div className="editor-body" style={sideVars(sideW) as React.CSSProperties}>
         <div className="canvas-wrap" ref={canvasWrapRef}>
           {sheetView ? (
             <div
@@ -1273,6 +1276,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           )}
         </div>
 
+        <SideResizer width={sideW} onChange={setSideW} />
         <aside className={`side${sideOpen ? ' open' : ''}`} inert={sheetView}>
           <button type="button" className="btn side-close" onClick={() => setSideOpen(false)}>
             {t('common.close')}

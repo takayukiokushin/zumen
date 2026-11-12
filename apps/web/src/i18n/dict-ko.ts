@@ -148,6 +148,7 @@ export const ko: Dict = {
   'editor.zoomIn': '확대',
   'editor.zoomOut': '축소',
   'editor.wireHint': '선 긋기: 시작점을 누르고 끝점을 누르세요. 계속해서 여러 개를 그을 수 있고, 끝내려면 Esc 또는 “선 긋기”를 다시 누르세요. 가로나 세로로 맞춰지고, 가까운 접속점·선 끝·선 위에 자동으로 붙습니다(끄려면 Alt / option을 누른 채 클릭).',
+  'editor.sideResize': '드래그하여 이 패널의 너비를 바꿀 수 있습니다(더블클릭하면 원래 너비로 돌아갑니다)',
   'editor.palette': '기호 추가·교체',
   'editor.palette.replace': '기호를 고른 상태입니다. 아래에서 고르면 교체됩니다(결선은 이어진 채 길이가 맞춰집니다).',
   'editor.palette.add': '아래에서 고르면 도면 아래에 더해집니다. 기호를 고른 뒤 누르면 교체가 됩니다.',
