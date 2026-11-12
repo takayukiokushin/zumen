@@ -87,7 +87,7 @@ export const ko: Dict = {
   'settings.scrollbar.thick': '굵게',
   'settings.scrollbar.xthick': '아주 굵게',
   'settings.scrollbarNote': '세로 스크롤바의 두께입니다. 마우스가 있는 컴퓨터에서 적용됩니다(휴대폰·태블릿은 기기 기본 두께 그대로입니다).',
-  'settings.lang': '화면 언어',
+  'settings.lang': '언어 선택',
   'settings.langNote': '도면에 인쇄되는 글자(도면 미리보기와 인쇄·PDF)는 일본어 그대로입니다.',
   'settings.langRef': '<b>일본어 이외의 언어는 참고용 번역입니다.</b> 전문 번역가의 검수를 받지 않았습니다. 안전과 관련된 내용(도면, 규칙, 질문)은 일본어 화면에서 확인해 주세요.',
   'settings.theme': '화면 밝기',

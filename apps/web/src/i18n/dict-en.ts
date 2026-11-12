@@ -87,7 +87,7 @@ export const en: Dict = {
   'settings.scrollbar.thick': 'Thick',
   'settings.scrollbar.xthick': 'Extra thick',
   'settings.scrollbarNote': 'Width of the vertical scrollbar. Applies on computers with a mouse (phones and tablets keep their default width).',
-  'settings.lang': 'Language',
+  'settings.lang': 'Select language',
   'settings.langNote': 'Text printed on the drawing (the drawing preview and printed/PDF output) stays in Japanese.',
   'settings.langRef': '<b>Languages other than Japanese are reference translations.</b> They have not been reviewed by a professional translator. For anything safety-related (drawings, rules, questions), please check the Japanese screen.',
   'settings.theme': 'Appearance',

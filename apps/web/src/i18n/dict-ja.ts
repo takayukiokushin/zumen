@@ -88,7 +88,7 @@ export const ja = {
   'settings.scrollbar.thick': '太め',
   'settings.scrollbar.xthick': '極太',
   'settings.scrollbarNote': '画面の右端などにある、上下に動かす棒の太さです。マウスのあるパソコンで効きます（スマホ・タブレットは、端末の標準の太さのままです）。',
-  'settings.lang': '画面の言葉',
+  'settings.lang': '言語を選択',
   'settings.langNote': '図面に印刷される文字（図面のプレビューと、印刷・PDF）は、日本語のままです。',
   'settings.langRef': '<b>日本語以外の言葉は、参考訳です。</b>専門の翻訳者の確認を受けていません。安全に関わる内容（図面・規則・質問）は、日本語の画面で確かめてください。',
   'settings.theme': '画面の明るさ',

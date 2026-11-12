@@ -87,7 +87,7 @@ export const fr: Dict = {
   'settings.scrollbar.thick': 'Épaisse',
   'settings.scrollbar.xthick': 'Très épaisse',
   'settings.scrollbarNote': "Largeur de la barre de défilement verticale. S'applique sur ordinateur avec souris (les téléphones et tablettes gardent leur largeur par défaut).",
-  'settings.lang': 'Langue',
+  'settings.lang': 'Choisir la langue',
   'settings.langNote': 'Les textes imprimés sur le schéma (aperçu du schéma, impression et PDF) restent en japonais.',
   'settings.langRef': '<b>Les langues autres que le japonais sont des traductions indicatives.</b> Elles n’ont pas été relues par un traducteur professionnel. Pour tout ce qui touche à la sécurité (plans, règles, questions), vérifiez l’écran en japonais.',
   'settings.theme': 'Apparence',
