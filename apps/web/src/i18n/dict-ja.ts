@@ -31,7 +31,7 @@ export const ja = {
   'project.choose': '案件を選ぶ',
   'project.list': '図面一覧',
   'project.nameLabel': '案件：',
-  'project.new': '案件を追加',
+  'project.new': '図面を新規作成',
   'project.newName': '案件の名前を入れてください。',
   'project.search': '案件名・事業場名称・お客様番号で探す',
   'project.searchHint': '言葉の一部を入れると絞り込めます。空白で区切ると、すべての言葉を含むものが見つかります',
