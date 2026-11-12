@@ -7,7 +7,7 @@ import { useT } from '../i18n/useT.ts';
  *   ・ダブルクリックで、元の幅（280px）に戻る
  *   ・キーボード：取っ手を選んで、← → で 20px ずつ（Shift を押しながらで 60px ずつ）、Home で元の幅
  *   ・広げすぎて、図面が見えなくならないよう、最小 240px・最大 560px。さらに、図面の幅が 360px を下回るほどは広げない（CSS側でも抑える）
- * 広げた幅は、この画面を開いているあいだ（ほかのタブへ移っても）覚えている。次にブラウザを開き直したときは、元の幅に戻る。
+ * 広げた幅は、このブラウザに覚えさせる（次に開いたときも、同じ幅。ほかの表示の設定と同じ。案件のデータには入らない）。
  * 枠の中の記号のボタンは、幅に合わせて大きさが変わる（幅が2倍なら、ボタンも絵も2倍。文字は、その半分の割合で大きくなる）。
  */
 export const SIDE_W_DEFAULT = 280;
@@ -17,9 +17,30 @@ export const SIDE_W_MAX = 560;
 export const CANVAS_MIN = 360;
 export const HANDLE_W = 8;
 
-/** 広げた幅の記憶（画面を開いているあいだだけ） */
-let remembered = SIDE_W_DEFAULT;
+const KEY = 'zumen.sideWidth';
+
+/** このブラウザに覚えている幅（無い・読めないときは、元の幅） */
+function load(): number {
+  try {
+    const v = Number(localStorage.getItem(KEY));
+    return Number.isFinite(v) && v > 0 ? Math.round(Math.max(SIDE_W_MIN, Math.min(SIDE_W_MAX, v))) : SIDE_W_DEFAULT;
+  } catch {
+    return SIDE_W_DEFAULT;
+  }
+}
+
+/** 広げた幅の記憶 */
+let remembered = load();
 export const rememberedSideWidth = (): number => remembered;
+
+function save(w: number): void {
+  remembered = w;
+  try {
+    localStorage.setItem(KEY, String(w));
+  } catch {
+    // 保存できなくても、画面は使える（プライベートモードなど）
+  }
+}
 
 const clamp = (v: number, max = SIDE_W_MAX): number => Math.round(Math.max(SIDE_W_MIN, Math.min(max, v)));
 
@@ -40,7 +61,7 @@ export function SideResizer({ width, onChange }: { width: number; onChange: (w: 
   const drag = useRef<{ x: number; w: number; last: number; ratio: number; max: number } | null>(null);
 
   const set = (w: number) => {
-    remembered = w;
+    save(w);
     onChange(w);
   };
 
