@@ -389,9 +389,9 @@ export const AI_HINTS: Record<string, string> = {
     '母線を選ぶと、主遮断装置の一次側（手前）または二次側（すぐ後ろ）に、ZCTが描かれます。',
   laTap:
     'LA（避雷器）を、主回路のどこにつなぐかを選ぶ項目です。' +
-    '選べる値は、ds-vcb（DSとVCBの間）・vcb-ct（VCBとCTの間）・lbs-ct（LBSとCTの間。' +
+    '選べる値は、ds-source（DSの一次側）・ds-vcb（DSとVCBの間）・vcb-ct（VCBとCTの間）・lbs-ct（LBSとCTの間。' +
     'LBSの次）・ct-bus（変圧器の手前。' +
-    'CTの下で、高圧母線の上）の4つです。' +
+    'CTの下で、高圧母線の上）の5つです。' +
     'ZPDとは別々に選べます。' +
     '同じ位置を選んでも、別の記号として描かれます。' +
     'メモや図で、LAがつながっている位置が分かるときだけ答えてください。' +

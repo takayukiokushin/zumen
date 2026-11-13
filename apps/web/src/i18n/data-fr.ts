@@ -228,6 +228,7 @@ const data: Record<string, string> = {
   "ZPD・LA・接地": "ZPD, LA, mise à la terre",
   "ZPDをつなぐ位置は？": "Point de raccordement du ZPD ?",
   "主回路のどこにつなぐか。ふつうは、変圧器の手前（高圧母線の上）": "À quel endroit du circuit principal il est raccordé. En général, en amont du transformateur (sur le jeu de barres haute tension).",
+  "DS（断路器）の一次側": "Côté primaire (source) du DS (sectionneur)",
   "DSとVCBの間": "Entre le DS et le VCB",
   "VCBとCTの間": "Entre le VCB et le CT",
   "LBSの次（LBSとCTの間）": "Après le LBS (entre le LBS et le CT)",

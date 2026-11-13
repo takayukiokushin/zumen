@@ -1181,12 +1181,22 @@ function moveVtLeftWhenCrowded(list: PlacedItem[]): PlacedItem[] {
 
 /**
  * ZPD・LAを、答えた位置に動かす。
+ * - ds-source（DSの一次側）：DSの直前（LAだけ。第13弾 項目20）。DSが無いときは、動かさない
  * - ds-vcb（DSとVCBの間）：主遮断装置（VCB）の直前
  * - vcb-ct・lbs-ct（主遮断装置とCTの間）：主遮断装置の直後
  * - ct-bus（変圧器の手前）：いまの位置（CTや試験端子・OCRのあと、高圧母線の上）
  * 主遮断装置が無いときは、動かさない。
  */
 function placeByTap(items: PlacedItem[]): PlacedItem[] {
+  const dsSide = items.filter((i) => i.tap === 'ds-source');
+  if (dsSide.length > 0) {
+    const ds = items.findIndex((i) => i.role === 'ds');
+    if (ds >= 0) {
+      const rest0 = items.filter((i) => !dsSide.includes(i));
+      const at0 = rest0.findIndex((i) => i.role === 'ds');
+      items = [...rest0.slice(0, at0), ...dsSide, ...rest0.slice(at0)];
+    }
+  }
   const tapped = items.filter((i) => i.tap && ['ds-vcb', 'vcb-ct', 'lbs-ct'].includes(i.tap));
   if (tapped.length === 0) return items;
   const main = items.findIndex((i) => i.role === 'main-breaker');

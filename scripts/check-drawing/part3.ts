@@ -951,7 +951,7 @@ console.log('\n■ 範囲選択・複数選択');
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
   const problems = (d: ReturnType<typeof layout>) => findLabelCollisions(d).length > 0 ? '文字が重なっています' : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
   for (const sw of ['ds', 'pc', 'lbs']) {
-    for (const tap of ['ds-vcb', 'vcb-ct', 'ct-bus']) {
+    for (const tap of ['ds-source', 'ds-vcb', 'vcb-ct', 'ct-bus']) {
       for (const zpd of ['yes', 'no']) {
         const a: Answers = { ...base, laSwitch: sw, laTap: tap, hasZpd: zpd };
         const d = layout(buildComposition(a), a);

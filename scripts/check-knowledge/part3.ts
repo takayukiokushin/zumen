@@ -167,6 +167,7 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(shown({ hasLa: 'yes' }).has('laTap') && !shown({ hasLa: 'yes' }).has('zpdTap'), 'LAだけあるとき、LAの位置だけを聞くはずです');
   const opts = (id: string, a: Answers) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).filter((o) => evaluate(o.showIf, normalizeAnswers(a))).map((o) => o.value).join(',');
   ok(opts('zpdTap', { mainBreakerForm: 'cb' }) === 'ds-vcb,vcb-ct,ct-bus', `CB形のとき、ZPDの位置の選択肢が違います（${opts('zpdTap', { mainBreakerForm: 'cb' })}）`);
+  ok(opts('laTap', { mainBreakerForm: 'cb' }) === 'ds-source,ds-vcb,vcb-ct,ct-bus', `CB形のとき、LAの位置の選択肢（DSの一次側が、DSとVCBの間の1つ上）が違います（${opts('laTap', { mainBreakerForm: 'cb' })}）`);
   ok(opts('laTap', { mainBreakerForm: 'pfs' }) === 'lbs-ct,ct-bus', `PFS形のとき、LAの位置の選択肢が違います（${opts('laTap', { mainBreakerForm: 'pfs' })}）`);
   ok(opts('zpdTap', { areaCount: 2, 'a2:areaIntake': 'none' }) === 'ct-bus' || true, '');
   ok(opts('zpdTap', areaView({ areaCount: 2, 'a2:areaIntake': 'ds' }, 1)) === 'ct-bus', 'DSのみのエリアでは、変圧器の手前だけを選べるはずです');
@@ -308,6 +309,12 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   for (const tap of ['ds-vcb', 'vcb-ct', 'ct-bus']) {
     const order = buildComposition({ ...laBase, laSwitch: 'pc', laTap: tap }).map((i) => i.role).filter((r) => ['main-breaker', 'la-switch', 'site-la'].includes(r)).join('>');
     ok(order === (tap === 'ds-vcb' ? 'la-switch>site-la>main-breaker' : 'main-breaker>la-switch>site-la'), `LAの位置 ${tap} のとき、開閉器とLAの位置が違います（${order}）`);
+  }
+  // DSの一次側：DSの直前（DSより電源側）。DSが無い構成では、動かさない
+  {
+    const seq = (a: Answers) => buildComposition({ ...laBase, ...a }).map((i) => i.role).filter((r) => ['ds', 'main-breaker', 'la-switch', 'site-la'].includes(r)).join('>');
+    ok(seq({ laTap: 'ds-source' }) === 'site-la>ds>main-breaker', `LAの位置 ds-source のとき、LAはDSの手前のはずです（${seq({ laTap: 'ds-source' })}）`);
+    ok(seq({ laTap: 'ds-source', laSwitch: 'pc' }) === 'la-switch>site-la>ds>main-breaker', `LAの位置 ds-source ＋上位PCのとき、PC→LA→DSの順のはずです（${seq({ laTap: 'ds-source', laSwitch: 'pc' })}）`);
   }
   ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasLa': 'yes', 'a2:laSwitch': 'lbs' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => r === 'la-switch' || r === 'site-la').join() === 'la-switch,site-la', '2か所目のLAの上位の開閉器が入っていません');
   // GR（無方向性）：ZCTだけ。ZPDは要らない。DGRと同じ位置の選択肢

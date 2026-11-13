@@ -489,6 +489,8 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     options: [
+      // DSの一次側（電源側）：DSの手前。LAは、DSで切り離せない位置になる（第13弾 項目20）
+      { value: 'ds-source', label: 'DS（断路器）の一次側', showIf: { key: 'intakeDs', eq: 'yes' } },
       { value: 'ds-vcb', label: 'DSとVCBの間', showIf: { all: [{ key: 'intakeDs', eq: 'yes' }, { key: 'intakeVcb', eq: 'yes' }] } },
       { value: 'vcb-ct', label: 'VCBとCTの間', showIf: { key: 'intakeVcb', eq: 'yes' } },
       { value: 'lbs-ct', label: 'LBSの次（LBSとCTの間）', showIf: { key: 'intakeLbs', eq: 'yes' } },
