@@ -7,7 +7,7 @@ import { snap } from '@zumen/layout';
 import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
 import { groundOverlapsSymbols, isHorizontalWire, markPoint, normalizeRect } from './layers.ts';
-import type { AreaRect, LinkShape } from '@zumen/layout';
+import type { AreaRect, ArrowDir, LinkShape } from '@zumen/layout';
 import type { GroundAnchor, ResolvedArea, ResolvedArrow, ResolvedCross, ResolvedDot, ResolvedGround, ResolvedLink } from './layers.ts';
 
 interface Props {
@@ -38,6 +38,8 @@ interface Props {
   onDotMove?: (dotId: string, x: number, y: number, free: boolean) => void;
   /** 'arrow' のとき、丸い点をクリックしたとき（その点に、印加点の矢印を付ける） */
   onArrowClick?: (dotId: string) => void;
+  /** 'arrow' のときに、印加点をクリックして、続けて、矢印の尾の位置（向きと長さ）をクリックしたとき（2回目のクリックで、矢印を付ける。第13弾 項目36） */
+  onArrowAdd?: (dotId: string, dir: ArrowDir, len: number) => void;
   /** 選んでいる矢印の、尾の端（丸）をドラッグして動かし終わったとき */
   onArrowTail?: (arrowId: string, tx: number, ty: number) => void;
   /** レイヤーに置いた赤い枠（範囲を囲む四角。充電範囲は斜線つき） */
@@ -128,7 +130,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -147,6 +149,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   const [crossHover, setCrossHover] = useState<{ x: number; y: number } | null>(null);
   /** 渡り線を引いている途中：最後にクリックした点 */
   const [linkStart, setLinkStart] = useState<string | null>(null);
+  /** 矢印を付けている途中：1回目にクリックした印加点（2回目のクリックまで、カーソルに合わせて、尾の位置の見本を出す） */
+  const [arrowStart, setArrowStart] = useState<string | null>(null);
   /** 選んでいる丸い点を、ドラッグしている最中（いまの場所と、動き始めたときの場所） */
   const [dotDrag, setDotDrag] = useState<{ id: string; x: number; y: number; ox: number; oy: number; free: boolean } | null>(null);
   /** 選んでいる矢印の、尾の端をドラッグしている最中 */
@@ -192,16 +196,18 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     setDotDrag(null);
     setTailDrag(null);
     setLinkStart(null);
+    setArrowStart(null);
   }, [mode]);
 
   // 接地のマークを置いている途中・丸をドラッグしている最中の Esc：その操作だけをやめる（モードは、そのまま）
   useEffect(() => {
-    if (!groundStart && !handleDrag && !areaDraw && !areaDrag && !dotDrag && !tailDrag && !linkStart) return;
+    if (!groundStart && !arrowStart && !handleDrag && !areaDraw && !areaDrag && !dotDrag && !tailDrag && !linkStart) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.isComposing) return;
       e.stopPropagation();
       e.preventDefault();
       setGroundStart(null);
+      setArrowStart(null);
       setHandleDrag(null);
       setAreaDraw(null);
       setAreaDrag(null);
@@ -211,19 +217,23 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [groundStart, handleDrag, areaDraw, areaDrag, dotDrag, tailDrag, linkStart]);
+  }, [groundStart, arrowStart, handleDrag, areaDraw, areaDrag, dotDrag, tailDrag, linkStart]);
 
   // 接地のマークを置いている途中（1回目のクリックのあと）に、図面の外（上のボタン・右の欄など）をクリックしたら、その途中をやめる。
   // 図面の中のクリックは、2回目のクリック（マークを置く場所）なので、やめない（図面の中では、Esc キーか、右クリックでやめる）
+  // （印加点の矢印を付けている途中も、同じ）
   useEffect(() => {
-    if (!groundStart) return;
+    if (!groundStart && !arrowStart) return;
     const onDown = (e: PointerEvent) => {
       const svg = svgRef.current;
-      if (svg && e.target instanceof Node && !svg.contains(e.target) && e.button === 0) setGroundStart(null);
+      if (svg && e.target instanceof Node && !svg.contains(e.target) && e.button === 0) {
+        setGroundStart(null);
+        setArrowStart(null);
+      }
     };
     window.addEventListener('pointerdown', onDown, true);
     return () => window.removeEventListener('pointerdown', onDown, true);
-  }, [groundStart]);
+  }, [groundStart, arrowStart]);
 
   const scroller = () => svgRef.current?.parentElement ?? null;
 
@@ -496,7 +506,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       setTailDrag({ ...tailDrag, x: p.x, y: p.y });
       return;
     }
-    if (mode === 'link') {
+    if (mode === 'link' || (mode === 'arrow' && arrowStart)) {
       setCursor(toDrawing(e));
       return;
     }
@@ -642,9 +652,25 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     start.current = null;
   };
 
+  /** 印加点の矢印の、2回目のクリック：クリックした場所を尾の位置として、向き（8方向）と長さを決めて、矢印を付ける */
+  const confirmArrow = (e: React.PointerEvent) => {
+    const d = dots.find((x) => x.id === arrowStart);
+    setArrowStart(null);
+    setCursor(null);
+    if (!d) return;
+    const q = toDrawing(e);
+    const { dir, len } = arrowFromTail(q.x - d.x, q.y - d.y);
+    onArrowAdd?.(d.id, dir, len);
+  };
+
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
-    if (mode === 'cross' || mode === 'arrow') return;
+    if (mode === 'cross') return;
+    // 印加点の矢印：1回目は印加点のクリック（点のほうで受ける）。そのあと、図面のどこかをクリックすると、そこが尾の位置（2回目）
+    if (mode === 'arrow') {
+      if (e.button === 0 && arrowStart !== null) confirmArrow(e);
+      return;
+    }
     // 渡り線：点のほかをクリックすると、引きかけの線をやめる（点のクリックは、点のほうで受ける）
     if (mode === 'link') {
       setLinkStart(null);
@@ -726,7 +752,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       onPointerLeave={() => {
         setDotHover(null);
         setCrossHover(null);
-        if (mode === 'link') setCursor(null);
+        if (mode === 'link' || mode === 'arrow') setCursor(null);
         if (mode !== 'ground') return;
         setGroundHover(null);
         setCursor(null);
@@ -735,9 +761,10 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       onContextMenu={(e) => {
         if (e.ctrlKey && mode === 'select') e.preventDefault();
         // 接地のマークを置いている途中の右クリック：その途中をやめる（右クリックのメニューは出さない）
-        if (mode === 'ground' && groundStart) {
+        if ((mode === 'ground' && groundStart) || (mode === 'arrow' && arrowStart)) {
           e.preventDefault();
           setGroundStart(null);
+          setArrowStart(null);
           setCursor(null);
         }
       }}
@@ -1096,6 +1123,14 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             if (!from) return null;
             return <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: linkSvg({ x1: from.x, y1: from.y, x2: cursor.x, y2: cursor.y, shape: linkShape, flip: false }, { indent: '', opacity: 0.45 }) }} />;
           })()}
+        {/* 矢印を付けている途中：カーソルの位置を尾として、置いたときの矢印を、薄く見せる */}
+        {mode === 'arrow' && arrowStart !== null && cursor &&
+          (() => {
+            const d = dots.find((x) => x.id === arrowStart);
+            if (!d) return null;
+            const { dir, len } = arrowFromTail(cursor.x - d.x, cursor.y - d.y);
+            return <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: arrowSvg({ x: d.x, y: d.y, dir, len }, { indent: '', opacity: 0.45 }) }} />;
+          })()}
         {arrows.map((a0) => {
           const sel = selectedIds.includes(a0.id);
           const dd = dotDrag && dotDrag.id === a0.dot ? dotDrag : null;
@@ -1113,6 +1148,9 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                 if (mode !== 'select') return;
                 e.stopPropagation();
                 onSelect([a0.id]);
+                // 矢印をつかんで動かすと、指している印加点と一緒に動く（矢印は、点を指しているため）。Alt キーで、線・接続点に吸い付かない
+                (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+                setDotDrag({ id: a0.dot, x: a0.x, y: a0.y, ox: a0.x, oy: a0.y, free: false });
               }}
             >
               <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: arrowSvg(a, { indent: '' }) }} />
@@ -1162,11 +1200,18 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           return (
             <g
               key={d0.id}
-              className={`dot-mark${sel ? ' selected' : ''}${linkStart === d0.id ? ' pending' : ''}`}
+              className={`dot-mark${sel ? ' selected' : ''}${linkStart === d0.id || arrowStart === d0.id ? ' pending' : ''}`}
               onPointerDown={(e) => {
                 if (mode === 'arrow') {
                   e.stopPropagation();
-                  onArrowClick?.(d0.id);
+                  if (e.button !== 0) return;
+                  // 矢印を付けている途中なら、2回目のクリック。そうでなければ、1回目：この点に、まだ矢印が無ければ、尾の位置の見本を出し始める（すでにあれば、その矢印を選ぶ）
+                  if (arrowStart !== null) confirmArrow(e);
+                  else if (arrows.some((a) => a.dot === d0.id)) onArrowClick?.(d0.id);
+                  else {
+                    setArrowStart(d0.id);
+                    setCursor({ x: d0.x, y: d0.y });
+                  }
                   return;
                 }
                 if (mode === 'link') {

@@ -458,7 +458,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   };
 
   /** 丸い点に、印加点の矢印を付ける（1つの点に1本まで。すでにあれば、その矢印を選ぶ） */
-  const addArrowTo = (dotId: string) => {
+  const addArrowTo = (dotId: string, shape?: { dir: ArrowDir; len: number }) => {
     if (activeId === null) return;
     const d0 = docRef.current;
     const have = arrowOn(d0, activeId, dotId);
@@ -472,7 +472,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       return;
     }
     setLayerNote(null);
-    const r = addLayerArrow(d0, activeId, dotId);
+    const r = addLayerArrow(d0, activeId, dotId, shape);
     if (!r) return;
     commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
     setSelectedId(r.id);
@@ -1285,6 +1285,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               if (activeId !== null) editLayer((d) => setDotPoint(d, activeId, id, x, y, free));
             }}
             onArrowClick={addArrowTo}
+            onArrowAdd={(dotId, dir, len) => addArrowTo(dotId, { dir, len })}
             onArrowTail={(id, tx, ty) => {
               if (activeId !== null) editLayer((d) => setArrowTail(d, activeId, id, tx, ty));
             }}

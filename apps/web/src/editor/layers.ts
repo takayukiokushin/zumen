@@ -1048,12 +1048,12 @@ export const arrowOn = (doc: Doc, layerId: string, dotId: string): LayerArrow | 
   (layerOf(doc, layerId)?.items ?? []).find((i): i is LayerArrow => i.kind === 'arrow' && i.dot === dotId);
 
 /** 丸い点に、印加点の矢印を付ける（1つの点に1本まで。すでに付いているとき・上限を超えるときは null） */
-export function addLayerArrow(doc: Doc, layerId: string, dotId: string): { doc: Doc; id: string } | null {
+export function addLayerArrow(doc: Doc, layerId: string, dotId: string, shape?: { dir: ArrowDir; len: number }): { doc: Doc; id: string } | null {
   if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerArrow(doc, layerId)) return null;
   if (!resolveDots(doc, layerId).some((d) => d.id === dotId) || arrowOn(doc, layerId, dotId)) return null;
   const items = layerOf(doc, layerId)?.items ?? [];
   const id = freshId('larrow', new Set(items.map((i) => i.id)));
-  const a: LayerArrow = { kind: 'arrow', id, dot: dotId, label: [ARROW_LABEL_DEFAULT] };
+  const a: LayerArrow = { kind: 'arrow', id, dot: dotId, ...(shape ? { dir: shape.dir, len: clampArrowLen(shape.len) } : {}), label: [ARROW_LABEL_DEFAULT] };
   return { doc: setLayerItems(doc, layerId, [...items, a]), id };
 }
 
