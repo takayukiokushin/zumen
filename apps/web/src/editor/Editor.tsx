@@ -850,25 +850,6 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               </button>
               <button
                 type="button"
-                className={`${locked ? '' : 'dim'}${mode === 'link' ? ' on' : ''}`.trim()}
-                aria-pressed={mode === 'link'}
-                aria-disabled={!locked || sheetView}
-                title={t('layer.tool.linkHelp')}
-                onClick={() => {
-                  if (sheetView) return;
-                  if (!locked) {
-                    setLayerNote(t('layer.tool.notHere'));
-                    return;
-                  }
-                  setLayerNote(null);
-                  setSelection([]);
-                  setMode((m) => (m === 'link' ? 'select' : 'link'));
-                }}
-              >
-                {t('layer.tool.link')}
-              </button>
-              <button
-                type="button"
                 className={`${locked ? '' : 'dim'}${mode === 'arrow' ? ' on' : ''}`.trim()}
                 aria-pressed={mode === 'arrow'}
                 aria-disabled={!locked || sheetView}
@@ -885,6 +866,25 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 }}
               >
                 {t('layer.tool.arrow')}
+              </button>
+              <button
+                type="button"
+                className={`${locked ? '' : 'dim'}${mode === 'link' ? ' on' : ''}`.trim()}
+                aria-pressed={mode === 'link'}
+                aria-disabled={!locked || sheetView}
+                title={t('layer.tool.linkHelp')}
+                onClick={() => {
+                  if (sheetView) return;
+                  if (!locked) {
+                    setLayerNote(t('layer.tool.notHere'));
+                    return;
+                  }
+                  setLayerNote(null);
+                  setSelection([]);
+                  setMode((m) => (m === 'link' ? 'select' : 'link'));
+                }}
+              >
+                {t('layer.tool.link')}
               </button>
             </div>
           </div>

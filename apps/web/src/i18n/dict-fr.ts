@@ -682,7 +682,7 @@ export const fr: Dict = {
   'rev.l.pvZpd': 'ZPD (détecteur de tension homopolaire) requis avec le solaire',
   'rev.l.pvOvgr': 'OVGR (relais de surtension de défaut à la terre) requis avec le solaire',
   'rev.v.unset': 'Non renseigné',
-  'layer.tool.dot': 'Point',
+  'layer.tool.dot': 'Point d’application',
   'layer.tool.dotHelp': 'Place un point rouge. Près du milieu d’une ligne de barre ou d’un point de connexion d’un symbole, il s’y accroche. Disponible quand un calque est sélectionné.',
   'layer.tool.arrow': 'Flèche du point d’application',
   'layer.tool.arrowHelp': 'Ajoute une flèche rouge pointant vers un point, avec un texte (par exemple « 印加点 »). Disponible quand un calque est sélectionné.',

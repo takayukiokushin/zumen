@@ -680,7 +680,7 @@ export const ko: Dict = {
   'rev.l.pvZpd': '태양광이 있을 때의 ZPD(영상 전압 검출 장치)',
   'rev.l.pvOvgr': '태양광이 있을 때의 OVGR(지락 과전압 계전기)',
   'rev.v.unset': '미입력',
-  'layer.tool.dot': '점',
+  'layer.tool.dot': '인가점',
   'layer.tool.dotHelp': '빨간 점을 놓습니다. 모선 중간이나 기호의 접속점 근처에 놓으면 거기에 붙습니다. 레이어를 선택했을 때 쓸 수 있습니다.',
   'layer.tool.arrow': '인가점 화살표',
   'layer.tool.arrowHelp': '점을 가리키는 빨간 화살표와 글자(예: "印加点")를 붙입니다. 레이어를 선택했을 때 쓸 수 있습니다.',

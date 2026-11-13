@@ -678,7 +678,7 @@ export const zh: Dict = {
   'rev.l.pvZpd': '有太阳能时所需的ZPD（零序电压检测装置）',
   'rev.l.pvOvgr': '有太阳能时所需的OVGR（接地过电压继电器）',
   'rev.v.unset': '未输入',
-  'layer.tool.dot': '圆点',
+  'layer.tool.dot': '施加点',
   'layer.tool.dotHelp': '放置红色圆点。放在母线中段或符号连接点附近时，会吸附到那里。选择图层时可用。',
   'layer.tool.arrow': '施加点箭头',
   'layer.tool.arrowHelp': '添加指向圆点的红色箭头和文字（如“印加点”）。选择图层时可用。',

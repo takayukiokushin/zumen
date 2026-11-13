@@ -681,7 +681,7 @@ export const en: Dict = {
   'rev.l.pvZpd': 'ZPD (zero-phase voltage detector) needed with solar power',
   'rev.l.pvOvgr': 'OVGR (ground-fault overvoltage relay) needed with solar power',
   'rev.v.unset': 'Not entered',
-  'layer.tool.dot': 'Dot',
+  'layer.tool.dot': 'Applied point',
   'layer.tool.dotHelp': 'Place a red dot. Near the middle of a bus line or a symbol connection point, it snaps there. Available while a layer is selected.',
   'layer.tool.arrow': 'Applied-point arrow',
   'layer.tool.arrowHelp': 'Add a red arrow pointing at a dot, with a text (such as "印加点"). Available while a layer is selected.',
