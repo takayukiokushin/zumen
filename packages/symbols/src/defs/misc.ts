@@ -150,14 +150,16 @@ export const miscSymbols: SymbolDef[] = [
     category: 'source',
     tags: ['太陽光', '発電所', '再エネ', 'PV'],
     box: { w: 52, h: 40 },
+    // 平行四辺形は、横幅が 10〜48 なので、その真ん中は x＝29。上の縦棒は、ここに通す（以前は28で、1ずれていた）。
+    // 中の3本の斜線は、左の辺・3本・右の辺の4つのすきまが、すべて等しい（下の辺 10〜36 を4等分：6.5ずつ。上の辺 22〜48 も同じ）
     shapes: [
-      vline(28, 0, 12),
+      vline(29, 0, 12),
       poly([10, 34, 22, 12, 48, 12, 36, 34], { close: true, fill: 'none' }),
-      line(16, 34, 28, 12),
-      line(22, 34, 34, 12),
-      line(28, 34, 40, 12),
+      line(16.5, 34, 28.5, 12),
+      line(23, 34, 35, 12),
+      line(29.5, 34, 41.5, 12),
     ],
-    ports: [{ id: 'out', x: 28, y: 0, dir: 'up', role: 'line' }],
+    ports: [{ id: 'out', x: 29, y: 0, dir: 'up', role: 'line' }],
     fields: [{ key: 'capacity', label: '設備規模', type: 'number', unit: 'kW' }],
     status: 'confirmed',
     statusNote: '実図面のとおり、ハッチングを入れた平行四辺形にしました。',

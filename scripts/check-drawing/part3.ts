@@ -160,7 +160,7 @@ console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
     if (pcs.length === 0) problems.push('PCSが描かれていません（試験の前提が違います）');
     if (pv.length !== pcs.length) problems.push(`PCSの枠 ${pcs.length}つに対して、PVが ${pv.length}個です`);
     for (const p of pcs) {
-      const below = pv.filter((v) => Math.abs((v.x + 28) - (p.x + 28)) < 0.5 && v.y > p.y);
+      const below = pv.filter((v) => Math.abs((v.x + 29) - (p.x + 28)) < 0.5 && v.y > p.y);
       if (below.length !== 1) { problems.push(`${p.id} の真下のPVが ${below.length}個です`); continue; }
       const v = below[0]!;
       // PCSの出口から、PVの入口まで、縦の線でつながっている
