@@ -7,7 +7,7 @@ import { fromLayout, moveItem, removeItem } from '../../apps/web/src/editor/doc.
 import type { Doc, DocSymbol } from '../../apps/web/src/editor/doc.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { chooseSheet } from '../../apps/web/src/editor/inspect.ts';
-import { addExtraCross, addLayerCross, addLayerText, canAddLayerCross, CROSS_CENTER_SNAP, moveLayerCrosses, resetCross, canMark, crossOn, layerOf, markPoint, purgeOrphanMarks, resolveCrosses, setCrossSize, setLayerItems } from '../../apps/web/src/editor/layers.ts';
+import { addExtraCross, addLayerCross, addLayerCrossOnWire, addLayerText, isHorizontalWire, sanitizeLayers, canAddLayerCross, CROSS_CENTER_SNAP, moveLayerCrosses, resetCross, canMark, crossOn, layerOf, markPoint, purgeOrphanMarks, resolveCrosses, setCrossSize, setLayerItems } from '../../apps/web/src/editor/layers.ts';
 import type { LayerCross } from '../../apps/web/src/editor/layers.ts';
 import { buildComposition, MAX_LAYER_ITEMS_PER_KIND } from '../../packages/knowledge/src/index.ts';
 import { COMPANY_NAME, CROSS_SPECS, OVERLAY_RED, crossPoints, layout, rotatedPort } from '../../packages/layout/src/index.ts';
@@ -118,6 +118,56 @@ console.log('\n■ 開放の赤い×印');
   const movedBoth = resolveCrosses(moveItem(extra.doc, vcb.id, 20, 0), 'outage');
   if (Math.abs(movedBoth[0]!.x - (ex[0]!.x + 20)) > 1e-9 || Math.abs(movedBoth[1]!.x - (ex[1]!.x + 20)) > 1e-9) fail('増やした×印が、開閉器と一緒に動きません');
   console.log('  中央からずらせる（ドラッグ・矢印キー）。中央の近くへ戻すと中央に戻る。同じ開閉器に、大きさの違う×印も含めて、何個でも付けられる。どれも開閉器について動く');
+
+  // 5b. 母線（横の線）の途中にも付けられる（第13弾 項目31）。線が動けば一緒に動く。線が無くなれば消える。印刷にも出る
+  {
+    const two = { ...answersSpread, transformerCount: 2 };
+    const dBus = fromLayout(layout(buildComposition(two), two));
+    const bus = dBus.items.find((i) => i.kind === 'wire' && isHorizontalWire(i) && Math.abs(i.x1 - i.x2) > 100);
+    if (!bus || bus.kind !== 'wire') fail('母線（横の線）が見つかりません');
+    else {
+      const mid = (bus.x1 + bus.x2) / 2;
+      const r = addLayerCrossOnWire(dBus, 'outage', bus.id, mid + 40, 'M');
+      if (!r) fail('母線の途中に、×印を付けられません');
+      else {
+        const c = resolveCrosses(r.doc, 'outage')[0]!;
+        if (!c.onWire || c.symbolId !== '' || Math.abs(c.y - bus.y1) > 1e-9 || Math.abs(c.x - (mid + 40)) > 2 || c.sizeId !== 'M') fail(`母線の×印の位置・大きさが違います（${c.x},${c.y}）`);
+        // 母線の線が動けば、一緒に動く
+        const moved: Doc = { ...r.doc, items: r.doc.items.map((i) => (i.kind === 'wire' && i.id === bus.id ? { ...i, y1: i.y1 + 20, y2: i.y2 + 20 } : i)) };
+        const c2 = resolveCrosses(moved, 'outage')[0];
+        if (!c2 || Math.abs(c2.y - (bus.y1 + 20)) > 1e-9) fail('母線が動いても、×印が一緒に動きません');
+        // 線が無くなれば、画面に出さず、保存のときに外す
+        const gone: Doc = { ...r.doc, items: r.doc.items.filter((i) => i.id !== bus.id) };
+        if (resolveCrosses(gone, 'outage').length !== 0) fail('母線が無くなっても、×印が出ています');
+        if ((layerOf(purgeOrphanMarks(gone), 'outage')?.items ?? []).some((i) => i.kind === 'cross')) fail('母線が無くなった×印が、保存のときに外れません');
+        // 大きさを変える・ずらす・もう1つ足す（母線の上でも）
+        const big = resolveCrosses(setCrossSize(r.doc, 'outage', r.id, 'L'), 'outage')[0]!;
+        if (big.size !== CROSS_SPECS.L.size) fail('母線の×印の大きさを変えられません');
+        const ex = addExtraCross(r.doc, 'outage', r.id);
+        if (!ex || resolveCrosses(ex.doc, 'outage').length !== 2 || resolveCrosses(ex.doc, 'outage').some((x) => !x.onWire)) fail('母線の×印を、もう1つ足せません');
+        const sh = resolveCrosses(moveLayerCrosses(r.doc, 'outage', [r.id], 10, 0), 'outage')[0]!;
+        if (Math.abs(sh.x - c.x - 10) > 1e-9) fail('母線の×印を、ずらせません');
+        // 線の端から外れた位置は、端に寄る
+        const edge = resolveCrosses(addLayerCrossOnWire(dBus, 'outage', bus.id, bus.x2 + 500, 'S')!.doc, 'outage')[0]!;
+        if (Math.abs(edge.x - Math.max(bus.x1, bus.x2)) > 2) fail('母線の端の外に×印が付いています');
+        // 保存データの整理：母線の×印（anchorだけで、targetなし）は、そのまま通る。どちらも無いものは、外す
+        const clean = sanitizeLayers(r.doc.layers)!;
+        if (!clean.find((l) => l.id === 'outage')?.items.some((i) => i.kind === 'cross' && i.anchor && i.target === undefined)) fail('母線の×印が、読み込みのときに外れています');
+        const bad = sanitizeLayers([{ id: 'outage', items: [{ kind: 'cross', id: 'x1', size: 'M' }] }])!;
+        if (bad.find((l) => l.id === 'outage')?.items.length !== 0) fail('付け先の無い×印が、残っています');
+        // 付けられない線：縦の線・記号につながる線
+        const vert = dBus.items.find((i) => i.kind === 'wire' && Math.abs(i.x1 - i.x2) < 0.01);
+        const tied = dBus.items.find((i) => i.kind === 'wire' && Math.abs(i.y1 - i.y2) < 0.01 && (i.at1 || i.at2));
+        if ((vert && addLayerCrossOnWire(dBus, 'outage', vert.id, vert.x1, 'M')) || (tied && addLayerCrossOnWire(dBus, 'outage', tied.id, tied.x1, 'M'))) fail('縦の線・記号につながる線にも、×印が付いてしまいます');
+        // 印刷
+        const title2 = { site: '見本工場', name: '停電範囲図', footer: COMPANY_NAME };
+        const { paper, orientation } = chooseSheet(r.doc, title2);
+        const svg = buildSheetSvg(r.doc, title2, paper, orientation, resolveCrosses(r.doc, 'outage').map((x) => ({ x: x.x, y: x.y, size: x.size, thickness: x.thickness })));
+        if ((svg.match(new RegExp(`<polygon points="[^"]+" fill="${OVERLAY_RED}"`, 'g')) ?? []).length !== 1) fail('母線の×印が、印刷に出ていません');
+        console.log('  母線（横の線）の途中にも付けられる：線が動けば一緒に動き、線が無くなれば消える。大きさ・ずらし・追加・印刷も、開閉器の×印と同じ。縦の線・記号につながる線には付けられない');
+      }
+    }
+  }
 
   // 6. 上限（1つのレイヤーに100個まで）
   const many: LayerCross[] = Array.from({ length: MAX_LAYER_ITEMS_PER_KIND }, (_, i) => ({ kind: 'cross', id: `lc-${i}`, target: 'x', size: 'S' }));

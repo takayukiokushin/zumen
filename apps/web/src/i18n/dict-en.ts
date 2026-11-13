@@ -565,7 +565,7 @@ export const en: Dict = {
   'layer.tool.cross': '× mark',
   'layer.tool.crossHelp': 'Put a red × mark on a switch (PAS, VCB, LBS, etc.) to show where the power is opened. Available while a layer is selected.',
   'layer.tool.notHere': 'This cannot be selected on this layer',
-  'cross.hint': 'Click the switch (PAS, VCB, LBS, etc.) to mark. Click a switch with a × at its center again to remove that mark. You can also click a × mark itself to remove it.',
+  'cross.hint': 'Click the switch (PAS, VCB, LBS, etc.) to mark, or the spot on the busbar (horizontal line) where you want the mark. Click a switch with a × at its center again to remove that mark. You can also click a × mark itself to remove it.',
   'cross.size': '× mark size',
   'cross.small': 'Small',
   'cross.mid': 'Medium',

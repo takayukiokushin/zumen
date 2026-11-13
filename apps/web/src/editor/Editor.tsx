@@ -21,7 +21,7 @@ import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
-import { addExtraCross, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
+import { addExtraCross, addLayerCrossOnWire, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
 import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, CROSS_SPECS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
 import type { AreaRect, ArrowDir, CrossSize, LinkShape } from '@zumen/layout';
@@ -388,6 +388,19 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       return;
     }
     const r = addLayerCross(d0, activeId, symbolId, crossSize);
+    if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
+  };
+
+  /** 母線（横の線）の途中に×印を付ける（クリックした位置。選んでいる大きさ。第13弾 項目31） */
+  const addCrossOnWire = (wireId: string, x: number) => {
+    if (activeId === null) return;
+    const d0 = docRef.current;
+    if (!canAddLayerCross(d0, activeId)) {
+      setLayerNote(t('layer.itemLimit.cross', { n: MAX_LAYER_ITEMS_PER_KIND }));
+      return;
+    }
+    setLayerNote(null);
+    const r = addLayerCrossOnWire(d0, activeId, wireId, x, crossSize);
     if (r) commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
   };
 
@@ -1238,6 +1251,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             crosses={layerCrosses}
             crossPreview={CROSS_SPECS[crossSize]}
             onCrossClick={toggleCross}
+            onCrossWire={addCrossOnWire}
             onCrossRemove={(id) => {
               if (activeId === null) return;
               editLayer((d) => removeLayerItems(d, activeId, [id]));

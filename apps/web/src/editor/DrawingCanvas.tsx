@@ -6,7 +6,7 @@ import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
-import { groundOverlapsSymbols, markPoint, normalizeRect } from './layers.ts';
+import { groundOverlapsSymbols, isHorizontalWire, markPoint, normalizeRect } from './layers.ts';
 import type { AreaRect, LinkShape } from '@zumen/layout';
 import type { GroundAnchor, ResolvedArea, ResolvedArrow, ResolvedCross, ResolvedDot, ResolvedGround, ResolvedLink } from './layers.ts';
 
@@ -67,6 +67,8 @@ interface Props {
   onCrossClick?: (symbolId: string) => void;
   /** 'cross' のときに、×印そのものをクリックしたとき（その×印を外す） */
   onCrossRemove?: (crossId: string) => void;
+  /** 'cross' のときに、母線（横の線）をクリックしたとき（その線の、クリックした位置＝図面のxに、×印を付ける。第13弾 項目31） */
+  onCrossWire?: (wireId: string, x: number) => void;
   /** ×印・接地のマークをドラッグして動かし終わったとき（動かした量） */
   onMarkMoveEnd?: (markId: string, dx: number, dy: number) => void;
   /**
@@ -124,7 +126,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -392,6 +394,10 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       if (it.kind === 'symbol') {
         e.stopPropagation();
         onCrossClick?.(groupRootOf(doc, it.id));
+      } else if (it.kind === 'wire' && isHorizontalWire(it)) {
+        // 母線（横の線）の途中：クリックした位置に、×印を付ける
+        e.stopPropagation();
+        onCrossWire?.(it.id, toDrawing(e).x);
       }
       return;
     }
@@ -723,6 +729,16 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             key: it.id,
             onPointerDown: (e: React.PointerEvent) => onPointerDown(e, it),
             // ×印を付けるモード：付けられる開閉器にカーソルを乗せたら、置いたときの×印の大きさを、薄く見せる（まだ付いていないときだけ）
+            ...(mode === 'cross' && it.kind === 'wire' && isHorizontalWire(it)
+              ? {
+                  // 母線（横の線）にカーソルを乗せたら、その位置に付けたときの×印を、薄く見せる
+                  onPointerMove: (e: React.PointerEvent) => {
+                    const x = Math.max(Math.min(it.x1, it.x2), Math.min(Math.max(it.x1, it.x2), snap(toDrawing(e).x)));
+                    setCrossHover({ x, y: it.y1 });
+                  },
+                  onPointerLeave: () => setCrossHover(null),
+                }
+              : {}),
             ...(mode === 'cross' && it.kind === 'symbol'
               ? {
                   onPointerEnter: () => {

@@ -566,7 +566,7 @@ export const fr: Dict = {
   'layer.tool.cross': 'Marque ×',
   'layer.tool.crossHelp': 'Place une marque × rouge sur un appareil de coupure (PAS, VCB, LBS, etc.) pour indiquer où l’alimentation est ouverte. Disponible lorsqu’un calque est sélectionné.',
   'layer.tool.notHere': 'Impossible à sélectionner sur ce calque',
-  'cross.hint': 'Cliquez sur l’appareil de coupure (PAS, VCB, LBS, etc.) à marquer. Cliquez de nouveau sur un appareil dont le centre porte une marque × pour la retirer. Vous pouvez aussi cliquer sur la marque × elle-même.',
+  'cross.hint': 'Cliquez sur l’appareil de coupure (PAS, VCB, LBS, etc.) à marquer, ou à l’endroit voulu du jeu de barres (ligne horizontale). Cliquez de nouveau sur un appareil dont le centre porte une marque × pour la retirer. Vous pouvez aussi cliquer sur la marque × elle-même.',
   'cross.size': 'Taille de la marque ×',
   'cross.small': 'Petit',
   'cross.mid': 'Moyen',

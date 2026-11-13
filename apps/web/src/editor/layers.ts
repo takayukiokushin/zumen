@@ -1,7 +1,7 @@
 import { ARROW_LABEL_DEFAULT, AREA_KINDS, FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
 import type { AreaKindDef } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
-import { CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
+import { snap, CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
 import { AREA_MIN, ARROW_DIR_DEFAULT, ARROW_LEN_DEFAULT, arrowFromTail, clampArrowLen } from '@zumen/layout';
 import { ARROW_DIRS, LINK_SHAPES, LINK_SHAPE_DEFAULT } from '@zumen/layout';
 import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel, LinkShape } from '@zumen/layout';
@@ -42,14 +42,17 @@ export interface LayerText {
 
 /**
  * レイヤーに置いた、開放の赤い×印。
- * 付けた開閉器（target）に付いて、その機器が動けば、一緒に動く。その機器が無くなったら、×印も消える
+ * 付けた開閉器（target）に付いて、その機器が動けば、一緒に動く。その機器が無くなったら、×印も消える。
+ * 母線（横の線）の途中にも付けられる（anchor。target は無い）。その線が動けば、一緒に動く
  * （画面にも印刷にも出さず、保存するときに、データからも外す）。
  */
 export interface LayerCross {
   kind: 'cross';
   id: string;
-  /** 付けた開閉器の id（sameName） */
-  target: string;
+  /** 付けた開閉器の id（sameName）。母線（線）の途中に付けた×印は、無い（anchor を持つ） */
+  target?: string;
+  /** 母線（横の線）の途中に付けた×印の、付けた場所（線の途中）。その線が動けば、一緒に動く。線が無くなったら、×印も消える（第13弾 項目31） */
+  anchor?: GroundAnchor;
   /** 大きさ（小・中・大）。形と寸法は packages/layout/src/cross.ts */
   size: CrossSize;
   /** 開閉器の中央からのずれ（図面の座標）。無ければ、中央。ずらしても、付けた開閉器について動く */
@@ -438,8 +441,10 @@ export function markPoint(sym: DocSymbol): { x: number; y: number } | null {
 export interface ResolvedCross {
   id: string;
   target: string;
-  /** 付けた開閉器の、いまの id */
+  /** 付けた開閉器の、いまの id（母線の途中に付けた×印は、空） */
   symbolId: string;
+  /** 母線（線）の途中に付けた×印か */
+  onWire?: boolean;
   x: number;
   y: number;
   /** 一辺と太さ */
@@ -460,13 +465,14 @@ export function resolveCrosses(doc: Doc, layerId: string): ResolvedCross[] {
   const out: ResolvedCross[] = [];
   for (const c of layerOf(doc, layerId)?.items ?? []) {
     if (c.kind !== 'cross') continue;
-    const sym = symbolByTarget(doc, c.target);
-    const at = sym ? markPoint(sym) : null;
-    if (!sym || !at) continue;
+    // 母線（線）の途中に付けた×印は、その線の途中の位置。開閉器に付けた×印は、開閉器の中央
+    const sym = c.anchor ? undefined : symbolByTarget(doc, c.target ?? '');
+    const at = c.anchor ? resolveGroundAnchor(doc, c.anchor) : sym ? markPoint(sym) : null;
+    if (!at || (!c.anchor && !sym)) continue;
     const spec = CROSS_SPECS[c.size] ?? CROSS_SPECS.M;
     const dx = c.dx ?? 0;
     const dy = c.dy ?? 0;
-    out.push({ id: c.id, target: c.target, symbolId: sym.id, x: at.x + dx, y: at.y + dy, size: spec.size, thickness: spec.thickness, sizeId: c.size, dx, dy });
+    out.push({ id: c.id, target: c.target ?? '', symbolId: sym?.id ?? '', onWire: c.anchor !== undefined, x: at.x + dx, y: at.y + dy, size: spec.size, thickness: spec.thickness, sizeId: c.size, dx, dy });
   }
   return out;
 }
@@ -523,7 +529,7 @@ export function addExtraCross(doc: Doc, layerId: string, fromId: string): { doc:
   if (!from || !canAddLayerCross(doc, layerId)) return null;
   const id = freshId('lcross', new Set(items.map((i) => i.id)));
   const shift = (CROSS_SPECS[from.size] ?? CROSS_SPECS.M).size + 8;
-  const extra: LayerCross = { kind: 'cross', id, target: from.target, size: from.size, dx: (from.dx ?? 0) + shift, dy: from.dy ?? 0 };
+  const extra: LayerCross = { kind: 'cross', id, ...(from.anchor ? { anchor: from.anchor } : { target: from.target }), size: from.size, dx: (from.dx ?? 0) + shift, dy: from.dy ?? 0 };
   return { doc: setLayerItems(doc, layerId, [...items, extra]), id };
 }
 
@@ -535,6 +541,37 @@ export function addLayerCross(doc: Doc, layerId: string, symbolId: string, size:
   const items = layerOf(doc, layerId)?.items ?? [];
   const id = freshId('lcross', new Set(items.map((i) => i.id)));
   return { doc: setLayerItems(doc, layerId, [...items, { kind: 'cross', id, target: sameName(symbolId), size }]), id };
+}
+
+/**
+ * 母線（横の線）の途中に×印を付ける（第13弾 項目31）。wireId：付ける線、x：付ける位置（図面のx）。
+ * 横の線だけ。線の端から外れた位置は、端に寄せる。上限を超えるとき・横の線でないときは null
+ */
+export function addLayerCrossOnWire(doc: Doc, layerId: string, wireId: string, x: number, size: CrossSize): { doc: Doc; id: string } | null {
+  const w = doc.items.find((it) => it.kind === 'wire' && it.id === wireId);
+  if (!w || w.kind !== 'wire' || !isHorizontalWire(w) || !layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerCross(doc, layerId)) return null;
+  const anchor = wireAnchorAt(doc, w, x);
+  const items = layerOf(doc, layerId)?.items ?? [];
+  const id = freshId('lcross', new Set(items.map((i) => i.id)));
+  return { doc: setLayerItems(doc, layerId, [...items, { kind: 'cross', id, anchor, size }]), id };
+}
+
+/**
+ * 母線（横の線）か。長さのある横向きの線で、両端がどの記号にもつながっていないもの
+ * （変圧器・コンデンサなどが下にぶら下がる、横に広がる直線。記号と記号をつなぐ線・トリップコイルの点線は、含まない）。×印を付けられる線
+ */
+export const isHorizontalWire = (w: { x1: number; y1: number; x2: number; y2: number; at1?: unknown; at2?: unknown }): boolean =>
+  Math.abs(w.y1 - w.y2) < 0.01 && Math.abs(w.x1 - w.x2) >= 1 && !w.at1 && !w.at2;
+
+/** 線 w の、図面のx（線の端からはみ出していれば、端）の位置を、「線の途中」として覚える形にする。格子（2）に合わせる */
+export function wireAnchorAt(doc: Doc, w: { id: string; x1: number; x2: number; at1?: unknown; at2?: unknown }, x: number): GroundAnchor {
+  const lo = Math.min(w.x1, w.x2);
+  const hi = Math.max(w.x1, w.x2);
+  const along = Math.max(lo, Math.min(hi, snap(x)));
+  const t = (along - w.x1) / (w.x2 - w.x1);
+  const key = wireKey(w as Parameters<typeof wireKey>[0]);
+  void doc;
+  return { kind: 'wire', ...(key ? { key } : {}), id: w.id, t };
 }
 
 /** ×印の大きさを変える */
@@ -553,7 +590,7 @@ export function purgeOrphanMarks(doc: Doc): Doc {
   let changed = false;
   const layers = doc.layers.map((l) => {
     const items = l.items.filter((i) => {
-      if (i.kind === 'cross') return symbolByTarget(doc, i.target) !== undefined;
+      if (i.kind === 'cross') return i.anchor ? resolveGroundAnchor(doc, i.anchor) !== null : symbolByTarget(doc, i.target ?? '') !== undefined;
       if (i.kind === 'ground') return resolveGroundPoint(doc, i) !== null;
       if (i.kind === 'dot') return resolveDotPoint(doc, i) !== null;
       return true;
@@ -1134,7 +1171,7 @@ function validAnchor(a: unknown): boolean {
 /** 項目ごとの、なくてよい項目の形（合わなければ、その項目だけ外す） */
 const OPTIONAL: Record<LayerItem['kind'], Record<string, (v: unknown) => boolean>> = {
   text: { anchor: (v) => v === 'start' || v === 'middle' || v === 'end', size: isNum, bold: (v) => typeof v === 'boolean', red: (v) => typeof v === 'boolean', near: isStr, ndx: isNum, ndy: isNum },
-  cross: { dx: isNum, dy: isNum },
+  cross: { dx: isNum, dy: isNum, target: isStr, anchor: validAnchor },
   ground: { anchor: validAnchor, lead: isNum, drop: isNum, label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean', x: isNum, y: isNum, rotate: isNum, near: isStr, ndx: isNum, ndy: isNum },
   area: { near: isStr, hatch: (v) => typeof v === 'boolean', label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean', labelPos: (v) => v === 'tl' || v === 'tr' || v === 'bl' || v === 'br' },
   dot: { anchor: validAnchor, near: isStr },
@@ -1145,7 +1182,7 @@ const OPTIONAL: Record<LayerItem['kind'], Record<string, (v: unknown) => boolean
 /** 項目ごとの、なくてはならない項目の形（合わなければ、その項目ごと外す） */
 const REQUIRED: Record<LayerItem['kind'], Record<string, (v: unknown) => boolean>> = {
   text: { x: isNum, y: isNum, lines: isStrArr },
-  cross: { target: isStr, size: (v) => v === 'S' || v === 'M' || v === 'L' },
+  cross: { size: (v) => v === 'S' || v === 'M' || v === 'L' },
   ground: {},
   area: { x: isNum, y: isNum, w: isNum, h: isNum, ndx: isNum, ndy: isNum },
   dot: { x: isNum, y: isNum, ndx: isNum, ndy: isNum },
@@ -1180,6 +1217,8 @@ export function sanitizeLayers(raw: unknown): Layer[] | undefined {
       const kind = it.kind as LayerItem['kind'];
       if (!(kind in REQUIRED)) continue;
       if (!Object.entries(REQUIRED[kind]).every(([k, ok]) => ok(it[k]))) continue;
+      // ×印は、付けた開閉器（target）か、母線の途中の場所（anchor）が、どちらか要る
+      if (kind === 'cross' && !isStr(it.target) && !(it.anchor !== undefined && validAnchor(it.anchor))) continue;
       if ((perKind[kind] ?? 0) >= MAX_LAYER_ITEMS_PER_KIND) continue;
       const clean: Record<string, unknown> = { kind, id: it.id };
       for (const k of Object.keys(REQUIRED[kind])) clean[k] = it[k];
