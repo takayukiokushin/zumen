@@ -767,7 +767,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             </div>
           </div>
 
-          {/* レイヤーに置く赤い印の道具。レイヤーを選んでいるときだけ使える（単線結線図では、押すと、使えないことを知らせる） */}
+          {/* レイヤーに置く赤い印の道具。停電範囲図・絶縁耐力試験範囲図・追加したレイヤーを選んでいるときだけ出す（単線結線図では出さない。第13弾 項目27） */}
+          {locked && (
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.marks')}</span>
             <div className="tool-row">
@@ -887,6 +888,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               </button>
             </div>
           </div>
+          )}
 
           {/* スマホ専用のボタン */}
           <button type="button" className="tools-toggle" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
