@@ -579,7 +579,7 @@ export const en: Dict = {
   'cross.moveHint': 'Drag the × mark, or use the arrow keys, to move it away from the center of the switch. It stays attached to its switch and moves with it.',
   'layer.tool.ground': 'Ground',
   'layer.tool.groundHelp': 'Place a red ground mark where the short-circuit grounding device is attached. It can go anywhere on the drawing. Available while a layer is selected.',
-  'ground.hint': 'Place a ground mark. First click: where to connect (a point on a line/bus, or a symbol’s connection point). Second click: where to put the mark. As you move the cursor, a faint preview shows how it will look (move sideways for a horizontal bar, straight down for none; the lower you go, the longer the vertical line). Press Esc or “Finish placing grounds” to stop.',
+  'ground.hint': 'Place a ground mark. First click: where to connect (a point on a line/bus, or a symbol’s connection point). Second click: where to put the mark. As you move the cursor, a faint preview shows how it will look (move sideways for a horizontal bar, straight down for none; the lower you go, the longer the vertical line). After the first click, to give up on the mark, press Esc, right-click, or click outside the drawing (the buttons above or the panel on the right); the half-made selection is cleared. To finish placing marks, press Esc or “Finish placing grounds”.',
   'ground.done': 'Finish placing grounds',
   'ground.selected': 'Ground mark for the short-circuit grounding device (it moves with the line or symbol it is connected to). Drag the root circle to reconnect it, and the tip circle to change the horizontal bar and vertical length.',
   'ground.moveHint': 'You can also change the horizontal bar and vertical length with the arrow keys.',

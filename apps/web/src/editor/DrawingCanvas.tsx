@@ -213,6 +213,18 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     return () => window.removeEventListener('keydown', onKey, true);
   }, [groundStart, handleDrag, areaDraw, areaDrag, dotDrag, tailDrag, linkStart]);
 
+  // 接地のマークを置いている途中（1回目のクリックのあと）に、図面の外（上のボタン・右の欄など）をクリックしたら、その途中をやめる。
+  // 図面の中のクリックは、2回目のクリック（マークを置く場所）なので、やめない（図面の中では、Esc キーか、右クリックでやめる）
+  useEffect(() => {
+    if (!groundStart) return;
+    const onDown = (e: PointerEvent) => {
+      const svg = svgRef.current;
+      if (svg && e.target instanceof Node && !svg.contains(e.target) && e.button === 0) setGroundStart(null);
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    return () => window.removeEventListener('pointerdown', onDown, true);
+  }, [groundStart]);
+
   const scroller = () => svgRef.current?.parentElement ?? null;
 
   useLayoutEffect(() => {
@@ -651,6 +663,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       return;
     }
     if (mode === 'ground') {
+      // 左クリックだけ（右クリックは、置いている途中のやめる操作。下の onContextMenu）
+      if (e.button !== 0) return;
       const q = toDrawing(e);
       if (!groundStart) {
         // 1回目：つなぐ場所（母線の途中・記号の接続点）。近くに無ければ、何もしない
@@ -720,6 +734,12 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       // Mac の Control＋クリックは、ふつう、右クリックのメニューが出る。追加選択に使うので、出さない
       onContextMenu={(e) => {
         if (e.ctrlKey && mode === 'select') e.preventDefault();
+        // 接地のマークを置いている途中の右クリック：その途中をやめる（右クリックのメニューは出さない）
+        if (mode === 'ground' && groundStart) {
+          e.preventDefault();
+          setGroundStart(null);
+          setCursor(null);
+        }
       }}
       role="application"
       aria-label={tr('editor.canvasLabel')}
