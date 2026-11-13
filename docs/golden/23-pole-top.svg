@@ -156,7 +156,7 @@
     <text x="42" y="642" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="42" dy="0">CT×2</tspan><tspan x="42" dy="12.5">40A/5A</tspan></text>
     <g transform="translate(-84 702)">
       <line x1="15" y1="0" x2="15" y2="11" stroke-width="1" />
-      <rect x="7" y="6" width="38" height="16" fill="none" stroke-width="1" />
+      <rect x="5.1" y="5.2" width="41.8" height="17.6" fill="none" stroke-width="1" />
       <line x1="9" y1="11" x2="21" y2="11" stroke-width="1" />
       <line x1="9" y1="15" x2="21" y2="15" stroke-width="1" />
       <line x1="15" y1="15" x2="15" y2="29" stroke-width="1" />
