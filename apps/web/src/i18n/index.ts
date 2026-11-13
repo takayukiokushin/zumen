@@ -51,9 +51,10 @@ export function translator(lang: Lang): (key: Key, vars?: Vars) => string {
  * 質問・選択肢・説明文・記号の名前など、日本語の文そのものをキーにした訳（data-xx.ts）から引く。
  * 訳が無ければ日本語のまま。図面に印刷される文字は、これでは訳さない（日本語のまま）。
  */
-export function dataTranslator(lang: Lang): (text: string) => string {
+export function dataTranslator(lang: Lang): (text: string, context?: string) => string {
   const dict = lang === 'ja' ? undefined : DATA[lang];
-  return (text) => dict?.[text] ?? text;
+  // context：同じ日本語でも、場面で訳が変わるときの印（「なし@yesno」＝あり・なしの2択の「なし」。無ければ、ふつうの訳）
+  return (text, context) => (context ? dict?.[`${text}@${context}`] : undefined) ?? dict?.[text] ?? text;
 }
 
 /**
@@ -72,8 +73,8 @@ export function tr(key: Key, vars?: Vars): string {
   return translator(currentLang)(key, vars);
 }
 /** 部品の外で、質問・選択肢・説明文・記号の名前などを、いま選んでいる言葉にする */
-export function trData(text: string): string {
-  return dataTranslator(currentLang)(text);
+export function trData(text: string, context?: string): string {
+  return dataTranslator(currentLang)(text, context);
 }
 
 /** 辞書の、その接頭辞（srv. など）で始まる言葉の日本語（文の型）。session/serverMessages.ts が使う */

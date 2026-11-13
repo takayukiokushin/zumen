@@ -120,8 +120,8 @@ export const PROPERTY_AT_DS: Condition = {
 export const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
 
 export const YES_NO: Choice[] = [
-  { value: 'yes', label: 'あり' },
-  { value: 'no', label: 'なし' },
+  { value: 'yes', label: 'あり', i18nContext: 'yesno' },
+  { value: 'no', label: 'なし', i18nContext: 'yesno' },
 ];
 
 /** 「〜ですか？」と尋ねる質問は「あり／なし」ではなく「はい／いいえ」で答える */

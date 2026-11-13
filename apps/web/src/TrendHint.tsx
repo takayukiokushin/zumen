@@ -18,7 +18,8 @@ export function TrendHint({ questionId, entry, onAdopt }: { questionId: string; 
     <p className="trend" title={t('trend.refTitle')}>
       <span className="trend-title">{t('trend.title')}</span>
       {entry.top.map((e) => {
-        const label = tx(q.options?.find((o) => o.value === e.value)?.label ?? e.value);
+        const opt = q.options?.find((o) => o.value === e.value);
+        const label = tx(opt?.label ?? e.value, opt?.i18nContext);
         const text = t('trend.chip', { label, pct: Math.round((e.count / entry.total) * 100) });
         return onAdopt ? (
           <button key={e.value} type="button" className="trend-chip" title={t('trend.adoptTitle')} onClick={() => onAdopt(e.value)}>

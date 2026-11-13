@@ -391,8 +391,8 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     label: '継電器の手前に、試験端子（テストターミナル）はありますか？',
     type: 'select',
     options: [
-      { value: 'yes', label: 'あり' },
-      { value: 'no', label: 'なし' },
+      { value: 'yes', label: 'あり', i18nContext: 'yesno' },
+      { value: 'no', label: 'なし', i18nContext: 'yesno' },
     ],
     autoValue: [{ value: 'yes' }],
     showIf: { key: 'relayAt', in: [...CT_AT_VALUES, ...VT_AT_VALUES] },

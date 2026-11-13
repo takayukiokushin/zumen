@@ -62,8 +62,8 @@ export const SITE_QUESTIONS: Question[] = [
     label: 'AS（気中開閉器）はありますか？',
     type: 'select',
     options: [
-      { value: 'yes', label: 'あり' },
-      { value: 'no', label: 'なし' },
+      { value: 'yes', label: 'あり', i18nContext: 'yesno' },
+      { value: 'no', label: 'なし', i18nContext: 'yesno' },
     ],
     defaultValue: 'no',
     showIf: { key: 'sourceType', ne: 'cabinet' },

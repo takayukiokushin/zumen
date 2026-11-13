@@ -123,7 +123,7 @@ export function Field({ question: question, fieldKey, value, onChange, context, 
               aria-pressed={current === o.value}
               onClick={() => set(current === o.value ? undefined : o.value)}
             >
-              {tx(o.label)}
+              {tx(o.label, o.i18nContext)}
               {o.share && <span className="share">　{tx(o.share)}</span>}
             </button>
           ))}
@@ -145,7 +145,7 @@ export function Field({ question: question, fieldKey, value, onChange, context, 
             <option value="">{t('field.choose')}</option>
             {q.options?.map((o) => (
               <option key={o.value} value={o.value}>
-                {tx(o.label)}
+                {tx(o.label, o.i18nContext)}
                 {o.share ? `（${tx(o.share)}）` : ''}
               </option>
             ))}

@@ -33,7 +33,7 @@ const displayValue = (id: string, v: unknown, tx: Tx): string => {
   const baseId = id.replace(/^a\d+:/, '').replace(/__\d+$/, '');
   const q = QUESTIONS.find((x) => x.id === baseId);
   const o = q?.options?.find((opt) => opt.value === String(v));
-  return o ? tx(o.label) : String(v);
+  return o ? tx(o.label, o.i18nContext) : String(v);
 };
 
 export function AnalysisReview({
@@ -55,6 +55,13 @@ export function AnalysisReview({
   const t = useT();
   const tx = useTx();
   const notesTitle = notesLabel ?? t('revui.notes');
+  /** 確認してほしいことの「読み取った値」。あり・なしの2択の質問の「なし」は、英語では「No」（複数の選択肢の中の「なし」は「None」）にする */
+  const reviewValue = (r: ReviewItem): string => {
+    const q = QUESTIONS.find((x) => x.id === r.questionId);
+    const no = q?.options?.find((o) => o.value === 'no' && o.i18nContext === 'yesno');
+    if (no && r.value === no.label) return tx(no.label, no.i18nContext);
+    return translateReviewText(r.value ?? '');
+  };
   // 過去の傾向：自信がない項目に、参考として添える（読み取った値が最優先。傾向で、値は変えない）
   const trends = useTrends(typeof result.answers.sourceType === 'string' ? result.answers.sourceType : undefined);
   // 自信がある項目は、最初からチェックを入れておく
@@ -85,7 +92,7 @@ export function AnalysisReview({
                     <span className="tag">{t(levelKey[r.level])}</span>
                     <div>
                       <b>{translateReviewText(r.label)}</b>
-                      {r.value && <span className="val">{t('revui.read', { value: translateReviewText(r.value) })}</span>}
+                      {r.value && <span className="val">{t('revui.read', { value: reviewValue(r) })}</span>}
                       <p>{translateReviewText(r.message)}</p>
                       {r.evidence && <p className="ev">{evidenceLabel}: {r.evidence}</p>}
                     </div>

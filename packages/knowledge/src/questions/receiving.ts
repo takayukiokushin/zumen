@@ -41,8 +41,8 @@ export const RECEIVING_QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     options: [
-      { value: 'yes', label: 'あり' },
-      { value: 'no', label: 'なし' },
+      { value: 'yes', label: 'あり', i18nContext: 'yesno' },
+      { value: 'no', label: 'なし', i18nContext: 'yesno' },
     ],
     defaultValue: 'yes',
     showIf: { key: 'sectionalizer', eq: 'none' },
