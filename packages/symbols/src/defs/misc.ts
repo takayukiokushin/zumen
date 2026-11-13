@@ -111,6 +111,38 @@ export const miscSymbols: SymbolDef[] = [
     statusNote: 'このマークでOK。',
   },
   {
+    // モーター（電動機）。発電機と同じ形（丸の中に文字、上に縦線）で、文字だけ「M」にする（第13弾 項目23）。
+    // 図面に添える文字は、始動方式（記号の右横）と、その下に容量。台数は、記号の数で分かるので、文字には書かない
+    id: 'motor',
+    labelLines: ['{startMethod}', '{capacity}kW'],
+    abbr: 'M',
+    nameJa: 'モーター（電動機）',
+    category: 'source',
+    tags: ['モーター', '電動機', '始動方式', '負荷'],
+    box: { w: 40, h: 44 },
+    shapes: [vline(20, 0, 10), circle(20, 24, 14), text(20, 24, 'M', { size: 13 })],
+    ports: [{ id: 'out', x: 20, y: 0, dir: 'up', role: 'line' }],
+    fields: [
+      {
+        key: 'startMethod',
+        label: '始動方式',
+        type: 'select',
+        options: [
+          { value: '直入れ始動', label: '直入れ始動' },
+          { value: 'リアクトル始動', label: 'リアクトル始動' },
+          { value: 'コンドルファ始動', label: 'コンドルファ始動' },
+          { value: 'インバータ始動', label: 'インバータ始動' },
+          { value: 'スターデルタ始動', label: 'スターデルタ始動' },
+        ],
+      },
+      { key: 'capacity', label: '容量', type: 'number', unit: 'kW' },
+      { key: 'place', label: '設置場所', type: 'text' },
+    ],
+    status: 'confirmed',
+    statusNote: '発電機の記号の「G」を「M」にした形です（丸の中に「M」、上に縦線）。',
+    note: '発電機・太陽光・蓄電池と同じ「電源設備」のブロックに入る。始動方式は記号の右横、その下に容量を書く。',
+  },
+  {
     id: 'pv',
     labelLines: ['PV', '{capacity}kW'],
     abbr: 'PV',

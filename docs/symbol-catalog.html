@@ -198,8 +198,8 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>76</b><span>記号</span></div>
-      <div class="stat"><b>76</b><span>確定</span></div>
+      <div class="stat"><b>77</b><span>記号</span></div>
+      <div class="stat"><b>77</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
       <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
@@ -229,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>21</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>21</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>5</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -2402,7 +2402,7 @@
     <section class="group" id="cat-source" data-cat="source">
       <header class="group-head">
         <h2>発電機・太陽光・蓄電池</h2>
-        <span class="count">4</span>
+        <span class="count">5</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-generator" data-search="発電機  g generator 発電機 非常用 常用" data-status="confirmed">
@@ -2430,6 +2430,34 @@
           
           <p class="statusnote">このマークでOK。</p>
           
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-motor" data-search="モーター（電動機）  m motor モーター 電動機 始動方式 負荷" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 60" width="95.2" height="102" role="img" aria-label="モーター（電動機）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="20" y1="0" x2="20" y2="10" stroke-width="1" />
+    <circle cx="20" cy="24" r="14" fill="none" stroke-width="1" />
+    <text x="20" y="24" font-size="13" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">M</text>
+    <g class="ports">
+      <circle cx="20" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">M</span>
+            <h3>モーター（電動機）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>motor</code> ・ 接続点 1</p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">始動方式<i>5択</i></span><span class="chip">容量<i>kW</i></span><span class="chip">設置場所</span></div>
+          
+          <p class="statusnote">発電機の記号の「G」を「M」にした形です（丸の中に「M」、上に縦線）。</p>
+          <p class="note">発電機・太陽光・蓄電池と同じ「電源設備」のブロックに入る。始動方式は記号の右横、その下に容量を書く。</p>
           
         </div>
       </article>
