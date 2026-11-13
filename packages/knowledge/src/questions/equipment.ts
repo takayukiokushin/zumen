@@ -176,6 +176,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     allowFreeInput: true,
     unit: '台',
     defaultValue: '1',
+    autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
   },
   {

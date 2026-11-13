@@ -442,6 +442,12 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.preCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.preCableInstallation)) ?? '';
   d.preCableSpecLine = cableSpec(answers.preCableVoltage, answers.preCableCrossSection, answers.preCableLength, answers.preCableLengthApprox);
 
+  // 電動機（台ごとの答えで組み立てる）：途中のケーブルの注記は、ほかのケーブルと同じ書き方。容量は「500kW」、LBSのパワーヒューズは「PF 30A」
+  d.motorCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.motorCableInstallation)) ?? '';
+  d.motorCableSpecLine = cableSpec(answers.motorCableVoltage, answers.motorCableCrossSection, answers.motorCableLength, answers.motorCableLengthApprox);
+  d.motorCapacityText = answers.motorCapacity !== undefined && answers.motorCapacity !== null && answers.motorCapacity !== '' ? `${answers.motorCapacity}kW` : '';
+  d.motorFuseText = answers.motorFuseCurrent ? `PF ${answers.motorFuseCurrent}A` : '';
+
   // CT・VTの台数。2台以上のときだけ「CT×2」「VT＋PF×2」のように書く
   const times = (v: unknown) => {
     const n = Math.floor(Number(v));

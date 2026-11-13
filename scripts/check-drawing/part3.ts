@@ -1015,6 +1015,47 @@ console.log('\n■ 範囲選択・複数選択');
   console.log('  GC：地絡継電器3種 × ZCT位置3種 × 上位の開閉器4種 × 位置5種：描かれる・ZCTの電源側・縦につながる・線と文字が重ならない');
 }
 
+/* ---------- 電動機（第13弾 項目26）：母線から／変圧器の二次側から。台数が増えても、線・文字が重ならない ---------- */
+console.log('\n■ 電動機（母線から・変圧器の二次側から。1〜50台）');
+{
+  const problems = (d: ReturnType<typeof layout>) => findLabelCollisions(d).length > 0 ? '文字が重なっています' : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
+  const mk = (src: string, n: number, extra: Answers = {}): Answers => {
+    const a: Answers = { ...answers, mainBreakerForm: 'cb', transformerCount: 2, trCapacity: 100, trConnection: 'tr-3p-dy', hasMotor: 'yes', motorCount: n, ...extra };
+    for (let i = 1; i <= n; i++) {
+      const k = (id: string) => (i === 1 ? id : `${id}__${i}`);
+      a[k('motorSource')] = src;
+      a[k('motorSwitch')] = src === 'bus' ? ['none', 'ds', 'vcb', 'lbs', 'ds-vcb'][i % 5]! : ['none', 'mccb'][i % 2]!;
+      a[k('motorCable')] = i % 3 === 0 ? 'no' : 'yes';
+      a[k('motorCableInstallation')] = i % 2 === 0 ? 'buried' : 'overhead';
+      a[k('motorCableLength')] = 10 + i;
+      a[k('motorStartMethod')] = 'スターデルタ始動';
+      a[k('motorCapacity')] = 55;
+      if (src === 'secondary') a[k('motorSourceTr')] = String(1 + (i % 2));
+    }
+    return a;
+  };
+  for (const src of ['bus', 'secondary']) {
+    for (const n of [1, 2, 5, 10, 20, 50]) {
+      const a = mk(src, n);
+      const d = layout(buildComposition(a), a);
+      const motors = d.symbols.filter((s) => s.role === 'motor');
+      // 向かい側の端末は、180°回して、頂点を上（ケーブル側）に向ける
+      const sites = d.symbols.filter((s) => s.role === 'motor-cable-site');
+      const bad = motors.length !== n ? `電動機の記号が ${motors.length} 個です（${n}台のはず）` : sites.some((s) => s.rotate !== 180) ? 'ケーブルの向かい側の端末が、回っていません' : new Set(motors.map((m) => Math.round(m.x))).size !== n ? '電動機が、同じ位置に重なっています' : problems(d);
+      if (bad) fail(`電動機（${src === 'bus' ? '母線から' : '二次側から'}・${n}台）：${bad}`);
+    }
+  }
+  // 母線から＋二次側からが、混ざっても
+  const mixed: Answers = { ...mk('bus', 4), motorSource__2: 'secondary', motorSwitch__2: 'mccb', motorSource__4: 'secondary', motorSwitch__4: 'none', motorSourceTr__4: '2' };
+  const dm = layout(buildComposition(mixed), mixed);
+  if (dm.symbols.filter((s) => s.role === 'motor').length !== 4 || problems(dm)) fail(`電動機（母線から・二次側からが混ざる）：${problems(dm) || '電動機が4台描かれていません'}`);
+  // 変圧器0台の2か所目のエリアに置く電動機
+  const area: Answers = { ...answers, mainBreakerForm: 'cb', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:transformerCount': 0, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried', 'a2:linkSwitch': 'lbs', 'a2:hasMotor': 'yes', 'a2:motorCount': 3, 'a2:motorSource': 'bus', 'a2:motorSwitch': 'ds', 'a2:motorSource__2': 'bus', 'a2:motorSwitch__2': 'ds', 'a2:motorSource__3': 'bus', 'a2:motorSwitch__3': 'ds' };
+  const da = layout(buildComposition(area), area);
+  if (da.symbols.filter((s) => s.role === 'a2:motor').length !== 3 || problems(da)) fail(`電動機（変圧器0台の2か所目のエリア）：${problems(da) || '電動機が3台描かれていません'}`);
+  console.log('  母線から・二次側から・混在・変圧器0台のエリア：1〜50台まで、記号の数のとおりに描かれ、線・文字が重ならない（ケーブルの向かい側の端末は、頂点が上）');
+}
+
 /* ---------- GR（無方向性）：ZCTだけ。ZPDは無くてよい。位置の選択肢はDGRと同じ ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'no', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', mainGroundRelay: 'gr' };

@@ -121,6 +121,24 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     if (evaluate(zero.showIf, { areaNo: 1 } as Answers) || !evaluate(zero.showIf, { areaNo: 2 } as Answers)) fail('変圧器の台数の「0（なし）」が、2か所目以降のエリアだけに出ていません');
     if (buildComposition({ ...answers, areaCount: 2, 'a2:transformerCount': 0, 'a2:areaIntake': 'ds-vcb' }).some((i) => i.area === 1 && i.role === 'a2:transformer')) fail('変圧器が0台のエリアに、変圧器が入っています');
     if (!buildComposition({ ...answers, areaCount: 1 }).some((i) => i.role === 'transformer')) fail('1か所目に、変圧器が入っていません');
+    // 電動機の構成（第13弾 項目26）：接続元で、列が変わる。台数ぶん描く。文字は、始動方式と容量
+    const mroles = (a: Answers) => buildComposition({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, ...a }).filter((i) => /^motor/.test(i.role));
+    const sig = (a: Answers) => mroles(a).map((i) => `${i.role}:${i.kind}:${i.unit}`).join();
+    if (mroles({ hasMotor: 'no', motorCount: 2 }).length !== 0) fail('電動機が「ない」のに、図面に入っています');
+    if (sig({ hasMotor: 'yes', motorCount: 2, motorSource: 'secondary', motorSource__2: 'secondary' }) !== 'motor:feeder:0,motor:feeder:1') fail(`二次側からの電動機2台の構成が違います（${sig({ hasMotor: 'yes', motorCount: 2, motorSource: 'secondary', motorSource__2: 'secondary' })}）`);
+    const full = sig({ hasMotor: 'yes', motorCount: 1, motorSource: 'secondary', motorSwitch: 'mccb', motorCable: 'yes' });
+    if (full !== 'motor-mccb:feeder:0,motor-cable-source:feeder:0,motor-cable-site:feeder:0,motor:feeder:0') fail(`二次側＋MCCB＋ケーブルの並びが違います（${full}）`);
+    const busFull = sig({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorSwitch: 'ds-vcb', motorCable: 'yes' });
+    if (busFull !== 'motor-ds:parallel:0,motor-vcb:parallel:0,motor-cable-source:parallel:0,motor-cable-site:parallel:0,motor:parallel:0') fail(`母線＋DS＋VCB＋ケーブルの並びが違います（${busFull}）`);
+    const lbs = mroles({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorSwitch: 'lbs', motorFuseCurrent: '30', motorStartMethod: 'インバータ始動', motorCapacity: 200 });
+    if (lbs.find((i) => i.role === 'motor-lbs')?.label.join('|') !== 'LBS|PF 30A') fail('母線＋LBSの文字が「LBS／PF 30A」になっていません');
+    if (lbs.find((i) => i.role === 'motor')?.label.join('|') !== 'インバータ始動|200kW') fail(`電動機の文字が「始動方式／容量」になっていません（${lbs.find((i) => i.role === 'motor')?.label.join('|')}）`);
+    const cab = mroles({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorCable: 'yes', motorCableInstallation: 'buried', motorCableLength: 30, motorCableStructure: 'CVT', motorCableVoltage: '6600', motorCableCrossSection: '60' });
+    if (cab.find((i) => i.role === 'motor-cable-site')?.label.join('|') !== '埋ケ|CVT|6600V 60mm2 30m') fail(`電動機のケーブルの文字が違います（${cab.find((i) => i.role === 'motor-cable-site')?.label.join('|')}）`);
+    if (cab.find((i) => i.role === 'motor-cable-source')?.dashedAfter !== true) fail('埋設のとき、ケーブルの端末のあいだが、点線になっていません');
+    const two = mroles({ hasMotor: 'yes', motorCount: 2, motorSource: 'bus', motorSource__2: 'secondary', motorSourceTr__2: '2' });
+    if (two.map((i) => i.kind).join() !== 'parallel,feeder' || String(two[1]!.props?.transformer) !== '2') fail('1台は母線・1台は二次側のとき、それぞれの列になっていません');
+    if (buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:transformerCount': 0, 'a2:hasMotor': 'yes', 'a2:motorCount': 2 }).filter((i) => i.role === 'a2:motor').length !== 2) fail('変圧器が0台の2か所目のエリアに、電動機が2台入っていません');
     console.log('  電動機：ありのときだけ、台数 → 始動方式 → 容量 → 設置場所の順（始動方式の選択肢は、依頼の順）');
   }
   // 「ありますか？」の質問そのものは、いつも出る。なしのときに、必須の入力漏れとして数えない

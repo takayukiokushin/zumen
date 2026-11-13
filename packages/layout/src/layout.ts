@@ -232,6 +232,19 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   /** 下の出口を決めていない変圧器（三巻線変圧器）の番号（0始まり） */
   const transformerNoOut = new Set<number>();
 
+  /**
+   * 低圧の回線（feeder）の列どうしの間隔。ふつうは LANE_GAP。
+   * 電動機の列は、記号の右横に文字（始動方式・ケーブルの注記）を書くので、文字が、隣の列の記号に触れないよう、間隔を広げる。
+   * laneIds：同じ変圧器の下にぶら下がる列の番号（小さい順）。返すのは、隣り合う列どうしの間隔
+   */
+  const feederLaneGaps = (laneIds: number[]): number[] => {
+    const inLane = (lane: number) => items.filter((f) => f.kind === 'feeder' && (f.lane ?? 0) === lane && findSymbol(f.symbolId));
+    const rightExtent = (lane: number): number =>
+      Math.max(0, ...inLane(lane).filter((f) => f.role.startsWith('motor') && f.label.length > 0).map((f) => getSymbol(f.symbolId).box.w / 2 + LABEL_GAP + labelWidth(f.label)));
+    const halfWidth = (lane: number): number => Math.max(12, ...inLane(lane).map((f) => getSymbol(f.symbolId).box.w / 2));
+    return laneIds.slice(1).map((id, k) => Math.max(LANE_GAP, rightExtent(laneIds[k]!) + halfWidth(id) + 16));
+  };
+
   /** 高圧母線を引き、変圧器や高圧進相設備をそこから下へ並列にぶら下げる */
   function drawParallelSection(): void {
     if (parallels.length === 0) return;
@@ -256,13 +269,15 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       set.add(f.lane ?? 0);
       feederLanes.set(t, set);
     }
-    const lanesUnder = (lane: number): number => {
+    /** その列の変圧器の下にぶら下がる回線の列が、横に占める幅 */
+    const spanUnder = (lane: number): number => {
       const tr = parallels.find((p) => p.lane === lane && p.role === 'transformer');
-      return tr ? (feederLanes.get(tr.unit ?? 0)?.size ?? 0) : 0;
+      const set = tr ? feederLanes.get(tr.unit ?? 0) : undefined;
+      return set ? feederLaneGaps([...set].sort((a, b) => a - b)).reduce((a, b) => a + b, 0) : 0;
     };
     const colX: number[] = [0];
     for (let j = 1; j < lanes.length; j++) {
-      const widen = LANE_GAP + (Math.max(1, lanesUnder(lanes[j - 1]!)) - 1) * (LANE_GAP / 2) + (Math.max(1, lanesUnder(lanes[j]!)) - 1) * (LANE_GAP / 2);
+      const widen = LANE_GAP + spanUnder(lanes[j - 1]!) / 2 + spanUnder(lanes[j]!) / 2;
       colX.push(colX[j - 1]! + Math.max(PARALLEL_GAP, widen));
     }
     const colCenter = ((colX[0] ?? 0) + (colX.at(-1) ?? 0)) / 2;
@@ -319,15 +334,21 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const inLane = parallels
         .filter((p) => (p.lane ?? 0) === lane)
         .sort((a, b) => rowOf(a) - rowOf(b));
+      let prevDashed = false;
       for (const item of inLane) {
         const def = getSymbol(item.symbolId);
-        const entry = portOf(def, 'in') ?? def.ports[0]!;
-        const exit = portOf(def, 'out', 'sec');
+        // 電動機のケーブルの、向かい側の端末は、180°回して、頂点をケーブル側（上）に向ける
+        const rot = item.role === 'motor-cable-site' ? 180 : 0;
+        const inP = portOf(def, 'in') ?? def.ports[0]!;
+        const outP = portOf(def, 'out', 'sec');
+        const entry = rot === 180 && outP ? { x: flip(def, outP.x, outP.y, rot)[0], y: flip(def, outP.x, outP.y, rot)[1] } : inP;
+        const exit = rot === 180 ? { x: flip(def, inP.x, inP.y, rot)[0], y: flip(def, inP.x, inP.y, rot)[1] } : outP;
         const top = rowTop[rowOf(item)]!;
         const x = laneX(lane) - entry.x;
         const yy = top - entry.y;
-        wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: top });
-        add(item, def, x, yy, 0, 'right');
+        wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: top, ...(prevDashed ? { dashed: true } : {}) });
+        add(item, def, x, yy, rot, 'right');
+        prevDashed = item.dashedAfter === true;
         ly = exit ? yy + exit.y : yy + def.box.h;
         if (item.role === 'transformer') {
           transformerOut[item.unit ?? 0] = { x: laneX(lane), y: ly };
@@ -829,22 +850,33 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const busY = anchor.y + GAP;
       const base = anchor.x;
       wires.push({ x1: base, y1: anchor.y, x2: base, y2: busY });
-      const laneX = (i: number) => base + (i - (lanes.length - 1) / 2) * LANE_GAP;
+      // 列の間隔は、ふつうは LANE_GAP。電動機の文字が広いときだけ、広げる（全体を、変圧器の真下に中央そろえ）
+      const gaps = feederLaneGaps(lanes);
+      const offs = [0];
+      for (const g of gaps) offs.push(offs.at(-1)! + g);
+      const laneX = (i: number) => base + offs[i]! - offs.at(-1)! / 2;
       // 1本だけなら母線は引かず、変圧器からその機器まで1本の線でつなぐ
       if (lanes.length > 1) wires.push({ x1: laneX(0), y1: busY, x2: laneX(lanes.length - 1), y2: busY });
 
       lanes.forEach((lane, slot) => {
         let ly = busY;
         const inLane = feeders.filter((f) => (f.lane ?? 0) === lane);
+        let prevDashed = false;
         for (const [i, item] of inLane.entries()) {
           const def = getSymbol(item.symbolId);
-          const entry = portOf(def, 'in') ?? portOf(def, 'out')!;
-          const exit = portOf(def, 'out');
+          // 電動機のケーブルの、向かい側の端末は、180°回して、頂点をケーブル側（上）に向ける
+          const rot = item.role === 'motor-cable-site' ? 180 : 0;
+          const inP = portOf(def, 'in') ?? portOf(def, 'out')!;
+          const outP = portOf(def, 'out');
+          const entry = rot === 180 && outP ? { x: flip(def, outP.x, outP.y, rot)[0], y: flip(def, outP.x, outP.y, rot)[1] } : inP;
+          const exit = rot === 180 ? { x: flip(def, inP.x, inP.y, rot)[0], y: flip(def, inP.x, inP.y, rot)[1] } : outP;
           const x = laneX(slot) - entry.x;
           const yy = ly + (i === 0 ? 0 : GAP) - entry.y;
-          if (i > 0) wires.push({ x1: laneX(slot), y1: ly, x2: laneX(slot), y2: yy + entry.y });
-          const sym = add(item, def, x, yy, 0, 'right');
-          if (i > 0) {
+          if (i > 0) wires.push({ x1: laneX(slot), y1: ly, x2: laneX(slot), y2: yy + entry.y, ...(prevDashed ? { dashed: true } : {}) });
+          const sym = add(item, def, x, yy, rot, 'right');
+          prevDashed = item.dashedAfter === true;
+          // 電動機の列は、文字を、記号の右横に書く（始動方式・容量・ケーブルの注記）
+          if (i > 0 && !item.role.startsWith('motor')) {
             // 2つ目以降は記号の下に中央揃えで文字を書く
             sym.labelAt = { x: laneX(slot) + def.box.w / 2 - entry.x, y: yy + def.box.h + 12, anchor: 'middle' };
           }
