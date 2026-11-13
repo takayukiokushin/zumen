@@ -118,7 +118,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
       if (rows.length === 0) continue;
       blocks.push({
         index: i,
-        heading: count > 1 ? t('hearing.nth', { n: i + 1, unit: tx(group.repeatUnit ?? '件') }) : null,
+        heading: count > 1 ? t('hearing.nth', { n: i + 1, unit: tx(group.repeatUnit ?? '件', 'nth') }) : null,
         rows,
         answered: rows.filter((r) => effective[r.key] !== undefined).length,
         need: rows.some((r) => r.question.required && effective[r.key] === undefined),

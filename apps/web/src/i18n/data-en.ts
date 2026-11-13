@@ -12,6 +12,12 @@ const data: Record<string, string> = {
   "引込ケーブル": "Service cable",
   "受電設備エリア": "Receiving equipment areas",
   "か所": "areas",
+  // 「何台目」の見出しでは、単数形（「Unit #1」）にする（本文の単位は複数形の「units」）
+  "か所@nth": "Area",
+  "組@nth": "Set",
+  "個@nth": "Item",
+  "台@nth": "Unit",
+  "種類@nth": "Type",
   "エリア間の接続": "Connections between areas",
   "LBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする": "Asked only for an LBS. An LBS has a power fuse (PF). Written on the drawing like “PF 30A”. Leave blank if unknown",
   "接続元は？": "What is the source?",
