@@ -430,6 +430,39 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     if (!linkNoLen?.endsWith('6600V 38mm2 - m')) fail(`エリア間のケーブルの長さが不明のとき、「- m」と書かれていません（${linkNoLen}）`);
     console.log('  引込点〜責任分界点のケーブル：区分開閉器なし・地上キャビネットなしで「はい」のとき、引込点と責任分界点のあいだに、引込ケーブルと同じ様式で入る');
   }
+  // VCT（電気設備内）を置く位置：初期値は、引込ケーブルの次（いまの位置）。選ぶと、主回路の途中へ動く。VCT2台は、まとめて動く
+  {
+    const order = (a: Answers) =>
+      buildComposition({ ...answers, vctLocation: 'indoor', vctCount: 2, ...a })
+        .map((i) => i.role)
+        .filter((r) => ['vct-indoor', 'cable-head-site', 'ds', 'main-breaker', 'ct', 'ds-vt'].includes(r))
+        .join('>');
+    const cb = { mainBreakerForm: 'cb', sectionalizer: 'pas', cableInstallation: 'buried', hasCapacitor: 'no' };
+    const base = order(cb);
+    if (!base.startsWith('cable-head-site>vct-indoor>vct-indoor>ds>')) fail(`VCTの初期値の位置が、引込ケーブルの次ではありません（${base}）`);
+    if (order({ ...cb, vctTap: 'cable' }) !== base) fail('VCTの位置「cable」が、初期値と違います');
+    const dsVcb = order({ ...cb, vctTap: 'ds-vcb' });
+    if (!/>ds>vct-indoor>vct-indoor>ds-vt>main-breaker/.test(dsVcb)) fail(`VCTの位置「DSとVCBの間」が違います（${dsVcb}）`);
+    const vcbCt = order({ ...cb, vctTap: 'vcb-ct' });
+    if (!/>main-breaker>vct-indoor>vct-indoor>ct/.test(vcbCt)) fail(`VCTの位置「VCBとCTの間」が違います（${vcbCt}）`);
+    const ctBus = order({ ...cb, vctTap: 'ct-bus' });
+    if (!/>ct>vct-indoor>vct-indoor$/.test(ctBus)) fail(`VCTの位置「変圧器の手前」が違います（${ctBus}）`);
+    const pfs = { mainBreakerForm: 'pfs', sectionalizer: 'pas', cableInstallation: 'buried', hasCapacitor: 'no' };
+    if (!/>main-breaker>vct-indoor>vct-indoor>ct/.test(order({ ...pfs, vctTap: 'lbs-ct' }))) fail('VCTの位置「LBSの次」が違います（PFS形）');
+    // その機器が無いときは、動かさない（PFS形で「DSとVCBの間」など）
+    if (order({ ...pfs, vctTap: 'ds-vcb' }) !== order(pfs)) fail('DSが無いのに、VCTが動いています');
+    // 電柱上のVCTは、この質問の対象外（動かさない）
+    const poleVct = buildComposition({ ...answers, ...cb, vctLocation: 'pole', vctTap: 'ct-bus' }).map((i) => i.role);
+    if (poleVct.indexOf('vct-pole') > poleVct.indexOf('ds')) fail('電柱上のVCTが、動いています');
+    // 質問：電気設備内のときだけ。形式に合わせて選択肢が変わる
+    const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+    if (!shown({ vctLocation: 'indoor' }).has('vctTap') || shown({ vctLocation: 'pole' }).has('vctTap') || shown({ vctLocation: 'indoor', mainBreakerForm: 'pole-top' }).has('vctTap')) fail('VCTを置く位置の質問が、電気設備内のときだけ出るようになっていません');
+    const opts = (a: Answers) => (QUESTIONS.find((q) => q.id === 'vctTap')?.options ?? []).filter((o) => evaluate(o.showIf, normalizeAnswers(a))).map((o) => o.label).join('／');
+    if (opts({ mainBreakerForm: 'cb' }) !== 'ケーブルとDSの間／DSとVCBの間／VCBとCTの間／変圧器の手前（CTの下・高圧母線の上）') fail(`VCTの選択肢（CB形）が違います（${opts({ mainBreakerForm: 'cb' })}）`);
+    if (opts({ mainBreakerForm: 'pfs' }) !== 'ケーブルとLBSの間／LBSの次（LBSとCTの間）／変圧器の手前（CTの下・高圧母線の上）') fail(`VCTの選択肢（PFS形）が違います（${opts({ mainBreakerForm: 'pfs' })}）`);
+    if (QUESTION_DEFAULTS.vctTap !== 'cable') fail('VCTを置く位置の初期値が、ケーブルの次ではありません');
+    console.log('  VCTを置く位置：初期値＝ケーブルの次。DSとVCBの間・VCBとCTの間・LBSの次・変圧器の手前を選べる（2台はまとめて動く。電柱上は対象外）');
+  }
   // 区分開閉器が「なし」のとき：引込ケーブルが電力会社のものなら、財産分界点は、DSの一次側（DSが無ければ、LBSの一次側）に移る
   {
     const ordered = (a: Answers) => buildComposition({ ...answers, ...a }).map((i) => i.role);

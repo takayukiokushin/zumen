@@ -983,7 +983,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
       }
     }
   }
-  return placeByTap(arrangeInstruments(out));
+  return placeVct(placeByTap(arrangeInstruments(out)), String(answers.vctTap ?? 'cable'));
 }
 
 
@@ -1198,6 +1198,39 @@ function placeByTap(items: PlacedItem[]): PlacedItem[] {
   return [...rest.slice(0, at), ...before, rest[at]!, ...after, ...rest.slice(at + 1)];
 }
 
+
+/**
+ * VCT（電気設備内）を置く位置（vctTap）に合わせて、VCTを、主回路の並びの途中へ動かす（第13弾 項目18）。
+ * 位置は、上（電源側）から見て、次のとおり。VCTは、同じ位置にあるVT・CTより、電源側（上）に置く。
+ * - cable（初期値）：引込ケーブルの次（ケーブルとDS／LBSの間）。動かさない
+ * - ds-vcb：DSの次（DSとVCBの間）。DSが無いときは、動かさない
+ * - vcb-ct：VCBの次（VCBとCTの間）。VCBが無いときは、動かさない
+ * - lbs-ct：LBSの次（LBSとCTの間）。LBSが無いときは、動かさない
+ * - ct-bus：変圧器の手前（CT・VT・継電器のあと、高圧母線の上）
+ * VCBに並列に付く励磁突入電流抑制開閉器や、責任分界点の印は、VCBについているので、その次に入れる。
+ * VCTが2台のときは、2台とも、同じ位置にまとめて動かす（上下の並びは、そのまま）。
+ */
+function placeVct(items: PlacedItem[], pos: string): PlacedItem[] {
+  if (pos === 'cable') return items;
+  const vcts = items.filter((i) => i.role === 'vct-indoor');
+  if (vcts.length === 0) return items;
+  const rest = items.filter((i) => i.role !== 'vct-indoor');
+  let at = -1;
+  if (pos === 'ds-vcb') at = rest.findIndex((i) => i.role === 'ds');
+  else if (pos === 'vcb-ct' || pos === 'lbs-ct') {
+    const m = rest.findIndex((i) => i.role === 'main-breaker' && (pos === 'vcb-ct' ? i.symbolId === 'vcb' : i.symbolId.startsWith('lbs')));
+    if (m >= 0) {
+      at = m;
+      // VCBについている（並列・重ねて描く）ものは、その次に入れる
+      while (rest[at + 1] && (rest[at + 1]!.attachTo === rest[m]!.role || rest[at + 1]!.attachTo === rest[m]!.id)) at++;
+    }
+  } else if (pos === 'ct-bus') {
+    const bus = rest.findIndex((i) => ['parallel', 'feeder', 'free', 'sendout'].includes(i.kind));
+    at = (bus < 0 ? rest.length : bus) - 1;
+  }
+  if (at < 0) return items;
+  return [...rest.slice(0, at + 1), ...vcts, ...rest.slice(at + 1)];
+}
 
 /**
  * 図面を複製して新しい案件を作るときの回答。

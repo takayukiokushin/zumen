@@ -140,6 +140,26 @@ export const RECEIVING_QUESTIONS: Question[] = [
     ask: 'ai-uncertain',
   },
   {
+    // VCT（電気設備内）を、主回路のどこに置くか。初期値は、引込ケーブルの次（いまの位置）。電柱上のときは、聞かない
+    id: 'vctTap',
+    group: 'vct',
+    label: 'VCTを置く位置は？',
+    type: 'select',
+    dropdown: true,
+    options: [
+      { value: 'cable', label: 'ケーブルとDSの間', showIf: { key: 'mainBreakerForm', eq: 'cb' } },
+      { value: 'cable', label: 'ケーブルとLBSの間', showIf: { not: { key: 'mainBreakerForm', eq: 'cb' } } },
+      { value: 'ds-vcb', label: 'DSとVCBの間', showIf: { key: 'mainBreakerForm', eq: 'cb' } },
+      { value: 'vcb-ct', label: 'VCBとCTの間', showIf: { key: 'mainBreakerForm', eq: 'cb' } },
+      { value: 'lbs-ct', label: 'LBSの次（LBSとCTの間）', showIf: { not: { key: 'mainBreakerForm', eq: 'cb' } } },
+      { value: 'ct-bus', label: '変圧器の手前（CTの下・高圧母線の上）' },
+    ],
+    defaultValue: 'cable',
+    showIf: { all: [{ key: 'vctLocation', eq: 'indoor' }, { not: { key: 'mainBreakerForm', eq: 'pole-top' } }] },
+    ask: 'ai-uncertain',
+    help: 'VCTが2台のときは、2台とも、同じ位置に置く。同じ位置にVT・CTがあるときは、VCTを電源側（上）に置く',
+  },
+  {
     id: 'vctCount',
     group: 'vct',
     label: 'VCTの台数は？',
