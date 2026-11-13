@@ -135,6 +135,13 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
     const viaZpd = w.some((x) => x.at1?.item === zpd.id || x.at2?.item === zpd.id);
     if (!viaZpd) problems.push('ZPDの出口に線がありません');
     if (!w.some((x) => x.at1?.item === dgr.id || x.at2?.item === dgr.id)) problems.push('DGRに線がつながっていません');
+    // 蓄電池ユニットの上の縦棒（接続点）は、長方形（x＝4〜92）の真ん中に通っている（第13弾 項目44）
+    {
+      const bd = getSymbolDef('battery-unit');
+      const bp = bd.ports.find((q) => q.id === 'out')!;
+      const br = bd.shapes.find((sh) => sh.k === 'rect') as { x: number; w: number } | undefined;
+      if (!br || Math.abs(bp.x - (br.x + br.w / 2)) > 0.01) problems.push(`蓄電池ユニットの縦棒が、長方形の真ん中にありません（接続点 x＝${bp.x}）`);
+    }
     // 編集画面でPCSを足したときも、文字の初めの位置は同じ（四角の真横・上の辺）
     {
       const added = addSymbol({ items: [] } as Doc, 'pcs', 100, 100);

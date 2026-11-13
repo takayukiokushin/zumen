@@ -201,8 +201,9 @@ export const miscSymbols: SymbolDef[] = [
     category: 'source',
     tags: ['蓄電', '系統用蓄電所'],
     box: { w: 96, h: 44 },
-    shapes: [vline(30, 0, 10), rect(4, 10, 88, 30), text(48, 25, '蓄電池ユニット', { size: 9 })],
-    ports: [{ id: 'out', x: 30, y: 0, dir: 'up', role: 'line' }],
+    // 上の縦棒は、長方形（x＝4〜92）の真ん中（x＝48）に通す。「蓄電池ユニット」の文字も同じ中央
+    shapes: [vline(48, 0, 10), rect(4, 10, 88, 30), text(48, 25, '蓄電池ユニット', { size: 9 })],
+    ports: [{ id: 'out', x: 48, y: 0, dir: 'up', role: 'line' }],
     fields: [
       { key: 'unitNo', label: 'ユニット番号', type: 'text', help: '図面の記載例: No.1' },
       { key: 'capacity', label: '蓄電ユニット規模', type: 'number', unit: 'kWh' },
