@@ -6,7 +6,7 @@ import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
-import { groundOverlapsSymbols, normalizeRect } from './layers.ts';
+import { groundOverlapsSymbols, markPoint, normalizeRect } from './layers.ts';
 import type { AreaRect, LinkShape } from '@zumen/layout';
 import type { GroundAnchor, ResolvedArea, ResolvedArrow, ResolvedCross, ResolvedDot, ResolvedGround, ResolvedLink } from './layers.ts';
 
@@ -61,6 +61,8 @@ interface Props {
   onGroundAnchor?: (groundId: string, anchor: GroundAnchor) => void;
   /** レイヤーに付けた赤い×印（図面のいちばん上に描く） */
   crosses?: ResolvedCross[];
+  /** ×印を付けるモードで、カーソルを乗せたとき、薄く見せる×印の大きさと太さ（いま選んでいる大きさ）。無ければ見せない */
+  crossPreview?: { size: number; thickness: number };
   /** 'cross' のときに、記号（PAS のような、中に部品を抱えるものは、かたまりの親）をクリックしたとき */
   onCrossClick?: (symbolId: string) => void;
   /** 'cross' のときに、×印そのものをクリックしたとき（その×印を外す） */
@@ -122,7 +124,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -137,6 +139,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   const [areaDrag, setAreaDrag] = useState<{ id: string; grip: string; sx: number; sy: number; orig: AreaRect; cur: AreaRect } | null>(null);
   /** 丸い点を置くモードで、カーソルのところに置いたときの場所（吸い付くときは snapped） */
   const [dotHover, setDotHover] = useState<{ x: number; y: number; snapped: boolean } | null>(null);
+  /** ×印を付けるモード：カーソルを乗せている開閉器の、×印が付く中心（置いたときの大きさを、薄く見せるため） */
+  const [crossHover, setCrossHover] = useState<{ x: number; y: number } | null>(null);
   /** 渡り線を引いている途中：最後にクリックした点 */
   const [linkStart, setLinkStart] = useState<string | null>(null);
   /** 選んでいる丸い点を、ドラッグしている最中（いまの場所と、動き始めたときの場所） */
@@ -699,6 +703,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       // 接地のマークを置くモードで、カーソルが図面の外に出たら、つなげる場所の丸と、置いたときの見本を、いったん消す
       onPointerLeave={() => {
         setDotHover(null);
+        setCrossHover(null);
         if (mode === 'link') setCursor(null);
         if (mode !== 'ground') return;
         setGroundHover(null);
@@ -717,6 +722,18 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           const common = {
             key: it.id,
             onPointerDown: (e: React.PointerEvent) => onPointerDown(e, it),
+            // ×印を付けるモード：付けられる開閉器にカーソルを乗せたら、置いたときの×印の大きさを、薄く見せる（まだ付いていないときだけ）
+            ...(mode === 'cross' && it.kind === 'symbol'
+              ? {
+                  onPointerEnter: () => {
+                    const rootId = groupRootOf(doc, it.id);
+                    const root = doc.items.find((x) => x.id === rootId);
+                    const at = root && root.kind === 'symbol' ? markPoint(root) : null;
+                    setCrossHover(at && !crosses.some((c) => c.symbolId === rootId) ? at : null);
+                  },
+                  onPointerLeave: () => setCrossHover(null),
+                }
+              : {}),
             className: `item${selected ? ' selected' : ''}${inert(it.id) ? ' inert' : ''}${mode === 'cross' && it.kind === 'symbol' && defOf(it).markCenter ? ' eligible' : ''}`,
           };
 
@@ -1136,6 +1153,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             </g>
           );
         })}
+        {/* ×印を付けるモード：付けたときの大きさを、薄い×印で見せる（付けてみないと、大きさが分からないため） */}
+        {mode === 'cross' && crossPreview && crossHover && (
+          <polygon points={crossPointsAttr(crossHover.x, crossHover.y, crossPreview.size, crossPreview.thickness)} fill={OVERLAY_RED} fillOpacity={0.4} stroke="none" pointerEvents="none" />
+        )}
+
         {/* 丸い点を置くモード：置いたときの場所を、薄い丸で見せる（吸い付くときは、まわりに輪を付ける） */}
         {mode === 'dot' && dotHover && (
           <g pointerEvents="none">

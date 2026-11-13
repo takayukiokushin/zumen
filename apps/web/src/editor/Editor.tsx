@@ -23,7 +23,7 @@ import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
 import { addExtraCross, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
-import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
+import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, CROSS_SPECS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
 import type { AreaRect, ArrowDir, CrossSize, LinkShape } from '@zumen/layout';
 import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
@@ -1236,6 +1236,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             }}
             mode={mode}
             crosses={layerCrosses}
+            crossPreview={CROSS_SPECS[crossSize]}
             onCrossClick={toggleCross}
             onCrossRemove={(id) => {
               if (activeId === null) return;
