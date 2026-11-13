@@ -587,7 +587,7 @@ export const fr: Dict = {
   'ground.remove': 'Retirer cette marque de terre',
   'layer.tool.area': 'Cadre rouge',
   'layer.tool.areaHelp': 'Dessinez un rectangle rouge autour d’une zone (hors tension, sous tension ou d’application) en le faisant glisser. Les cadres de zone sous tension reçoivent des hachures rouges. Disponible lorsqu’un calque est sélectionné.',
-  'area.hint': 'Dessinez un cadre. Appuyez sur un coin, faites glisser jusqu’au coin opposé et relâchez pour placer le rectangle. Vous pouvez dessiner plusieurs cadres à la suite. Esc ou « Terminer le dessin des cadres » pour arrêter.',
+  'area.hint': 'Dessinez un cadre. Appuyez sur un coin, faites glisser jusqu’au coin opposé et relâchez pour placer le rectangle. Vous pouvez dessiner plusieurs cadres à la suite. Un cadre posé se déplace en faisant glisser son trait et se redimensionne avec les 8 poignées (ailleurs, on commence le cadre suivant). Esc ou « Terminer le dessin des cadres » pour arrêter.',
   'area.kind': 'Type de cadre',
   'area.kind.outage': 'Zone hors tension',
   'area.kind.live': 'Zone sous tension (hachurée)',

@@ -586,7 +586,7 @@ export const en: Dict = {
   'ground.remove': 'Remove this ground mark',
   'layer.tool.area': 'Red frame',
   'layer.tool.areaHelp': 'Draw a red rectangle around a range (outage, live or applied range) by dragging. Live-range frames get red diagonal hatching. Available while a layer is selected.',
-  'area.hint': 'Draw a frame. Press at one corner, drag to the opposite corner and release to place the rectangle. You can draw several frames in a row. Press Esc or “Finish drawing frames” to stop.',
+  'area.hint': 'Draw a frame. Press at one corner, drag to the opposite corner and release to place the rectangle. You can draw several frames in a row. A placed frame can be moved by dragging its line, and resized with the 8 handles (anywhere else starts the next frame). Press Esc or “Finish drawing frames” to stop.',
   'area.kind': 'Frame type',
   'area.kind.outage': 'Outage range',
   'area.kind.live': 'Live range (hatched)',

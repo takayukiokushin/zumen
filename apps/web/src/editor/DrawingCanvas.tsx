@@ -862,7 +862,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
           );
         })}
 
-        {/* 赤い枠（範囲を囲む四角）。線の上をつかんで動かす。選ぶと、8つの丸で、大きさを変えられる。中は素通し（中の記号や×印を、そのまま触れる） */}
+        {/* 赤い枠（範囲を囲む四角）。線の上をつかんで動かす。選ぶと、8つの丸で、大きさを変えられる。中は素通し（中の記号や×印を、そのまま触れる）。
+            枠を描くモードのままでも、置いた枠の線・丸をつかめば、動かす・大きさを変えるになる（枠の外・中の何も無い所は、次の枠を描き始める。第13弾 項目34） */}
         {areas.map((a0) => {
           const sel = selectedIds.includes(a0.id);
           const a: ResolvedArea = areaDrag && areaDrag.id === a0.id ? { ...a0, ...areaDrag.cur } : a0;
@@ -910,9 +911,9 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                 fill="none"
                 stroke="transparent"
                 strokeWidth={10}
-                pointerEvents={mode === 'select' ? 'stroke' : 'none'}
+                pointerEvents={mode === 'select' || mode === 'area' ? 'stroke' : 'none'}
                 onPointerDown={(e) => {
-                  if (mode !== 'select') return;
+                  if (mode !== 'select' && mode !== 'area') return;
                   onSelect([a0.id]);
                   begin(e, 'move');
                 }}
@@ -924,15 +925,15 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                   width={lw}
                   height={a.label.lines.length * LABEL_LINE * k}
                   fill="transparent"
-                  pointerEvents={mode === 'select' ? 'all' : 'none'}
+                  pointerEvents={mode === 'select' || mode === 'area' ? 'all' : 'none'}
                   onPointerDown={(e) => {
-                    if (mode !== 'select') return;
+                    if (mode !== 'select' && mode !== 'area') return;
                     onSelect([a0.id]);
                     begin(e, 'move');
                   }}
                 />
               )}
-              {sel && mode === 'select' && (
+              {sel && (mode === 'select' || mode === 'area') && (
                 <>
                   <rect className="selection" x={a.x - 5} y={a.y - 5} width={a.w + 10} height={a.h + 10} fill="none" pointerEvents="none" />
                   {grips.map(([grip, hx, hy]) => (
