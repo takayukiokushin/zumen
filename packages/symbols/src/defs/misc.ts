@@ -178,8 +178,9 @@ export const miscSymbols: SymbolDef[] = [
     // 下につなぐものがあるときは、作図のほうが出口から線を引く
     shapes: [
       vline(28, 0, 10),
-      rect(6, 10, 44, 28),
-      text(28, 18, 'PCS', { size: 9 }),
+      // 四角の横幅は、太陽電池パネル（PV）の平行四辺形の横幅（38）と同じ。「PCS」の文字は、四角のちょうど中央（x＝28・y＝10＋28÷2＝24）
+      rect(9, 10, 38, 28),
+      text(28, 24, 'PCS', { size: 9 }),
     ],
     ports: [
       { id: 'in', x: 28, y: 0, dir: 'up', role: 'line' },
