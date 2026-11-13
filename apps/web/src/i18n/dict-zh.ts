@@ -140,6 +140,7 @@ export const zh: Dict = {
   'editor.group.edit': '编辑',
   'editor.group.tidy': '整理',
   'editor.group.print': '方向与打印',
+  'editor.layerChange': '切换图层',
   'editor.group.view': '显示',
   'editor.portrait': '纵向',
   'editor.landscape': '横向',

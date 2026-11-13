@@ -141,6 +141,7 @@ export const ko: Dict = {
   'editor.group.edit': '편집',
   'editor.group.tidy': '정리',
   'editor.group.print': '방향·인쇄',
+  'editor.layerChange': '레이어 변경',
   'editor.group.view': '보기',
   'editor.portrait': '세로',
   'editor.landscape': '가로',

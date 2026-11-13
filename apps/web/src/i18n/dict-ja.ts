@@ -142,6 +142,7 @@ export const ja = {
   'editor.group.edit': '編集',
   'editor.group.tidy': '整える',
   'editor.group.print': '向きと印刷',
+  'editor.layerChange': 'レイヤーを変更する',
   'editor.group.view': '表示',
   'editor.portrait': '縦',
   'editor.landscape': '横',

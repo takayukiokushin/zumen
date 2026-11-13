@@ -1155,6 +1155,8 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .wb-list li { margin: calc(2px * var(--text-scale)) 0; }
 
 /* レイヤー（図面の種類）の切り替え。印刷のボタンの近くに置く */
+.layer-field { display: inline-flex; flex-direction: column; gap: calc(2px * var(--text-scale)); }
+.layer-field-cap { font-size: calc(11px * var(--text-scale)); color: var(--muted); }
 .layer-menu { position: relative; display: inline-block; }
 .layer-trigger { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); max-width: 100%; }
 .layer-trigger-cap { font-size: calc(11px * var(--text-scale)); color: var(--muted); }

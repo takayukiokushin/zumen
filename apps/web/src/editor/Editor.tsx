@@ -937,6 +937,9 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
             <div className="tool-row">
+              {/* レイヤーを切り替えられると分かるように、一覧の上に、説明の文字を置く（第13弾 項目28） */}
+              <div className="layer-field">
+                <span className="layer-field-cap">{t('editor.layerChange')}</span>
               <LayerMenu
                 infos={layerInfos(doc)}
                 review={new Set(layerInfos(doc).filter((i) => layerNeedsReview(doc, i.id)).map((i) => i.id))}
@@ -947,6 +950,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 onRename={(id) => void renameLayerFlow(id)}
                 onRemove={(id) => void removeLayerFlow(id)}
               />
+              </div>
               <button
                 type="button"
                 className="btn"

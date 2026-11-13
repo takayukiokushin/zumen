@@ -141,6 +141,7 @@ export const en: Dict = {
   'editor.group.edit': 'Edit',
   'editor.group.tidy': 'Tidy',
   'editor.group.print': 'Orientation & print',
+  'editor.layerChange': 'Change layer',
   'editor.group.view': 'View',
   'editor.portrait': 'Portrait',
   'editor.landscape': 'Landscape',
