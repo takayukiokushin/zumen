@@ -204,12 +204,15 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     group: 'vtset',
     label: 'VTの組数',
     type: 'select',
-    options: COUNT_OPTIONS.slice(0, 6),
+    // 0組（VTが無い）も選べる。主遮断装置がVCBでも、VTが必ずあるとは限らない
+    options: [{ value: '0', label: '0（なし）' }, ...COUNT_OPTIONS.slice(0, 6)],
     allowFreeInput: true,
     unit: '組',
     defaultValue: '1',
+    // 何も答えていないときは1組（0組は、「0（なし）」と答えたときだけ）
+    autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
-    help: '1組＝「VT＋PF」のひとまとまり。位置が違うVTがあるときは、組を増やす',
+    help: '1組＝「VT＋PF」のひとまとまり。位置が違うVTがあるときは、組を増やす。VTが無いときは「0（なし）」',
   },
   {
     id: 'vtPosition',
@@ -273,12 +276,15 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     group: 'ctset',
     label: 'CTの組数',
     type: 'select',
-    options: COUNT_OPTIONS.slice(0, 6),
+    // 0組（CTが無い）も選べる。主遮断装置がVCBでも、CTが必ずあるとは限らない
+    options: [{ value: '0', label: '0（なし）' }, ...COUNT_OPTIONS.slice(0, 6)],
     allowFreeInput: true,
     unit: '組',
     defaultValue: '1',
+    // 何も答えていないときは1組（0組は、「0（なし）」と答えたときだけ）
+    autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
-    help: '位置が違うCTがあるときは、組を増やす',
+    help: '位置が違うCTがあるときは、組を増やす。CTが無いときは「0（なし）」',
   },
   {
     id: 'ctPosition',
@@ -326,7 +332,8 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     allowFreeInput: true,
     unit: '個',
     // VCBとCTがあるときは、OCRが1個入る。それ以外は0個から
-    autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN] }, value: '1' }, { value: '0' }],
+    // （CTが0組のときは、OCRを自動では入れない。CTにつなぐ先が無いため）
+    autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN, { not: { key: 'ctSetCount', in: ['0', 0] } }] }, value: '1' }, { value: '0' }],
     ask: 'ai-uncertain',
     help: 'GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）',
   },

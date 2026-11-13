@@ -87,7 +87,9 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     const keyOf = (id: string, unit: number) => (group.perArea ? areaKey(indexedKey(id, unit), area) : indexedKey(id, unit));
 
     const countKey = group.repeatCountKey;
-    const count = countKey ? countOf(view[countKey], 1, maxCountOf(countKey)) : 1;
+    // 件数の一覧に「0」がある項目（VT・CTの組数など）は、0件のとき、入力欄を1つも出さない
+    const zeroOk = countKey ? (QUESTIONS.find((q) => q.id === countKey)?.options ?? []).some((o) => o.value === '0') : false;
+    const count = countKey ? countOf(view[countKey], zeroOk ? 0 : 1, maxCountOf(countKey)) : 1;
     // 件数そのものと、件数に関わらず1回だけ聞く質問は、繰り返しの外に出す
     const leading = groupQuestions.filter((q) => q.id === countKey || q.shared);
     const repeated = leadOnly ? [] : groupQuestions.filter((q) => q.id !== countKey && !q.shared);

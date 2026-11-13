@@ -430,6 +430,27 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     if (!linkNoLen?.endsWith('6600V 38mm2 - m')) fail(`エリア間のケーブルの長さが不明のとき、「- m」と書かれていません（${linkNoLen}）`);
     console.log('  引込点〜責任分界点のケーブル：区分開閉器なし・地上キャビネットなしで「はい」のとき、引込点と責任分界点のあいだに、引込ケーブルと同じ様式で入る');
   }
+  // VT・CTが0組（VCBを選んでいても、VT・CTが必ずあるとは限らない）：図面が崩れず、母線・線がつながる
+  {
+    const cb = { ...answers, mainBreakerForm: 'cb', hasCapacitor: 'no', transformerCount: 1, relayCount: '0' };
+    const rolesOf = (a: Answers) => buildComposition(a).map((i) => i.role);
+    const none = rolesOf({ ...cb, vtSetCount: '0', ctSetCount: '0' });
+    if (none.some((r) => ['ds-vt', 'ds-vt-pf', 'site-vt', 'site-vt-pf', 'ct'].includes(r))) fail('VT・CTが0組なのに、VT・CTが入っています');
+    if (!none.includes('ds') || !none.includes('main-breaker') || !none.includes('transformer')) fail('VT・CTが0組のとき、DS・VCB・変圧器が入っていません');
+    const vtOnly = rolesOf({ ...cb, vtSetCount: '0', ctSetCount: '1' });
+    if (vtOnly.some((r) => ['ds-vt', 'site-vt'].includes(r)) || !vtOnly.includes('ct')) fail('VTだけ0組のとき、VTが消えてCTが残るはずです');
+    const ctOnly = rolesOf({ ...cb, vtSetCount: '1', ctSetCount: '0' });
+    if (ctOnly.includes('ct') || !ctOnly.some((r) => r === 'ds-vt' || r === 'site-vt')) fail('CTだけ0組のとき、CTが消えてVTが残るはずです');
+    // 答えていないときは、1組（これまでどおり）。0組は、「0」と答えたときだけ
+    const dflt = rolesOf({ ...cb, vtSetCount: undefined, ctSetCount: undefined });
+    if (!dflt.includes('ct') || !dflt.some((r) => r === 'ds-vt' || r === 'site-vt')) fail('組数を答えていないとき、VT・CTが1組ずつ入るはずです');
+    // 「0（なし）」が選べる。CTが0組のときは、OCRを自動では入れない
+    const optVals = (id: string) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).map((o) => o.value);
+    if (optVals('vtSetCount')[0] !== '0' || optVals('ctSetCount')[0] !== '0') fail('VT・CTの組数に、「0（なし）」の選択肢がありません');
+    const auto = (a: Answers) => withAutoValues({ mainBreakerForm: 'cb', ...a }).relayCount;
+    if (auto({}) !== '1' || auto({ ctSetCount: '0' }) !== '0' || auto({ ctSetCount: 0 }) !== '0') fail(`継電器の個数の初期値（CTあり＝1／CTが0組＝0）が違います（${auto({})}／${auto({ ctSetCount: '0' })}）`);
+    console.log('  VT・CTが0組：選べる（0（なし））。0組のときは、記号が入らず、DS・VCB・変圧器はつながる。答えていないときは1組。CTが0組なら、OCRは自動では入れない');
+  }
   // VCT（電気設備内）を置く位置：初期値は、引込ケーブルの次（いまの位置）。選ぶと、主回路の途中へ動く。VCT2台は、まとめて動く
   {
     const order = (a: Answers) =>

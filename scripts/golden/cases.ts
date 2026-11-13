@@ -329,6 +329,11 @@ export const GOLDEN_CASES: GoldenCase[] = [
     vctCount: 2,
     vctTap: 'vcb-ct',
   }),
+  mk('32-vt-ct-zero', 'VT・CTが0組（VCB形）：VT・CT・継電器が入らず、DS・VCB・変圧器が、そのままつながる', ['vcb=1', 'tr-3p-dy=1'], CB, {
+    vtSetCount: '0',
+    ctSetCount: '0',
+    relayCount: '0',
+  }),
   // ---- 赤いレイヤー（停電範囲図・絶縁耐力試験範囲図・追加したレイヤー）の印刷 ----
   withLayer(mk('L1-outage', '赤いレイヤー：停電範囲図（メモ・×印・接地・停電範囲の枠・点と印加点の矢印・渡り線）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), outageLayer),
   withLayer(mk('L2-withstand', '赤いレイヤー：絶縁耐力試験範囲図（充電範囲の斜線・印加範囲・4つの形の渡り線・印加点の矢印）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), withstandLayer),
