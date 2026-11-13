@@ -204,16 +204,26 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   const pfsDgr = coilOf({ ...cbBase, mainBreakerForm: 'pfs', mainGroundRelay: 'dgr' });
   ok(pfsDgr?.connectFrom?.join() === 'main-ground-relay' && pfsDgr.attachTo === 'main-breaker', '主遮断装置がLBSのとき、DGRのTCが、LBSにつながっていません');
   // 送り出しの開閉器の地絡継電器（VCB・LBS・DS＋VCBのときだけ。ZPDが「ある」ときだけ）
-  const sq = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+  const sq = (a: Answers) => new Set(visibleQuestions(areaView(a, 1), {}).map((q) => q.id));
   const two = { ...cbBase, areaCount: 2 };
-  ok(sq({ ...two, sendoutSwitch: 'vcb' }).has('sendoutGroundRelay') && sq({ ...two, sendoutSwitch: 'lbs' }).has('sendoutGroundRelay') && sq({ ...two, sendoutSwitch: 'ds-vcb' }).has('sendoutGroundRelay'), 'VCB・LBS・DS＋VCBのとき、送り出しの地絡継電器の質問が出ていません');
-  ok(!sq({ ...two, sendoutSwitch: 'ds' }).has('sendoutGroundRelay') && !sq({ ...two, sendoutSwitch: 'none' }).has('sendoutGroundRelay'), 'DSだけ・なしのとき、送り出しの地絡継電器の質問が出ています');
-  ok(sq({ ...two, sendoutSwitch: 'vcb', hasZpd: 'no' }).has('sendoutGroundRelay'), 'ZPDが「ない」のときも、送り出しのGRのために、地絡継電器の質問は出るはずです');
+  ok(sq({ ...two, 'a2:linkSwitch': 'vcb' }).has('linkGroundRelay') && sq({ ...two, 'a2:linkSwitch': 'lbs' }).has('linkGroundRelay') && sq({ ...two, 'a2:linkSwitch': 'ds-vcb' }).has('linkGroundRelay'), 'VCB・LBS・DS＋VCBのとき、送り出しの地絡継電器の質問が出ていません');
+  ok(!sq({ ...two, 'a2:linkSwitch': 'ds' }).has('linkGroundRelay') && !sq({ ...two, 'a2:linkSwitch': 'none' }).has('linkGroundRelay'), 'DSだけ・なしのとき、送り出しの地絡継電器の質問が出ています');
+  ok(sq({ ...two, 'a2:linkSwitch': 'vcb', hasZpd: 'no' }).has('linkGroundRelay'), 'ZPDが「ない」のときも、送り出しのGRのために、地絡継電器の質問は出るはずです');
   const sendRoles = (a: Answers) => buildComposition({ ...two, ...a }).filter((i) => i.kind === 'sendout').map((i) => i.role).join();
-  ok(sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' }) === 'sendout-vcb,sendout-zct,sendout-ground-relay,sendout-trip-coil', `送り出しのDGR（VCB）の構成：${sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' })}`);
-  ok(sendRoles({ sendoutSwitch: 'ds-vcb', sendoutGroundRelay: 'dgr' }) === 'sendout-ds,sendout-vcb,sendout-zct,sendout-ground-relay,sendout-trip-coil', 'DS＋VCBのときの送り出しのDGRの構成が違います');
-  ok(sendRoles({ sendoutSwitch: 'ds', sendoutGroundRelay: 'dgr' }) === 'sendout-ds', 'DSだけのとき、DGRの答えが残っていても、描いています');
-  ok(sendRoles({ sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr', hasZpd: 'no' }) === 'sendout-vcb', 'ZPDが「ない」のとき、送り出しのDGRを描いています');
+  ok(sendRoles({ 'a2:linkSwitch': 'vcb', 'a2:linkGroundRelay': 'dgr' }) === 'a2:sendout-vcb,a2:sendout-zct,a2:sendout-ground-relay,a2:sendout-trip-coil', `送り出しのDGR（VCB）の構成：${sendRoles({ 'a2:linkSwitch': 'vcb', 'a2:linkGroundRelay': 'dgr' })}`);
+  ok(sendRoles({ 'a2:linkSwitch': 'ds-vcb', 'a2:linkGroundRelay': 'dgr' }) === 'a2:sendout-ds,a2:sendout-vcb,a2:sendout-zct,a2:sendout-ground-relay,a2:sendout-trip-coil', 'DS＋VCBのときの送り出しのDGRの構成が違います');
+  ok(sendRoles({ 'a2:linkSwitch': 'ds', 'a2:linkGroundRelay': 'dgr' }) === 'a2:sendout-ds', 'DSだけのとき、DGRの答えが残っていても、描いています');
+  ok(sendRoles({ 'a2:linkSwitch': 'vcb', 'a2:linkGroundRelay': 'dgr', hasZpd: 'no' }) === 'a2:sendout-vcb', 'ZPDが「ない」のとき、送り出しのDGRを描いています');
+  // 送り先ごとの開閉器：持ち主は送り出す側のエリア、送り先の番号が付く。DGRの零相電圧は、送り出す側のエリアのZPDから得る（第13弾 項目22）
+  {
+    const three: Answers = { ...two, areaCount: 3, 'a2:areaIntake': 'ds-vcb', 'a3:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a3:trCapacity': 100, 'a2:linkTap': 'bus', 'a3:linkTap': 'bus' };
+    const sends = (a: Answers) => buildComposition({ ...three, ...a }).filter((i) => i.kind === 'sendout').map((i) => `${i.role}@${i.area}>${i.dest}`).join();
+    ok(sends({ 'a2:linkSwitch': 'ds', 'a3:linkSwitch': 'vcb', 'a3:linkFrom': '1' }) === 'a2:sendout-ds@0>1,a3:sendout-vcb@0>2', `1→2はDS・1→3はVCBのとき、送り先ごとに別々のはずです（${sends({ 'a2:linkSwitch': 'ds', 'a3:linkSwitch': 'vcb', 'a3:linkFrom': '1' })}）`);
+    ok(sends({ 'a3:linkSwitch': 'vcb', 'a3:linkFrom': '2' }) === 'a3:sendout-vcb@1>2', `2→3のVCBは、2か所目が持ち主のはずです（${sends({ 'a3:linkSwitch': 'vcb', 'a3:linkFrom': '2' })}）`);
+    const dgr = (z1: string, z2: string, from: string) => sends({ hasZpd: z1, 'a2:hasZpd': z2, 'a3:linkFrom': from, 'a3:linkSwitch': 'vcb', 'a3:linkGroundRelay': 'dgr' }).split(',').length;
+    ok(dgr('yes', 'no', '1') === 4 && dgr('no', 'yes', '1') === 1, '1→3のDGRは、1か所目のZPDで決まるはずです');
+    ok(dgr('no', 'yes', '2') === 4 && dgr('yes', 'no', '2') === 1, '2→3のDGRは、2か所目のZPDで決まるはずです');
+  }
   ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:hasOvgr': 'yes', 'a2:mainGroundRelay': 'dgr' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => /ovgr|zct|ground/.test(r)).join() === 'main-zct,main-ground-relay,ovgr', '2か所目のOVGR・DGRが入っていません');
   // 主遮断装置がLBSのとき：保護継電器の有無・種類を聞く。CT・VTの有無が決まっていなければ、置き場所は推測しない
   const lbsBase: Answers = { ...answers, mainBreakerForm: 'pfs', hasSiteCt: undefined, hasSiteVt: undefined };
@@ -349,12 +359,12 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     ok(grRoles({ ...noZpd, mainGroundRelay: 'gr', mainZctPos: pos }) === 'main-zct:zct,main-ground-relay:relay-gr', `GR・ZCTの位置が ${pos} のとき、ZCT＋GRが描かれていません`);
     ok(buildComposition({ ...noZpd, mainGroundRelay: 'gr', mainZctPos: pos }).filter((i) => i.role === 'trip-coil').length === 1, `GR・ZCTの位置が ${pos} のとき、TCが1つではありません`);
   }
-  const sendGr = (a: Answers) => buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', hasZpd: 'no', sendoutSwitch: 'vcb', ...a }).filter((i) => i.kind === 'sendout').map((i) => `${i.role}:${i.symbolId}`).join();
-  ok(sendGr({ sendoutGroundRelay: 'gr' }) === 'sendout-vcb:vcb,sendout-zct:zct,sendout-ground-relay:relay-gr,sendout-trip-coil:trip-coil', `送り出しのGR（ZPDなし）の構成：${sendGr({ sendoutGroundRelay: 'gr' })}`);
-  ok(sendGr({ sendoutGroundRelay: 'dgr' }) === 'sendout-vcb:vcb', '送り出しのDGRを、ZPDなしで描いています');
-  ok(sendGr({ sendoutGroundRelay: 'gr', sendoutSwitch: 'ds' }) === 'sendout-ds:ds', '送り出しがDSだけのとき、GRの答えが残っていても、描いています');
+  const sendGr = (a: Answers) => buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', hasZpd: 'no', 'a2:linkSwitch': 'vcb', ...a }).filter((i) => i.kind === 'sendout').map((i) => `${i.role}:${i.symbolId}`).join();
+  ok(sendGr({ 'a2:linkGroundRelay': 'gr' }) === 'a2:sendout-vcb:vcb,a2:sendout-zct:zct,a2:sendout-ground-relay:relay-gr,a2:sendout-trip-coil:trip-coil', `送り出しのGR（ZPDなし）の構成：${sendGr({ 'a2:linkGroundRelay': 'gr' })}`);
+  ok(sendGr({ 'a2:linkGroundRelay': 'dgr' }) === 'a2:sendout-vcb:vcb', '送り出しのDGRを、ZPDなしで描いています');
+  ok(sendGr({ 'a2:linkGroundRelay': 'gr', 'a2:linkSwitch': 'ds' }) === 'a2:sendout-ds:ds', '送り出しがDSだけのとき、GRの答えが残っていても、描いています');
   // 主遮断装置にGR、送り出しの開閉器にDGR（別々の開閉器に、GRとDGRが両方付く）
-  const both = buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', hasZpd: 'yes', mainGroundRelay: 'gr', 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' }).map((i) => i.symbolId);
+  const both = buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', hasZpd: 'yes', mainGroundRelay: 'gr', 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkSwitch': 'vcb', 'a2:linkGroundRelay': 'dgr' }).map((i) => i.symbolId);
   ok(both.includes('relay-gr') && both.includes('relay-dgr'), 'GRとDGRが別々の開閉器に付くパターンで、両方が描かれていません');
   // ZCTの取り付け位置（DGRを選んだときだけ聞く）
   ok(!gq(cbBase).has('mainZctPos') && gq({ ...cbBase, mainGroundRelay: 'dgr' }).has('mainZctPos'), 'ZCTの位置の質問が、DGRを選んだときだけ出るはずです');
@@ -369,9 +379,9 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     ok(buildComposition({ ...cbBase, mainGroundRelay: 'dgr', mainZctPos: pos }).filter((i) => i.role === 'trip-coil').length === 1, `ZCTの位置が ${pos} のとき、TCが1つに共有されていません`);
   }
   ok(!zRoles({ mainGroundRelay: 'none', mainZctPos: 'bus-primary' }).includes('main-zct'), 'DGRなしのとき、位置の答えが残っていてもZCTを描いています');
-  ok(sq({ ...two, sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' }).has('sendoutZctPos') && !sq({ ...two, sendoutSwitch: 'vcb' }).has('sendoutZctPos'), '送り出しのZCTの位置の質問が、DGRを選んだときだけ出るはずです');
+  ok(sq({ ...two, 'a2:linkSwitch': 'vcb', 'a2:linkGroundRelay': 'dgr' }).has('linkZctPos') && !sq({ ...two, 'a2:linkSwitch': 'vcb' }).has('linkZctPos'), '送り出しのZCTの位置の質問が、DGRを選んだときだけ出るはずです');
   // 送り出しは、並びそのものは同じで、位置は ZCT の pos に載る（上下の入れ替えは作図側）
-  const sZpos = (pos: string) => buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', hasZpd: 'yes', sendoutSwitch: 'ds-vcb', sendoutGroundRelay: 'dgr', sendoutZctPos: pos }).find((i) => i.role === 'sendout-zct')?.pos;
+  const sZpos = (pos: string) => buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', hasZpd: 'yes', 'a2:linkSwitch': 'ds-vcb', 'a2:linkGroundRelay': 'dgr', 'a2:linkZctPos': pos }).find((i) => i.role === 'a2:sendout-zct')?.pos;
   ok(['cable', 'bus-primary', 'bus-secondary'].every((p) => sZpos(p) === p), `送り出しのZCTの位置の答えが、図に渡っていません（${['cable', 'bus-primary', 'bus-secondary'].map(sZpos).join()}）`);
   // 並び：位置を選ぶと、ZPD・LAがその位置に動く（OVGRは、ZPDの有無だけでは入らない）。LAとZPDは別々の記号
   const order = (a: Answers) =>

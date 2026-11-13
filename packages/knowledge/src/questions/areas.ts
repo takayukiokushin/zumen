@@ -1,8 +1,8 @@
 import type { Question } from './types.ts';
 import type { Condition } from '../condition.ts';
-import { CABLE_CROSS_SECTION_OPTIONS, CABLE_STRUCTURE_OPTIONS, CABLE_VOLTAGE_OPTIONS, SENDOUT_SHOWN, YES_NO_Q } from './common.ts';
+import { CABLE_CROSS_SECTION_OPTIONS, CABLE_STRUCTURE_OPTIONS, CABLE_VOLTAGE_OPTIONS, YES_NO_Q } from './common.ts';
 
-/** 質問の定義：表題欄、他のエリアへの送り出し、エリア間の接続 */
+/** 質問の定義：表題欄、エリア間の接続（分岐する位置・ケーブル・送り出す側の開閉器。送り先ごとに、送り出す側の欄で入力する） */
 export const AREAS_QUESTIONS: Question[] = [
   /* ---------------- 表題欄 ---------------- */
   {
@@ -17,92 +17,7 @@ export const AREAS_QUESTIONS: Question[] = [
   },
 
 
-  /* ---------------- 他のエリアへの送り出し（1か所目のエリアの最後） ---------------- */
-  {
-    id: 'sendoutSwitch',
-    group: 'sendout',
-    label: '送り出しに開閉器はありますか？',
-    type: 'select',
-    options: [
-      { value: 'none', label: 'なし（母線から直接）' },
-      { value: 'ds', label: 'DS' },
-      { value: 'vcb', label: 'VCB' },
-      { value: 'lbs', label: 'LBS' },
-      { value: 'ds-vcb', label: 'DS＋VCB' },
-    ],
-    defaultValue: 'none',
-    dropdown: true,
-    showIf: SENDOUT_SHOWN,
-    ask: 'always',
-    help: 'ほかのエリアは、このエリアから分岐することがある。その送り出す点に、母線から直接ではなく、開閉器が付いている場合がある。図面では、このエリアから、ほかのエリアへ向かう線の途中に描く。このエリアから送り出さないときは、「なし」のままでよい',
-  },
-  {
-    id: 'sendoutFuseCurrent',
-    group: 'sendout',
-    label: 'LBSのパワーヒューズの容量（定格電流）',
-    type: 'select',
-    options: [10, 15, 20, 30, 40, 50, 75, 100, 150, 200].map((v) => ({ value: String(v), label: `${v}A` })),
-    allowFreeInput: true,
-    dropdown: true,
-    unit: 'A',
-    showIf: { all: [SENDOUT_SHOWN, { key: 'sendoutSwitch', eq: 'lbs' }] },
-    ask: 'always',
-    help: '送り出しがLBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
-  },
-
-  {
-    // 送り出しの開閉器（VCB・LBS）に付く地絡継電器。DGRは、同じエリアにZPDがあるときだけ選べる（GRは、後の項目で追加する）
-    id: 'sendoutGroundRelay',
-    group: 'sendout',
-    label: '送り出しの開閉器の地絡継電器は？',
-    type: 'select',
-    options: [
-      { value: 'none', label: 'なし' },
-      { value: 'dgr', label: 'DGR（方向性）　※ZPDが「あり」のときだけ描く' },
-      { value: 'gr', label: 'GR（無方向性）' },
-    ],
-    defaultValue: 'none',
-    showIf: {
-      all: [SENDOUT_SHOWN, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }],
-    },
-    ask: 'always',
-    help:
-      '送り出しの開閉器が、VCB・LBS・DS＋VCBのときだけ答える（DSだけでは遮断できない）。DGRは、このエリアにZPDがあるときだけ描く。GRは、ZCTだけで動くので、ZPDは要らない。' +
-      'DGR・GRを選ぶと、送り出しの高圧ケーブルにZCTを付け、継電器をZCTの横に描き、継電器から送り出しの開閉器まで、TC（遮断の線）を描く',
-  },
-
-  {
-    // 送り出しの開閉器のDGRのZCTを、どこに付けるか。ほとんどは、高圧ケーブル（送り出しの高圧ケーブル）
-    id: 'sendoutZctPos',
-    group: 'sendout',
-    label: 'ZCT（DGR・GR用）の取り付け位置は？',
-    type: 'select',
-    options: [
-      { value: 'cable', label: '高圧ケーブル（送り出しの高圧ケーブル）' },
-      { value: 'bus-primary', label: '母線（送り出しの開閉器の一次側）' },
-      { value: 'bus-secondary', label: '母線（送り出しの開閉器の二次側）' },
-    ],
-    defaultValue: 'cable',
-    dropdown: true,
-    showIf: {
-      all: [SENDOUT_SHOWN, { any: [{ key: 'sendoutGroundRelay', eq: 'gr' }, { all: [{ key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }] }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }],
-    },
-    ask: 'always',
-    help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
-  },
-
-  /* ---------------- エリア間の接続（2か所目以降のエリア） ---------------- */
-  {
-    id: 'linkCable',
-    group: 'link',
-    label: 'このエリアは、前のエリアからケーブルでつなぎますか？',
-    type: 'select',
-    options: YES_NO_Q,
-    defaultValue: 'yes',
-    showIf: { key: 'areaNo', gt: 1 },
-    ask: 'always',
-    help: 'エリアの間を、ケーブル（高圧ケーブル）でつなぐかどうか。「いいえ」のときも、ほかのエリアにつなぐ点は同じ（どこから分岐するか・分岐の位置は答える）。違いは、ケーブルの図記号（端末の三角・点線・ケーブルの文字）を描かず、ふつうの線でつなぐこと',
-  },
+  /* ---------------- エリア間の接続（2か所目以降のエリアごとに持つ。入力画面では、送り出す側のエリアの欄に出す） ---------------- */
   {
     id: 'linkFrom',
     group: 'link',
@@ -130,7 +45,18 @@ export const AREAS_QUESTIONS: Question[] = [
     showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
     required: true,
-    help: '前のエリアの、どこからケーブルを出すか。変圧器の手前は、高圧母線として扱う',
+    help: 'このエリア（送り出す側）の、どこから、この送り先へ線を出すか。変圧器の手前は、高圧母線として扱う',
+  },
+  {
+    id: 'linkCable',
+    group: 'link',
+    label: 'この送り先へは、ケーブルでつなぎますか？',
+    type: 'select',
+    options: YES_NO_Q,
+    defaultValue: 'yes',
+    showIf: { key: 'areaNo', gt: 1 },
+    ask: 'always',
+    help: 'この送り先へ向かう線を、ケーブル（高圧ケーブル）でつなぐかどうか。「いいえ」のときも、つなぐ点は同じ（分岐する位置は答える）。違いは、ケーブルの図記号（端末の三角・点線・ケーブルの文字）を描かず、ふつうの線でつなぐこと',
   },
   {
     id: 'linkCableInstallation',
@@ -212,5 +138,74 @@ export const AREAS_QUESTIONS: Question[] = [
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
     ask: 'always',
     help: '必要なときだけ入力する（任意）。図面では、送り出し側（電源側）のケーブル端末の近くに書く。太さ・長さは、これまでどおり、受け側に書く',
+  },
+  /* ---- 送り出す側の開閉器（この送り先へ向かう線ごとに答える。第13弾 項目22） ---- */
+  {
+    id: 'linkSwitch',
+    group: 'link',
+    label: '送り出しに開閉器はありますか？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし（母線から直接）' },
+      { value: 'ds', label: 'DS' },
+      { value: 'vcb', label: 'VCB' },
+      { value: 'lbs', label: 'LBS' },
+      { value: 'ds-vcb', label: 'DS＋VCB' },
+    ],
+    defaultValue: 'none',
+    dropdown: true,
+    showIf: { key: 'areaNo', gt: 1 },
+    ask: 'always',
+    help: 'この送り先へ向かう線の、送り出す側の点に、母線から直接ではなく、開閉器が付いている場合がある。図面では、送り出す側のエリアから、この送り先へ向かう線の途中に描く。送り先ごとに答える',
+  },
+  {
+    id: 'linkFuseCurrent',
+    group: 'link',
+    label: 'LBSのパワーヒューズの容量（定格電流）',
+    type: 'select',
+    options: [10, 15, 20, 30, 40, 50, 75, 100, 150, 200].map((v) => ({ value: String(v), label: `${v}A` })),
+    allowFreeInput: true,
+    dropdown: true,
+    unit: 'A',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', eq: 'lbs' }] },
+    ask: 'always',
+    help: '送り出しがLBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
+  },
+  {
+    // 送り出しの開閉器（VCB・LBS）に付く地絡継電器。DGRは、送り出す側のエリアにZPDがあるときだけ選べる
+    id: 'linkGroundRelay',
+    group: 'link',
+    label: '送り出しの開閉器の地絡継電器は？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし' },
+      { value: 'dgr', label: 'DGR（方向性）　※ZPDが「あり」のときだけ描く' },
+      { value: 'gr', label: 'GR（無方向性）' },
+    ],
+    defaultValue: 'none',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    ask: 'always',
+    help:
+      '送り出しの開閉器が、VCB・LBS・DS＋VCBのときだけ答える（DSだけでは遮断できない）。DGRは、送り出す側のエリアにZPDがあるときだけ描く。GRは、ZCTだけで動くので、ZPDは要らない。' +
+      'DGR・GRを選ぶと、送り出しの高圧ケーブルにZCTを付け、継電器をZCTの横に描き、継電器から送り出しの開閉器まで、TC（遮断の線）を描く',
+  },
+  {
+    // 送り出しの開閉器のDGRのZCTを、どこに付けるか。ほとんどは、高圧ケーブル（送り出しの高圧ケーブル）
+    id: 'linkZctPos',
+    group: 'link',
+    label: 'ZCT（DGR・GR用）の取り付け位置は？',
+    type: 'select',
+    options: [
+      { value: 'cable', label: '高圧ケーブル（送り出しの高圧ケーブル）' },
+      { value: 'bus-primary', label: '母線（送り出しの開閉器の一次側）' },
+      { value: 'bus-secondary', label: '母線（送り出しの開閉器の二次側）' },
+    ],
+    defaultValue: 'cable',
+    dropdown: true,
+    showIf: {
+      all: [{ key: 'areaNo', gt: 1 }, { any: [{ key: 'linkGroundRelay', eq: 'gr' }, { all: [{ key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }] }] }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }],
+    },
+    ask: 'always',
+    help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
   },
 ];

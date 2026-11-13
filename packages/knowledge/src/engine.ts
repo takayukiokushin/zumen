@@ -346,7 +346,7 @@ export function withDerived(rawAnswers: Answers): Answers {
     .join(' ');
 
   // 送り出しのLBSのパワーヒューズ（例: PF 30A）。定格電流が分からないときは、書かない
-  d.sendoutFuseText = answers.sendoutFuseCurrent ? `PF ${answers.sendoutFuseCurrent}A` : '';
+  d.linkFuseText = answers.linkFuseCurrent ? `PF ${answers.linkFuseCurrent}A` : '';
 
   // 2か所目以降のPAS・ASの定格（例: 7200V 300A）。片方しか分からないときは分かる方だけ書く
   const rating = (v: unknown, a: unknown) => [v ? `${v}V` : '', a ? `${a}A` : ''].filter(Boolean).join(' ');
@@ -676,6 +676,11 @@ export interface PlacedItem {
    */
   area?: number;
   /**
+   * 送り出す側の開閉器（kind が sendout）のとき、どのエリアへ送る線か（送り先。0始まり）。
+   * area は、送り出す側のエリア。役割（role）には、送り先の番号（「a3:」など）が付く（第13弾 項目22）
+   */
+  dest?: number;
+  /**
    * ZPD・LAをつなぐ位置の答え（ds-vcb／vcb-ct／lbs-ct／ct-bus）。
    * 位置は、構成の並び（主回路の何番目か）で決まっている。ct-bus＝変圧器の手前（高圧母線の上）
    */
@@ -819,13 +824,27 @@ export function areaView(answers: Answers, area: number): Answers {
     if (key.startsWith(prefix)) out[key.slice(prefix.length)] = value;
   }
   out.areaNo = area + 1;
+  // 送り出す側のエリア（このエリアへ線を送るエリア）にZPDがあるか。送り出しのDGRが、零相電圧を、そのZPDから得るため
+  const from = linkFromOf(out, area);
+  out.linkSenderZpd = (from === 0 ? answers.hasZpd : areaView(answers, from).hasZpd) === 'yes' ? 'yes' : 'no';
   return normalizeAnswers(out);
+}
+
+/**
+ * 2か所目以降のエリア（area：0始まり）が、どのエリアから送られてくるか（0始まり）。
+ * 答え（linkFrom）が無い・おかしいときは、1か所目。このエリアより前のエリアに寄せる。2か所目は、必ず1か所目から
+ */
+export function linkFromOf(view: Answers, area: number): number {
+  if (area <= 1) return 0;
+  const n = Number(view.linkFrom ?? 1);
+  return Math.max(0, Math.min(area - 1, (Number.isFinite(n) ? n : 1) - 1));
 }
 
 /** 質問ではないが、表示条件から参照してよい値（エリアの番号と、受電側の開閉器・PCSの入れ方から決まる目印） */
 export const VIEW_KEYS: ReadonlySet<string> = new Set([
   'pcsMode',
   'areaNo',
+  'linkSenderZpd',
   'unitNo',
   'intakeDs',
   'intakeVcb',
@@ -882,7 +901,6 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
     ...UPSTREAM,
     ...(pickOwn(CHAIN_BY_FORM, form) ?? []),
     ...DOWNSTREAM,
-    ...SENDOUT,
     ...TRANSFORMER,
     ...EXTRAS,
     ...FEEDERS,
@@ -891,7 +909,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
   for (let n = 1; n < areaCountOf(rawAnswers); n++) {
     const view = areaView(rawAnswers, n);
     const prefix = `a${n + 1}:`;
-    const items = composeChain(view, [...AREA_CHAIN, ...SENDOUT, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
+    const items = composeChain(view, [...AREA_CHAIN, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
     const asPlaced = (r: string) => `${prefix}${r}`;
     for (const item of items) {
       out.push({
@@ -907,7 +925,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
               // ケーブルでつなぐときも、ふつうの線でつなぐときも、つなぎ方（どこから・どこへ）は同じ。違いは、ケーブルの図記号を描くか
               label: view.linkCable === 'no' ? [] : item.label,
               link: {
-                from: Math.max(0, Math.min(n - 1, (Number(view.linkFrom ?? 1) || 1) - 1)),
+                from: linkFromOf(view, n),
                 tap: String(view.linkTap ?? 'bus'),
                 cable: view.linkCable !== 'no',
                 dashed: view.linkCable !== 'no' && view.linkCableInstallation === 'buried',
@@ -916,6 +934,17 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
               },
             }
           : {}),
+      });
+    }
+    // 送り出す側の開閉器は、送り先（このエリア）ごとに答える。持ち主は、送り出す側のエリア（area）。役割・IDは、送り先の番号つき
+    const sends = composeChain(view, SENDOUT);
+    for (const item of sends) {
+      out.push({
+        ...item,
+        id: asPlaced(item.id),
+        role: asPlaced(item.role),
+        area: linkFromOf(view, n),
+        dest: n,
       });
     }
   }

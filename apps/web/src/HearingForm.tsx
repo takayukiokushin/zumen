@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { areaCountOf, countOf, maxCountOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, inputNotices, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
+import { areaCountOf, countOf, maxCountOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, inputNotices, linkFromOf, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, Question, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 import { useT, useTx } from './i18n/useT.ts';
@@ -153,15 +153,29 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
           .filter((q) => q.group === 'area' && q.id !== areaGroup.repeatCountKey)
           .filter((q) => n === 0 || evaluate(q.showIf, viewAt(effective, n)))
           .map((q) => ({ key: indexedKey(q.id, n), question: q, unit: n, area: 0 }));
-        const groups = QUESTION_GROUPS.filter((g) => g.perArea)
+        // 「エリア間の接続」（分岐する位置・ケーブル・送り出す側の開閉器）は、送り先のエリアの答えだが、
+        // 入力画面では、送り出す側のエリアの欄に、送り先ごとの一塊として出す（第13弾 項目22）
+        const groups = QUESTION_GROUPS.filter((g) => g.perArea && g.id !== 'link')
           .map((g) => buildSection(g, n))
           .filter((x): x is Section => x !== null);
+        const linkGroup = QUESTION_GROUPS.find((g) => g.id === 'link')!;
+        const dests = Array.from({ length: Math.max(0, areas - n - 1) }, (_, k) => {
+          const to = n + 1 + k;
+          const parent = linkFromOf(views[to]!, to);
+          const sec = buildSection(linkGroup, to);
+          const rows = (sec?.blocks.flatMap((b) => b.rows) ?? []).filter((r) => r.question.id !== 'linkFrom');
+          return { to, parent, owned: parent === n, rows, notices: sec?.notices ?? [] };
+        });
+        // 受ける側の欄に出す、読み取り専用の1行（どこから送られてくるか）
+        const from = n >= 1 ? linkFromOf(views[n]!, n) : -1;
         void view;
-        const all = [...areaRows, ...groups.flatMap((g) => [...g.lead, ...g.blocks.flatMap((b) => b.rows)])];
+        const all = [...areaRows, ...groups.flatMap((g) => [...g.lead, ...g.blocks.flatMap((b) => b.rows)]), ...dests.filter((d) => d.owned).flatMap((d) => d.rows)];
         return {
           index: n,
           areaRows,
           groups,
+          dests,
+          from,
           answered: all.filter((r) => effective[r.key] !== undefined).length,
           total: all.length,
           need: all.some((r) => r.question.required && effective[r.key] === undefined),
@@ -257,7 +271,48 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
           </span>
         </header>
         {ab.areaRows.length > 0 && <div className="fields">{ab.areaRows.map(field)}</div>}
+        {ab.from >= 0 && (
+          <p className="link-from">
+            {t('hearing.recvFrom', { from: ab.from + 1 })}{' '}
+            <a href={`#send-${ab.from + 1}-${ab.index + 1}`}>{t('hearing.recvJump', { from: ab.from + 1 })}</a>
+          </p>
+        )}
         {ab.groups.map((g) => renderSection(g, `g-${g.group.id}-a${ab.index + 1}`, true))}
+        {ab.dests.length > 0 && (
+          <section className="group inner send-group" id={`send-${ab.index + 1}`}>
+            <header>
+              <h4 className="grouphead">{t('hearing.sendTitle')}</h4>
+              <span className="desc">{t('hearing.sendDesc')}</span>
+            </header>
+            {ab.dests.map((d) => (
+              <div className={`repeat-block send-block${d.owned ? '' : ' off'}`} id={`send-${ab.index + 1}-${d.to + 1}`} key={d.to}>
+                <div className="repeat-head">
+                  <b>{t('hearing.sendNth', { n: d.to + 1 })}</b>
+                  {d.to === 1 ? (
+                    <span className="send-fixed">{t('hearing.sendOnly', { n: 2 })}</span>
+                  ) : (
+                    <label className="send-check">
+                      <input
+                        type="checkbox"
+                        checked={d.owned}
+                        // いまの送り元のチェックは外せない（ほかのエリアにチェックを入れると、そちらへ移る）
+                        disabled={d.owned}
+                        onChange={(e) => {
+                          if (e.target.checked) set(`a${d.to + 1}:linkFrom`, String(ab.index + 1));
+                        }}
+                      />
+                      {t('hearing.sendHere')}
+                    </label>
+                  )}
+                </div>
+                {d.owned && d.to !== 1 && <p className="send-note">{t('hearing.sendKeep')}</p>}
+                {!d.owned && <p className="send-note">{t('hearing.sendOther', { from: d.parent + 1 })}</p>}
+                {d.owned && d.notices.map((text) => <p className="group-warn" role="status" key={text}>{tx(text)}</p>)}
+                {d.owned && renderRows(d.rows)}
+              </div>
+            ))}
+          </section>
+        )}
       </section>
     ));
 

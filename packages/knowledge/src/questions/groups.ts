@@ -1,6 +1,5 @@
 import type { QuestionGroup } from './types.ts';
 import { CT_SHOWN, VT_SHOWN } from '../composition.ts';
-import { SENDOUT_SHOWN } from './common.ts';
 
 export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'customer', label: 'お客様・現場', description: '表題欄と図面の基本情報' },
@@ -18,7 +17,7 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'cable', label: '引込ケーブル' },
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
   // ここから下の perArea のグループは、エリアが2か所以上のとき、エリアごとに入力する
-  { id: 'link', label: 'エリア間の接続', description: '前のエリアから、ケーブルでつなぐ', perArea: true },
+  { id: 'link', label: 'エリア間の接続（送り出し）', description: 'このエリアから、後ろのエリアへ送り出す線ごとに、分岐する位置・ケーブル・開閉器を入力する', perArea: true },
   { id: 'receiving', label: '受電設備の構成', perArea: true },
   {
     id: 'vtset',
@@ -69,12 +68,5 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
   { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
-  {
-    id: 'sendout',
-    label: '他のエリアへの送り出し',
-    description: 'このエリアから、ほかのエリアへ送り出す点',
-    perArea: true,
-    showIf: SENDOUT_SHOWN,
-  },
   { id: 'title', label: '表題欄' },
 ];

@@ -229,8 +229,8 @@ console.log('\n■ 送り出しの開閉器（1か所目 → 2か所目の線の
 {
   const base2: Answers = { ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried', 'a2:linkCableCrossSection': '38', 'a2:linkCableLength': 30 };
   const draw = (extra: Answers) => layout(buildComposition({ ...base2, ...extra }), { ...base2, ...extra });
-  for (const [kind, ids] of [['ds', ['sendout-ds']], ['vcb', ['sendout-vcb']], ['ds-vcb', ['sendout-ds', 'sendout-vcb']], ['lbs', ['sendout-lbs']]] as const) {
-    const d = draw({ sendoutSwitch: kind, sendoutFuseCurrent: '30' });
+  for (const [kind, ids] of [['ds', ['a2:sendout-ds']], ['vcb', ['a2:sendout-vcb']], ['ds-vcb', ['a2:sendout-ds', 'a2:sendout-vcb']], ['lbs', ['a2:sendout-lbs']]] as const) {
+    const d = draw({ 'a2:linkSwitch': kind, 'a2:linkFuseCurrent': '30' });
     const syms = ids.map((id) => d.symbols.find((s) => s.id === id));
     if (syms.some((s) => !s)) { fail(`${kind}：送り出しの開閉器が描かれていません`); continue; }
     const ss = syms as PlacedSymbolLike[];
@@ -245,8 +245,8 @@ console.log('\n■ 送り出しの開閉器（1か所目 → 2か所目の線の
     else if (findLabelCollisions(d).length > 0) fail(`${kind}：送り出しの開閉器を入れたら、文字が重なりました`);
     else console.log(`  ${kind}：母線から横に出て、90度曲がって、下向きに並び、前後が線でつながる。文字は重ならない`);
   }
-  if (draw({ sendoutSwitch: 'lbs', sendoutFuseCurrent: '30' }).symbols.find((s) => s.id === 'sendout-lbs')?.label.join('|') !== 'LBS|PF 30A') fail('LBSの文字が「LBS／PF 30A」になっていません');
-  if (draw({}).symbols.some((s) => /^sendout/.test(s.id))) fail('「なし」のとき、送り出しの開閉器が描かれています');
+  if (draw({ 'a2:linkSwitch': 'lbs', 'a2:linkFuseCurrent': '30' }).symbols.find((s) => s.id === 'a2:sendout-lbs')?.label.join('|') !== 'LBS|PF 30A') fail('LBSの文字が「LBS／PF 30A」になっていません');
+  if (draw({}).symbols.some((s) => /^(a\d+:)?sendout/.test(s.id))) fail('「なし」のとき、送り出しの開閉器が描かれています');
 }
 
 /* ---------- ケーブルでつなぐとき：送り出し側にも、ケーブルの端末（三角は、必ず下向き） ---------- */
@@ -254,7 +254,7 @@ console.log('\n■ 送り出し側のケーブルの端末（分岐する位置�
 {
   const base2: Answers = { ...answers, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried' };
   const taps = ['ds-source', 'ds-vcb', 'vcb-load', 'bus'] as const;
-  const switches: [string, Answers][] = [['開閉器なし', {}], ['DS＋VCBあり', { sendoutSwitch: 'ds-vcb' }], ['VCBのみ', { sendoutSwitch: 'vcb' }]];
+  const switches: [string, Answers][] = [['開閉器なし', {}], ['DS＋VCBあり', { 'a2:linkSwitch': 'ds-vcb' }], ['VCBのみ', { 'a2:linkSwitch': 'vcb' }]];
   let n = 0;
   for (const tap of taps) {
     for (const [swName, sw] of switches) {
@@ -281,7 +281,7 @@ console.log('\n■ 送り出し側のケーブルの端末（分岐する位置�
     const hs = d.wires.filter((w) => Math.abs(w.y1 - w.y2) < 0.01 && Math.abs(w.x1 - w.x2) > 0.5);
     const vs = d.wires.filter((w) => Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y1 - w.y2) > 0.5);
     // 1か所目のエリアの中の線（枠の右端より左）は、このテストの対象外。エリアの間（すきま）を通る線どうしの交わりを数える
-    const area1Right = Math.max(...d.symbols.filter((x) => !/^a\d+:/.test(x.id) && !/^(cable-head-send|sendout)/.test(x.id)).map((x) => x.x + getSymbolDef(x.symbolId).box.w));
+    const area1Right = Math.max(...d.symbols.filter((x) => !/^a\d+:/.test(x.id) && !/^(cable-head-send|a\d+:sendout)/.test(x.id)).map((x) => x.x + getSymbolDef(x.symbolId).box.w));
     let n = 0;
     for (const h of hs) for (const v of vs) {
       const [hx0, hx1] = [Math.min(h.x1, h.x2), Math.max(h.x1, h.x2)];
@@ -296,7 +296,7 @@ console.log('\n■ 送り出し側のケーブルの端末（分岐する位置�
     ['同じ位置（高圧母線）から2本', {}],
     ['同じ位置（VCBの負荷側）から2本', { 'a2:linkTap': 'vcb-load', 'a3:linkTap': 'vcb-load' }],
     ['位置が違う2本（上の位置から、遠いエリアへ）', { 'a2:linkTap': 'vcb-load', 'a3:linkTap': 'ds-vcb' }],
-    ['同じ位置から2本・送り出しの開閉器あり', { sendoutSwitch: 'ds-vcb' }],
+    ['同じ位置から2本・送り出しの開閉器あり', { 'a2:linkSwitch': 'ds-vcb' }],
     ['2本目は、2か所目から', { 'a3:linkFrom': 2 }],
   ];
   for (const [name, extra] of cases3) {
@@ -422,12 +422,12 @@ console.log('\n■ DGRの遮断（TC）');
   }
   // 送り出しの開閉器：ZCT（ケーブルに横向き）→ DGR（上）、TCは開閉器の上。TCから開閉器へ点線
   for (const [name, sw] of [['VCB', 'vcb'], ['DS＋VCB', 'ds-vcb'], ['LBS', 'lbs']] as const) {
-    const a: Answers = { ...base, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: sw, sendoutGroundRelay: 'dgr' };
+    const a: Answers = { ...base, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkSwitch': sw, 'a2:linkGroundRelay': 'dgr' };
     const d = layout(buildComposition(a), a);
-    const z = d.symbols.find((s) => s.id === 'sendout-zct');
-    const r = d.symbols.find((s) => s.id === 'sendout-ground-relay');
-    const t = d.symbols.find((s) => s.id === 'sendout-trip-coil');
-    const brk = d.symbols.find((s) => s.id === (sw === 'lbs' ? 'sendout-lbs' : 'sendout-vcb'));
+    const z = d.symbols.find((s) => s.id === 'a2:sendout-zct');
+    const r = d.symbols.find((s) => s.id === 'a2:sendout-ground-relay');
+    const t = d.symbols.find((s) => s.id === 'a2:sendout-trip-coil');
+    const brk = d.symbols.find((s) => s.id === (sw === 'lbs' ? 'a2:sendout-lbs' : 'a2:sendout-vcb'));
     if (!z || !r || !t || !brk) { fail(`送り出し（${name}）：ZCT・DGR・TC・開閉器のどれかが描かれていません`); continue; }
     const tcL = portAbs(t, 'l');
     const brkOut = portAbs(brk, 'out');
@@ -477,12 +477,12 @@ console.log('\n■ DGRの遮断（TC）');
   }
   for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
     for (const [name, sw] of [['VCB', 'vcb'], ['DS＋VCB', 'ds-vcb'], ['LBS', 'lbs']] as const) {
-      const a: Answers = { ...base, mainGroundRelay: 'none', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: sw, sendoutGroundRelay: 'dgr', sendoutZctPos: pos };
+      const a: Answers = { ...base, mainGroundRelay: 'none', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkSwitch': sw, 'a2:linkGroundRelay': 'dgr', 'a2:linkZctPos': pos };
       const d = layout(buildComposition(a), a);
-      const z = d.symbols.find((s) => s.id === 'sendout-zct');
-      const r = d.symbols.find((s) => s.id === 'sendout-ground-relay');
-      const t = d.symbols.find((s) => s.id === 'sendout-trip-coil');
-      const brk = d.symbols.find((s) => s.id === (sw === 'lbs' ? 'sendout-lbs' : 'sendout-vcb'));
+      const z = d.symbols.find((s) => s.id === 'a2:sendout-zct');
+      const r = d.symbols.find((s) => s.id === 'a2:sendout-ground-relay');
+      const t = d.symbols.find((s) => s.id === 'a2:sendout-trip-coil');
+      const brk = d.symbols.find((s) => s.id === (sw === 'lbs' ? 'a2:sendout-lbs' : 'a2:sendout-vcb'));
       const label = `送り出し（${name}）・ZCT=${posName[pos]}`;
       if (!z || !r || !t || !brk) { fail(`${label}：ZCT・DGR・TC・開閉器のどれかが描かれていません`); continue; }
       const zSec = portAbs(z, 'sec');
@@ -941,7 +941,7 @@ console.log('\n■ 範囲選択・複数選択');
   }
   for (const [name, sw] of [['VCB', 'vcb'], ['DS＋VCB', 'ds-vcb'], ['LBS', 'lbs']] as const) {
     for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
-      check(`送り出し${name}（ZCT=${pos}）`, { ...base, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: sw, sendoutGroundRelay: 'dgr', sendoutZctPos: pos }, () => (sw === 'lbs' ? 'sendout-lbs' : 'sendout-vcb'), 'sendout-trip-coil');
+      check(`送り出し${name}（ZCT=${pos}）`, { ...base, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkSwitch': sw, 'a2:linkGroundRelay': 'dgr', 'a2:linkZctPos': pos }, () => (sw === 'lbs' ? 'a2:sendout-lbs' : 'a2:sendout-vcb'), 'a2:sendout-trip-coil');
     }
   }
 }
@@ -1036,11 +1036,11 @@ console.log('\n■ 範囲選択・複数選択');
     }
   }
   for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
-    const a: Answers = { ...base, mainGroundRelay: 'none', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: 'ds-vcb', sendoutGroundRelay: 'gr', sendoutZctPos: pos };
+    const a: Answers = { ...base, mainGroundRelay: 'none', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkSwitch': 'ds-vcb', 'a2:linkGroundRelay': 'gr', 'a2:linkZctPos': pos };
     const d = layout(buildComposition(a), a);
-    const z = d.symbols.find((s) => s.id === 'sendout-zct');
-    const r = d.symbols.find((s) => s.id === 'sendout-ground-relay');
-    const t = d.symbols.find((s) => s.id === 'sendout-trip-coil');
+    const z = d.symbols.find((s) => s.id === 'a2:sendout-zct');
+    const r = d.symbols.find((s) => s.id === 'a2:sendout-ground-relay');
+    const t = d.symbols.find((s) => s.id === 'a2:sendout-trip-coil');
     const label = `送り出し・GR・ZCT=${pos}`;
     if (!z || !r || !t || r.symbolId !== 'relay-gr') { fail(`${label}：ZCT・GR・TCのどれかが描かれていません`); continue; }
     const bad = !wireAtP(d, portAbs(z, 'sec').x, portAbs(z, 'sec').y) || !wireAtP(d, portAbs(r, 'l').x, portAbs(r, 'l').y) ? 'ZCTとGRが、線でつながっていません' : problems(d);
@@ -1048,7 +1048,7 @@ console.log('\n■ 範囲選択・複数選択');
     else console.log(`  ${label}：ZCT＋GR＋TC（ZPDなし）。線・文字が重ならない`);
   }
   // 主遮断装置にGR、送り出しの開閉器にDGR
-  const mix: Answers = { ...base, hasZpd: 'yes', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', sendoutSwitch: 'vcb', sendoutGroundRelay: 'dgr' };
+  const mix: Answers = { ...base, hasZpd: 'yes', areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:trCapacity': 100, 'a2:linkTap': 'bus', 'a2:linkSwitch': 'vcb', 'a2:linkGroundRelay': 'dgr' };
   const dm = layout(buildComposition(mix), mix);
   const ids = dm.symbols.map((s) => s.symbolId);
   const mbad = !ids.includes('relay-gr') || !ids.includes('relay-dgr') ? 'GRとDGRが両方描かれていません' : problems(dm);
@@ -1082,7 +1082,7 @@ console.log('\n■ 3か所以上のエリアのつなぎ方（1→2→3、1→2�
     ['1→2、2→3、1→4（遠くへ渡す線を含む）', { ...base3, areaCount: 4, ...area(2, 1), ...area(3, 2, 'ds-vcb'), ...area(4, 1, 'vcb-load') }],
     ['1→2、1→3、1→4（同じ高さから3本）', { ...base3, areaCount: 4, ...area(2, 1), ...area(3, 1), ...area(4, 1) }],
     ['1→2、2→3、2→4、3→5（5か所）', { ...base3, areaCount: 5, ...area(2, 1), ...area(3, 2), ...area(4, 2, 'vcb-load'), ...area(5, 3) }],
-    ['2か所目からの送り出しがDS＋VCB（1→2→3）', { ...base3, areaCount: 3, ...area(2, 1), ...area(3, 2), 'a2:sendoutSwitch': 'ds-vcb' }],
+    ['2か所目からの送り出しがDS＋VCB（1→2→3）', { ...base3, areaCount: 3, ...area(2, 1), ...area(3, 2), 'a3:linkSwitch': 'ds-vcb' }],
   ];
   for (const [name, a] of cases) {
     const d = layout(buildComposition(a), a);
@@ -1100,8 +1100,15 @@ console.log('\n■ 3か所以上のエリアのつなぎ方（1→2→3、1→2�
   }
   const two = cases[5]![1];
   const dTwo = layout(buildComposition(two), two);
-  if (!dTwo.symbols.some((s) => s.id === 'a2:sendout-ds') || !dTwo.symbols.some((s) => s.id === 'a2:sendout-vcb')) fail('2か所目からの送り出しの開閉器が描かれていません');
+  if (!dTwo.symbols.some((s) => s.id === 'a3:sendout-ds') || !dTwo.symbols.some((s) => s.id === 'a3:sendout-vcb')) fail('2か所目からの送り出しの開閉器が描かれていません');
   else console.log('  2か所目から3か所目への送り出しの開閉器（DS＋VCB）も、描かれる');
+  // 送り先ごとの開閉器：1か所目から、2か所目へはDS、3か所目へはVCB、と別々に描かれる（第13弾 項目22）
+  const per: Answers = { ...base3, areaCount: 3, ...area(2, 1), ...area(3, 1), 'a2:linkSwitch': 'ds', 'a3:linkSwitch': 'vcb', 'a2:linkTap': 'ds-vcb', 'a3:linkTap': 'bus' };
+  const dPer = layout(buildComposition(per), per);
+  const ids = dPer.symbols.map((s) => s.id).filter((id) => /sendout/.test(id));
+  if (ids.join() !== 'a2:sendout-ds,a3:sendout-vcb' && [...ids].sort().join() !== ['a2:sendout-ds', 'a3:sendout-vcb'].join()) fail(`送り先ごとの開閉器（1→2はDS・1→3はVCB）が、別々に描かれていません（${ids.join()}）`);
+  else if (findLabelCollisions(dPer).length > 0 || inspectDrawing(fromLayout(dPer), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0) fail('送り先ごとの開閉器：文字・線が重なっています');
+  else console.log('  1か所目から、2か所目へはDS・3か所目へはVCB：送り先ごとに、別々の開閉器が描かれる。線・文字は重ならない');
 }
 
 /* ---------- 手で直した内容は、入力内容を変えても残る ---------- */

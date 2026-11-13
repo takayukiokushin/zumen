@@ -56,17 +56,6 @@ export const PROPERTY_AT_DS: Condition = {
 /** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
 export const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
 
-/**
- * 送り出しの開閉器を聞くエリア：エリアが2か所以上のとき、最後のエリア以外（最後のエリアから送り出すことは無い）。
- * 1か所目は、areaNo が入っていない（2か所目以降は、areaNo が入っている）
- */
-export const SENDOUT_SHOWN: Condition = {
-  any: [
-    { all: [{ not: { key: 'areaNo', gt: 1 } }, { key: 'areaCount', gt: 1 }] },
-    ...Array.from({ length: 8 }, (_, i) => ({ all: [{ key: 'areaNo', eq: i + 2 }, { key: 'areaCount', gt: i + 2 }] }) as Condition),
-  ],
-};
-
 export const YES_NO: Choice[] = [
   { value: 'yes', label: 'あり' },
   { value: 'no', label: 'なし' },

@@ -1143,6 +1143,11 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .shell > .bar-update { flex: 0 0 auto; }
 /* 入力画面の、グループの中の注意（直したほうがよいところ）。図面は、そのまま描く */
 .group-warn { margin: calc(8px * var(--text-scale)) 0; padding: calc(7px * var(--text-scale)) calc(12px * var(--text-scale)); background: var(--need-soft); border-left: 3px solid var(--need); color: var(--need); font-size: calc(12.5px * var(--text-scale)); }
+/* 他のエリアへの送り出し（送り先ごとの一塊）と、受ける側の読み取り専用の1行 */
+.link-from { margin: 0 0 calc(10px * var(--text-scale)); padding: calc(7px * var(--text-scale)) calc(12px * var(--text-scale)); background: var(--accent-soft); border-left: 3px solid var(--accent); font-size: calc(12.5px * var(--text-scale)); }
+.send-block .send-check, .send-block .send-fixed { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); }
+.send-block.off { opacity: 0.85; }
+.send-block .send-note { margin: calc(6px * var(--text-scale)) calc(12px * var(--text-scale)); color: var(--muted, inherit); font-size: calc(12px * var(--text-scale)); }
 /* 図面の変更を入力に書き戻したときの知らせ（WritebackBanner） */
 .wb { flex: 0 0 auto; }
 .wb-row { flex-wrap: wrap; }

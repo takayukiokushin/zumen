@@ -1341,31 +1341,29 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   }
 
   /**
-   * 送り出しの開閉器（DS・VCB・LBS）。元のエリアごとに答える。エリアどうしのすきまに、線の上に横向きに置く。
-   * 同じ幹には、1組だけ描く。
+   * 送り出しの開閉器（DS・VCB・LBS）。送り先（線の行き先のエリア）ごとに答える。エリアどうしのすきまに、線の上に横向きに置く。
+   * 同じ幹には、1組だけ描く（幹の先頭の送り先の答えを使う）。
    */
   const SEND_EXTRA = /sendout-(zct|ground-relay|trip-coil)$/;
-  const sendoutsOf = (area: number) =>
-    allItems.filter((i) => i.kind === 'sendout' && (i.area ?? 0) === area && findSymbol(i.symbolId) && !SEND_EXTRA.test(i.role));
+  const sendoutsOfDest = (dest: number) =>
+    allItems.filter((i) => i.kind === 'sendout' && i.dest === dest && findSymbol(i.symbolId) && !SEND_EXTRA.test(i.role));
   /** 送り出しの開閉器に付くDGR（ZCT・DGR・TC）。3つそろっているときだけ */
-  const groundOf = (area: number) => {
-    const pick = (suffix: string) => allItems.find((i) => i.kind === 'sendout' && (i.area ?? 0) === area && i.role.endsWith(suffix));
+  const groundOfDest = (dest: number) => {
+    const pick = (suffix: string) => allItems.find((i) => i.kind === 'sendout' && i.dest === dest && i.role.endsWith(suffix));
     const zct = pick('sendout-zct');
     const relay = pick('sendout-ground-relay');
     const coil = pick('sendout-trip-coil');
     return zct && relay && coil ? { zct, relay, coil } : undefined;
   };
-
-  /**
-   * 送り出しの縦の並び（開閉器・ZCT・ケーブルの端末）を作るエリアか。
-   * 開閉器があるときのほか、ケーブルでつなぐだけのときも、端末は、必ず下向き（頂点が下）にするため、
-   * 母線から横に出た線を、下へ折り曲げて、縦の並びの中に端末を置く。
-   */
-  const stackedArea = (area: number): boolean => sendoutsOf(area).length > 0 || trunks.some((x) => x.from === area && x.cable);
+  const destOf = (tr: Trunk): number => tr.links[0]!.n;
+  /** この幹に、送り出しの縦の並び（開閉器・ZCT・ケーブルの端末）を作るか。開閉器があるときのほか、ケーブルでつなぐだけのときも、端末は、必ず下向きにするため */
+  const stackedTrunk = (tr: Trunk): boolean => sendoutsOfDest(destOf(tr)).length > 0 || tr.cable;
+  /** 送り出しの縦の並びを作る幹が、1本でもあるエリアか */
+  const stackedArea = (area: number): boolean => trunks.some((x) => x.from === area && stackedTrunk(x));
 
   /** 送り出しの開閉器の縦の並び（DS・VCB・ZCT・端末）の、すきまの左の端からの位置と、右へ伸びる幅（DGR・TCがあると広い） */
   const stackW = (area: number) => {
-    const base = groundOf(area) ? STACK_W_GROUND : STACK_W;
+    const base = trunks.some((x) => x.from === area && groundOfDest(destOf(x))) ? STACK_W_GROUND : STACK_W;
     // 送り先名称が長いときは、端末の右に書く名称が入る広さにする（縦の線にかからないように）
     const head = getSymbol('cable-head');
     const names = trunks.filter((x) => x.from === area && x.cable).flatMap((x) => x.links.flatMap((l) => (l.name.length > 0 ? [labelWidth(l.name)] : [])));
@@ -1465,15 +1463,15 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const topY = Math.min(...tops);
 
     // 送り出しの開閉器：母線から横に出た線を、90度曲げて、下向きに、ふつうの向きで、DS・VCB・ZCT・ケーブルの端末を並べる。そのあと、横へ
-    const sends = sendoutsOf(tr.from);
+    const sends = sendoutsOfDest(destOf(tr));
     // 縦の並びを作るか：開閉器があるとき、または、ケーブルの端末があるとき（端末は、必ず、下向きに置く）
-    const useStack = sends.length > 0 || tr.cable;
+    const useStack = stackedTrunk(tr);
     // 並びの下の端（ここから、横へケーブルを引く）。縦の並びが無いときは、分岐の高さ
     let endY = sy;
     if (useStack) {
-      const gr = groundOf(tr.from);
+      const gr = groundOfDest(destOf(tr));
       const xs = stackX(tr);
-      // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、IDに印を付ける
+      // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、ケーブルの端末のIDに印を付ける（開閉器のIDは、送り先の番号つきなので、印は要らない）
       const sfx = tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`;
       // 同じ位置から出る2本目以降のケーブルは、前の線の縦の並びの位置から、右へ分かれる（同じ線を、重ねて引かない）
       const prev = tr.gi > 0 ? trunks.find((x) => x.cable && x.from === tr.from && Math.abs(x.sy - tr.sy) < 0.5 && x.gi === tr.gi - 1) : undefined;
@@ -1506,13 +1504,13 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       const zctPos = gr?.zct.pos === 'bus-primary' || gr?.zct.pos === 'bus-secondary' ? gr.zct.pos : 'cable';
       let zsym: PlacedSymbol | undefined;
       const putZct = () => {
-        if (gr) zsym = stackPut(`${gr.zct.id}${sfx}`, `${gr.zct.role}${sfx}`, 'zct', []);
+        if (gr) zsym = stackPut(`${gr.zct.id}`, `${gr.zct.role}`, 'zct', []);
       };
       let breaker: PlacedSymbol | undefined;
       for (const it of sends) {
         const breaking = it.symbolId === 'vcb' || it.symbolId === 'lbs' || it.symbolId === 'lbs-pf';
         if (breaking && zctPos === 'bus-primary') putZct();
-        breaker = stackPut(`${it.id}${sfx}`, `${it.role}${sfx}`, it.symbolId, it.label);
+        breaker = stackPut(`${it.id}`, `${it.role}`, it.symbolId, it.label);
         if (breaking && zctPos === 'bus-secondary') putZct();
       }
       // 送り出し側のケーブルの端末：頂点が下（ケーブル側）を向く、ふつうの向き
@@ -1543,7 +1541,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         const rtop = portOf(rdef, 'top')!;
         const rr = portOf(rdef, 'r')!;
         const rsym: PlacedSymbol = {
-          id: `${gr.relay.id}${sfx}`, role: `${gr.relay.role}${sfx}`, symbolId: gr.relay.symbolId,
+          id: `${gr.relay.id}`, role: `${gr.relay.role}`, symbolId: gr.relay.symbolId,
           x: secX + DGR_OFFSET - rl.x, y: secY - rl.y, rotate: 0, label: [],
           labelAt: { x: secX + DGR_OFFSET - rl.x, y: secY - rl.y, anchor: 'start' },
         };
@@ -1558,7 +1556,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         const below = secY > linkY;
         const tcX = below ? rsym.x + rtop.x : rsym.x + rr.x + 12;
         const tsym: PlacedSymbol = {
-          id: `${gr.coil.id}${sfx}`, role: `${gr.coil.role}${sfx}`, symbolId: 'trip-coil',
+          id: `${gr.coil.id}`, role: `${gr.coil.role}`, symbolId: 'trip-coil',
           x: tcX - (below ? tb.x : tt.x), y: linkY - tl.y, rotate: 0, label: [],
           labelAt: { x: tcX - tb.x, y: linkY - tl.y, anchor: 'start' },
         };

@@ -83,7 +83,8 @@ const PRE_CABLE: Condition = {
 
 /** 送り出しの開閉器の地絡継電器が付くか（DGR・GRの考え方は、主遮断装置と同じ） */
 const SENDOUT_GROUND_ON: Condition = {
-  any: [{ all: [{ key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }, { key: 'sendoutGroundRelay', eq: 'gr' }],
+  // DGRの零相電圧は、送り出す側のエリアのZPDから得る（linkSenderZpd：送り出す側のエリアにZPDがあるか。エリアの答えを見るとき、engine が足す）
+  any: [{ all: [{ key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }] }, { key: 'linkGroundRelay', eq: 'gr' }],
 };
 
 /**
@@ -796,22 +797,22 @@ export const SENDOUT: Placement[] = [
     role: 'sendout-ds',
     symbolId: 'ds',
     kind: 'sendout',
-    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', in: ['ds', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['ds', 'ds-vcb'] }] },
     labelTemplate: ['DS'],
   },
   {
     role: 'sendout-vcb',
     symbolId: 'vcb',
     kind: 'sendout',
-    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', in: ['vcb', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['vcb', 'ds-vcb'] }] },
     labelTemplate: ['VCB'],
   },
   {
     role: 'sendout-lbs',
     symbolId: 'lbs-pf',
     kind: 'sendout',
-    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutSwitch', eq: 'lbs' }] },
-    labelTemplate: ['LBS', '{sendoutFuseText}'],
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', eq: 'lbs' }] },
+    labelTemplate: ['LBS', '{linkFuseText}'],
     note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く',
   },
   // 送り出しの開閉器に付くDGR：ZCTは送り出しの高圧ケーブルに、DGRはその横（上）に、TCは開閉器の上に描く（layout が置く）
@@ -819,26 +820,26 @@ export const SENDOUT: Placement[] = [
     role: 'sendout-zct',
     symbolId: 'zct',
     kind: 'sendout',
-    posFrom: 'sendoutZctPos',
-    when: { all: [{ key: 'areaCount', gt: 1 }, SENDOUT_GROUND_ON, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    posFrom: 'linkZctPos',
+    when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
   {
     role: 'sendout-ground-relay',
     symbolId: 'relay-dgr',
     kind: 'sendout',
-    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
   {
     role: 'sendout-ground-relay',
     symbolId: 'relay-gr',
     kind: 'sendout',
-    when: { all: [{ key: 'areaCount', gt: 1 }, { key: 'sendoutGroundRelay', eq: 'gr' }, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundRelay', eq: 'gr' }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
   {
     role: 'sendout-trip-coil',
     symbolId: 'trip-coil',
     kind: 'sendout',
-    when: { all: [{ key: 'areaCount', gt: 1 }, SENDOUT_GROUND_ON, { key: 'sendoutSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
   },
 ];
 
