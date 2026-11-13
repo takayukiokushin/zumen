@@ -9,7 +9,7 @@ export type SymbolCategory =
   | 'protection'    // 保護継電器・避雷器・接地
   | 'transformer'   // 変圧器
   | 'compensation'  // 高圧進相設備（コンデンサ・リアクトル）
-  | 'source'        // 発電機・太陽光・蓄電池
+  | 'source'        // 発電機・太陽光・蓄電池・電動機
   | 'enclosure'     // キュービクル・電気室などの外枠
   | 'wiring';       // 母線・接続点など結線要素
 
@@ -21,7 +21,7 @@ export const CATEGORY_LABEL: Record<SymbolCategory, string> = {
   protection: '保護継電器・避雷器・接地',
   transformer: '変圧器',
   compensation: '高圧進相設備',
-  source: '発電機・太陽光・蓄電池',
+  source: '発電機・太陽光・蓄電池・電動機',
   enclosure: '外枠（キュービクル・電気室）',
   wiring: '結線要素',
 };
