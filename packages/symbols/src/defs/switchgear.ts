@@ -284,7 +284,9 @@ const switchgearRaw: SymbolDef[] = [
     category: 'switchgear',
     tags: ['ヒューズ', 'VT'],
     box: { w: 40, h: 44 },
-    shapes: [vline(20, 0, 44), rect(15, 11, 10, 22)],
+    // 長方形のマークだけ、中心（20, 22）を変えずに、縦横とも1.1倍にした（以前は x＝15・y＝11・幅10・高さ22）。
+    // 縦線は上から下まで通したままなので、長方形の上下の端には、これまでどおり線がつながっている
+    shapes: [vline(20, 0, 44), rect(14.5, 9.9, 11, 24.2)],
     ports: [
       { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
       { id: 'out', x: 20, y: 44, dir: 'down', role: 'line' },

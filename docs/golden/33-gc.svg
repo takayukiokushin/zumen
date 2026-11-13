@@ -197,7 +197,7 @@
     <text x="34" y="798" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="34" dy="0">DS</tspan><tspan x="34" dy="12.5">7200V 200A</tspan></text>
     <g transform="translate(36 864) rotate(-90 20 22)">
       <line x1="20" y1="0" x2="20" y2="44" stroke-width="1" />
-      <rect x="15" y="11" width="10" height="22" fill="none" stroke-width="1" />
+      <rect x="14.5" y="9.9" width="11" height="24.2" fill="none" stroke-width="1" />
     </g>
     <g transform="translate(92 871)">
       <line x1="0" y1="15" x2="8" y2="15" stroke-width="1" />
