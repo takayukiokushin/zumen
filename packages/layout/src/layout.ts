@@ -93,6 +93,8 @@ export interface DrawingLayout {
 
 /** 主回路どうしの標準の間隔 */
 const GAP = 16;
+/** キュービクルなどの枠の横線から、その下の、ケーブルの上向きの三角（受ける側の端末）の頂点までの間隔（引込ケーブルの、2つの三角の頂点のちょうど真ん中に、枠の横線を通すため。ケーブルの区間の標準の長さ56の、半分） */
+const CABLE_FRAME_TO_HEAD = 28;
 /** 別の記号の左に印を置くときの、記号との隙間（客柱とPAS・PGSの枠のあいだ） */
 const BESIDE_GAP = 14;
 /**
@@ -548,6 +550,29 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
 
     /* ---- キュービクルなどの枠 ---- */
     if (item.kind === 'frame') {
+      // 引込ケーブルの、送り出し側の端末（下向きの三角）と、受ける側の端末（上向きの三角）のあいだに入る枠は、
+      // 2つの三角のちょうど真ん中（三角の頂点と頂点の、真ん中）に、横線を通す。
+      // 上向きの三角の位置も、ケーブルの線（1本のまま）も、変えない。枠の横線だけが、その真ん中に来る
+      const at = items.indexOf(item);
+      // この枠の次に来る、主回路の機器（枝分かれするもの・文字だけのものは飛ばす）
+      const nextSeries = items.slice(at + 1).find((x) => x.kind === 'series');
+      const betweenHeads = started && items[at - 1]?.role === 'cable-head-source' && nextSeries?.role === 'cable-head-site';
+      if (betweenHeads) {
+        frames.push({ x: SPINE - FRAME_HALF, y: spineY + Math.max(pendingGap, GAP) / 2, w: FRAME_HALF * 2, label: item.label[0] });
+        continue;
+      }
+      // 2か所目以降のエリア：前のエリアから来るケーブルは、枠の上端まで下りてくる（送り出し側の端末は、別の場所）。
+      // 1か所目の「枠の横線から上向きの三角まで」と同じ間隔（CABLE_FRAME_TO_HEAD）を空けて、上向きの三角を置く。
+      // エリアどうしは、枠の上端をそろえるので、上向きの三角の高さも、そろう。
+      // （エリアの配置では、つなぐケーブルの項目は外してあるので、枠が先頭に来る）。線の種類（埋設は点線）は、枠の dashedAfter で受ける
+      if (!started && at === 0 && nextSeries?.role === 'cable-head-site') {
+        frames.push({ x: SPINE - FRAME_HALF, y: spineY, w: FRAME_HALF * 2, label: item.label[0] });
+        started = true;
+        pendingDashed = item.dashedAfter ?? false;
+        pendingGap = CABLE_FRAME_TO_HEAD;
+        lastBranch = null;
+        continue;
+      }
       const fy = started ? spineY + Math.max(pendingGap, GAP) : spineY;
       if (started) wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: fy, dashed: pendingDashed });
       frames.push({ x: SPINE - FRAME_HALF, y: fy, w: FRAME_HALF * 2, label: item.label[0] });

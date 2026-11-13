@@ -8,8 +8,8 @@
   <text x="728" y="1045" font-size="9" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">株式会社フジエレックス</text>
   <g transform="translate(362.9 96.5) scale(1.0000)">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">
-    <path d="M -200 364 L 234.2 364 M -200 364 L -200 390 M 234.2 364 L 234.2 390" fill="none" stroke-width="1" />
-    <text x="-200" y="358" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
+    <path d="M -200 336 L 234.2 336 M -200 336 L -200 362 M 234.2 336 L 234.2 362" fill="none" stroke-width="1" />
+    <text x="-200" y="330" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
     <line x1="0" y1="48" x2="0" y2="64" stroke-width="1" />
     <line x1="0" y1="108" x2="0" y2="124" stroke-width="1" />
     <line x1="0" y1="148" x2="0" y2="204" stroke-width="1" stroke-dasharray="5 4" />

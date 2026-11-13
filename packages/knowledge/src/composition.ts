@@ -621,6 +621,8 @@ export const AREA_CHAIN: Placement[] = [
     kind: 'frame',
     when: { not: { key: 'areaForm', eq: 'apartment-pole' } },
     labelTemplate: ['{areaLabel}'],
+    // 枠から、その下の上向きの三角（ケーブルを受ける端末）までの線。ケーブルが埋設のときは点線（前のエリアからの線の続き）
+    dashedAfter: { all: [{ key: 'linkCable', ne: 'no' }, { key: 'linkCableInstallation', eq: 'buried' }] },
   },
   {
     // 主遮断装置に付くDGR（1か所目と同じ）：ZCTは、初期値では、このエリアの引込の高圧ケーブルに付け、DGRは、ZCTの横。ZPDが「ある」ときだけ

@@ -609,7 +609,12 @@ function contentBoxes(doc: Doc, joinLabels = false, skipCables = false): Box[] {
     } else if (it.kind === 'text') {
       boxes.push(textBox(it.x, it.y, it.lines, it.anchor, clampTextSize(it.size)));
     } else if (it.kind === 'frame') {
-      boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
+      // 引込ケーブルの、2つの三角（▽と、上向きの△）のあいだに入っている枠の線は、機器どうしの間隔には数えない
+      // （線が、ケーブルの区間の真ん中を通るので、数えると、区間が、狭い2つの帯に分かれて見えてしまう）
+      const betweenHeads = doc.items.some(
+        (h) => h.kind === 'symbol' && h.symbolId === 'cable-head' && h.rotate === 180 && h.y > it.y && h.y <= it.y + 40 && h.x >= it.x && h.x <= it.x + it.w,
+      );
+      if (!betweenHeads) boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
     } else if (it.y1 === it.y2 && it.x1 !== it.x2 && !(skipCables && it.dashed)) {
       boxes.push({ x0: Math.min(it.x1, it.x2), y0: it.y1 - 0.5, x1: Math.max(it.x1, it.x2), y1: it.y1 + 0.5 });
     }
