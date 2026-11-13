@@ -1,10 +1,10 @@
 import { ARROW_LABEL_DEFAULT, AREA_KINDS, FIXED_LAYERS, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, isFixedLayerId } from '@zumen/knowledge';
 import type { AreaKindDef } from '@zumen/knowledge';
 import type { Orientation } from '@zumen/layout';
-import { snap, CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
+import { snap, CROSS_SPECS, GROUND_HALF_WIDTH, GROUND_SCALES, GROUND_LEAD_DEFAULT, clampDrop, clampLead, clampTextSize, groundBounds, groundFromTip, groundLabelBounds, labelRect, labelWidth, rotatedBox, rotatedPort } from '@zumen/layout';
 import { AREA_MIN, ARROW_DIR_DEFAULT, ARROW_LEN_DEFAULT, arrowFromTail, clampArrowLen } from '@zumen/layout';
 import { ARROW_DIRS, LINK_SHAPES, LINK_SHAPE_DEFAULT } from '@zumen/layout';
-import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel, LinkShape } from '@zumen/layout';
+import type { AreaLabel, AreaLabelPos, AreaRect, ArrowDir, ArrowLabel, CrossSize, GroundLabel, GroundSize, LinkShape } from '@zumen/layout';
 import { assistGroundPoint, defOf, digest, freshId, portsOf, sameName, wireKey } from './doc.ts';
 import type { Doc, DocSymbol, DocText } from './doc.ts';
 
@@ -83,6 +83,8 @@ export interface LayerGround {
   lead?: number;
   /** つなぐ場所から、マークまでの縦の長さ */
   drop?: number;
+  /** マークの大きさ。無ければ中（これまでの大きさ）。大は、中の1.5倍（第13弾 項目32） */
+  mark?: GroundSize;
   /** 横に付ける文字（1行ずつ） */
   label?: string[];
   size?: number;
@@ -647,6 +649,9 @@ export interface ResolvedGround {
   y: number;
   lead: number;
   drop: number;
+  /** マークの大きさ（中・大）と、その倍率（中＝1、大＝1.5） */
+  mark: GroundSize;
+  scale: number;
   label?: GroundLabel;
   /** 他の図記号にかかっているか（かかっていても置けるが、知らせる） */
   overlaps: boolean;
@@ -656,17 +661,18 @@ export interface ResolvedGround {
 const widthOfLines = (lines: string[], size: number): number => labelWidth(lines, size);
 
 /** 接地のマークの部品ごとの外形（横棒・縦の線・マーク・文字）。他の図記号にかかっているかの確認に使う */
-function groundParts(g: Pick<ResolvedGround, 'x' | 'y' | 'lead' | 'drop' | 'label'>): { x0: number; y0: number; x1: number; y1: number }[] {
+function groundParts(g: Pick<ResolvedGround, 'x' | 'y' | 'lead' | 'drop' | 'label'> & { scale?: number }): { x0: number; y0: number; x1: number; y1: number }[] {
   const cx = g.x + g.lead;
-  const all = groundBounds(g.x, g.y, g.lead, g.drop);
+  const k = g.scale ?? 1;
+  const all = groundBounds(g.x, g.y, g.lead, g.drop, k);
   const parts = [
     // 縦の線
     { x0: cx - 1, y0: g.y, x1: cx + 1, y1: g.y + g.drop },
     // マーク（3本の横線）
-    { x0: cx - GROUND_HALF_WIDTH, y0: g.y + g.drop, x1: cx + GROUND_HALF_WIDTH, y1: all.y1 },
+    { x0: cx - GROUND_HALF_WIDTH * k, y0: g.y + g.drop, x1: cx + GROUND_HALF_WIDTH * k, y1: all.y1 },
   ];
   if (g.lead !== 0) parts.push({ x0: Math.min(g.x, cx), y0: g.y - 1, x1: Math.max(g.x, cx), y1: g.y + 1 });
-  const lb = groundLabelBounds(g.x, g.y, g.lead, g.drop, g.label, widthOfLines);
+  const lb = groundLabelBounds(g.x, g.y, g.lead, g.drop, g.label, widthOfLines, k);
   if (lb) parts.push(lb);
   return parts;
 }
@@ -675,7 +681,7 @@ function groundParts(g: Pick<ResolvedGround, 'x' | 'y' | 'lead' | 'drop' | 'labe
  * 他の図記号（記号の枠と、記号の横の文字）にかかっているか。つなぐ記号（接続点につないだとき）と、外枠（キュービクルなど）は、かかっていても気にしない。
  * 「かからないようにする」ための目安で、かかっていても置ける。
  */
-export function groundOverlapsSymbols(doc: Doc, g: Pick<ResolvedGround, 'x' | 'y' | 'lead' | 'drop' | 'label'>, anchor: GroundAnchor | undefined): boolean {
+export function groundOverlapsSymbols(doc: Doc, g: Pick<ResolvedGround, 'x' | 'y' | 'lead' | 'drop' | 'label'> & { scale?: number }, anchor: GroundAnchor | undefined): boolean {
   const parts = groundParts(g);
   const hit = (b: { x0: number; y0: number; x1: number; y1: number }) =>
     parts.some((p) => p.x0 < b.x1 - 1 && p.x1 > b.x0 + 1 && p.y0 < b.y1 - 1 && p.y1 > b.y0 + 1);
@@ -703,7 +709,8 @@ export function resolveGrounds(doc: Doc, layerId: string): ResolvedGround[] {
       g.label && g.label.some((l) => l !== '')
         ? { lines: g.label, ...(g.size !== undefined ? { size: g.size } : {}), ...(g.bold ? { bold: true } : {}), red: true }
         : undefined;
-    const r = { id: g.id, x: at.x, y: at.y, lead, drop, ...(label ? { label } : {}) };
+    const mark: GroundSize = g.mark === 'L' ? 'L' : 'M';
+    const r = { id: g.id, x: at.x, y: at.y, lead, drop, mark, scale: GROUND_SCALES[mark], ...(label ? { label } : {}) };
     out.push({ ...r, overlaps: groundOverlapsSymbols(doc, r, g.anchor) });
   }
   return out;
@@ -714,14 +721,14 @@ export const canAddLayerGround = (doc: Doc, layerId: string): boolean =>
   (layerOf(doc, layerId)?.items ?? []).filter((i) => i.kind === 'ground').length < MAX_LAYER_ITEMS_PER_KIND;
 
 /** つなぐ場所（anchor）と、マークを置く場所（縦の線の先 tx・ty）から、接地のマークを置く。つなぐ場所が無い・上限を超えるときは null */
-export function addLayerGround(doc: Doc, layerId: string, anchor: GroundAnchor, tx: number, ty: number): { doc: Doc; id: string } | null {
+export function addLayerGround(doc: Doc, layerId: string, anchor: GroundAnchor, tx: number, ty: number, mark: GroundSize = 'M'): { doc: Doc; id: string } | null {
   if (!layerInfos(doc).some((l) => l.id === layerId) || !canAddLayerGround(doc, layerId)) return null;
   const at = resolveGroundAnchor(doc, anchor);
   if (!at) return null;
   const { lead, drop } = groundFromTip(at.x, at.y, tx, ty);
   const items = layerOf(doc, layerId)?.items ?? [];
   const id = freshId('lground', new Set(items.map((i) => i.id)));
-  const g: LayerGround = { kind: 'ground', id, anchor, ...(lead !== 0 ? { lead } : {}), drop };
+  const g: LayerGround = { kind: 'ground', id, anchor, ...(lead !== 0 ? { lead } : {}), drop, ...(mark === 'L' ? { mark } : {}) };
   return { doc: setLayerItems(doc, layerId, [...items, g]), id };
 }
 
@@ -730,7 +737,7 @@ export function editGround(
   doc: Doc,
   layerId: string,
   id: string,
-  patch: { lead?: number; drop?: number; anchor?: GroundAnchor; label?: string[]; size?: number; bold?: boolean },
+  patch: { lead?: number; drop?: number; anchor?: GroundAnchor; label?: string[]; size?: number; bold?: boolean; mark?: GroundSize },
 ): Doc {
   const items = layerOf(doc, layerId)?.items;
   if (!items) return doc;
@@ -757,6 +764,10 @@ export function editGround(
         else n.lead = l;
       }
       if (patch.drop !== undefined) n.drop = clampDrop(patch.drop);
+      if (patch.mark !== undefined) {
+        if (patch.mark === 'L') n.mark = 'L';
+        else delete n.mark;
+      }
       if (patch.label !== undefined) {
         if (patch.label.every((l) => l === '')) delete n.label;
         else n.label = patch.label;
@@ -1172,7 +1183,7 @@ function validAnchor(a: unknown): boolean {
 const OPTIONAL: Record<LayerItem['kind'], Record<string, (v: unknown) => boolean>> = {
   text: { anchor: (v) => v === 'start' || v === 'middle' || v === 'end', size: isNum, bold: (v) => typeof v === 'boolean', red: (v) => typeof v === 'boolean', near: isStr, ndx: isNum, ndy: isNum },
   cross: { dx: isNum, dy: isNum, target: isStr, anchor: validAnchor },
-  ground: { anchor: validAnchor, lead: isNum, drop: isNum, label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean', x: isNum, y: isNum, rotate: isNum, near: isStr, ndx: isNum, ndy: isNum },
+  ground: { anchor: validAnchor, mark: (v) => v === 'L', lead: isNum, drop: isNum, label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean', x: isNum, y: isNum, rotate: isNum, near: isStr, ndx: isNum, ndy: isNum },
   area: { near: isStr, hatch: (v) => typeof v === 'boolean', label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean', labelPos: (v) => v === 'tl' || v === 'tr' || v === 'bl' || v === 'br' },
   dot: { anchor: validAnchor, near: isStr },
   arrow: { dir: (v) => (ARROW_DIRS as readonly unknown[]).includes(v), len: isNum, label: isStrArr, size: isNum, bold: (v) => typeof v === 'boolean' },

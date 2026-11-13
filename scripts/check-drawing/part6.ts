@@ -4,7 +4,7 @@
  * 「そのレイヤーの印刷にだけ出る」を確かめる。
  */
 import { fromLayout, moveItem, removeItem } from '../../apps/web/src/editor/doc.ts';
-import type { Doc, DocSymbol } from '../../apps/web/src/editor/doc.ts';
+import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { chooseSheet } from '../../apps/web/src/editor/inspect.ts';
 import { addExtraCross, addLayerCross, addLayerCrossOnWire, addLayerText, isHorizontalWire, sanitizeLayers, canAddLayerCross, CROSS_CENTER_SNAP, moveLayerCrosses, resetCross, canMark, crossOn, layerOf, markPoint, purgeOrphanMarks, resolveCrosses, setCrossSize, setLayerItems } from '../../apps/web/src/editor/layers.ts';
@@ -156,8 +156,8 @@ console.log('\n■ 開放の赤い×印');
         const bad = sanitizeLayers([{ id: 'outage', items: [{ kind: 'cross', id: 'x1', size: 'M' }] }])!;
         if (bad.find((l) => l.id === 'outage')?.items.length !== 0) fail('付け先の無い×印が、残っています');
         // 付けられない線：縦の線・記号につながる線
-        const vert = dBus.items.find((i) => i.kind === 'wire' && Math.abs(i.x1 - i.x2) < 0.01);
-        const tied = dBus.items.find((i) => i.kind === 'wire' && Math.abs(i.y1 - i.y2) < 0.01 && (i.at1 || i.at2));
+        const vert = dBus.items.find((i): i is DocWire => i.kind === 'wire' && Math.abs(i.x1 - i.x2) < 0.01);
+        const tied = dBus.items.find((i): i is DocWire => i.kind === 'wire' && Math.abs(i.y1 - i.y2) < 0.01 && Boolean(i.at1 || i.at2));
         if ((vert && addLayerCrossOnWire(dBus, 'outage', vert.id, vert.x1, 'M')) || (tied && addLayerCrossOnWire(dBus, 'outage', tied.id, tied.x1, 'M'))) fail('縦の線・記号につながる線にも、×印が付いてしまいます');
         // 印刷
         const title2 = { site: '見本工場', name: '停電範囲図', footer: COMPANY_NAME };

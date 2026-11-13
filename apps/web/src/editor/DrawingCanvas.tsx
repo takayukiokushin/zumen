@@ -63,6 +63,8 @@ interface Props {
   crosses?: ResolvedCross[];
   /** ×印を付けるモードで、カーソルを乗せたとき、薄く見せる×印の大きさと太さ（いま選んでいる大きさ）。無ければ見せない */
   crossPreview?: { size: number; thickness: number };
+  /** 接地のマークを置くとき、薄く見せるマークの大きさの倍率（中＝1、大＝1.5。無ければ1） */
+  groundScale?: number;
   /** 'cross' のときに、記号（PAS のような、中に部品を抱えるものは、かたまりの親）をクリックしたとき */
   onCrossClick?: (symbolId: string) => void;
   /** 'cross' のときに、×印そのものをクリックしたとき（その×印を外す） */
@@ -126,7 +128,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -975,10 +977,10 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                 ? { ...g0, ...groundFromTip(g0.x, g0.y, handleDrag.x, handleDrag.y) }
                 : { ...g0, x: handleDrag.x, y: handleDrag.y };
           }
-          const bb = groundBounds(g.x, g.y, g.lead, g.drop);
-          const lb = groundLabelBounds(g.x, g.y, g.lead, g.drop, g.label, labelWidth);
+          const bb = groundBounds(g.x, g.y, g.lead, g.drop, g.scale);
+          const lb = groundLabelBounds(g.x, g.y, g.lead, g.drop, g.label, labelWidth, g.scale);
           const tip = groundTip(g.x, g.y, g.lead, g.drop);
-          const lat = groundLabelAt(g.x, g.y, g.lead, g.drop);
+          const lat = groundLabelAt(g.x, g.y, g.lead, g.drop, g.scale);
           const k = clampTextSize(g.label?.size);
           const x0 = Math.min(bb.x0, lb ? lb.x0 : bb.x0);
           const x1 = Math.max(bb.x1, lb ? lb.x1 : bb.x1);
@@ -993,7 +995,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                 onSelect([g0.id]);
               }}
             >
-              <g dangerouslySetInnerHTML={{ __html: groundSvg(g.x, g.y, g.lead, g.drop, { indent: '' }) }} />
+              <g dangerouslySetInnerHTML={{ __html: groundSvg(g.x, g.y, g.lead, g.drop, { indent: '', scale: g.scale }) }} />
               {g.label && (
                 <text
                   x={lat.x}
@@ -1192,12 +1194,12 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             {cursor &&
               (() => {
                 const { lead, drop } = groundFromTip(groundStart.x, groundStart.y, cursor.x, cursor.y);
-                const bad = groundOverlapsSymbols(doc, { x: groundStart.x, y: groundStart.y, lead, drop }, groundStart.anchor);
+                const bad = groundOverlapsSymbols(doc, { x: groundStart.x, y: groundStart.y, lead, drop, scale: groundScale }, groundStart.anchor);
                 return (
                   <g
                     pointerEvents="none"
                     dangerouslySetInnerHTML={{
-                      __html: groundSvg(groundStart.x, groundStart.y, lead, drop, { indent: '', opacity: 0.45, color: bad ? '#e07a00' : OVERLAY_RED }),
+                      __html: groundSvg(groundStart.x, groundStart.y, lead, drop, { indent: '', opacity: 0.45, scale: groundScale, color: bad ? '#e07a00' : OVERLAY_RED }),
                     }}
                   />
                 );

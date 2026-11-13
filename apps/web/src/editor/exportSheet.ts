@@ -64,7 +64,7 @@ export function buildSheetSvg(
   // 接地のマークの横に付けた文字は、図面の文字として、一緒に出す（大きさ・太字・色も、そのまま）
   for (const g of grounds) {
     if (!g.label || g.label.lines.every((l) => l === '')) continue;
-    const at = groundLabelAt(g.x, g.y, g.lead, g.drop);
+    const at = groundLabelAt(g.x, g.y, g.lead, g.drop, g.scale ?? 1);
     drawing.texts!.push({
       x: at.x,
       y: at.y,
@@ -134,7 +134,7 @@ export function buildSheetSvg(
   for (const c of crosses) ext(c.x - c.size / 2, c.y - c.size / 2, c.x + c.size / 2, c.y + c.size / 2);
   if (crosses.length > 0) drawing.crosses = crosses;
   for (const g of grounds) {
-    const gb = groundBounds(g.x, g.y, g.lead, g.drop);
+    const gb = groundBounds(g.x, g.y, g.lead, g.drop, g.scale ?? 1);
     ext(gb.x0, gb.y0, gb.x1, gb.y1);
   }
   if (grounds.length > 0) drawing.grounds = grounds;

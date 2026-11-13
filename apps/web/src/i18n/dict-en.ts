@@ -567,6 +567,7 @@ export const en: Dict = {
   'layer.tool.notHere': 'This cannot be selected on this layer',
   'cross.hint': 'Click the switch (PAS, VCB, LBS, etc.) to mark, or the spot on the busbar (horizontal line) where you want the mark. Click a switch with a × at its center again to remove that mark. You can also click a × mark itself to remove it.',
   'cross.size': '× mark size',
+  'ground.size': 'Mark size',
   'cross.small': 'Small',
   'cross.mid': 'Medium',
   'cross.large': 'Large',

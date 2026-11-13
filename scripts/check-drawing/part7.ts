@@ -8,10 +8,10 @@ import { assistGroundPoint, fromLayout, moveItem, portsOf, removeItem } from '..
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { chooseSheet } from '../../apps/web/src/editor/inspect.ts';
-import { addLayerGround, canAddLayerGround, editGround, flipGround, groundOverlapsSymbols, layerOf, purgeOrphanMarks, removeLayerItems, resolveGroundAnchor, resolveGrounds, setGroundTip, setLayerItems, toggleGroundLead } from '../../apps/web/src/editor/layers.ts';
+import { addLayerGround, canAddLayerGround, editGround, flipGround, groundOverlapsSymbols, layerOf, purgeOrphanMarks, removeLayerItems, resolveGroundAnchor, sanitizeLayers, resolveGrounds, setGroundTip, setLayerItems, toggleGroundLead } from '../../apps/web/src/editor/layers.ts';
 import type { GroundAnchor, LayerGround } from '../../apps/web/src/editor/layers.ts';
 import { buildComposition, MAX_LAYER_ITEMS_PER_KIND } from '../../packages/knowledge/src/index.ts';
-import { COMPANY_NAME, GROUND_DROP_MIN, GROUND_LEAD_MIN, GROUND_STROKE, OVERLAY_RED, groundBounds, groundFromTip, groundLabelAt, groundShapes, groundSvg, layout } from '../../packages/layout/src/index.ts';
+import { COMPANY_NAME, GROUND_SCALES, GROUND_DROP_MIN, GROUND_LEAD_MIN, GROUND_STROKE, OVERLAY_RED, groundBounds, groundFromTip, groundLabelAt, groundShapes, groundSvg, layout } from '../../packages/layout/src/index.ts';
 import { getSymbol } from '../../packages/symbols/src/index.ts';
 import { answersSpread, fail } from './common.ts';
 
@@ -175,4 +175,60 @@ console.log('\n■ 赤い接地のマーク');
   if (reds(sheet(withLabel, 'withstand')) !== 0 || reds(sheet(withLabel, null)) !== 0) fail('別のレイヤーや単線結線図の印刷に、接地のマークが出ています');
   if (sheet(withLabel, null) !== sheet(d0, null)) fail('接地のマークを置いても、単線結線図の印刷が変わっています');
   console.log('  印刷：そのレイヤーだけに、赤い接地のマークと、横の文字が出る。単線結線図・ほかのレイヤーの印刷は変わらない。上限は100個（レイヤーごと）');
+}
+
+/* 接地のマークの大きさ：中（これまで）と大（中の1.5倍）を選べる（第13弾 項目32） */
+console.log('\n■ 赤い接地のマークの大きさ（中・大）');
+{
+  const d0 = fromLayout(layout(buildComposition(answersSpread), answersSpread));
+  if (GROUND_SCALES.M !== 1 || GROUND_SCALES.L !== 1.5) fail('接地のマークの大きさは、中＝1・大＝1.5倍のはずです');
+  // 形：大は、横線の長さ・間隔が、中の1.5倍。線の太さは、変えない
+  const bars = (k: number) => groundShapes(0, 20, k).filter((s) => s.k === 'line' && s.y1 === s.y2 && s.y1 >= 20) as { x1: number; x2: number; y1: number; sw?: number }[];
+  const m = bars(1);
+  const l = bars(1.5);
+  if (l.some((b, i) => Math.abs(b.x2 - b.x1 - (m[i]!.x2 - m[i]!.x1) * 1.5) > 1e-9)) fail('大の横線の長さが、中の1.5倍になっていません');
+  if (l.some((b, i) => Math.abs(b.y1 - 20 - (m[i]!.y1 - 20) * 1.5) > 1e-9)) fail('大の横線の間隔が、中の1.5倍になっていません');
+  if (l.some((b, i) => b.sw !== m[i]!.sw)) fail('大でも、線の太さは、中と同じのはずです');
+  const bm = groundBounds(100, 100, 0, 20);
+  const bl = groundBounds(100, 100, 0, 20, 1.5);
+  if (Math.abs((bl.x1 - bl.x0) - (bm.x1 - bm.x0) * 1.5) > 1e-9) fail('大の外形の幅が、中の1.5倍になっていません');
+  // 置く：大きさを選んで置く。つなぐ場所・縦の線・横棒は、中と同じ。選ばなければ、中。データには、大のときだけ残る
+  const bus = d0.items.find((i): i is DocWire => i.kind === 'wire' && Math.abs(i.y1 - i.y2) < 0.01 && Math.abs(i.x1 - i.x2) > 100);
+  const pt = bus ? assistGroundPoint(d0, (bus.x1 + bus.x2) / 2, bus.y1) : null;
+  if (!pt) fail('接地のマークを置く場所が見つかりません');
+  else {
+    const rm = addLayerGround(d0, 'outage', pt.anchor, pt.x, pt.y + 40)!;
+    const rl = addLayerGround(d0, 'outage', pt.anchor, pt.x, pt.y + 40, 'L')!;
+    const gm = resolveGrounds(rm.doc, 'outage')[0]!;
+    const gl = resolveGrounds(rl.doc, 'outage')[0]!;
+    if (gm.mark !== 'M' || gm.scale !== 1 || gl.mark !== 'L' || gl.scale !== 1.5 || gm.drop !== gl.drop || gm.lead !== gl.lead) fail('置いたときの大きさ（中・大）の扱いが違います');
+    if ((layerOf(rm.doc, 'outage')!.items[0] as LayerGround).mark !== undefined) fail('中は、データに残さないはずです（これまでのデータと同じ形）');
+    // あとから変える（中⇄大）
+    const toL = resolveGrounds(editGround(rm.doc, 'outage', rm.id, { mark: 'L' }), 'outage')[0]!;
+    const toM = resolveGrounds(editGround(rl.doc, 'outage', rl.id, { mark: 'M' }), 'outage')[0]!;
+    if (toL.mark !== 'L' || toM.mark !== 'M' || (layerOf(editGround(rl.doc, 'outage', rl.id, { mark: 'M' }), 'outage')!.items[0] as LayerGround).mark !== undefined) fail('中・大の切り替えが、できていません');
+    // 他の図記号にかかるかの確認も、大きさに合わせる
+    const wide = { x: gm.x, y: gm.y, lead: gm.lead, drop: gm.drop };
+    void wide;
+    // 印刷：大は、1.5倍の大きさで出る。中は、これまでと同じ
+    const title = { site: '見本工場', name: '停電範囲図', footer: COMPANY_NAME };
+    const sheet = (d: Doc) => {
+      const gs = resolveGrounds(d, 'outage').map((g) => ({ x: g.x, y: g.y, lead: g.lead, drop: g.drop, ...(g.scale !== 1 ? { scale: g.scale } : {}) }));
+      const { paper, orientation } = chooseSheet(d, title);
+      return buildSheetSvg(d, title, paper, orientation, [], gs);
+    };
+    const wOf = (svg: string) => {
+      const ms = [...svg.matchAll(new RegExp(`<line x1="([-\\d.]+)" y1="[-\\d.]+" x2="([-\\d.]+)" y2="[-\\d.]+"[^>]*stroke-width="2"`, 'g'))];
+      return ms.map((x) => Math.abs(Number(x[2]) - Number(x[1]))).filter((w) => w > 0);
+    };
+    const sm = wOf(sheet(rm.doc));
+    const sl = wOf(sheet(rl.doc));
+    if (sm.length === 0 || sl.length === 0 || Math.abs(Math.max(...sl) - Math.max(...sm) * 1.5) > 0.02) fail(`印刷で、大が中の1.5倍になっていません（中 ${Math.max(...sm)}・大 ${Math.max(...sl)}）`);
+    // 保存データの整理：大は通る。おかしな値は外れる
+    const clean = sanitizeLayers(rl.doc.layers)!;
+    if ((clean.find((x) => x.id === 'outage')!.items[0] as LayerGround).mark !== 'L') fail('大が、読み込みのときに外れています');
+    const bad = sanitizeLayers([{ id: 'outage', items: [{ kind: 'ground', id: 'g1', anchor: pt.anchor, mark: 'XL' }] }])!;
+    if ((bad.find((x) => x.id === 'outage')!.items[0] as LayerGround).mark !== undefined) fail('おかしな大きさが、残っています');
+    console.log('  中（これまで）と大（中の1.5倍。横線の長さ・間隔だけ。線の太さは同じ）を選べる。置くときに選ぶ・あとから変える。印刷も、その大きさ');
+  }
 }

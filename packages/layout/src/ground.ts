@@ -16,6 +16,14 @@ import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize } from './text.ts';
 
 /** 接地の記号に対する倍率 */
 const SCALE = 1.5;
+
+/**
+ * マークの大きさ（第13弾 項目32）。中＝これまでの大きさ、大＝中の1.5倍（横線の長さ・間隔を1.5倍。線の太さは変えない）。
+ * 無指定は中
+ */
+export type GroundSize = 'M' | 'L';
+export const GROUND_SIZE_IDS: readonly GroundSize[] = ['M', 'L'];
+export const GROUND_SCALES: Readonly<Record<GroundSize, number>> = { M: 1, L: 1.5 };
 /** 線の太さ（ふつうの線は1、母線は3。「少し太め」） */
 export const GROUND_STROKE = 2;
 /** 縦の線の、いちばん短い長さ（つなぐ場所から、いちばん上の横線まで） */
@@ -49,23 +57,23 @@ export function groundFromTip(px: number, py: number, tx: number, ty: number): {
 }
 
 /** 接地のマークの形（つなぐ場所が原点） */
-export function groundShapes(lead: number, drop: number): Shape[] {
+export function groundShapes(lead: number, drop: number, k = 1): Shape[] {
   const o = { sw: GROUND_STROKE };
   const shapes: Shape[] = [];
   if (lead !== 0) shapes.push(hline(0, 0, lead, o));
   shapes.push(vline(lead, 0, drop, o));
-  HALF_WIDTHS.forEach((hw, i) => shapes.push(hline(drop + BAR_GAP * i, lead - hw, lead + hw, o)));
+  HALF_WIDTHS.forEach((hw, i) => shapes.push(hline(drop + BAR_GAP * k * i, lead - hw * k, lead + hw * k, o)));
   return shapes;
 }
 
 /** 外形（図面の座標）。線の太さまで含める */
-export function groundBounds(px: number, py: number, lead: number, drop: number): { x0: number; y0: number; x1: number; y1: number } {
+export function groundBounds(px: number, py: number, lead: number, drop: number, k = 1): { x0: number; y0: number; x1: number; y1: number } {
   const cx = px + lead;
   return {
-    x0: Math.min(px, cx - GROUND_HALF_WIDTH),
+    x0: Math.min(px, cx - GROUND_HALF_WIDTH * k),
     y0: py,
-    x1: Math.max(px, cx + GROUND_HALF_WIDTH),
-    y1: py + drop + BARS_HEIGHT + GROUND_STROKE / 2,
+    x1: Math.max(px, cx + GROUND_HALF_WIDTH * k),
+    y1: py + drop + BARS_HEIGHT * k + GROUND_STROKE / 2,
   };
 }
 
@@ -73,11 +81,11 @@ export function groundBounds(px: number, py: number, lead: number, drop: number)
 export const groundTip = (px: number, py: number, lead: number, drop: number): { x: number; y: number } => ({ x: px + lead, y: py + drop });
 
 /** SVG の部品。ghost が true のときは、置く前の見本として、薄く（透かして）描く */
-export function groundSvg(px: number, py: number, lead: number, drop: number, opts: { indent?: string; color?: string; opacity?: number } = {}): string {
+export function groundSvg(px: number, py: number, lead: number, drop: number, opts: { indent?: string; color?: string; opacity?: number; scale?: number } = {}): string {
   const indent = opts.indent ?? '    ';
   const r = (v: number) => Math.round(v * 100) / 100;
   const op = opts.opacity !== undefined ? ` opacity="${opts.opacity}"` : '';
-  return `${indent}<g transform="translate(${r(px)} ${r(py)})" stroke="${opts.color ?? OVERLAY_RED}" fill="none" stroke-linecap="butt"${op}>\n${shapesToSvg(groundShapes(lead, drop), `${indent}  `)}\n${indent}</g>`;
+  return `${indent}<g transform="translate(${r(px)} ${r(py)})" stroke="${opts.color ?? OVERLAY_RED}" fill="none" stroke-linecap="butt"${op}>\n${shapesToSvg(groundShapes(lead, drop, opts.scale ?? 1), `${indent}  `)}\n${indent}</g>`;
 }
 
 /** マークの横に付ける文字（番号・回路名など）。マークごとに任意で付けられる。大きさ・太字・色は、テキストボックスと同じ */
@@ -92,17 +100,17 @@ export interface GroundLabel {
  * 文字を書く位置。マークの、母線から遠い側（右へ出していれば右、左へ出していれば左、横棒なしは右）の横に、
  * いちばん上の横線の高さから書き始める。
  */
-export function groundLabelAt(px: number, py: number, lead: number, drop: number): { x: number; y: number; anchor: 'start' | 'end' } {
+export function groundLabelAt(px: number, py: number, lead: number, drop: number, k = 1): { x: number; y: number; anchor: 'start' | 'end' } {
   const left = lead < 0;
   const cx = px + lead;
-  return { x: left ? cx - GROUND_HALF_WIDTH - 6 : cx + GROUND_HALF_WIDTH + 6, y: py + drop + 4, anchor: left ? 'end' : 'start' };
+  return { x: left ? cx - GROUND_HALF_WIDTH * k - 6 : cx + GROUND_HALF_WIDTH * k + 6, y: py + drop + 4, anchor: left ? 'end' : 'start' };
 }
 
 /** 文字の外形（図面の座標。画面で、選ぶ枠や、重なりの確認に使う）。文字が無ければ null */
-export function groundLabelBounds(px: number, py: number, lead: number, drop: number, label: GroundLabel | undefined, widthOf: (lines: string[], size: number) => number): { x0: number; y0: number; x1: number; y1: number } | null {
+export function groundLabelBounds(px: number, py: number, lead: number, drop: number, label: GroundLabel | undefined, widthOf: (lines: string[], size: number) => number, scale = 1): { x0: number; y0: number; x1: number; y1: number } | null {
   if (!label || label.lines.every((l) => l === '')) return null;
   const k = clampTextSize(label.size);
-  const at = groundLabelAt(px, py, lead, drop);
+  const at = groundLabelAt(px, py, lead, drop, scale);
   const w = widthOf(label.lines, LABEL_FONT * k);
   const x0 = at.anchor === 'end' ? at.x - w : at.x;
   return { x0, y0: at.y - LABEL_FONT * k, x1: x0 + w, y1: at.y + label.lines.length * LABEL_LINE * k };
@@ -114,5 +122,7 @@ export interface DrawingGround {
   y: number;
   lead: number;
   drop: number;
+  /** マークの大きさの倍率（無ければ1＝中。大は1.5） */
+  scale?: number;
   label?: GroundLabel;
 }

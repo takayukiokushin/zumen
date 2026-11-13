@@ -23,8 +23,8 @@ import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
 import { addExtraCross, addLayerCrossOnWire, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
-import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, CROSS_SPECS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
-import type { AreaRect, ArrowDir, CrossSize, LinkShape } from '@zumen/layout';
+import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, CROSS_SPECS, GROUND_SCALES, GROUND_SIZE_IDS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
+import type { AreaRect, ArrowDir, CrossSize, GroundSize, LinkShape } from '@zumen/layout';
 import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
@@ -117,6 +117,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const [linkShape, setLinkShape] = useState<LinkShape>('normal');
   /** 開放の×印を付けるときの大きさ（小・中・大） */
   const [crossSize, setCrossSize_] = useState<CrossSize>('M');
+  /** 接地のマークの大きさ（これから置くもの。中・大） */
+  const [groundSize, setGroundSize] = useState<GroundSize>('M');
   /** 線を引くときの種類（false＝実線、true＝点線）。埋設ケーブル・TCなどは点線 */
   const [wireDashed, setWireDashed] = useState(false);
   /** 「線を引く」の、実線・点線の窓の位置。動かした位置を覚えておく（次に開くときも、同じ位置） */
@@ -171,7 +173,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const layerCrosses = useMemo(() => (activeId !== null ? resolveCrosses(doc, activeId) : []), [doc, activeId]);
   /** レイヤーに置いた赤い接地のマーク */
   const layerGrounds = useMemo(() => (activeId !== null ? resolveGrounds(doc, activeId) : []), [doc, activeId]);
-  const sheetGrounds = useMemo(() => layerGrounds.map((g) => ({ x: g.x, y: g.y, lead: g.lead, drop: g.drop, ...(g.label ? { label: g.label } : {}) })), [layerGrounds]);
+  const sheetGrounds = useMemo(() => layerGrounds.map((g) => ({ x: g.x, y: g.y, lead: g.lead, drop: g.drop, ...(g.scale !== 1 ? { scale: g.scale } : {}), ...(g.label ? { label: g.label } : {}) })), [layerGrounds]);
   const selectedGround = locked ? (layerGrounds.find((g) => g.id === selectedId) ?? null) : null;
   /** レイヤーに置いた赤い枠 */
   const layerAreas = useMemo(() => (activeId !== null ? resolveAreas(doc, activeId) : []), [doc, activeId]);
@@ -485,7 +487,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       return;
     }
     setLayerNote(null);
-    const r = addLayerGround(d0, activeId, anchor, tx, ty);
+    const r = addLayerGround(d0, activeId, anchor, tx, ty, groundSize);
     if (!r) return;
     commitLayer(activeId, layerOf(r.doc, activeId)?.items ?? []);
     setSelectedId(r.id);
@@ -1153,6 +1155,16 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       {mode === 'ground' && locked && !sheetView && (
         <p className="mode-hint cross-hint">
           <span>{t('ground.hint')}</span>
+          <span className="cross-size-pick">
+            <span className="lbl">{t('ground.size')}</span>
+            <span className="seg" role="group" aria-label={t('ground.size')}>
+              {GROUND_SIZE_IDS.map((sz) => (
+                <button key={sz} type="button" className="btn" aria-pressed={groundSize === sz} onClick={() => setGroundSize(sz)}>
+                  {t(CROSS_LABEL[sz])}
+                </button>
+              ))}
+            </span>
+          </span>
           <button type="button" className="btn" onClick={() => setMode('select')}>
             {t('ground.done')}
           </button>
@@ -1250,6 +1262,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             mode={mode}
             crosses={layerCrosses}
             crossPreview={CROSS_SPECS[crossSize]}
+            groundScale={GROUND_SCALES[groundSize]}
             onCrossClick={toggleCross}
             onCrossWire={addCrossOnWire}
             onCrossRemove={(id) => {
@@ -1514,6 +1527,14 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               <h3>{t('editor.selected')}</h3>
               <p className="hint">{t('ground.selected')}</p>
               {selectedGround.overlaps && <p className="err">{t('ground.overlaps')}</p>}
+              <label className="lbl">{t('ground.size')}</label>
+              <div className="seg" role="group" aria-label={t('ground.size')}>
+                {GROUND_SIZE_IDS.map((sz) => (
+                  <button key={sz} type="button" className="btn" aria-pressed={selectedGround.mark === sz} onClick={() => editLayer((d) => editGround(d, activeId, selectedGround.id, { mark: sz }))}>
+                    {t(CROSS_LABEL[sz])}
+                  </button>
+                ))}
+              </div>
               <p className="hint">{t('ground.moveHint')}</p>
               <div className="cross-actions">
                 <button type="button" className="btn" aria-pressed={selectedGround.lead !== 0} onClick={() => editLayer((d) => toggleGroundLead(d, activeId, selectedGround.id))}>

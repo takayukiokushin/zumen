@@ -566,6 +566,7 @@ export const ko: Dict = {
   'layer.tool.notHere': '이 레이어에서는 선택할 수 없습니다',
   'cross.hint': '× 표시를 붙일 개폐기(PAS, VCB, LBS 등) 또는 모선(가로선)의 붙이고 싶은 위치를 클릭하세요. 중앙에 × 표시가 있는 개폐기를 다시 클릭하면 그 표시가 사라집니다. × 표시 자체를 클릭해도 사라집니다.',
   'cross.size': '× 표시 크기',
+  'ground.size': '표시 크기',
   'cross.small': '작게',
   'cross.mid': '중간',
   'cross.large': '크게',

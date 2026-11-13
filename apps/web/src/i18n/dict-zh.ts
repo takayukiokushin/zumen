@@ -564,6 +564,7 @@ export const zh: Dict = {
   'layer.tool.notHere': '此图层中无法选择',
   'cross.hint': '请点击要加×标记的开关（PAS、VCB、LBS等），或母线（横线）上想加标记的位置。再次点击中央已有×标记的开关，可取消该标记；直接点击×标记本身，也可取消。',
   'cross.size': '×标记大小',
+  'ground.size': '标记大小',
   'cross.small': '小',
   'cross.mid': '中',
   'cross.large': '大',

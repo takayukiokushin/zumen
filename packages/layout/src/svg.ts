@@ -210,7 +210,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
   }
 
   // 赤い接地のマーク
-  for (const g of drawing.grounds ?? []) body.push(groundSvg(g.x, g.y, g.lead, g.drop));
+  for (const g of drawing.grounds ?? []) body.push(groundSvg(g.x, g.y, g.lead, g.drop, g.scale !== undefined ? { scale: g.scale } : {}));
 
   // 赤い渡り線（点のほうを上にするため、点より先に描く）
   for (const k of drawing.links ?? []) body.push(linkSvg(k));

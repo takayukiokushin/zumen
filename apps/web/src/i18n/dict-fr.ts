@@ -568,6 +568,7 @@ export const fr: Dict = {
   'layer.tool.notHere': 'Impossible à sélectionner sur ce calque',
   'cross.hint': 'Cliquez sur l’appareil de coupure (PAS, VCB, LBS, etc.) à marquer, ou à l’endroit voulu du jeu de barres (ligne horizontale). Cliquez de nouveau sur un appareil dont le centre porte une marque × pour la retirer. Vous pouvez aussi cliquer sur la marque × elle-même.',
   'cross.size': 'Taille de la marque ×',
+  'ground.size': 'Taille du symbole',
   'cross.small': 'Petit',
   'cross.mid': 'Moyen',
   'cross.large': 'Grand',

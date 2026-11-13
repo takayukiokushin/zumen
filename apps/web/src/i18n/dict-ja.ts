@@ -568,6 +568,7 @@ export const ja = {
   'layer.tool.notHere': 'このレイヤーでは選択できません',
   'cross.hint': '×印を付ける開閉器（PAS・VCB・LBSなど）か、母線（横の線）の付けたい位置をクリックしてください。中央に×印が付いている開閉器を、もう一度クリックすると、その×印が外れます。×印そのものをクリックしても、外れます。',
   'cross.size': '×印の大きさ',
+  'ground.size': 'マークの大きさ',
   'cross.small': '小',
   'cross.mid': '中',
   'cross.large': '大',
