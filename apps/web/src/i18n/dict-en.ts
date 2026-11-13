@@ -715,7 +715,7 @@ export const en: Dict = {
   'layer.tool.link': 'Jumper line',
   'layer.tool.linkHelp': 'Connect red dots with an arc line. Available while a layer is selected.',
   'layer.itemLimit.link': 'You can place up to {n} jumper lines on this layer',
-  'link.hint': 'Draw jumper lines. Click the dots to connect in order (click the first dot, then the second dot, and an arc line is drawn. Click the next dot to continue from the second dot). Click an empty spot or press Esc to end the chain. Press Esc again or "Finish jumper lines" to stop.',
+  'link.hint': 'Draw jumper lines. Click the dots to connect in order (click the first dot, then the second dot, and an arc line is drawn. The line is finished there. To draw another, start again by clicking a first dot). After choosing a first dot, click an empty spot or press Esc to give up. Press Esc again or "Finish jumper lines" to leave jumper-line mode.',
   'link.done': 'Finish jumper lines',
   'link.shape': 'Arc shape',
   'link.shape.straight': 'Straight',

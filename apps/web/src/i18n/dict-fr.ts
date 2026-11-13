@@ -716,7 +716,7 @@ export const fr: Dict = {
   'layer.tool.link': 'Ligne de jonction',
   'layer.tool.linkHelp': 'Relie des points rouges par une ligne en arc. Disponible quand un calque est sélectionné.',
   'layer.itemLimit.link': 'Vous pouvez placer jusqu’à {n} lignes de jonction sur ce calque',
-  'link.hint': 'Tracez des lignes de jonction. Cliquez sur les points à relier, dans l’ordre (cliquez sur le premier point, puis sur le deuxième : un arc est tracé. Cliquez sur le point suivant pour continuer depuis le deuxième point). Cliquez dans un endroit vide ou appuyez sur Échap pour terminer la chaîne. Appuyez encore sur Échap ou sur « Terminer les lignes de jonction » pour arrêter.',
+  'link.hint': 'Tracez des lignes de jonction. Cliquez sur les points à relier, dans l’ordre (cliquez sur le premier point, puis sur le deuxième : un arc est tracé. la ligne est alors terminée. Pour en tracer une autre, recommencez en cliquant sur un premier point). Après avoir choisi un premier point, cliquez dans un endroit vide ou appuyez sur Échap pour abandonner. Appuyez encore sur Échap ou sur « Terminer les lignes de jonction » pour quitter ce mode.',
   'link.done': 'Terminer les lignes de jonction',
   'link.shape': 'Forme de l’arc',
   'link.shape.straight': 'Droite',

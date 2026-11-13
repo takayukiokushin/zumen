@@ -1171,11 +1171,13 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                 }
                 if (mode === 'link') {
                   e.stopPropagation();
-                  // 1つ目の点をクリック → 2つ目の点をクリックすると、渡り線が引かれ、2つ目の点から続けて引ける
+                  // 1つ目の点をクリック → 2つ目の点をクリックすると、渡り線が引かれ、そこで完成（選んだ点は解除する。第13弾 項目35）。
+                  // 続けて引くときは、また新しく、1つ目の点のクリックから始める
                   if (linkStart === null) setLinkStart(d0.id);
                   else if (linkStart !== d0.id) {
                     onLinkAdd?.(linkStart, d0.id);
-                    setLinkStart(d0.id);
+                    setLinkStart(null);
+                    setCursor(null);
                   }
                   return;
                 }
