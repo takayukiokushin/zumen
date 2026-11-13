@@ -108,12 +108,15 @@ export const instrumentSymbols: SymbolDef[] = [
     category: 'instrument',
     tags: ['CT二次', '試験', '端子'],
     box: { w: 52, h: 22 },
+    // 本体（角丸の長方形と2つの丸）だけ、中心（26, 11）を変えずに、縦横とも0.9倍にした
+    // （以前は 長方形が x＝6・y＝4・幅40・高さ14・角丸7、丸が x＝15・37・半径4）。線の太さは変えない。
+    // 左右の引き出し線は、接続点（箱の左右の端）から、小さくなった長方形の端まで引いて、つなぎ直した
     shapes: [
-      hline(11, 0, 6),
-      rect(6, 4, 40, 14, { rx: 7 }),
-      circle(15, 11, 4),
-      circle(37, 11, 4),
-      hline(11, 46, 52),
+      hline(11, 0, 8),
+      rect(8, 4.7, 36, 12.6, { rx: 6.3 }),
+      circle(16.1, 11, 3.6),
+      circle(35.9, 11, 3.6),
+      hline(11, 44, 52),
     ],
     ports: [
       { id: 'in', x: 0, y: 11, dir: 'left', role: 'secondary' },

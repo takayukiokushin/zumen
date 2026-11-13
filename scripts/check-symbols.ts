@@ -169,6 +169,8 @@ console.log('\n■ 接点を表す丸の大きさが揃っているか');
   // 開閉器の接点は、塗りつぶしていない小さな丸。変圧器などの大きな丸とは区別する
   const found: { id: string; r: number }[] = [];
   for (const def of SYMBOLS) {
+    // 試験端子の中の2つの丸は、開閉器の接点ではなく、端子の印。端子の本体と一緒に0.9倍にした（第13弾 項目49）ので、数えない
+    if (def.id === 'test-terminal') continue;
     for (const sh of def.shapes) {
       if (sh.k !== 'circle' || sh.fill === 'solid' || sh.r >= 8) continue;
       found.push({ id: def.id, r: sh.r });
