@@ -23,7 +23,7 @@ import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
 import { addExtraCross, addLayerCrossOnWire, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
 import type { LayerItem } from './layers.ts';
-import { AREA_LABEL_POSITIONS, ARROW_LEN_STEP, LINK_SHAPES, CROSS_SIZE_IDS, CROSS_SPECS, GROUND_SCALES, GROUND_SIZE_IDS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
+import { AREA_LABEL_POSITIONS, LINK_SHAPES, CROSS_SIZE_IDS, CROSS_SPECS, GROUND_SCALES, GROUND_SIZE_IDS, GROUND_STEP, arrowTail, groundTip } from '@zumen/layout';
 import type { AreaRect, ArrowDir, CrossSize, GroundSize, LinkShape } from '@zumen/layout';
 import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
@@ -33,10 +33,7 @@ import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, m
 /** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
 const AREA_KIND_LABEL = { outage: 'area.kind.outage', live: 'area.kind.live', applied: 'area.kind.applied' } as const;
 /** 尾の向きのボタンの並び（3×3。真ん中は、矢印の先の点なので、空ける） */
-const ARROW_DIR_GRID: (ArrowDir | null)[] = ['nw', 'n', 'ne', 'w', null, 'e', 'sw', 's', 'se'];
-const ARROW_DIR_LABEL = { nw: 'arrow.dir.nw', n: 'arrow.dir.n', ne: 'arrow.dir.ne', w: 'arrow.dir.w', e: 'arrow.dir.e', sw: 'arrow.dir.sw', s: 'arrow.dir.s', se: 'arrow.dir.se' } as const;
 /** 尾の向きのボタンに出す矢印（尾のある向き） */
-const ARROW_DIR_GLYPH: Record<ArrowDir, string> = { nw: '↖', n: '↑', ne: '↗', w: '←', e: '→', sw: '↙', s: '↓', se: '↘' };
 const LINK_SHAPE_LABEL = { straight: 'link.shape.straight', gentle: 'link.shape.gentle', normal: 'link.shape.normal', round: 'link.shape.round' } as const;
 const AREA_POS_LABEL = { tl: 'area.pos.tl', tr: 'area.pos.tr', bl: 'area.pos.bl', br: 'area.pos.br' } as const;
 
@@ -1467,31 +1464,6 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               <h3>{t('editor.selected')}</h3>
               <p className="hint">{t('arrow.selected')}</p>
               <p className="hint">{t('arrow.moveHint')}</p>
-              <label className="lbl">{t('arrow.dir')}</label>
-              <div className="seg arrow-dirs" role="group" aria-label={t('arrow.dir')}>
-                {ARROW_DIR_GRID.map((dir, i) => dir === null ? <span key={`gap${i}`} aria-hidden="true" /> : (
-                  <button
-                    key={dir}
-                    type="button"
-                    className="btn"
-                    aria-pressed={selectedArrow.dir === dir}
-                    aria-label={t(ARROW_DIR_LABEL[dir])}
-                    title={t(ARROW_DIR_LABEL[dir])}
-                    onClick={() => editLayer((d) => editArrow(d, activeId, selectedArrow.id, { dir }))}
-                  >
-                    {ARROW_DIR_GLYPH[dir]}
-                  </button>
-                ))}
-              </div>
-              <label className="lbl">{t('arrow.len')}</label>
-              <div className="cross-actions">
-                <button type="button" className="btn" onClick={() => editLayer((d) => editArrow(d, activeId, selectedArrow.id, { len: selectedArrow.len - ARROW_LEN_STEP }), `alen:${selectedArrow.id}`)}>
-                  {t('ground.shorter')}
-                </button>
-                <button type="button" className="btn" onClick={() => editLayer((d) => editArrow(d, activeId, selectedArrow.id, { len: selectedArrow.len + ARROW_LEN_STEP }), `alen:${selectedArrow.id}`)}>
-                  {t('ground.longer')}
-                </button>
-              </div>
               <label className="lbl">{t('arrow.label')}</label>
               <p className="hint">{t('arrow.labelHelp')}</p>
               <textarea
