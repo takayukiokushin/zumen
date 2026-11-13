@@ -7,7 +7,7 @@ import { rebuildWithOverrides } from '../../apps/web/src/editor/overrides.ts';
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildComposition } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
-import { rotatedBox, findLabelCollisions, layout } from '../../packages/layout/src/index.ts';
+import { rotatedBox, findLabelCollisions, labelRect, layout } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { SHRINK, scaleLayout } from '../../apps/web/src/editor/layoutScale.ts';
@@ -135,6 +135,12 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
     const viaZpd = w.some((x) => x.at1?.item === zpd.id || x.at2?.item === zpd.id);
     if (!viaZpd) problems.push('ZPDの出口に線がありません');
     if (!w.some((x) => x.at1?.item === dgr.id || x.at2?.item === dgr.id)) problems.push('DGRに線がつながっていません');
+    // 編集画面でPCSを足したときも、文字の初めの位置は同じ（四角の真横・上の辺）
+    {
+      const added = addSymbol({ items: [] } as Doc, 'pcs', 100, 100);
+      const ps = added.doc.items.find((it): it is DocSymbol => it.kind === 'symbol')!;
+      if (Math.abs(ps.labelDx - (47 + 10)) > 0.5 || Math.abs(ps.labelDy - (10 + 8.5)) > 0.5) problems.push(`編集画面で足したPCSの文字の位置が違います（${ps.labelDx}, ${ps.labelDy}）`);
+    }
     const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
     if (issues.length) problems.push(`図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);
     if (problems.length) fail(`${name}：${problems.join('、')}`);
@@ -167,6 +173,10 @@ console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
       const linked = wiresAll.some((w) => w.x1 === w.x2 && Math.abs(w.x1 - (p.x + 28)) < 0.5 && Math.abs(Math.min(w.y1, w.y2) - (p.y + 38)) < 0.5 && Math.abs(Math.max(w.y1, w.y2) - v.y) < 0.5);
       if (!linked) problems.push(`${p.id} と ${v.id} が、線でつながっていません`);
       if (v.label.join('|') !== 'PV') problems.push(`PVの文字が違います（${v.label.join('|')}）`);
+      // PCSの文字は、四角（x＝9〜47、上の辺 y＝10）の真横に、四角の上の辺へ文字の上端をそろえて置く（第13弾 項目43）
+      const lr = labelRect({ x: p.x + p.labelDx, y: p.y + p.labelDy, anchor: p.labelAnchor }, p.label);
+      if (Math.abs(lr.y0 - (p.y + 10)) > 0.5) problems.push(`${p.id} の文字の上端が、四角の上の辺とそろっていません（差 ${(lr.y0 - (p.y + 10)).toFixed(1)}）`);
+      if (lr.x0 < p.x + 47 || lr.x0 > p.x + 47 + 20) problems.push(`${p.id} の文字が、四角の真横にありません（四角の右端から ${(lr.x0 - (p.x + 47)).toFixed(1)}）`);
     }
     const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
     if (issues.length) problems.push(`図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);

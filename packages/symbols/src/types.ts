@@ -106,6 +106,13 @@ export interface SymbolDef {
   /** 記号の脇に既定で表示する文字 */
   defaultLabel?: string;
   /**
+   * 文字を横に置くときの基準になる、記号の「本体の枠」（記号のローカル座標）。
+   * 見えている枠が、記号の外形（box）より小さいとき（PCSなど）に指定する。
+   * 文字は、この枠の真横（すき間 gap）に、枠の上の辺へ文字の上端をそろえて置く。
+   * 無ければ、box の端から gap、上から10の高さ（文字の基準線）に置く。
+   */
+  labelBody?: { x0: number; x1: number; top: number };
+  /**
    * 編集画面で記号を足したときに、最初から記号の脇へ出す文字の雛形（1行ずつ）。
    * {キー} は fields の入力値に置き換わる。値が空のところは単位などの文字だけが残る
    * （例：「{ratedCurrent}A」→「A」。あとから数字を入れると「100A」になる）。
@@ -200,4 +207,15 @@ export function fillLabelLines(def: SymbolDef, values: Record<string, string>): 
   return (def.labelLines ?? [])
     .map((line) => line.replace(/\{(\w+)\}/g, (_, key: string) => text(key)))
     .filter((line) => line.trim() !== '');
+}
+
+/**
+ * 記号の横に文字を置くときの、最初の位置（記号のローカル座標。回していない記号の場合）。
+ * 本体の枠（labelBody）があれば、その真横に、枠の上の辺へ文字の上端をそろえる（ascent は、文字の上端から基準線までの高さ）。
+ * 無ければ、外形（box）の端から gap、上から10の高さ。
+ */
+export function sideLabelOrigin(def: SymbolDef, side: 'right' | 'left', gap: number, ascent: number): { x: number; y: number } {
+  const b = def.labelBody;
+  if (!b) return { x: side === 'right' ? def.box.w + gap : -gap, y: 10 };
+  return { x: side === 'right' ? b.x1 + gap : b.x0 - gap, y: b.top + ascent };
 }

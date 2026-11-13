@@ -1,4 +1,4 @@
-import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sizedSymbol } from '@zumen/symbols';
+import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sideLabelOrigin, sizedSymbol } from '@zumen/symbols';
 import type { SizeRange, SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
 import type { DrawingLayout, Orientation } from '@zumen/layout';
@@ -1033,8 +1033,9 @@ export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { d
     y: snap(y - def.box.h / 2),
     rotate: 0,
     ...labelFromFields(def),
-    labelDx: def.box.w + 10,
-    labelDy: 10,
+    // 本体の枠（labelBody）があれば、その真横に、枠の上の辺へ文字の上端をそろえる
+    labelDx: sideLabelOrigin(def, 'right', 10, LABEL_FONT * 0.85).x,
+    labelDy: sideLabelOrigin(def, 'right', 10, LABEL_FONT * 0.85).y,
     labelAnchor: 'start',
   };
   return { doc: { ...doc, items: [...doc.items, item] }, id };

@@ -1,4 +1,4 @@
-import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol } from '@zumen/symbols';
+import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol, sideLabelOrigin } from '@zumen/symbols';
 import type { Port, RectShape, SymbolDef } from '@zumen/symbols';
 import { ROW, ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
@@ -108,6 +108,8 @@ const BRANCH_GAP = 26;
 const BRANCH_OFFSET = 34;
 /** 記号と、その脇に書く文字の間隔 */
 const LABEL_GAP = 10;
+/** 文字の上端から基準線までの高さ（labelRect と同じ値） */
+const LABEL_ASCENT = LABEL_FONT * 0.85;
 /** 枠の左右の広がり */
 const FRAME_HALF = 200;
 /** 低圧の回線どうしの間隔 */
@@ -201,10 +203,13 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       y: yy,
       rotate,
       label: item.label,
-      labelAt:
-        labelSide === 'right'
-          ? { x: x + def.box.w + LABEL_GAP, y: yy + 10, anchor: 'start' }
-          : { x: x - LABEL_GAP, y: yy + 10, anchor: 'end' },
+      labelAt: (() => {
+        // 回していない記号は、本体の枠（labelBody）の真横に、枠の上の辺へ文字の上端をそろえる
+        const o = rotate === 0 ? sideLabelOrigin(def, labelSide, LABEL_GAP, LABEL_ASCENT) : null;
+        return labelSide === 'right'
+          ? { x: x + (o ? o.x : def.box.w + LABEL_GAP), y: yy + (o ? o.y : 10), anchor: 'start' as const }
+          : { x: x + (o ? o.x : -LABEL_GAP), y: yy + (o ? o.y : 10), anchor: 'end' as const };
+      })(),
     };
     symbols.push(sym);
     placed.set(item.role, { sym, def });
@@ -1124,7 +1129,10 @@ function avoidLabelCollisions(symbols: PlacedSymbol[], wires: Wire[], frames: Fr
       for (const w of wires) if (segmentHitsRect(w, r)) n++;
       for (const w of frameLines) if (segmentHitsRect(w, r)) n++;
       for (const b of boxes) if (b.id !== s.id && rectsOverlap(r, b.rect)) n++;
-      if (rectsOverlap(r, boxes.find((b) => b.id === s.id)!.rect)) n++;
+      // 自分の記号とは、本体の枠（labelBody）があればその枠で、重なりを見る（外形より内側にあるため）
+      const own = boxes.find((b) => b.id === s.id)!.rect;
+      const ownRect = def.labelBody && s.rotate === 0 ? { ...own, x0: s.x + def.labelBody.x0, x1: s.x + def.labelBody.x1 } : own;
+      if (rectsOverlap(r, ownRect)) n++;
       for (const p of placed) if (rectsOverlap(r, grow(p, 1))) n++;
       return n;
     };
@@ -1143,8 +1151,8 @@ function avoidLabelCollisions(symbols: PlacedSymbol[], wires: Wire[], frames: Fr
     if (originalAt.anchor !== 'middle') {
       const flipped =
         originalAt.anchor === 'start'
-          ? { x: s.x + rb.dx - 10, anchor: 'end' as const }
-          : { x: s.x + rb.dx + rb.w + 10, anchor: 'start' as const };
+          ? { x: s.x + (s.rotate === 0 ? sideLabelOrigin(def, 'left', 10, 0).x : rb.dx - 10), anchor: 'end' as const }
+          : { x: s.x + (s.rotate === 0 ? sideLabelOrigin(def, 'right', 10, 0).x : rb.dx + rb.w + 10), anchor: 'start' as const };
       candidates.push({ at: { ...originalAt, ...flipped }, cost: 40 });
       for (const dy of shifts) {
         candidates.push({ at: { ...originalAt, ...flipped, y: originalAt.y + dy }, cost: 40 + Math.abs(dy) });

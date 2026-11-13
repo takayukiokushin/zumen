@@ -362,7 +362,7 @@
       <rect x="9" y="10" width="38" height="28" fill="none" stroke-width="1" />
       <text x="28" y="24" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">PCS</text>
     </g>
-    <text x="-522" y="1124.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-522" dy="0">50kW×1台</tspan></text>
+    <text x="-531" y="1133" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-531" dy="0">50kW×1台</tspan></text>
     <g transform="translate(-589 1168.5)">
       <line x1="29" y1="0" x2="29" y2="12" stroke-width="1" />
       <polygon points="10,34 22,12 48,12 36,34" fill="none" stroke-width="1" />
@@ -376,7 +376,7 @@
       <rect x="9" y="10" width="38" height="28" fill="none" stroke-width="1" />
       <text x="28" y="24" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">PCS</text>
     </g>
-    <text x="438" y="1124.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="438" dy="0">50kW×1台</tspan></text>
+    <text x="429" y="1133" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="429" dy="0">50kW×1台</tspan></text>
     <g transform="translate(371 1168.5)">
       <line x1="29" y1="0" x2="29" y2="12" stroke-width="1" />
       <polygon points="10,34 22,12 48,12 36,34" fill="none" stroke-width="1" />
