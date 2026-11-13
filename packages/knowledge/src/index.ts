@@ -5,3 +5,4 @@ export * from './questions.ts';
 export * from './composition.ts';
 export * from './engine.ts';
 export * from './reverse.ts';
+export * from './trends.ts';

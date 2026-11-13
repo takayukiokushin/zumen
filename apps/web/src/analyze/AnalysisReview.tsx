@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { QUESTIONS } from '@zumen/knowledge';
+import { QUESTIONS, baseQuestionId } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult, ReviewItem } from '@zumen/ai';
 import { useT, useTx } from '../i18n/useT.ts';
 import { translateReviewText } from '../session/serverMessages.ts';
+import { TrendHint } from '../TrendHint.tsx';
+import { useTrends } from '../trends.ts';
 
 /**
  * AIの読み取り結果を、人が確認して、採用するものだけを反映する画面。
@@ -53,6 +55,8 @@ export function AnalysisReview({
   const t = useT();
   const tx = useTx();
   const notesTitle = notesLabel ?? t('revui.notes');
+  // 過去の傾向：自信がない項目に、参考として添える（読み取った値が最優先。傾向で、値は変えない）
+  const trends = useTrends(typeof result.answers.sourceType === 'string' ? result.answers.sourceType : undefined);
   // 自信がある項目は、最初からチェックを入れておく
   const [chosen, setChosen] = useState<Record<string, boolean>>(() => {
     const uncertain = new Set(result.uncertain);
@@ -118,7 +122,10 @@ export function AnalysisReview({
                       {labelOf(id, t, tx)}
                       {result.uncertain.includes(id) && <span className="warn-tag">{t('revui.unsureTag')}</span>}
                     </td>
-                    <td>{displayValue(id, v, tx)}</td>
+                    <td>
+                      {displayValue(id, v, tx)}
+                      {result.uncertain.includes(id) && trends[baseQuestionId(id)] && <TrendHint questionId={baseQuestionId(id)} entry={trends[baseQuestionId(id)]!} />}
+                    </td>
                     <td className="ev">{result.evidence[id] ?? ''}</td>
                   </tr>
                 ))}

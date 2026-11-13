@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import type { Question } from '@zumen/knowledge';
+import type { Question, TrendEntry } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import { evaluate, limitCountText, MAX_TEXT_LENGTH } from '@zumen/knowledge';
 import { useT, useTx } from './i18n/useT.ts';
 import { useSettings } from './settings/settings.tsx';
+import { TrendHint } from './TrendHint.tsx';
 
 interface Props {
   question: Question;
@@ -16,6 +17,8 @@ interface Props {
    * 繰り返しの2件目以降は、その件だけの答え。無ければ、選択肢はすべて出す
    */
   context?: Answers;
+  /** 過去の案件の傾向（第13弾 項目51）。まだ答えていないときだけ、参考として出す */
+  trend?: TrendEntry;
 }
 
 /** 手入力に切り替えるための、一覧の中の特別な値 */
@@ -84,7 +87,7 @@ function asButtons(q: Question, show: (s: string) => string): boolean {
 }
 
 /** 選択肢が3つ以下で短ければ押しボタン、それ以外はプルダウンにする */
-export function Field({ question: question, fieldKey, value, onChange, context }: Props) {
+export function Field({ question: question, fieldKey, value, onChange, context, trend }: Props) {
   // 選択肢に出す条件（Choice.showIf）がある質問は、いまの答えで出すものを絞る
   const q = context && question.options?.some((o) => o.showIf)
     ? { ...question, options: question.options.filter((o) => evaluate(o.showIf, context)) }
@@ -203,6 +206,8 @@ export function Field({ question: question, fieldKey, value, onChange, context }
       )}
 
       {q.help && !hideHelp && <p className="help" title={tx(q.help)}>{tx(q.help)}</p>}
+      {/* 過去の傾向：まだ答えていないときだけ。押すと、その答えになる（自動では入れない） */}
+      {trend && value === undefined && q.type === 'select' && <TrendHint questionId={q.id} entry={trend} onAdopt={(v) => set(v)} />}
     </div>
   );
 }

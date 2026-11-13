@@ -20,6 +20,7 @@ export const AREAS_QUESTIONS: Question[] = [
   /* ---------------- エリア間の接続（2か所目以降のエリアごとに持つ。入力画面では、送り出す側のエリアの欄に出す） ---------------- */
   {
     id: 'linkFrom',
+    noTrend: true,
     group: 'link',
     label: 'どのエリアから分岐しますか？',
     type: 'select',

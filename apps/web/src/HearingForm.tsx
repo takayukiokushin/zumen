@@ -3,6 +3,7 @@ import { areaCountOf, countOf, maxCountOf, areaKey, areaView, dropHiddenChoices,
 import type { Answers, Question, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 import { useT, useTx } from './i18n/useT.ts';
+import { useTrends } from './trends.ts';
 
 /**
  * 事前ヒアリングのフォーム。
@@ -47,6 +48,8 @@ interface Block {
 export function HearingForm({ answers, effective, onChange, showNav = true, sketchRead = false }: Props) {
   const t = useT();
   const tx = useTx();
+  /** 過去の案件の傾向（参考表示）。同じ受電の形の案件で数える */
+  const trends = useTrends(typeof effective.sourceType === 'string' ? effective.sourceType : undefined);
   /** スケッチから読み取れた前提で、質問がどれだけ減るかを確かめる切り替え */
   const [aiAssist, setAiAssist] = useState(false);
 
@@ -197,7 +200,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
       context = viewAt(views[r.area]!, r.unit);
       unitViews.set(cacheKey, context);
     }
-    return <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={context} />;
+    return <Field key={r.key} question={r.question} fieldKey={r.key} value={answers[r.key]} onChange={set} context={context} trend={trends[r.question.id]} />;
   };
 
   /**

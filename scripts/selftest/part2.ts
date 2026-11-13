@@ -10,7 +10,7 @@ import { say, check, dataDir, backupDir } from './common.ts';
 import type { part1 } from './part1.ts';
 
 export async function part2(c: Awaited<ReturnType<typeof part1>>) {
-  const { login, login2, call, a, b, tryLogin } = c;
+  const { login, login2, call, a, b, tryLogin, base } = c;
   /* ---------- 6. 案件の保存と呼び出し ---------- */
   say('\n■ 案件の保存と呼び出し');
   const created = (await (
@@ -206,6 +206,36 @@ export async function part2(c: Awaited<ReturnType<typeof part1>>) {
   check('練習用の消した案件は、本人のごみ箱に出る', (await trashIds(renshu)).includes(renshuMade.id));
   check('他の人は、練習用の消した案件を戻せない', (await call(a, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).status === 404);
   check('練習用は、自分の消した案件を戻せる', (await call(renshu, `/api/projects/${renshuMade.id}/restore`, { method: 'POST' })).ok);
+
+  // 過去の案件の傾向（第13弾 項目51）：件数が足りないうちは出さない。足りたら、件数と割合のもとだけを返す
+  {
+    const getTrends = async (who: typeof a, qs = '') => (await (await call(who, `/api/trends${qs}`)).json()) as { min: number; projects: number; trends: Record<string, { scope: string; total: number; top: { value: string; count: number }[] }> };
+    const before = await getTrends(a);
+    check('傾向：案件が少ないうちは、hasPv の傾向が出ない', before.trends.hasPv === undefined, JSON.stringify(before.trends.hasPv));
+    const madeIds: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      // 12件のうち、9件は太陽光あり、3件は太陽光なし。お客様の名前は、案件ごとに違う
+      const r = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: `傾向の試験${i}`, answers: { siteName: `お客様${i}`, sourceType: 'pole', hasPv: i < 9 ? 'yes' : 'no', hasPas: 'bogus値' } }) })).json()) as { id: string };
+      madeIds.push(r.id);
+    }
+    const after = await getTrends(a, '?context=pole');
+    const pv = after.trends.hasPv;
+    check('傾向：12件そろうと、hasPv の傾向が出る（9件が「あり」）', Boolean(pv) && pv!.total >= 12 && pv!.top[0]?.value === 'yes' && pv!.top[0]!.count >= 9, JSON.stringify(pv));
+    check('傾向：同じ受電の形（pole）の案件で数えている', pv?.scope === 'context', pv?.scope);
+    check('傾向：一覧にない値（bogus値）は、数えない', !JSON.stringify(after.trends).includes('bogus'), '');
+    const raw = JSON.stringify(after);
+    check('傾向：案件の名前・お客様の名前は、返さない', !raw.includes('傾向の試験') && !raw.includes('お客様'), '');
+    check('傾向：手で入力する項目（お客様名称など）は、対象にならない', after.trends.siteName === undefined, '');
+    const others = await getTrends(a, '?context=nothing-like-this');
+    check('傾向：同じ受電の形が足りないときは、全案件で数える', others.trends.hasPv?.scope === 'all', others.trends.hasPv?.scope);
+    const renshuTrends = await getTrends(renshu);
+    check('傾向：練習用のアカウントには、返さない', Object.keys(renshuTrends.trends).length === 0, `${Object.keys(renshuTrends.trends).length}`);
+    const anon = await fetch(`${base}/api/trends`);
+    check('傾向：ログインしていないと、見られない', anon.status === 401, `${anon.status}`);
+    for (const id of madeIds) await call(a, `/api/projects/${id}`, { method: 'DELETE' });
+    const gone = await getTrends(a);
+    check('傾向：消した案件は、数えない（ごみ箱の案件は、傾向に入らない）', gone.trends.hasPv === undefined || gone.trends.hasPv.total < 12, JSON.stringify(gone.trends.hasPv));
+  }
 
   // 受電設備エリアが2か所以上：2か所目の答え（a2:〜）も、そのまま保存して読み出せる
   {

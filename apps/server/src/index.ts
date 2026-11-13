@@ -14,6 +14,7 @@ import { startAutoBackup } from './backup.ts';
 import { currentUser, login, logout, purgeExpiredSessions, requireAuth, LOCK_MS, MAX_FAILS, WARN_FROM } from './auth.ts';
 import type { User } from './auth.ts';
 import { projects, purgeExpiredTrash, purgeOldDrafts, purgeStrayFiles } from './projects.ts';
+import { trends } from './trends.ts';
 import { admin } from './admin.ts';
 import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
@@ -92,6 +93,7 @@ app.get('/api/auth/me', (c) => {
 /* ---------------- 案件 ---------------- */
 
 app.route('/api/projects', projects);
+app.route('/api/trends', trends);
 app.route('/api/admin', admin);
 
 /* ---------------- 解析 ---------------- */

@@ -28,6 +28,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
   { id: 'batteryCapacity', group: 'special', label: '蓄電ユニットの規模', type: 'text', showIf: { key: 'hasBattery', eq: 'yes' }, ask: 'always' },
   {
     id: 'batteryTransformer',
+    noTrend: true,
     group: 'special',
     label: '蓄電池ユニットは、どの変圧器につなぎますか？',
     type: 'select',
@@ -54,6 +55,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
   },
   {
     id: 'auxTrFrom',
+    noTrend: true,
     group: 'auxtr',
     label: 'どの変圧器の低圧側につなぎますか？',
     type: 'select',
@@ -157,6 +159,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
 
   {
     id: 'generatorTransformer',
+    noTrend: true,
     group: 'generator',
     label: 'この発電機は、どの変圧器につなぎますか？',
     type: 'select',
@@ -231,6 +234,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
   },
   {
     id: 'motorSourceTr',
+    noTrend: true,
     group: 'motor', section: '接続元',
     label: '何台目の変圧器の二次側ですか？',
     type: 'select',

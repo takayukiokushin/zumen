@@ -125,6 +125,13 @@ section.group > header .badge { margin-left: auto; font-size: calc(11px * var(--
   padding: 7px 10px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px; width: 100%; }
 .field input:focus-visible, .field select:focus-visible, .toggle:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .field .help { font-size: calc(11px * var(--text-scale)); color: var(--muted); }
+/* 過去の傾向（第13弾 項目51）：入力欄の下の、小さな参考表示。押すと、その答えになる */
+.trend { margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: calc(11px * var(--text-scale)); color: var(--muted); }
+.trend-title { white-space: nowrap; }
+.trend-chip { font: inherit; font-size: calc(11px * var(--text-scale)); color: var(--accent-text); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px; padding: 1px 8px; cursor: pointer; min-height: 0; }
+.trend-chip.plain { cursor: default; }
+button.trend-chip:hover { text-decoration: underline; }
+.trend-scope { white-space: nowrap; }
 .field .share { font-size: calc(11px * var(--text-scale)); color: var(--muted); }
 .radio-row { display: flex; flex-wrap: wrap; gap: var(--gap, 10px); }
 .radio-row button { padding: 6px 12px; background: var(--field); border: 1px solid var(--control-border); border-radius: 2px; cursor: pointer; font-size: calc(13px * var(--ctl-scale)); }

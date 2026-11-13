@@ -1,4 +1,4 @@
-import type { Answers } from '@zumen/knowledge';
+import type { Answers, TrendEntry } from '@zumen/knowledge';
 import type { Doc } from '../editor/doc.ts';
 import { describeFailure, isGateway, networkTimeout } from './messages.ts';
 import { CALL_TIMEOUT_MS } from './timing.ts';
@@ -239,6 +239,9 @@ export const api = {
   /** サーバーの状態。手書きメモの読み取りが使えるかどうかもここで分かる */
   health: () => call<{ ok: true; hasApiKey: boolean; userCount: number; version?: string; webBuild?: string | null }>('/api/health'),
   me: () => call<{ user: User | null }>('/api/auth/me'),
+  /** 過去の案件の傾向（質問ごとの、選択肢の件数）。context：いまの案件の受電の形 */
+  trends: (context?: string) =>
+    call<{ min: number; projects: number; trends: Record<string, TrendEntry> }>(`/api/trends${context ? `?context=${encodeURIComponent(context)}` : ''}`),
   /**
    * 手書きメモの読み取り。通信の失敗も、ほかの呼び出しと同じ言葉で伝える。
    * 「頼む」と「結果を受け取る」を分けてある（サーバー側は apps/server/src/analyze-jobs.ts）。

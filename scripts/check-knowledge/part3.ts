@@ -2,7 +2,7 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields } from '../../packages/knowledge/src/index.ts';
+import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
@@ -828,4 +828,33 @@ console.log('\n■ 想定外の値（大きすぎる台数・名前の表にな�
     }
   }
   if (state.failed === 0) console.log('  件数は上限におさまる（エリア30・変圧器100・コンデンサ100・PCS100、ほか50）／大きな台数・エリア数でも、すぐ終わる／constructor などの文字を入れても、落ちず、おかしな文字も出ない');
+}
+
+/* ---------- 過去の案件の傾向（第13弾 項目51） ---------- */
+console.log('\n■ 過去の案件の傾向');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  // 対象の質問：選択肢から選ぶもの。手入力・AIに渡さない項目・「傾向に使わない」印は除く
+  const bad = QUESTIONS.filter((q) => TREND_QUESTION_IDS.has(q.id) && (q.type !== 'select' || q.manualOnly || q.noAi || q.noTrend || q.allowFreeInput));
+  ok(bad.length === 0, `傾向の対象に、対象外の質問が入っています：${bad.map((q) => q.id).join('・')}`);
+  ok(TREND_QUESTION_IDS.size >= 40, `傾向の対象が少なすぎます（${TREND_QUESTION_IDS.size}個）`);
+  ok(!TREND_QUESTION_IDS.has('siteName') && !TREND_QUESTION_IDS.has('drawingName'), 'お客様名称・図面名称が、傾向の対象になっています');
+  ok(QUESTIONS.filter((q) => q.noTrend).every((q) => !isTrendQuestion(q)), '「傾向に使わない」印のある質問が、対象になっています');
+  ok(baseQuestionId('a2:hasPv') === 'hasPv' && baseQuestionId('relayType__3') === 'relayType' && baseQuestionId('a3:relayType__2') === 'relayType', '保存したキーから、基本の質問の id を取り出せません');
+  const mk = (n: number, v: (i: number) => string, extra: Answers = {}): Answers[] => Array.from({ length: n }, (_, i) => ({ hasPv: v(i), ...extra }) as Answers);
+  // 件数が足りないうちは出さない
+  ok(tallyTrends(mk(TREND_MIN_COUNT - 1, () => 'yes')).hasPv === undefined, `${TREND_MIN_COUNT - 1}件では、傾向を出さないはずです`);
+  const t = tallyTrends(mk(12, (i) => (i < 9 ? 'yes' : 'no')));
+  ok(t.hasPv?.total === 12 && t.hasPv.top[0]?.value === 'yes' && t.hasPv.top[0].count === 9 && t.hasPv.top[1]?.value === 'no', `傾向の数え方が違います（${JSON.stringify(t.hasPv)}）`);
+  // 受電の形が同じ案件で足りるときは、その案件で数える。足りないときは、全案件で数える
+  const mixed = [...mk(10, () => 'yes', { sourceType: 'pole' }), ...mk(10, () => 'no', { sourceType: 'cabinet' })];
+  ok(tallyTrends(mixed, 'pole').hasPv?.scope === 'context' && tallyTrends(mixed, 'pole').hasPv?.top[0]?.value === 'yes', '同じ受電の形の案件で数えていません');
+  ok(tallyTrends(mixed, 'ground').hasPv?.scope === 'all', '同じ受電の形が足りないとき、全案件で数えていません');
+  // 一覧にない値・空の答えは数えない
+  const dirty = [...mk(10, () => 'yes'), ...mk(5, () => 'bogus'), ...mk(5, () => '')];
+  ok(tallyTrends(dirty).hasPv?.total === 10, `一覧にない値・空の答えを数えています（${tallyTrends(dirty).hasPv?.total}）`);
+  // 結果に、案件の中身（お客様の名前など）が入らない
+  const named = mk(12, () => 'yes', { siteName: '秘密のお客様' });
+  ok(!JSON.stringify(tallyTrends(named)).includes('秘密'), '傾向の結果に、お客様の名前が入っています');
+  if (state.failed === 0) console.log(`  対象 ${TREND_QUESTION_IDS.size}問（選択肢から選ぶ質問だけ）／${TREND_MIN_COUNT}件に満たないうちは出さない／受電の形が同じ案件→足りなければ全案件／一覧にない値は数えない／お客様の名前は結果に入らない`);
 }
