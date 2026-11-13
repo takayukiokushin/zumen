@@ -7,6 +7,13 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'source', label: '引込元', description: '電力会社所有の電柱' },
   { id: 'boundary', label: '責任分界点' },
   { id: 'pas', label: '区分開閉器' },
+  {
+    // 区分開閉器も地上キャビネットも無いときだけ出す
+    id: 'precable',
+    label: '引込点〜責任分界点のケーブル',
+    description: '区分開閉器・地上キャビネットが、どちらも無いとき',
+    showIf: { all: [{ key: 'sectionalizer', eq: 'none' }, { key: 'groundCabinet', eq: 'no' }] },
+  },
   { id: 'vct', label: 'VCT（計器用変成器）' },
   { id: 'cable', label: '引込ケーブル' },
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },

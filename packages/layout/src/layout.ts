@@ -562,7 +562,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     /* ---- 主回路（直列） ---- */
     if (item.kind === 'series') {
       // 受電側のケーブル端末は180°回して頂点をケーブル側に向ける
-      const rotate = item.role === 'cable-head-site' ? 180 : 0;
+      const rotate = item.role === 'cable-head-site' || item.role === 'pre-cable-site' ? 180 : 0;
       const inPort = portOf(def, 'in');
       const outPort = portOf(def, 'out') ?? portOf(def, 'sec');
       // 180°回すと上下が入れ替わるので、入口と出口も入れ替える

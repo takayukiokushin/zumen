@@ -24,6 +24,17 @@ export const MIXED_V: Condition = {
 /** 結線方式が三巻線変圧器のとき（容量を、一次・二次・三次の巻線ごとに聞く） */
 export const THREE_WINDING: Condition = { key: 'trConnection', in: ['tr-3w-yyd', 'tr-3w-ddy'] };
 
+/**
+ * ケーブルの入力項目の、共通の選択肢（引込ケーブル・エリア間のケーブル・引込点〜責任分界点のケーブルで、すべて同じ様式にする）。
+ * 定格電圧の初期値は6600V、構造の初期値はCVT。
+ */
+export const CABLE_VOLTAGE_OPTIONS: Choice[] = [3300, 6600, 22000, 33000].map((v) => ({ value: String(v), label: `${v}V` }));
+export const CABLE_CROSS_SECTION_OPTIONS: Choice[] = [14, 22, 38, 60, 100, 150].map((v) => ({ value: String(v), label: `${v} mm2` }));
+export const CABLE_STRUCTURE_OPTIONS: Choice[] = [
+  { value: 'CVT', label: 'CVT' },
+  { value: 'CV', label: 'CV' },
+];
+
 /** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
 export const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
 

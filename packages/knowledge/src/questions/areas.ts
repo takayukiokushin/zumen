@@ -1,6 +1,6 @@
 import type { Question } from './types.ts';
 import type { Condition } from '../condition.ts';
-import { SENDOUT_SHOWN, YES_NO_Q } from './common.ts';
+import { CABLE_CROSS_SECTION_OPTIONS, CABLE_STRUCTURE_OPTIONS, CABLE_VOLTAGE_OPTIONS, SENDOUT_SHOWN, YES_NO_Q } from './common.ts';
 
 /** 質問の定義：表題欄、他のエリアへの送り出し、エリア間の接続 */
 export const AREAS_QUESTIONS: Question[] = [
@@ -151,10 +151,7 @@ export const AREAS_QUESTIONS: Question[] = [
     group: 'link',
     label: 'ケーブルの構造は？',
     type: 'select',
-    options: [
-      { value: 'CVT', label: 'CVT' },
-      { value: 'CV', label: 'CV' },
-    ],
+    options: CABLE_STRUCTURE_OPTIONS,
     defaultValue: 'CVT',
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
     ask: 'always',
@@ -167,7 +164,7 @@ export const AREAS_QUESTIONS: Question[] = [
     type: 'select',
     dropdown: true,
     unit: 'V',
-    options: [3300, 6600, 22000, 33000].map((v) => ({ value: String(v), label: `${v}V` })),
+    options: CABLE_VOLTAGE_OPTIONS,
     defaultValue: '6600',
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
     ask: 'always',
@@ -178,7 +175,7 @@ export const AREAS_QUESTIONS: Question[] = [
     label: '断面積は？',
     type: 'select',
     unit: 'mm2',
-    options: [14, 22, 38, 60, 100, 150].map((v) => ({ value: String(v), label: `${v} mm2` })),
+    options: CABLE_CROSS_SECTION_OPTIONS,
     allowFreeInput: true,
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
     ask: 'always',

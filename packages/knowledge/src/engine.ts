@@ -421,29 +421,26 @@ export function withDerived(rawAnswers: Answers): Answers {
   /** PCSをどこかの変圧器につないだか（つないでいなければ太陽光は結線せずに置く） */
   d.pcsAssigned = answers.hasPv === 'yes' && perTransformer.some((v) => v.length > 0) ? 'yes' : 'no';
 
-  // ケーブルの注記（3行目：定格電圧 断面積 長さ。長さ不明は「- m」）
+  // ケーブルの注記（3行目：定格電圧 断面積 長さ）。引込ケーブル・エリア間のケーブル・引込点〜責任分界点のケーブルは、すべて同じ書き方
+  //   長さ不明は「- m」。実測でないときは「約20m」（現場で歩測しただけ、という場面が多い）
+  const cableSpec = (voltage: unknown, crossSection: unknown, length: unknown, approx: unknown): string =>
+    [
+      voltage ? `${voltage}V` : '',
+      crossSection ? `${crossSection}mm2` : '',
+      length === undefined || length === null || length === '' ? '- m' : `${approx === 'yes' ? '約' : ''}${length}m`,
+    ]
+      .filter(Boolean)
+      .join(' ');
   d.cableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.cableInstallation)) ?? '';
-  const third = [
-    answers.cableVoltage ? `${answers.cableVoltage}V` : '',
-    answers.cableCrossSection ? `${answers.cableCrossSection}mm2` : '',
-    answers.cableLength === undefined || answers.cableLength === null || answers.cableLength === ''
-      ? '- m'
-      // 実測でないときは「約20m」と書く（現場で歩測しただけ、という場面が多い）
-      : `${answers.cableLengthApprox === 'yes' ? '約' : ''}${answers.cableLength}m`,
-  ].filter(Boolean);
-  d.cableSpecLine = third.join(' ');
+  d.cableSpecLine = cableSpec(answers.cableVoltage, answers.cableCrossSection, answers.cableLength, answers.cableLengthApprox);
 
-  // 2か所目以降のエリアの、前のエリアからのケーブルの注記（種類・構造・定格電圧 断面積 長さ）。引込ケーブルと同じ書き方
+  // 2か所目以降のエリアの、前のエリアからのケーブルの注記
   d.linkCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.linkCableInstallation)) ?? '';
-  d.linkCableSpecLine = [
-    answers.linkCableVoltage ? `${answers.linkCableVoltage}V` : '',
-    answers.linkCableCrossSection ? `${answers.linkCableCrossSection}mm2` : '',
-    answers.linkCableLength === undefined || answers.linkCableLength === null || answers.linkCableLength === ''
-      ? ''
-      : `${answers.linkCableLengthApprox === 'yes' ? '約' : ''}${answers.linkCableLength}m`,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  d.linkCableSpecLine = cableSpec(answers.linkCableVoltage, answers.linkCableCrossSection, answers.linkCableLength, answers.linkCableLengthApprox);
+
+  // 引込点から責任分界点までのケーブルの注記（区分開閉器なし・地上キャビネットなしのとき）
+  d.preCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.preCableInstallation)) ?? '';
+  d.preCableSpecLine = cableSpec(answers.preCableVoltage, answers.preCableCrossSection, answers.preCableLength, answers.preCableLengthApprox);
 
   // CT・VTの台数。2台以上のときだけ「CT×2」「VT＋PF×2」のように書く
   const times = (v: unknown) => {

@@ -1,5 +1,5 @@
 import type { Question } from './types.ts';
-import { CABLE_EXISTS, YES_NO } from './common.ts';
+import { CABLE_CROSS_SECTION_OPTIONS, CABLE_EXISTS, CABLE_STRUCTURE_OPTIONS, CABLE_VOLTAGE_OPTIONS, YES_NO, YES_NO_Q } from './common.ts';
 
 /** 質問の定義：PAS、VCT、引込ケーブル、受電設備エリア */
 export const RECEIVING_QUESTIONS: Question[] = [
@@ -152,6 +152,87 @@ export const RECEIVING_QUESTIONS: Question[] = [
     ask: 'ai-uncertain',
   },
 
+  /* ---------------- 引込点から責任分界点までのケーブル（区分開閉器なし・地上キャビネットなしのとき） ---------------- */
+  // 区分開閉器も地上キャビネットも無い現場は、特別高圧受電設備であることが多い。引込点と責任分界点のあいだに、高圧ケーブルが入ることがある。
+  // ケーブルの項目は、引込ケーブル・エリア間のケーブルと、同じ様式（付設方法・構造・定格電圧・断面積・長さ・「約」）
+  {
+    id: 'preCable',
+    group: 'precable',
+    label: '引込点から責任分界点までの間に、ケーブルはありますか？',
+    type: 'select',
+    options: YES_NO_Q,
+    defaultValue: 'no',
+    ask: 'ai-uncertain',
+    help: '「はい」のときは、引込点と責任分界点の図記号のあいだに、高圧ケーブルを1本描く（ケーブルの端末は、上に下向き、下に上向き）',
+  },
+  {
+    id: 'preCableInstallation',
+    group: 'precable',
+    label: 'ケーブルは？',
+    type: 'select',
+    options: [
+      { value: 'buried', label: '埋設（埋ケ）' },
+      { value: 'overhead', label: '架空（架ケ）' },
+      { value: 'none', label: '種類を書かない' },
+    ],
+    showIf: { key: 'preCable', eq: 'yes' },
+    ask: 'always',
+  },
+  {
+    id: 'preCableStructure',
+    group: 'precable',
+    label: 'ケーブルの構造は？',
+    type: 'select',
+    options: CABLE_STRUCTURE_OPTIONS,
+    defaultValue: 'CVT',
+    showIf: { key: 'preCable', eq: 'yes' },
+    ask: 'always',
+  },
+  {
+    id: 'preCableVoltage',
+    group: 'precable',
+    label: '定格電圧は？',
+    type: 'select',
+    dropdown: true,
+    unit: 'V',
+    options: CABLE_VOLTAGE_OPTIONS,
+    defaultValue: '6600',
+    showIf: { key: 'preCable', eq: 'yes' },
+    ask: 'always',
+  },
+  {
+    id: 'preCableCrossSection',
+    group: 'precable',
+    label: '断面積は？',
+    type: 'select',
+    unit: 'mm2',
+    options: CABLE_CROSS_SECTION_OPTIONS,
+    allowFreeInput: true,
+    showIf: { key: 'preCable', eq: 'yes' },
+    ask: 'always',
+    help: '一覧にない値は手入力できる',
+  },
+  {
+    id: 'preCableLength',
+    group: 'precable',
+    label: '長さは？',
+    type: 'number',
+    unit: 'm',
+    showIf: { key: 'preCable', eq: 'yes' },
+    ask: 'always',
+    help: '不明な場合は空欄にする（図面には「- m」と記載する）',
+  },
+  {
+    id: 'preCableLengthApprox',
+    group: 'precable',
+    label: '長さに「約」を付ける',
+    type: 'boolean',
+    size: 'm',
+    showIf: { all: [{ key: 'preCable', eq: 'yes' }, { key: 'preCableLength', gt: 0 }] },
+    ask: 'always',
+    help: '歩測などで、きっちりした実測ではないとき。「約20m」と書かれる',
+  },
+
   /* ---------------- 引込ケーブル ---------------- */
   {
     id: 'cableInstallation',
@@ -171,10 +252,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     group: 'cable',
     label: 'ケーブルの構造は？',
     type: 'select',
-    options: [
-      { value: 'CVT', label: 'CVT' },
-      { value: 'CV', label: 'CV' },
-    ],
+    options: CABLE_STRUCTURE_OPTIONS,
     defaultValue: 'CVT',
     showIf: CABLE_EXISTS,
     ask: 'ai-uncertain',
@@ -187,7 +265,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     dropdown: true,
     unit: 'V',
     // 3300V・6600Vのほか、22000V・33000Vも選べる（初期値は6600V）
-    options: [3300, 6600, 22000, 33000].map((v) => ({ value: String(v), label: `${v}V` })),
+    options: CABLE_VOLTAGE_OPTIONS,
     defaultValue: '6600',
     showIf: CABLE_EXISTS,
     ask: 'always',
@@ -198,7 +276,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     label: '断面積は？',
     type: 'select',
     unit: 'mm2',
-    options: [14, 22, 38, 60, 100, 150].map((v) => ({ value: String(v), label: `${v} mm2` })),
+    options: CABLE_CROSS_SECTION_OPTIONS,
     allowFreeInput: true,
     showIf: CABLE_EXISTS,
     ask: 'always',

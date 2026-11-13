@@ -39,6 +39,11 @@ const LA_ITEMS: Placement[] = [
   },
 ];
 
+/** 区分開閉器も地上キャビネットも無く、引込点から責任分界点までのあいだに、ケーブルがあるとき */
+const PRE_CABLE: Condition = {
+  all: [{ key: 'sectionalizer', eq: 'none' }, { key: 'groundCabinet', eq: 'no' }, { key: 'preCable', eq: 'yes' }],
+};
+
 /** 送り出しの開閉器の地絡継電器が付くか（DGR・GRの考え方は、主遮断装置と同じ） */
 const SENDOUT_GROUND_ON: Condition = {
   any: [{ all: [{ key: 'sendoutGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }, { key: 'sendoutGroundRelay', eq: 'gr' }],
@@ -185,6 +190,25 @@ export const UPSTREAM: Placement[] = [
     labelTemplate: ['AS'],
   },
   { role: 'incoming-point', symbolId: 'incoming-point', kind: 'series' },
+  {
+    // 区分開閉器も地上キャビネットも無く、引込点から責任分界点までのあいだにケーブルが入るとき（特別高圧受電設備に多い）。
+    // ケーブルの描き方は、引込ケーブル・エリア間のケーブルと同じ（上に下向きの端末と文字、下に上向きの端末。埋設は点線）
+    role: 'pre-cable-source',
+    symbolId: 'cable-head',
+    kind: 'series',
+    when: PRE_CABLE,
+    labelTemplate: ['{preCableInstallationLabel}', '{preCableStructure}', '{preCableSpecLine}'],
+    gapAfter: 56,
+    dashedAfter: { key: 'preCableInstallation', eq: 'buried' },
+    note: '引込点と責任分界点のあいだのケーブル（送り出し側の端末）。埋設（埋ケ）のときは線を点線で描く',
+  },
+  {
+    role: 'pre-cable-site',
+    symbolId: 'cable-head',
+    kind: 'series',
+    when: PRE_CABLE,
+    note: '引込点と責任分界点のあいだのケーブル（受ける側の端末。180°回して使う）',
+  },
   {
     role: 'boundary',
     labelSide: 'left',

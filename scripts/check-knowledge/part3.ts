@@ -403,6 +403,33 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     if (QUESTIONS.some((q) => q.id === 'receivingVoltage')) fail('受電電圧の質問が、まだ残っています');
     console.log('  受電電圧の入力欄は無い。何も入れていない案件は、いつも6600V（変圧器の電圧は「6600/…」が入る）');
   }
+  // 引込点から責任分界点までのケーブル（区分開閉器なし・地上キャビネットなしのときだけ）。ケーブルの様式は、引込ケーブル・エリア間のケーブルと同じ
+  {
+    const pre = (extra: Answers) => buildComposition({ ...answers, sectionalizer: 'none', groundCabinet: 'no', ...extra });
+    const roles = (items: ReturnType<typeof buildComposition>) => items.map((i) => i.role);
+    const on = pre({ preCable: 'yes', preCableInstallation: 'buried', preCableStructure: 'CVT', preCableCrossSection: '100', preCableLength: 120, preCableLengthApprox: 'yes', preCableVoltage: '22000' });
+    const head = on.find((i) => i.role === 'pre-cable-source');
+    if (head?.label.join('|') !== '埋ケ|CVT|22000V 100mm2 約120m') fail(`引込点〜責任分界点のケーブルの文字が違います（${head?.label.join('|')}）`);
+    if (!roles(on).includes('pre-cable-site')) fail('引込点〜責任分界点のケーブルの、下の端末が入っていません');
+    const idx = (r: string) => roles(on).indexOf(r);
+    if (!(idx('incoming-point') < idx('pre-cable-source') && idx('pre-cable-source') < idx('pre-cable-site') && idx('pre-cable-site') < idx('boundary'))) fail('ケーブルが、引込点と責任分界点のあいだに入っていません');
+    if (!head?.dashedAfter) fail('埋設のケーブルが、点線になっていません');
+    if (pre({ preCable: 'yes', preCableInstallation: 'overhead' }).find((i) => i.role === 'pre-cable-source')?.dashedAfter) fail('架空のケーブルが、点線になっています');
+    if (pre({ preCable: 'no' }).some((i) => i.role.startsWith('pre-cable'))) fail('「いいえ」なのに、ケーブルが入っています');
+    if (pre({}).some((i) => i.role.startsWith('pre-cable'))) fail('まだ答えていないのに、ケーブルが入っています');
+    if (pre({ preCable: 'yes', groundCabinet: 'yes' }).some((i) => i.role.startsWith('pre-cable'))) fail('地上キャビネットが「あり」なのに、ケーブルが入っています');
+    if (buildComposition({ ...answers, sectionalizer: 'pas', preCable: 'yes' }).some((i) => i.role.startsWith('pre-cable'))) fail('区分開閉器が「あり」なのに、ケーブルが入っています');
+    const shownIds = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+    if (!shownIds({ sectionalizer: 'none', groundCabinet: 'no' }).has('preCable') || shownIds({ sectionalizer: 'none', groundCabinet: 'yes' }).has('preCable') || shownIds({ sectionalizer: 'pas' }).has('preCable')) {
+      fail('「引込点から責任分界点までの間に、ケーブルはありますか？」が、区分開閉器なし・地上キャビネットなしのときだけ、出るようになっていません');
+    }
+    const yesIds = shownIds({ sectionalizer: 'none', groundCabinet: 'no', preCable: 'yes', preCableLength: 10 });
+    if (!['preCableInstallation', 'preCableStructure', 'preCableVoltage', 'preCableCrossSection', 'preCableLength', 'preCableLengthApprox'].every((id) => yesIds.has(id))) fail('「はい」のとき、ケーブルの項目が、引込ケーブルと同じにそろって出ていません');
+    // すべてのケーブルは、同じ様式：長さが不明なら「- m」
+    const linkNoLen = buildComposition({ ...answers, areaCount: 2, 'a2:areaIntake': 'lbs-pf', 'a2:linkCable': 'yes', 'a2:linkTap': 'bus', 'a2:linkCableInstallation': 'buried', 'a2:linkCableStructure': 'CVT', 'a2:linkCableVoltage': '6600', 'a2:linkCableCrossSection': '38' }).find((i) => i.role === 'a2:link')?.label.join('|');
+    if (!linkNoLen?.endsWith('6600V 38mm2 - m')) fail(`エリア間のケーブルの長さが不明のとき、「- m」と書かれていません（${linkNoLen}）`);
+    console.log('  引込点〜責任分界点のケーブル：区分開閉器なし・地上キャビネットなしで「はい」のとき、引込点と責任分界点のあいだに、引込ケーブルと同じ様式で入る');
+  }
   // 電圧が「6600/」だけ（後ろが未入力）のときは、図面に書かない。書き終えたものは書く
   {
     const trLabel = (v: string) => buildComposition({ ...answers, trVoltage: v, transformerCount: 1 }).find((i) => i.role === 'transformer')?.label.join('|') ?? '';
