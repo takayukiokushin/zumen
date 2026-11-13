@@ -131,35 +131,40 @@ for (const lang of LANGS) {
   console.log(`  ${lang}：訳なし ${missing.length} / 文字の誤り ${wrong.length} / 使われていない訳 ${stale.length}`);
 }
 
-/* 英語の「Yes／No／None」の使い分け（第13弾 項目52）：
- *   ・「はい／いいえ」「ある／ない」「あり／なし」の2択（「〜はありますか？」への答え）→ Yes／No
- *   ・複数の選択肢の中の1つとしての「なし」→ None */
-console.log('\n■ 英語の「Yes／No／None」の使い分け');
+/* 「はい／いいえ」と「あり／なし」の使い分け（第13弾 項目52）：
+ *   ・「はい／いいえ」「ある／ない」「あり／なし」の2択（「〜はありますか？」への答え）→ 英語は Yes／No、フランス語は Oui／Non
+ *   ・複数の選択肢の中の1つとしての「なし」→ 英語は None、フランス語は Sans または Aucun
+ * （中国語・韓国語は、「有／无」「있음／없음」と「是／否」「예／아니요」が、質問の言い方に合った使い分けなので、対象にしない） */
+console.log('\n■ 「はい／いいえ」「あり／なし」の使い分け（英語・フランス語）');
 {
-  const en = dataOf('en');
-  const label = (o: { label: string; i18nContext?: string }) => (o.i18nContext ? en[`${o.label}@${o.i18nContext}`] : undefined) ?? en[o.label];
-  let n2 = 0;
-  let nm = 0;
-  for (const q of QUESTIONS) {
-    const opts = q.options ?? [];
-    if (opts.length === 0) continue;
-    const en2 = opts.map(label);
-    const isYesNo = opts.length === 2 && opts.every((o) => /^(あり|なし|ある|ない|はい|いいえ)([（(].*)?$/.test(o.label));
-    if (isYesNo) {
-      n2++;
-      // 2択の答えは、「Yes」「No」（「（3点一致）」のような補足が付いてもよい）
-      if (!/^Yes\b/.test(en2[0] ?? '') || !/^No\b/.test(en2[1] ?? '')) fail(`英語：2択の「${q.id}」が、Yes／No になっていません（${en2.join(' / ')}）`);
-    } else {
-      nm++;
-      // 複数の選択肢の中の「なし」は、「None」（「なし（母線から直接）」のような補足が付いてもよい）
-      for (const o of opts) {
-        if (/^なし([（(].*)?$/.test(o.label) && !/^None\b/.test(label(o) ?? '')) fail(`英語：「${q.id}」の「${o.label}」が、None になっていません（${label(o)}）`);
+  const RULES = {
+    en: { yes: /^Yes\b/, no: /^No\b/, none: /^None\b/, bad: /^(yes|no|none)$/ },
+    fr: { yes: /^Oui\b/, no: /^Non\b/, none: /^(Sans|Aucun)\b/, bad: /^(oui|non|sans|aucun)$/ },
+  } as const;
+  for (const lang of ['en', 'fr'] as const) {
+    const d = dataOf(lang);
+    const rule = RULES[lang];
+    const label = (o: { label: string; i18nContext?: string }) => (o.i18nContext ? d[`${o.label}@${o.i18nContext}`] : undefined) ?? d[o.label];
+    let n2 = 0;
+    let nm = 0;
+    for (const q of QUESTIONS) {
+      const opts = q.options ?? [];
+      if (opts.length === 0) continue;
+      const tl = opts.map(label);
+      const isYesNo = opts.length === 2 && opts.every((o) => /^(あり|なし|ある|ない|はい|いいえ)([（(].*)?$/.test(o.label));
+      if (isYesNo) {
+        n2++;
+        if (!rule.yes.test(tl[0] ?? '') || !rule.no.test(tl[1] ?? '')) fail(`${lang}：2択の「${q.id}」が、はい／いいえの形になっていません（${tl.join(' / ')}）`);
+      } else {
+        nm++;
+        for (const o of opts) {
+          if (/^なし([（(].*)?$/.test(o.label) && !rule.none.test(label(o) ?? '')) fail(`${lang}：「${q.id}」の「${o.label}」が、「なし」の訳になっていません（${label(o)}）`);
+        }
       }
+      for (const t of tl) if (rule.bad.test(t ?? '')) fail(`${lang}：「${q.id}」の選択肢が小文字のままです（${t}）`);
     }
-    // 小文字の yes／no／none が、そのまま出ていない
-    for (const t of en2) if (/^(yes|no|none)$/.test(t ?? '')) fail(`英語：「${q.id}」の選択肢が小文字のままです（${t}）`);
+    console.log(`  ${lang}：はい／いいえの2択 ${n2}問／複数の選択肢（なし）${nm}問`);
   }
-  console.log(`  Yes／No の2択：${n2}問／複数の選択肢（なし → None）：${nm}問`);
 }
 
 console.log('\n■ サーバーが返す日本語の文が、訳せるか');
