@@ -5,7 +5,7 @@ import { crossPointsAttr } from './cross.ts';
 import { arrowSvg, dotSvg } from './dot.ts';
 import { linkSvg } from './link.ts';
 import { groundSvg } from './ground.ts';
-import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, clampTextSize, textWidth } from './text.ts';
+import { LABEL_FONT, LABEL_LINE, OVERLAY_RED, boldStrokeWidth, clampTextSize, textWidth } from './text.ts';
 
 /** 表題欄の内容 */
 /** 図面の右下に入れる社名。全図面で共通 */
@@ -178,7 +178,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
       .map((l, i) => `<tspan x="${round(t2.x)}" dy="${i === 0 ? 0 : round(LABEL_LINE * size)}">${esc(l)}</tspan>`)
       .join('');
     body.push(
-      `    <text x="${round(t2.x)}" y="${round(t2.y)}" font-size="${round(LABEL_FONT * size)}" text-anchor="${t2.anchor}"${t2.bold ? ' font-weight="700"' : ''} font-family="${FONT_FAMILY}" fill="${t2.red ? OVERLAY_RED : 'currentColor'}" stroke="none">${tspans}</text>`,
+      `    <text x="${round(t2.x)}" y="${round(t2.y)}" font-size="${round(LABEL_FONT * size)}" text-anchor="${t2.anchor}"${t2.bold ? ' font-weight="700"' : ''} font-family="${FONT_FAMILY}" fill="${t2.red ? OVERLAY_RED : 'currentColor'}" ${t2.bold ? `stroke="${t2.red ? OVERLAY_RED : 'currentColor'}" stroke-width="${boldStrokeWidth(LABEL_FONT * size)}" stroke-linejoin="round"` : 'stroke="none"'}>${tspans}</text>`,
     );
   }
 

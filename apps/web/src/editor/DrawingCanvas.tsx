@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, shapesToSvg } from '@zumen/symbols';
-import { AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
+import { boldStrokeWidth, AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
@@ -846,7 +846,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                   textAnchor={it.anchor}
                   fontFamily={FONT_FAMILY}
                   fill={it.red ? OVERLAY_RED : 'currentColor'}
-                  stroke="none"
+                  stroke={it.bold ? (it.red ? OVERLAY_RED : 'currentColor') : 'none'} strokeWidth={it.bold ? boldStrokeWidth(LABEL_FONT * k) : undefined} strokeLinejoin="round"
                 >
                   {it.lines.map((l, i) => (
                     <tspan key={i} x={it.x} dy={i === 0 ? 0 : LABEL_LINE * k}>
@@ -920,7 +920,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                   textAnchor={lat.anchor}
                   fontFamily={FONT_FAMILY}
                   fill={OVERLAY_RED}
-                  stroke="none"
+                  stroke={a.label.bold ? (OVERLAY_RED) : 'none'} strokeWidth={a.label.bold ? boldStrokeWidth(LABEL_FONT * k) : undefined} strokeLinejoin="round"
                 >
                   {a.label.lines.map((l, i) => (
                     <tspan key={i} x={lat.x} dy={i === 0 ? 0 : LABEL_LINE * k}>
@@ -1053,7 +1053,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                   textAnchor={lat.anchor}
                   fontFamily={FONT_FAMILY}
                   fill={g.label.red ? OVERLAY_RED : 'currentColor'}
-                  stroke="none"
+                  stroke={g.label.bold ? (g.label.red ? OVERLAY_RED : 'currentColor') : 'none'} strokeWidth={g.label.bold ? boldStrokeWidth(LABEL_FONT * k) : undefined} strokeLinejoin="round"
                 >
                   {g.label.lines.map((l, i) => (
                     <tspan key={i} x={lat.x} dy={i === 0 ? 0 : LABEL_LINE * k}>
@@ -1163,7 +1163,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                   textAnchor={lat.anchor}
                   fontFamily={FONT_FAMILY}
                   fill={OVERLAY_RED}
-                  stroke="none"
+                  stroke={a.label.bold ? (OVERLAY_RED) : 'none'} strokeWidth={a.label.bold ? boldStrokeWidth(LABEL_FONT * k) : undefined} strokeLinejoin="round"
                   pointerEvents={mode === 'select' ? 'all' : 'none'}
                 >
                   {a.label.lines.map((l, i) => (
