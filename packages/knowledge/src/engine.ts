@@ -4,7 +4,7 @@ import { pickOwn } from './own.ts';
 import { evaluate, fillTemplate } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
-import { AREA_CHAIN, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, FEEDERS, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
+import { AREA_CHAIN, CHAIN_BY_FORM, CT_SHOWN, DOWNSTREAM, EXTRAS, FEEDERS, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
 
 /* ------------------------------------------------------------------ */
@@ -1198,6 +1198,35 @@ function placeByTap(items: PlacedItem[]): PlacedItem[] {
   return [...rest.slice(0, at), ...before, rest[at]!, ...after, ...rest.slice(at + 1)];
 }
 
+
+/**
+ * 入力画面に出す、注意の文（図面は、そのまま描く。直すかどうかは、人が決める）。
+ * group：どの入力のまとまり（グループ）に出すか。view：そのエリアの答え（初期値を足したもの）
+ *
+ * - CTが0組（または、CTが入らない構成）なのに、CTにつなぐ継電器（OCRなど）があるとき：
+ *   継電器の箱は、つなぐ先が無いので、主回路につながらないまま、図面の下に置かれる。CTの組数を1以上にするか、継電器を0個にするよう知らせる
+ */
+export interface InputNotice {
+  group: string;
+  text: string;
+}
+export function inputNotices(view: Answers): InputNotice[] {
+  const out: InputNotice[] = [];
+  const ctSets = countOf(view.ctSetCount, 0, maxCountOf('ctSetCount'));
+  const hasCt = evaluate(CT_SHOWN, view) && ctSets > 0;
+  const relays = countOf(view.relayCount, 0, maxCountOf('relayCount'));
+  if (!hasCt && relays > 0) {
+    let onCt = false;
+    for (let i = 0; i < relays; i++) {
+      if (/^ct-\d+$/.test(String(viewAt(view, i).relayAt ?? ''))) onCt = true;
+    }
+    if (onCt) {
+      const text = 'CTが0組（または、CTが無い構成）ですが、CTにつなぐ継電器があります。CTの組数を1以上にするか、継電器の個数を0にしてください（このままだと、継電器は、主回路につながらないまま、図面の下に置かれます）。';
+      out.push({ group: 'ctset', text }, { group: 'relay', text });
+    }
+  }
+  return out;
+}
 
 /**
  * VCT（電気設備内）を置く位置（vctTap）に合わせて、VCTを、主回路の並びの途中へ動かす（第13弾 項目18）。

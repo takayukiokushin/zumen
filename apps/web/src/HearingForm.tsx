@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { areaCountOf, countOf, maxCountOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
+import { areaCountOf, countOf, maxCountOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, inputNotices, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, Question, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 import { useT, useTx } from './i18n/useT.ts';
@@ -127,6 +127,8 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
       group,
       lead,
       blocks,
+      // 図面は、そのまま描く。直したほうがよいところを、入力画面で知らせる
+      notices: inputNotices(view).filter((n) => n.group === group.id).map((n) => n.text),
       answered: all.filter((r) => effective[r.key] !== undefined).length,
       total: all.length,
       need: all.some((r) => r.question.required && effective[r.key] === undefined),
@@ -219,6 +221,11 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
         </span>
       </header>
       {sec.lead.length > 0 && <div className="fields">{sec.lead.map(field)}</div>}
+      {sec.notices.map((text) => (
+        <p className="group-warn" role="status" key={text}>
+          {tx(text)}
+        </p>
+      ))}
 
       {sec.blocks.map((b) =>
         b.heading === null ? (

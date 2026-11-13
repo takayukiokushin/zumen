@@ -57,6 +57,7 @@ const data: Record<string, string> = {
   "0（なし）": "0 (none)",
   "1組＝「VT＋PF」のひとまとまり。位置が違うVTがあるときは、組を増やす。VTが無いときは「0（なし）」": "One set = one “VT + PF” unit. Increase the number of sets if there are VTs at different positions. If there is no VT, choose “0 (none)”.",
   "位置が違うCTがあるときは、組を増やす。CTが無いときは「0（なし）」": "Increase the number of sets if there are CTs at different positions. If there is no CT, choose “0 (none)”.",
+  "CTが0組（または、CTが無い構成）ですが、CTにつなぐ継電器があります。CTの組数を1以上にするか、継電器の個数を0にしてください（このままだと、継電器は、主回路につながらないまま、図面の下に置かれます）。": "The number of CT sets is 0 (or this configuration has no CT), but there are relays to be connected to a CT. Set the number of CT sets to 1 or more, or set the number of relays to 0 (otherwise the relays are placed at the bottom of the drawing, not connected to the main circuit).",
   "引込元の名称": "Name of incoming source",
   "引込点〜責任分界点のケーブル": "Cable from the point of supply to the demarcation point",
   "区分開閉器・地上キャビネットが、どちらも無いとき": "When there is neither a sectionalizing switch nor a ground cabinet",

@@ -57,6 +57,7 @@ const data: Record<string, string> = {
   "0（なし）": "0 (aucun)",
   "1組＝「VT＋PF」のひとまとまり。位置が違うVTがあるときは、組を増やす。VTが無いときは「0（なし）」": "1 ensemble = un bloc « TT + PF ». Augmentez le nombre d’ensembles s’il y a des TT à des positions différentes. S’il n’y a pas de TT, choisissez « 0 (aucun) ».",
   "位置が違うCTがあるときは、組を増やす。CTが無いときは「0（なし）」": "Augmentez le nombre d’ensembles s’il y a des TC à des positions différentes. S’il n’y a pas de TC, choisissez « 0 (aucun) ».",
+  "CTが0組（または、CTが無い構成）ですが、CTにつなぐ継電器があります。CTの組数を1以上にするか、継電器の個数を0にしてください（このままだと、継電器は、主回路につながらないまま、図面の下に置かれます）。": "Le nombre d’ensembles de TC est 0 (ou cette configuration n’a pas de TC), mais des relais doivent être raccordés à un TC. Mettez le nombre d’ensembles de TC à 1 ou plus, ou le nombre de relais à 0 (sinon les relais sont placés en bas du schéma, sans être reliés au circuit principal).",
   "引込元の名称": "Nom de la source d’alimentation",
   "引込点〜責任分界点のケーブル": "Câble entre le point de livraison et le point de limite de responsabilité",
   "区分開閉器・地上キャビネットが、どちらも無いとき": "Lorsqu’il n’y a ni interrupteur de section ni armoire au sol",

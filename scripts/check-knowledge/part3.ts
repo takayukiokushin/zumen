@@ -2,7 +2,7 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields } from '../../packages/knowledge/src/index.ts';
+import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
@@ -449,6 +449,12 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     if (optVals('vtSetCount')[0] !== '0' || optVals('ctSetCount')[0] !== '0') fail('VT・CTの組数に、「0（なし）」の選択肢がありません');
     const auto = (a: Answers) => withAutoValues({ mainBreakerForm: 'cb', ...a }).relayCount;
     if (auto({}) !== '1' || auto({ ctSetCount: '0' }) !== '0' || auto({ ctSetCount: 0 }) !== '0') fail(`継電器の個数の初期値（CTあり＝1／CTが0組＝0）が違います（${auto({})}／${auto({ ctSetCount: '0' })}）`);
+    // CTが0組なのに、CTにつなぐ継電器があるとき：入力画面に注意を出す（図面は、そのまま描く）
+    const nt = (a: Answers) => inputNotices({ ...withAutoValues({ mainBreakerForm: 'cb', ...a }) }).map((n) => n.group).sort().join(',');
+    if (nt({ ctSetCount: '0', relayCount: '1', relayAt: 'ct-1', relayType: 'OCR' }) !== 'ctset,relay') fail('CTが0組で、CTにつなぐ継電器があるとき、注意が出ていません');
+    if (nt({ ctSetCount: '1', relayCount: '1', relayAt: 'ct-1', relayType: 'OCR' }) !== '') fail('CTがあるのに、注意が出ています');
+    if (nt({ ctSetCount: '0', relayCount: '0' }) !== '') fail('継電器が0個なのに、注意が出ています');
+    if (nt({ ctSetCount: '0', relayCount: '1', relayAt: 'vt-1', relayType: 'UVR' }) !== '') fail('VTにつなぐ継電器なのに、CTの注意が出ています');
     console.log('  VT・CTが0組：選べる（0（なし））。0組のときは、記号が入らず、DS・VCB・変圧器はつながる。答えていないときは1組。CTが0組なら、OCRは自動では入れない');
   }
   // VCT（電気設備内）を置く位置：初期値は、引込ケーブルの次（いまの位置）。選ぶと、主回路の途中へ動く。VCT2台は、まとめて動く
