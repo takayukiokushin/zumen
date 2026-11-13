@@ -9,10 +9,12 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     group: 'transformer',
     label: '変圧器の台数',
     type: 'select',
-    options: COUNT_OPTIONS,
+    // 0台は、2か所目以降のエリアだけ（電動機だけを置くエリアなど。1か所目は、1台以上）
+    options: [{ value: '0', label: '0（なし）', showIf: { key: 'areaNo', gt: 1 } }, ...COUNT_OPTIONS],
     allowFreeInput: true,
     unit: '台',
     defaultValue: '1',
+    autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
   },
   {

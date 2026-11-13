@@ -1,6 +1,6 @@
 import type { Question } from './types.ts';
 import type { Condition } from '../condition.ts';
-import { CABLE_CROSS_SECTION_OPTIONS, CABLE_STRUCTURE_OPTIONS, CABLE_VOLTAGE_OPTIONS, YES_NO_Q } from './common.ts';
+import { BUS_SWITCH_OPTIONS, FUSE_CURRENT_OPTIONS, YES_NO_Q, connectionCableQuestions } from './common.ts';
 
 /** 質問の定義：表題欄、エリア間の接続（分岐する位置・ケーブル・送り出す側の開閉器。送り先ごとに、送り出す側の欄で入力する） */
 export const AREAS_QUESTIONS: Question[] = [
@@ -58,76 +58,8 @@ export const AREAS_QUESTIONS: Question[] = [
     ask: 'always',
     help: 'この送り先へ向かう線を、ケーブル（高圧ケーブル）でつなぐかどうか。「いいえ」のときも、つなぐ点は同じ（分岐する位置は答える）。違いは、ケーブルの図記号（端末の三角・点線・ケーブルの文字）を描かず、ふつうの線でつなぐこと',
   },
-  {
-    id: 'linkCableInstallation',
-    group: 'link',
-    label: 'ケーブルは？',
-    type: 'select',
-    options: [
-      { value: 'buried', label: '埋設（埋ケ）' },
-      { value: 'overhead', label: '架空（架ケ）' },
-      { value: 'none', label: '種類を書かない' },
-    ],
-    defaultValue: 'none',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
-    ask: 'always',
-  },
-  {
-    id: 'linkCableStructure',
-    group: 'link',
-    label: 'ケーブルの構造は？',
-    type: 'select',
-    options: CABLE_STRUCTURE_OPTIONS,
-    defaultValue: 'CVT',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
-    ask: 'always',
-  },
-  {
-    // 引込ケーブルの定格電圧と同じ選択肢・同じ初期値（6600V）
-    id: 'linkCableVoltage',
-    group: 'link',
-    label: '定格電圧は？',
-    type: 'select',
-    dropdown: true,
-    unit: 'V',
-    options: CABLE_VOLTAGE_OPTIONS,
-    defaultValue: '6600',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
-    ask: 'always',
-  },
-  {
-    id: 'linkCableCrossSection',
-    group: 'link',
-    label: '断面積は？',
-    type: 'select',
-    unit: 'mm2',
-    options: CABLE_CROSS_SECTION_OPTIONS,
-    allowFreeInput: true,
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
-    ask: 'always',
-    help: '一覧にない値は手入力できる',
-  },
-  {
-    id: 'linkCableLength',
-    group: 'link',
-    label: '長さは？',
-    type: 'number',
-    unit: 'm',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
-    ask: 'always',
-    help: '不明な場合は空欄にする',
-  },
-  {
-    id: 'linkCableLengthApprox',
-    group: 'link',
-    label: '長さに「約」を付ける',
-    type: 'boolean',
-    // 名前が途中で折り返されないよう、横幅をふつう（m）にする。既定値は置かない（未回答は「付けない」と同じ）
-    size: 'm',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }, { key: 'linkCableLength', gt: 0 }] },
-    ask: 'always',
-    help: '歩測などで、きっちりした実測ではないとき。「約20m」と書かれる',
-  },
+  // 途中のケーブルの入力欄（種類・構造・定格電圧・断面積・長さ・約）は、電動機の接続と同じ部品（connectionCableQuestions）
+  ...connectionCableQuestions({ prefix: 'link', group: 'link', when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] } }),
   {
     // 任意。どこの変電所・出先へ送られているかが分かるように、送り出し側のケーブル端末の近くに書く（太さ・長さは、受け側に書く）
     id: 'linkName',
@@ -145,13 +77,7 @@ export const AREAS_QUESTIONS: Question[] = [
     group: 'link',
     label: '送り出しに開閉器はありますか？',
     type: 'select',
-    options: [
-      { value: 'none', label: 'なし（母線から直接）' },
-      { value: 'ds', label: 'DS' },
-      { value: 'vcb', label: 'VCB' },
-      { value: 'lbs', label: 'LBS' },
-      { value: 'ds-vcb', label: 'DS＋VCB' },
-    ],
+    options: BUS_SWITCH_OPTIONS,
     defaultValue: 'none',
     dropdown: true,
     showIf: { key: 'areaNo', gt: 1 },
@@ -163,7 +89,7 @@ export const AREAS_QUESTIONS: Question[] = [
     group: 'link',
     label: 'LBSのパワーヒューズの容量（定格電流）',
     type: 'select',
-    options: [10, 15, 20, 30, 40, 50, 75, 100, 150, 200].map((v) => ({ value: String(v), label: `${v}A` })),
+    options: FUSE_CURRENT_OPTIONS,
     allowFreeInput: true,
     dropdown: true,
     unit: 'A',

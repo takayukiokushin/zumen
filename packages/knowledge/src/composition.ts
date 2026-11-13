@@ -855,6 +855,7 @@ export const TRANSFORMER: Placement[] = [
     when: { key: 'trHasPc', eq: 'yes' },
     labelTemplate: ['{trPcHead}', 'F:{trPcFuse}'],
     repeatCountKey: 'transformerCount',
+    zeroOk: true,
   },
   {
     role: 'tr-lbs',
@@ -864,6 +865,7 @@ export const TRANSFORMER: Placement[] = [
     when: { key: 'trHasLbs', eq: 'yes' },
     labelTemplate: ['LBS', '{trLbsRatingLine}', '{trPfCountLine}', '{trPfLine}'],
     repeatCountKey: 'transformerCount',
+    zeroOk: true,
   },
   {
     role: 'transformer',
@@ -874,6 +876,7 @@ export const TRANSFORMER: Placement[] = [
     labelTemplate: ['{trUsageLine}', 'Tr', '{trCapacityLine}', '{trVoltageText}', '{trComposition}'],
     props: { usage: 'trUsage', capacity: 'trCapacity', voltage: 'trVoltage', composition: 'trComposition' },
     repeatCountKey: 'transformerCount',
+    zeroOk: true,
   },
 ];
 

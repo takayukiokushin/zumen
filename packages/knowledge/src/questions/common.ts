@@ -36,6 +36,69 @@ export const CABLE_STRUCTURE_OPTIONS: Choice[] = [
 ];
 
 /**
+ * 「途中のケーブル」の入力欄（種類・構造・定格電圧・断面積・長さ・「約」）。
+ * エリア間の接続（link）と、電動機の接続（motor）で、同じ部品を使う（第13弾 項目22・25）。ids は、「接頭辞＋Cable…」（例：linkCableLength・motorCableLength）。
+ * when：ケーブルがあるときの表示条件。voltage：定格電圧の選択肢・初期値（無ければ、高圧ケーブルの一覧・6600V）
+ */
+export function connectionCableQuestions(o: {
+  prefix: string;
+  group: string;
+  section?: string;
+  when: Condition;
+  voltage?: Pick<Question, 'options' | 'defaultValue' | 'autoValue' | 'allowFreeInput'>;
+}): Question[] {
+  const id = (name: string) => `${o.prefix}Cable${name}`;
+  const base = { group: o.group, ...(o.section ? { section: o.section } : {}), ask: 'always' as const };
+  return [
+    {
+      id: id('Installation'), ...base, label: 'ケーブルは？', type: 'select',
+      options: [
+        { value: 'buried', label: '埋設（埋ケ）' },
+        { value: 'overhead', label: '架空（架ケ）' },
+        { value: 'none', label: '種類を書かない' },
+      ],
+      defaultValue: 'none', showIf: o.when,
+    },
+    {
+      id: id('Structure'), ...base, label: 'ケーブルの構造は？', type: 'select',
+      options: CABLE_STRUCTURE_OPTIONS, defaultValue: 'CVT', showIf: o.when,
+    },
+    {
+      // 引込ケーブルの定格電圧と同じ選択肢・同じ初期値（6600V）
+      id: id('Voltage'), ...base, label: '定格電圧は？', type: 'select', dropdown: true, unit: 'V',
+      ...(o.voltage ?? { options: CABLE_VOLTAGE_OPTIONS, defaultValue: '6600' }), showIf: o.when,
+    },
+    {
+      id: id('CrossSection'), ...base, label: '断面積は？', type: 'select', unit: 'mm2',
+      options: CABLE_CROSS_SECTION_OPTIONS, allowFreeInput: true, showIf: o.when, help: '一覧にない値は手入力できる',
+    },
+    {
+      id: id('Length'), ...base, label: '長さは？', type: 'number', unit: 'm', showIf: o.when, help: '不明な場合は空欄にする',
+    },
+    {
+      // 名前が途中で折り返されないよう、横幅をふつう（m）にする。既定値は置かない（未回答は「付けない」と同じ）
+      id: id('LengthApprox'), ...base, label: '長さに「約」を付ける', type: 'boolean', size: 'm',
+      showIf: { all: [o.when, { key: id('Length'), gt: 0 }] },
+      help: '歩測などで、きっちりした実測ではないとき。「約20m」と書かれる',
+    },
+  ];
+}
+
+/**
+ * 母線（高圧）から出る線の途中の開閉器の選択肢。エリア間の送り出し（linkSwitch）と、母線から分岐する電動機（motorSwitch）で、同じ並びを使う。
+ * 並び：なし → DS → VCB → LBS（パワーヒューズ付き）→ DS＋VCB
+ */
+export const BUS_SWITCH_OPTIONS: Choice[] = [
+  { value: 'none', label: 'なし（母線から直接）' },
+  { value: 'ds', label: 'DS' },
+  { value: 'vcb', label: 'VCB' },
+  { value: 'lbs', label: 'LBS' },
+  { value: 'ds-vcb', label: 'DS＋VCB' },
+];
+/** LBS（パワーヒューズ付き）のパワーヒューズの容量の選択肢 */
+export const FUSE_CURRENT_OPTIONS: Choice[] = [10, 15, 20, 30, 40, 50, 75, 100, 150, 200].map((v) => ({ value: String(v), label: `${v}A` }));
+
+/**
  * 財産分界点が、DS（無ければLBS）の一次側に移るとき（第13弾 項目17）。
  * 区分開閉器が「なし」で、引込ケーブルが電力会社のもの（VCTは、電力会社の持ち物で、ケーブルの負荷側にある）。
  *   ・引込点から責任分界点までのケーブル（項目15）が「ある」ときは、そのあとの引込ケーブルは、お客様のものなので、対象外

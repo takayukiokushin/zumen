@@ -1,6 +1,12 @@
 import type { Question, Choice } from './types.ts';
+import type { Condition } from '../condition.ts';
 import { MAX_COUNT, PCS_INPUT_MAX, COUNT_LIMITS } from '../counts.ts';
-import { COUNT_OPTIONS, YES_NO, YES_NO_Q, TRANSFORMER_CHOICES, RELAY_COUNT_OPTIONS } from './common.ts';
+import { BUS_SWITCH_OPTIONS, CABLE_VOLTAGE_OPTIONS, COUNT_OPTIONS, FUSE_CURRENT_OPTIONS, YES_NO, YES_NO_Q, TRANSFORMER_CHOICES, RELAY_COUNT_OPTIONS, connectionCableQuestions } from './common.ts';
+
+/** 電動機：変圧器があるエリアか（変圧器が0台のエリアは、二次側から接続できない） */
+const MOTOR_HAS_TR: Condition = { not: { key: 'transformerCount', lte: 0 } };
+/** 電動機：接続元が、変圧器の二次側のとき */
+const MOTOR_FROM_SECONDARY: Condition = { key: 'motorSource', eq: 'secondary' };
 
 /**
  * PCSをつなぐ変圧器の選択肢（「1台目」〜変圧器の台数の上限）。
@@ -204,6 +210,89 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     label: '設置場所',
     type: 'text',
     ask: 'always',
+  },
+
+  /* ---- 電動機の接続元と、途中にあるもの（第13弾 項目25）。台ごとに答える ---- */
+  {
+    // 初期値：変圧器があるときは二次側、変圧器が0台のエリアは母線
+    id: 'motorSource',
+    group: 'motor', section: '接続元',
+    label: '接続元は？',
+    type: 'select',
+    options: [
+      { value: 'secondary', label: '変圧器の二次側から接続する', showIf: MOTOR_HAS_TR },
+      { value: 'bus', label: '母線（高圧母線）から分岐して接続する' },
+    ],
+    autoValue: [{ when: MOTOR_HAS_TR, value: 'secondary' }, { value: 'bus' }],
+    dropdown: true,
+    ask: 'always',
+    help: '変圧器の二次側（低圧側）から接続するか、高圧母線から分岐して接続するか。変圧器が0台のエリアは、母線だけ選べる',
+  },
+  {
+    id: 'motorSourceTr',
+    group: 'motor', section: '接続元',
+    label: '何台目の変圧器の二次側ですか？',
+    type: 'select',
+    options: DEST_OPTIONS,
+    defaultValue: '1',
+    dropdown: true,
+    showIf: { all: [MOTOR_FROM_SECONDARY, { key: 'transformerCount', gt: 1 }] },
+    ask: 'always',
+    help: '変圧器が1台のときは、聞かない（その1台）',
+  },
+  {
+    id: 'motorCable',
+    group: 'motor', section: '接続元',
+    label: '途中にケーブルはありますか？',
+    type: 'select',
+    options: YES_NO_Q,
+    defaultValue: 'no',
+    ask: 'always',
+    help: '接続元から電動機までの間に、ケーブルがあるかどうか。引込・エリア間と同じ入力欄（種類・構造・定格電圧・断面積・長さ）で答える',
+  },
+  // 途中のケーブルの入力欄は、エリア間の接続と同じ部品。定格電圧だけ、接続元で変わる（母線＝高圧、二次側＝低圧）
+  ...connectionCableQuestions({
+    prefix: 'motor',
+    group: 'motor',
+    section: '接続元',
+    when: { key: 'motorCable', eq: 'yes' },
+    voltage: {
+      options: [
+        ...CABLE_VOLTAGE_OPTIONS.map((o) => ({ ...o, showIf: { not: MOTOR_FROM_SECONDARY } as Condition })),
+        { value: '600', label: '600V', showIf: MOTOR_FROM_SECONDARY },
+      ],
+      autoValue: [{ when: MOTOR_FROM_SECONDARY, value: '600' }, { value: '6600' }],
+      allowFreeInput: true,
+    },
+  }),
+  {
+    // 母線から：エリア間の送り出しと同じ並び。二次側から：低圧側の開閉器（いまある記号は、MCCBだけ）
+    id: 'motorSwitch',
+    group: 'motor', section: '接続元',
+    label: '途中に開閉器はありますか？',
+    type: 'select',
+    options: [
+      ...BUS_SWITCH_OPTIONS.map((o) => ({ ...o, showIf: { not: MOTOR_FROM_SECONDARY } as Condition })),
+      { value: 'none', label: 'なし', showIf: MOTOR_FROM_SECONDARY },
+      { value: 'mccb', label: 'MCCB（配線用遮断器）', showIf: MOTOR_FROM_SECONDARY },
+    ],
+    defaultValue: 'none',
+    dropdown: true,
+    ask: 'always',
+    help: '接続元から電動機までの間に付く開閉器。接続元が母線のときは、DS・VCB・LBS・DS＋VCB。変圧器の二次側のときは、低圧側のもの（いまは、MCCBだけ）',
+  },
+  {
+    id: 'motorFuseCurrent',
+    group: 'motor', section: '接続元',
+    label: 'LBSのパワーヒューズの容量（定格電流）',
+    type: 'select',
+    options: FUSE_CURRENT_OPTIONS,
+    allowFreeInput: true,
+    dropdown: true,
+    unit: 'A',
+    showIf: { key: 'motorSwitch', eq: 'lbs' },
+    ask: 'always',
+    help: 'LBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
   },
 
   /* ---------------- 太陽光（PCS。容量ごとのまとまりで入力） ---------------- */

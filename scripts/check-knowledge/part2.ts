@@ -3,7 +3,7 @@
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
 import { fillLabelLines, findSymbol, initialLabelValues, labelFields, SYMBOLS } from '../../packages/symbols/src/index.ts';
-import { buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, NEW_PROJECT_ANSWERS, withDerived } from '../../packages/knowledge/src/index.ts';
+import { buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, NEW_PROJECT_ANSWERS, withDerived, normalizeAnswers } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { fail } from './common.ts';
 import { answers } from './part1.ts';
@@ -95,13 +95,32 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
   {
     const motor = (a: Answers) => ofGroup(a, 'motor').join();
     if (motor({ hasMotor: 'no' }) !== '' || motor({}) !== '') fail('電動機が「ない」のに、電動機の入力欄を出しています');
-    if (motor({ hasMotor: 'yes' }) !== 'motorCount,motorStartMethod,motorCapacity,motorPlace') fail(`電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes' })}）`);
+    if (motor({ hasMotor: 'yes' }) !== 'motorCount,motorStartMethod,motorCapacity,motorPlace,motorSource,motorCable,motorSwitch') fail(`電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes' })}）`);
     const opts = (QUESTIONS.find((q) => q.id === 'motorStartMethod')?.options ?? []).map((o) => o.value).join(',');
     if (opts !== '直入れ始動,リアクトル始動,コンドルファ始動,インバータ始動,スターデルタ始動') fail(`始動方式の選択肢の順番が違います（${opts}）`);
     if (!shown({ hasMotor: 'no' }).some((q) => q.id === 'hasMotor')) fail('「電動機はありますか？」が出ていません');
     const spec = shown({ hasMotor: 'yes' }).map((q) => q.id);
     if (spec.indexOf('hasGenerator') >= spec.indexOf('hasMotor') || spec.indexOf('hasMotor') < 0) fail('「電動機はありますか？」が、特殊設備の発電機の次に出ていません');
     if (missingRequired({ hasMotor: 'no' }).some((q) => /^motor/.test(q.id))) fail('電動機が「ない」のに、電動機の質問が、必須の入力漏れになっています');
+    // 接続元（第13弾 項目25）：二次側／母線で、開閉器・定格電圧の選択肢が変わる。ケーブル・LBSのときだけ、続きを聞く
+    const base: Answers = { hasMotor: 'yes', transformerCount: 2 };
+    const opt = (id: string, a: Answers) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).filter((o) => evaluate(o.showIf, viewAt(normalizeAnswers({ ...base, ...a }), 0))).map((o) => o.value).join(',');
+    if (opt('motorSwitch', { motorSource: 'bus' }) !== 'none,ds,vcb,lbs,ds-vcb') fail(`母線からのとき、開閉器の選択肢が違います（${opt('motorSwitch', { motorSource: 'bus' })}）`);
+    if (opt('motorSwitch', { motorSource: 'secondary' }) !== 'none,mccb') fail(`二次側からのとき、開閉器の選択肢が違います（${opt('motorSwitch', { motorSource: 'secondary' })}）`);
+    if (opt('motorCableVoltage', { motorSource: 'bus' }) !== '3300,6600,22000,33000' || opt('motorCableVoltage', { motorSource: 'secondary' }) !== '600') fail('途中のケーブルの定格電圧の選択肢が、接続元で変わっていません');
+    if (opt('motorSource', { transformerCount: 0 }) !== 'bus') fail(`変圧器が0台のとき、母線だけのはずです（${opt('motorSource', { transformerCount: 0 })}）`);
+    const ids2 = (a: Answers) => ofGroup({ ...base, ...a }, 'motor').join();
+    if (!ids2({ motorSource: 'secondary' }).includes('motorSourceTr')) fail('変圧器が2台で二次側からのとき、「何台目」を聞いていません');
+    if (ids2({ motorSource: 'bus' }).includes('motorSourceTr') || ofGroup({ hasMotor: 'yes', transformerCount: 1, motorSource: 'secondary' }, 'motor').includes('motorSourceTr')) fail('母線から・変圧器が1台のとき、「何台目」を聞いています');
+    if (ids2({ motorCable: 'yes' }).split(',').filter((x) => /^motorCable/.test(x)).length !== 6) fail(`ケーブルが「はい」のとき、ケーブルの入力欄（6つ）が出ていません（${ids2({ motorCable: 'yes' })}）`);
+    if (/motorCableLength/.test(ids2({ motorCable: 'no' }))) fail('ケーブルが「いいえ」なのに、ケーブルの入力欄が出ています');
+    if (!ids2({ motorSwitch: 'lbs', motorSource: 'bus' }).includes('motorFuseCurrent') || ids2({ motorSwitch: 'ds', motorSource: 'bus' }).includes('motorFuseCurrent')) fail('LBSのときだけ、パワーヒューズの容量を聞くはずです');
+    // 変圧器0台：2か所目以降のエリアだけ。1か所目は、1台以上
+    const tc = QUESTIONS.find((q) => q.id === 'transformerCount')!;
+    const zero = tc.options!.find((o) => o.value === '0')!;
+    if (evaluate(zero.showIf, { areaNo: 1 } as Answers) || !evaluate(zero.showIf, { areaNo: 2 } as Answers)) fail('変圧器の台数の「0（なし）」が、2か所目以降のエリアだけに出ていません');
+    if (buildComposition({ ...answers, areaCount: 2, 'a2:transformerCount': 0, 'a2:areaIntake': 'ds-vcb' }).some((i) => i.area === 1 && i.role === 'a2:transformer')) fail('変圧器が0台のエリアに、変圧器が入っています');
+    if (!buildComposition({ ...answers, areaCount: 1 }).some((i) => i.role === 'transformer')) fail('1か所目に、変圧器が入っていません');
     console.log('  電動機：ありのときだけ、台数 → 始動方式 → 容量 → 設置場所の順（始動方式の選択肢は、依頼の順）');
   }
   // 「ありますか？」の質問そのものは、いつも出る。なしのときに、必須の入力漏れとして数えない
