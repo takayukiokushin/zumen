@@ -20,8 +20,15 @@ import type { Doc, DocItem, DocSymbol } from './doc.ts';
  * - これ以上縮められないとき（すきまが、最小まで縮んだとき）は、何も変わらないので、それと分かる。
  */
 
-/** これより狭くはしない、すきまの最小の幅 */
-export const MIN_GAP = 10;
+/**
+ * これより狭くはしない、すきまの最小の幅。
+ * 記号どうしを結ぶ線（縦棒・横棒）が入っているすきまは、線の長さが MIN_BAR より短くならないところまで。
+ * 何も通っていない、ただの空きは、小さくしてよい（記号・文字は、ふさがっている範囲として、そのまま動くだけなので、重ならない）。
+ * （以前は、どちらも 10 だった。そのため、縦棒（もとは16ほど）が、6しか縮まなかった）
+ */
+export const MIN_GAP = 4;
+/** 記号どうしを結ぶ線（縦棒・横棒）の、これより短くはしない長さ */
+export const MIN_BAR = 8;
 /** 1回押すごとの倍率（縮小は × SHRINK、拡大は ÷ SHRINK） */
 export const SHRINK = 0.88;
 
@@ -43,21 +50,21 @@ function merge(spans: Span[]): Span[] {
 }
 
 /** すきまの新しい幅。縮めるときは、最小の幅まで。もともと最小より狭いすきまは、そのまま */
-function newGap(len: number, factor: number): number {
+function newGap(len: number, factor: number, floor: number): number {
   if (len <= 0.5) return len;
-  if (factor < 1) return Math.max(Math.min(len, MIN_GAP), len * factor);
+  if (factor < 1) return Math.max(Math.min(len, floor), len * factor);
   return len * factor;
 }
 
 /** 範囲の並びから、座標を変える関数を作る（ふさがっている範囲は、そのまま平行に動く。すきまは、伸び縮みする） */
-function axisMap(spans: Span[], factor: number): (v: number) => number {
+function axisMap(spans: Span[], factor: number, floorOf: (a: number, b: number) => number): (v: number) => number {
   if (spans.length === 0) return (v) => v;
   // 各範囲の、動いたあとの先頭の位置
   const shift: number[] = [0];
   const gaps: { a: number; b: number; len2: number }[] = [];
   for (let i = 1; i < spans.length; i++) {
     const gapLen = spans[i]!.a - spans[i - 1]!.b;
-    const len2 = newGap(gapLen, factor);
+    const len2 = newGap(gapLen, factor, floorOf(spans[i - 1]!.b, spans[i]!.a));
     gaps.push({ a: spans[i - 1]!.b, b: spans[i]!.a, len2 });
     shift.push(shift[i - 1]! + (len2 - gapLen));
   }
@@ -119,8 +126,19 @@ export function scaleLayout(doc: Doc, factor: number): { doc: Doc; changed: bool
     xs.push({ a: b.x0, b: b.x1 });
     ys.push({ a: b.y0, b: b.y1 });
   }
-  const fx = axisMap(merge(xs), factor);
-  const fy = axisMap(merge(ys), factor);
+  // すきまに、記号どうしを結ぶ線が入り込んでいるか（縦のすきまは縦棒、横のすきまは横棒）
+  const wires = doc.items.filter((it): it is Extract<DocItem, { kind: 'wire' }> => it.kind === 'wire');
+  const vBars = wires.filter((w) => Math.abs(w.x1 - w.x2) < 0.01).map((w) => ({ a: Math.min(w.y1, w.y2), b: Math.max(w.y1, w.y2) }));
+  const hBars = wires.filter((w) => Math.abs(w.y1 - w.y2) < 0.01).map((w) => ({ a: Math.min(w.x1, w.x2), b: Math.max(w.x1, w.x2) }));
+  // 線が入り込んでいるすきまは、その線（のすきまの中の部分）が、MIN_BAR より短くならないところまで。
+  // 線の長さは、すきまの伸び縮みに比例するので、すきまの長さと線の長さの比は、何回押しても変わらない
+  const floorFor = (bars: Span[]) => (ga: number, gb: number): number => {
+    // すきまの中に入っている、いちばん短い線（4より短いものは、飾りの短い線なので数えない）
+    const insides = bars.map((w) => Math.min(w.b, gb) - Math.max(w.a, ga)).filter((n) => n >= 4);
+    return insides.length > 0 ? Math.max(MIN_BAR, ((gb - ga) * MIN_BAR) / Math.min(...insides)) : MIN_GAP;
+  };
+  const fx = axisMap(merge(xs), factor, floorFor(hBars));
+  const fy = axisMap(merge(ys), factor, floorFor(vBars));
 
   // 記号の動き：かたまり（親）の中心の変換から、動く量を決める。内蔵品も同じ量だけ動く
   const shiftOf = new Map<string, { dx: number; dy: number }>();

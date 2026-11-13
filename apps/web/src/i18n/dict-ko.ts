@@ -663,7 +663,7 @@ export const ko: Dict = {
   'editor.layoutExpand': '레이아웃 확대',
   'editor.layoutShrinkHelp': '기호 사이의 간격과 도면 전체의 가로·세로 크기를 조금 줄입니다(기호와 글자 크기는 바뀌지 않습니다). 누를 때마다 더 줄어듭니다. “작업 되돌리기”로 되돌릴 수 있습니다.',
   'editor.layoutExpandHelp': '기호 사이의 간격과 도면 전체의 가로·세로 크기를 조금 넓힙니다(기호와 글자 크기는 바뀌지 않습니다). 누를 때마다 더 넓어집니다. “작업 되돌리기”로 되돌릴 수 있습니다.',
-  'editor.layoutLimit': '더 이상 줄일 수 없습니다(더 줄이면 기호나 글자가 겹칩니다).',
+  'editor.layoutLimit': '더 이상 줄일 수 없습니다(더 줄이면 기호나 글자가 겹치거나 기호를 잇는 선이 너무 짧아집니다).',
   'heavy.tidy.running': '배선을 정리하고 있습니다. 잠시만 기다려 주세요…',
   'heavy.shrink.running': '배치를 축소하고 있습니다. 잠시만 기다려 주세요…',
   'heavy.expand.running': '배치를 확대하고 있습니다. 잠시만 기다려 주세요…',

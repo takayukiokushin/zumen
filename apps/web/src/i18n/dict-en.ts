@@ -664,7 +664,7 @@ export const en: Dict = {
   'editor.layoutExpand': 'Expand layout',
   'editor.layoutShrinkHelp': 'Slightly shrinks the gaps between symbols and the overall width and height (symbol and text sizes do not change). It shrinks further each time you press it. You can undo it with “Undo”.',
   'editor.layoutExpandHelp': 'Slightly widens the gaps between symbols and the overall width and height (symbol and text sizes do not change). It widens further each time you press it. You can undo it with “Undo”.',
-  'editor.layoutLimit': 'It cannot be shrunk any further (shrinking more would make symbols or text overlap).',
+  'editor.layoutLimit': 'It cannot be shrunk any further (shrinking more would make symbols or text overlap, or the lines connecting symbols too short).',
   'heavy.tidy.running': 'Tidying connections. Please wait…',
   'heavy.shrink.running': 'Shrinking the layout. Please wait…',
   'heavy.expand.running': 'Expanding the layout. Please wait…',

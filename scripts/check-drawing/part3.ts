@@ -10,7 +10,7 @@ import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { rotatedBox, findLabelCollisions, labelRect, layout } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
-import { SHRINK, scaleLayout } from '../../apps/web/src/editor/layoutScale.ts';
+import { MIN_BAR, SHRINK, scaleLayout } from '../../apps/web/src/editor/layoutScale.ts';
 import { inspectDrawing, nudgeSymbolLabel } from '../../apps/web/src/editor/inspect.ts';
 import { portAbs, portX, portY, fail, answers, wires, worstGap } from './common.ts';
 import type { PlacedSymbolLike } from './common.ts';
@@ -781,6 +781,13 @@ console.log('\n■ レイアウトの縮小・拡大');
       if (problems(r.doc) > p0) { broke = `重なり・つながっていない線・斜めの線が増えました（${p0} → ${problems(r.doc)}）：${inspectDrawing(r.doc, 'A3', 'landscape').filter((i) => ['overlap', 'through', 'floating', 'skew'].includes(i.kind)).map((i) => `${i.kind}@${Math.round(i.x)},${Math.round(i.y)} ${i.message}`).join(' / ')}`; break; }
       if (nb.x1 - nb.x0 > pb.x1 - pb.x0 + 0.01 || nb.y1 - nb.y0 > pb.y1 - pb.y0 + 0.01) { broke = '縮小したのに、大きくなりました'; break; }
       cur = r.doc;
+    }
+    // 記号どうしを結ぶ線（縦棒・横棒）は、もとが MIN_BAR 以上なら、どこまで縮めても MIN_BAR より短くならない（第13弾 項目50）
+    {
+      const len = (w: DocWire) => Math.hypot(w.x1 - w.x2, w.y1 - w.y2);
+      const was = new Map(base.items.filter((i): i is DocWire => i.kind === 'wire').map((w) => [w.id, len(w)]));
+      const shortBars = cur.items.filter((i): i is DocWire => i.kind === 'wire' && (was.get(i.id) ?? 0) >= MIN_BAR && len(i) < MIN_BAR - 0.5);
+      if (shortBars.length > 0) fail(`${name}：縮めすぎて、線が ${MIN_BAR} より短くなったものがあります（${shortBars.length}本：${shortBars.slice(0, 3).map((w) => `${was.get(w.id)!.toFixed(0)}→${len(w).toFixed(1)}`).join('、')}）`);
     }
     const b1 = bounds(cur);
     const shrunkW = (b0.x1 - b0.x0) - (b1.x1 - b1.x0);

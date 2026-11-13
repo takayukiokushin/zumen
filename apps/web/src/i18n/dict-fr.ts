@@ -665,7 +665,7 @@ export const fr: Dict = {
   'editor.layoutExpand': 'Agrandir la disposition',
   'editor.layoutShrinkHelp': 'Réduit légèrement les espaces entre les symboles ainsi que la largeur et la hauteur totales (la taille des symboles et du texte ne change pas). La disposition se réduit davantage à chaque clic. Vous pouvez annuler avec « Annuler ».',
   'editor.layoutExpandHelp': 'Élargit légèrement les espaces entre les symboles ainsi que la largeur et la hauteur totales (la taille des symboles et du texte ne change pas). La disposition s’élargit davantage à chaque clic. Vous pouvez annuler avec « Annuler ».',
-  'editor.layoutLimit': 'Impossible de réduire davantage (les symboles ou le texte se chevaucheraient).',
+  'editor.layoutLimit': 'Impossible de réduire davantage (cela ferait chevaucher les symboles ou les textes, ou raccourcirait trop les lignes qui relient les symboles).',
   'heavy.tidy.running': 'Remise en ordre des liaisons en cours. Veuillez patienter…',
   'heavy.shrink.running': 'Réduction de la disposition en cours. Veuillez patienter…',
   'heavy.expand.running': 'Agrandissement de la disposition en cours. Veuillez patienter…',

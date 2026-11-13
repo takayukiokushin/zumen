@@ -661,7 +661,7 @@ export const zh: Dict = {
   'editor.layoutExpand': '扩大布局',
   'editor.layoutShrinkHelp': '略微缩小符号之间的间隔以及图纸整体的宽度和高度（符号和文字的大小不变）。每按一次就再缩小一点。可用“撤销操作”还原。',
   'editor.layoutExpandHelp': '略微扩大符号之间的间隔以及图纸整体的宽度和高度（符号和文字的大小不变）。每按一次就再扩大一点。可用“撤销操作”还原。',
-  'editor.layoutLimit': '无法再缩小（再缩小符号或文字就会重叠）。',
+  'editor.layoutLimit': '无法再缩小了（再缩小会使符号或文字重叠，或使连接符号的线过短）。',
   'heavy.tidy.running': '正在整理连线，请稍候…',
   'heavy.shrink.running': '正在缩小布局，请稍候…',
   'heavy.expand.running': '正在放大布局，请稍候…',
