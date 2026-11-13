@@ -16,7 +16,8 @@ import type { HeavyKind, HeavyRequest, HeavyResult } from './heavy.ts';
 import type { Issue, IssueKind } from './inspect.ts';
 import { Rich } from '../i18n/Rich.tsx';
 import { WireKindWindow } from './WireKindWindow.tsx';
-import type { Pos } from './WireKindWindow.tsx';
+import { TextWindow } from './TextWindow.tsx';
+import type { Pos } from './FloatingWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
@@ -120,6 +121,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const [wireDashed, setWireDashed] = useState(false);
   /** 「線を引く」の、実線・点線の窓の位置。動かした位置を覚えておく（次に開くときも、同じ位置） */
   const [wireWinPos, setWireWinPos] = useState<Pos | null>(null);
+  /** 文字の設定の窓の位置（動かしたあとも、覚えておく） */
+  const [textWinPos, setTextWinPos] = useState<Pos | null>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   /** 用紙のまま（図枠つき）で見るか。印刷の見た目をそのまま確かめられる */
   const [sheetView, setSheetView] = useState(false);
@@ -1231,6 +1234,36 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         />
       )}
 
+      {/* 図面に書く文字（メモ）を選んでいるあいだ、図面の上に出す、文字の設定の窓。動かせる（第13弾 項目38） */}
+      {selected && selected.kind === 'text' && !sheetView && (
+        <TextWindow
+          key={locked ? 'layer-text' : 'base-text'}
+          lines={selected.lines}
+          onLines={(lines) => {
+            if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { lines }));
+            else apply(setLabel(doc, selected.id, lines));
+          }}
+          size={selected.size}
+          bold={!!selected.bold}
+          red={locked ? !!selected.red : null}
+          onSize={(n) => {
+            if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { size: n }), `size:${selected.id}`);
+            else applyMerged(setTextStyle(doc, selected.id, { size: n }), `size:${selected.id}`);
+          }}
+          onBold={(b) => {
+            if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { bold: b }));
+            else apply(setTextStyle(doc, selected.id, { bold: b }));
+          }}
+          onRed={(r) => {
+            if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { red: r }));
+          }}
+          onClose={() => setSelection([])}
+          pos={textWinPos}
+          onPos={setTextWinPos}
+          anchor={canvasWrapRef}
+        />
+      )}
+
       <div className="editor-body" style={sideVars(sideW) as React.CSSProperties}>
         <div className="canvas-wrap" ref={canvasWrapRef}>
           {sheetView ? (
@@ -1710,35 +1743,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                   />
                 </>
               ) : selected.kind === 'text' ? (
-                <>
-                  <label className="lbl">{t('editor.note')}</label>
-                  <textarea
-                    rows={3}
-                    maxLength={MAX_TEXT_LENGTH}
-                    value={selected.lines.join('\n')}
-                    onChange={(e) => {
-                      const lines = e.target.value.split('\n');
-                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { lines }));
-                      else apply(setLabel(doc, selected.id, lines));
-                    }}
-                  />
-                  <TextStyleControls
-                    size={selected.size}
-                    bold={!!selected.bold}
-                    red={locked ? !!selected.red : null}
-                    onSize={(n) => {
-                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { size: n }), `size:${selected.id}`);
-                      else applyMerged(setTextStyle(doc, selected.id, { size: n }), `size:${selected.id}`);
-                    }}
-                    onBold={(b) => {
-                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { bold: b }));
-                      else apply(setTextStyle(doc, selected.id, { bold: b }));
-                    }}
-                    onRed={(r) => {
-                      if (locked && activeId !== null) editLayer((d) => updateLayerText(d, activeId, selected.id, { red: r }));
-                    }}
-                  />
-                </>
+                <p className="hint">{t('editor.textInWindow')}</p>
               ) : (
                 <>
                   <p className="hint">

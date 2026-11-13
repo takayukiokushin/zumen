@@ -866,6 +866,9 @@ button.with-icon svg { flex: 0 0 auto; }
 .wire-window-close { padding: 0 calc(7px * var(--text-scale)); min-width: calc(24px * var(--text-scale)); line-height: 1.4; font-size: calc(16px * var(--text-scale)); cursor: pointer; }
 .wire-window-body { display: flex; flex-direction: column; gap: calc(4px * var(--text-scale)); padding: calc(8px * var(--text-scale)); }
 .wire-window-body .line-kind { display: flex; align-items: center; justify-content: flex-start; gap: calc(8px * var(--text-scale)); padding: calc(5px * var(--text-scale)) calc(8px * var(--text-scale)); text-align: left; }
+.wire-window.text-window { min-width: calc(260px * var(--text-scale)); max-width: min(360px, 90vw); }
+.text-window-body { display: flex; flex-direction: column; gap: calc(4px * var(--text-scale)); padding: calc(8px * var(--text-scale)); max-height: 70vh; overflow-y: auto; }
+.text-window-body textarea { width: 100%; box-sizing: border-box; }
 .wire-window-body .line-kind svg { flex: 0 0 auto; width: calc(44px * var(--text-scale)); height: calc(10px * var(--text-scale)); }
 
 /* ------------------------------------------------------------------ */
