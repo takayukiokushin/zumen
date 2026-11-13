@@ -69,7 +69,14 @@ console.log('\n■ 受電設備エリアが2か所以上のときの構成（エ
   ok(role(a2, 'a2:area-frame')?.label[0]?.startsWith('オープンフレーム式'), `2か所目の枠の文字：${role(a2, 'a2:area-frame')?.label[0]}`);
   const link2 = role(a2, 'a2:link');
   ok(link2?.kind === 'link' && link2.link?.from === 0 && link2.link.tap === 'bus' && link2.link.dashed === true, '2か所目のつなぎ方（1か所目の高圧母線から・埋設）が違います');
-  ok(link2?.label.join('|') === '埋ケ|CVT|38mm2 20m', `2か所目のケーブルの文字：${link2?.label.join('|')}`);
+  ok(link2?.label.join('|') === '埋ケ|CVT|6600V 38mm2 20m', `2か所目のケーブルの文字：${link2?.label.join('|')}`);
+  // エリア間のケーブルも、引込ケーブルと同じに、定格電圧（初期値6600V）と「約」を付けられる
+  const linkLabel = (extra: Answers) => buildComposition({ ...multi, ...extra }).find((i) => i.role === 'a2:link')?.label.join('|');
+  ok(linkLabel({ 'a2:linkCableVoltage': '22000' }) === '埋ケ|CVT|22000V 38mm2 20m', `エリア間ケーブルの定格電圧：${linkLabel({ 'a2:linkCableVoltage': '22000' })}`);
+  ok(linkLabel({ 'a2:linkCableLengthApprox': 'yes' }) === '埋ケ|CVT|6600V 38mm2 約20m', `エリア間ケーブルの「約」：${linkLabel({ 'a2:linkCableLengthApprox': 'yes' })}`);
+  const linkQs = (extra: Answers) => new Set(visibleQuestions(areaView({ areaCount: 2, ...extra }, 1), {}).map((q) => q.id));
+  ok(linkQs({}).has('linkCableVoltage') && !linkQs({}).has('linkCableLengthApprox'), 'エリア間ケーブル：定格電圧は聞き、「約」は長さを入れるまで出ないはず');
+  ok(linkQs({ 'a2:linkCableLength': 20 }).has('linkCableLengthApprox') && !linkQs({ 'a2:linkCable': 'no' }).has('linkCableVoltage'), 'エリア間ケーブル：長さを入れたら「約」が出て、ケーブルなしなら定格電圧は出ないはず');
   const trs2 = a2.filter((i) => i.role === 'a2:transformer');
   ok(trs2.length === 2 && trs2.map((t) => t.lane).join() === '0,1', `2か所目の変圧器：${trs2.length}台・列 ${trs2.map((t) => t.lane).join(',')}（2台・列0,1のはず）`);
   ok(trs2[0]!.label.join('|').includes('3φ100kVA') && trs2[1]!.label.join('|').includes('3φ50kVA'), '2か所目の変圧器の容量が、台ごとに入っていません');

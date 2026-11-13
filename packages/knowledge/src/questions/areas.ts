@@ -160,6 +160,19 @@ export const AREAS_QUESTIONS: Question[] = [
     ask: 'always',
   },
   {
+    // 引込ケーブルの定格電圧と同じ選択肢・同じ初期値（6600V）
+    id: 'linkCableVoltage',
+    group: 'link',
+    label: '定格電圧は？',
+    type: 'select',
+    dropdown: true,
+    unit: 'V',
+    options: [3300, 6600, 22000, 33000].map((v) => ({ value: String(v), label: `${v}V` })),
+    defaultValue: '6600',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
+    ask: 'always',
+  },
+  {
     id: 'linkCableCrossSection',
     group: 'link',
     label: '断面積は？',
@@ -180,6 +193,17 @@ export const AREAS_QUESTIONS: Question[] = [
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }] },
     ask: 'always',
     help: '不明な場合は空欄にする',
+  },
+  {
+    id: 'linkCableLengthApprox',
+    group: 'link',
+    label: '長さに「約」を付ける',
+    type: 'boolean',
+    // 名前が途中で折り返されないよう、横幅をふつう（m）にする。既定値は置かない（未回答は「付けない」と同じ）
+    size: 'm',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkCable', ne: 'no' }, { key: 'linkCableLength', gt: 0 }] },
+    ask: 'always',
+    help: '歩測などで、きっちりした実測ではないとき。「約20m」と書かれる',
   },
   {
     // 任意。どこの変電所・出先へ送られているかが分かるように、送り出し側のケーブル端末の近くに書く（太さ・長さは、受け側に書く）

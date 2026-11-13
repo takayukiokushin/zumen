@@ -433,13 +433,14 @@ export function withDerived(rawAnswers: Answers): Answers {
   ].filter(Boolean);
   d.cableSpecLine = third.join(' ');
 
-  // 2か所目以降のエリアの、前のエリアからのケーブルの注記（種類・構造・断面積・長さ）
+  // 2か所目以降のエリアの、前のエリアからのケーブルの注記（種類・構造・定格電圧 断面積 長さ）。引込ケーブルと同じ書き方
   d.linkCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.linkCableInstallation)) ?? '';
   d.linkCableSpecLine = [
+    answers.linkCableVoltage ? `${answers.linkCableVoltage}V` : '',
     answers.linkCableCrossSection ? `${answers.linkCableCrossSection}mm2` : '',
     answers.linkCableLength === undefined || answers.linkCableLength === null || answers.linkCableLength === ''
       ? ''
-      : `${answers.linkCableLength}m`,
+      : `${answers.linkCableLengthApprox === 'yes' ? '約' : ''}${answers.linkCableLength}m`,
   ]
     .filter(Boolean)
     .join(' ');

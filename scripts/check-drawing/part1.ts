@@ -568,7 +568,7 @@ console.log('\n■ 受電設備エリアが2か所以上のときの配置');
   const frameTop = two.frames[1]!.y;
   const reaches = dashed.some((w) => (w.y1 === frameTop || w.y2 === frameTop) && w.x1 === w.x2);
   if (!reaches) fail('ケーブルの線が、2か所目の枠の上端まで来ていません');
-  const hasText = (two.texts ?? []).some((t) => t.lines.join('|') === '埋ケ|CVT|38mm2 20m');
+  const hasText = (two.texts ?? []).some((t) => t.lines.join('|') === '埋ケ|CVT|6600V 38mm2 20m');
   if (!hasText) fail(`ケーブルの文字が描かれていません（${(two.texts ?? []).map((t) => t.lines.join('|')).join(' ／ ')}）`);
   if (entryX && !(Math.abs(entryX.x + getSymbolDef('cable-head').box.w / 2 - second[0]!.x) >= 0)) fail('受け側の端末の位置が不正です');
   const cols = findLabelCollisions(two);
