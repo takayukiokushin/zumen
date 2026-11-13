@@ -572,7 +572,6 @@ export function wireAnchorAt(doc: Doc, w: { id: string; x1: number; x2: number; 
   const along = Math.max(lo, Math.min(hi, snap(x)));
   const t = (along - w.x1) / (w.x2 - w.x1);
   const key = wireKey(w as Parameters<typeof wireKey>[0]);
-  void doc;
   return { kind: 'wire', ...(key ? { key } : {}), id: w.id, t };
 }
 

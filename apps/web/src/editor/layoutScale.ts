@@ -118,7 +118,6 @@ export function scaleLayout(doc: Doc, factor: number): { doc: Doc; changed: bool
 
 /** 従来の方式：記号・文字が占める範囲を縦（横）に投影して、どこにも何も無いすきまだけを、縮める・広げる */
 export function scaleByProjection(doc: Doc, factor: number, only?: Axis): { doc: Doc; changed: boolean } {
-  const byId = new Map(doc.items.map((it) => [it.id, it]));
   const xs: Span[] = [];
   const ys: Span[] = [];
   const rootBox = new Map<string, { x0: number; y0: number; x1: number; y1: number }>();
@@ -208,7 +207,6 @@ export function scaleByProjection(doc: Doc, factor: number, only?: Axis): { doc:
     moved = true;
     return { ...it, x: it.x + dx, y: it.y + dy };
   });
-  void byId;
   if (!moved) return { doc, changed: false };
   // 記号につないだ線の端を、接続点の位置に合わせ直す（変換のあとの、ごく小さなずれを、なくす）
   const anchored = applyAnchors({ ...doc, items: next });

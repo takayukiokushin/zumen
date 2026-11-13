@@ -528,7 +528,6 @@ function freeEndFolds(
   const reach = vertical ? (fy - p.y) * out.dy : (fx - p.x) * out.dx;
   // つなぎ先の向きが、線の縦横と合っていないときは、判断しない
   const along = vertical ? out.dy !== 0 : out.dx !== 0;
-  void w;
   return along && reach < -FOLD_TOLERANCE;
 }
 

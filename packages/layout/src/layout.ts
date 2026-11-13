@@ -155,7 +155,6 @@ interface AreaTaps {
 }
 
 function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
-  void answers;
   const symbols: PlacedSymbol[] = [];
   const wires: Wire[] = [];
   const frames: FrameMark[] = [];

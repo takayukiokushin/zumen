@@ -27,7 +27,6 @@ export const fr: Dict = {
   'nav.logout.confirm': 'Vous allez être déconnecté. Continuer ?',
   'nav.logout.confirmUnsaved': 'Des modifications ne sont pas enregistrées. Vous les perdrez en vous déconnectant. Se déconnecter quand même ?',
 
-  'project.choose': 'Choisir une affaire',
   'project.list': 'Tous les schémas',
   'project.nameLabel': 'Affaire : ',
   'project.new': 'Nouvelle affaire',
@@ -75,7 +74,6 @@ export const fr: Dict = {
   'project.unsaved': 'Non enregistré',
   'project.editing': 'En modification',
   'project.updated': 'Modifié',
-  'project.empty': 'Ouvrez une affaire depuis « Choisir une affaire », ou créez-en une.',
 
   'settings.title': 'Affichage',
   'settings.tab.basic': 'Général',

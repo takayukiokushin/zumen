@@ -148,7 +148,6 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
   /** エリアごとのブロック（2か所以上のとき）。エリア自体の質問（形態・設置場所など）と、エリアごとのグループ */
   const areaBlocks = splitByArea
     ? Array.from({ length: areas }, (_, n) => {
-        const view = views[n]!;
         // 受電設備エリアの質問（形態・設置場所…）は、「か所目」ごとの答え
         const areaGroup = QUESTION_GROUPS.find((g) => g.id === 'area')!;
         // （2か所目以降だけに出す質問があるので、2か所目以降は、1か所目で出ている質問からではなく、全部の質問から選ぶ）
@@ -171,7 +170,6 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
         });
         // 受ける側の欄に出す、読み取り専用の1行（どこから送られてくるか）
         const from = n >= 1 ? linkFromOf(views[n]!, n) : -1;
-        void view;
         const all = [...areaRows, ...groups.flatMap((g) => [...g.lead, ...g.blocks.flatMap((b) => b.rows)]), ...dests.filter((d) => d.owned).flatMap((d) => d.rows)];
         return {
           index: n,

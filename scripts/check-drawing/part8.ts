@@ -79,7 +79,6 @@ console.log('\n■ 赤い枠（停電範囲・充電範囲・印加範囲）と�
 
   // 5. 近くの機器について動く（大きさは変わらない）。機器が無くなっても、枠は残る
   const a0 = resolveAreas(one.doc, 'outage')[0]!;
-  const moved = resolveAreas(moveItem(one.doc, vcb.id, 30, 40), 'outage')[0]!;
   const tracked = layerOf(one.doc, 'outage')!.items[0] as LayerArea;
   const nearSym = syms.find((s) => sameName(s.id) === tracked.near);
   if (nearSym) {
@@ -89,7 +88,6 @@ console.log('\n■ 赤い枠（停電範囲・充電範囲・印加範囲）と�
     const rg = resolveAreas(gone, 'outage')[0];
     if (!rg || rg.x !== a0.x || rg.y !== a0.y || layerOf(purgeOrphanMarks(gone), 'outage')!.items.length !== 1) fail('近くの機器が無くなったとき、枠が消えています（枠は、最後に置いた場所に残るはずです）');
   } else fail('枠が、近くの機器を覚えていません');
-  void moved;
   // 動かす（矢印キー）と、大きさの変更（ハンドル）
   const shifted = resolveAreas(moveAreas(one.doc, 'outage', [one.id], 8, -4), 'outage')[0]!;
   if (shifted.x !== a0.x + 8 || shifted.y !== a0.y - 4 || shifted.w !== a0.w) fail('枠を動かせません');

@@ -80,7 +80,7 @@ const TOL = 0.5;
 /** 横（縦）の重なりを見るときの、余裕 */
 const OVERLAP_MARGIN = 1;
 
-const rectOf = (doc: Doc, it: DocSymbol): Rect => {
+const rectOf = (it: DocSymbol): Rect => {
   const b = itemBounds(it);
   let { x0, y0, x1, y1 } = b;
   if (it.label.length > 0) {
@@ -90,7 +90,6 @@ const rectOf = (doc: Doc, it: DocSymbol): Rect => {
     x1 = Math.max(x1, r.x1);
     y1 = Math.max(y1, r.y1);
   }
-  void doc;
   return { x0, y0, x1, y1 };
 };
 
@@ -149,7 +148,7 @@ function compactAxis(doc: Doc, axis: Axis, factor: number, params: CompactParams
   for (const it of doc.items) {
     if (it.kind !== 'symbol') continue;
     const root = rootOf(it.id);
-    const r = rectOf(doc, it);
+    const r = rectOf(it);
     const g = groups.get(root);
     if (g) {
       g.r = { x0: Math.min(g.r.x0, r.x0), y0: Math.min(g.r.y0, r.y0), x1: Math.max(g.r.x1, r.x1), y1: Math.max(g.r.y1, r.y1) };
@@ -521,7 +520,7 @@ function sound(before: Doc, after: Doc): boolean {
       let r: Rect;
       if (it.kind === 'symbol') {
         key = rootOf(it.id);
-        r = rectOf(d, it);
+        r = rectOf(it);
       } else if (it.kind === 'text') r = itemBounds(it);
       else continue;
       const c = m.get(key);

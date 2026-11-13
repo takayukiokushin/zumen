@@ -27,7 +27,6 @@ export const ko: Dict = {
   'nav.logout.confirm': '로그아웃합니다. 괜찮으십니까?',
   'nav.logout.confirmUnsaved': '저장하지 않은 변경이 있습니다. 로그아웃하면 그 변경이 사라집니다. 그래도 로그아웃하시겠습니까?',
 
-  'project.choose': '안건 선택',
   'project.list': '도면 목록',
   'project.nameLabel': '안건: ',
   'project.new': '새 도면 만들기',
@@ -75,7 +74,6 @@ export const ko: Dict = {
   'project.unsaved': '저장 안 됨',
   'project.editing': '편집 중',
   'project.updated': '갱신',
-  'project.empty': '위의 「안건 선택」에서 안건을 열거나, 새 안건을 만드세요.',
 
   'settings.title': '화면 설정',
   'settings.tab.basic': '기본 설정',

@@ -27,7 +27,6 @@ export const zh: Dict = {
   'nav.logout.confirm': '即将退出登录，确定吗？',
   'nav.logout.confirmUnsaved': '有尚未保存的更改。退出登录后这些更改将丢失。仍要退出登录吗？',
 
-  'project.choose': '选择项目',
   'project.list': '图纸一览',
   'project.nameLabel': '项目：',
   'project.new': '新建项目',
@@ -75,7 +74,6 @@ export const zh: Dict = {
   'project.unsaved': '未保存',
   'project.editing': '编辑中',
   'project.updated': '更新',
-  'project.empty': '请从上方的“选择项目”打开项目，或新建一个项目。',
 
   'settings.title': '显示设置',
   'settings.tab.basic': '基本设置',

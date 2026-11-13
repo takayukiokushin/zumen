@@ -345,9 +345,7 @@ console.log('\n■ 送り出し側のケーブルの端末（分岐する位置�
     const a = { ...a3base, ...extra };
     const d3 = layout(buildComposition(a), a);
     const heads3 = d3.symbols.filter((s) => /cable-head-send/.test(s.id));
-    const fromFirst = a['a3:linkFrom'] === 2 ? 1 : 2;
     const wantHeads = a['a3:linkFrom'] === 2 ? 2 : 2;
-    void fromFirst;
     const down = heads3.every((h) => h.rotate === 0 && Math.abs(portAbs(h, 'in').x - portAbs(h, 'out').x) < 0.5 && portAbs(h, 'in').y < portAbs(h, 'out').y);
     const ids = new Set(heads3.map((h) => h.id));
     const wireAt = (x: number, y: number) => d3.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
@@ -422,7 +420,6 @@ console.log('\n■ OVGR・DGRの記号');
     })();
     const wireAt = (x: number, y: number) => d.wires.some((w) => (Math.abs(w.x2 - x) < 0.5 && Math.abs(w.y2 - y) < 0.5) || (Math.abs(w.x1 - x) < 0.5 && Math.abs(w.y1 - y) < 0.5));
     const beside = dgr.x > zct.x && Math.abs((dgr.y + getSymbolDef(dgr.symbolId).box.h / 2) - zctSec.y) < 14;
-    const zpdAbs = zpd.x + getSymbolDef('zpd').box.w;
     // ZPDとDGRの間に、線を引かない：ZPD（左）からDGR（右）へ届く横線が無い
     const crossLink = d.wires.some((w) => w.y1 === w.y2 && Math.min(w.x1, w.x2) <= zpd.x + getSymbolDef('zpd').box.w && Math.max(w.x1, w.x2) >= dgr.x && Math.abs(w.y1 - zctSec.y) < 14);
     if (!beside) fail('DGRが、ZCTの横（右）に描かれていません');
@@ -432,7 +429,6 @@ console.log('\n■ OVGR・DGRの記号');
     else if (findLabelCollisions(d).length > 0) fail('OVGR・DGRを入れたら、文字が重なりました');
     else if (inspectDrawing(fromLayout(d), 'A3', 'landscape').length > 0) fail('編集用に取り込むと、問題が出ます');
     else console.log(`  ZCT（ケーブルに付く）の横にDGR、ZPDの左にOVGR。ZPDとDGRは線でつながない。文字の重なりなし`);
-    void zpdAbs;
   }
   // DGRなし・OVGRなしのときは、ZPDだけ
   const plain = layout(buildComposition({ ...a, hasOvgr: 'no', mainGroundRelay: 'none' }), { ...a, hasOvgr: 'no', mainGroundRelay: 'none' });

@@ -208,8 +208,6 @@ console.log('\n■ 赤い接地のマークの大きさ（中・大）');
     const toM = resolveGrounds(editGround(rl.doc, 'outage', rl.id, { mark: 'M' }), 'outage')[0]!;
     if (toL.mark !== 'L' || toM.mark !== 'M' || (layerOf(editGround(rl.doc, 'outage', rl.id, { mark: 'M' }), 'outage')!.items[0] as LayerGround).mark !== undefined) fail('中・大の切り替えが、できていません');
     // 他の図記号にかかるかの確認も、大きさに合わせる
-    const wide = { x: gm.x, y: gm.y, lead: gm.lead, drop: gm.drop };
-    void wide;
     // 印刷：大は、1.5倍の大きさで出る。中は、これまでと同じ
     const title = { site: '見本工場', name: '停電範囲図', footer: COMPANY_NAME };
     const sheet = (d: Doc) => {

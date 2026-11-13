@@ -28,7 +28,6 @@ export const ja = {
   'nav.logout.confirm': 'ログアウトします。よろしいですか。',
   'nav.logout.confirmUnsaved': '保存していない変更があります。ログアウトすると、その変更は消えます。ログアウトしますか。',
 
-  'project.choose': '案件を選ぶ',
   'project.list': '図面一覧',
   'project.nameLabel': '案件：',
   'project.new': '図面を新規作成',
@@ -76,7 +75,6 @@ export const ja = {
   'project.unsaved': '未保存',
   'project.editing': '編集中',
   'project.updated': '更新',
-  'project.empty': '上の「案件を選ぶ」から案件を開くか、新しい案件をつくってください。',
 
   'settings.title': '表示の設定',
   'settings.tab.basic': '基本設定',

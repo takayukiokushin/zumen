@@ -27,7 +27,6 @@ export const en: Dict = {
   'nav.logout.confirm': 'Sign out. Are you sure?',
   'nav.logout.confirmUnsaved': 'You have unsaved changes. Signing out will discard them. Sign out anyway?',
 
-  'project.choose': 'Choose a job',
   'project.list': 'All drawings',
   'project.nameLabel': 'Job: ',
   'project.new': 'New job',
@@ -75,7 +74,6 @@ export const en: Dict = {
   'project.unsaved': 'Unsaved',
   'project.editing': 'Being edited',
   'project.updated': 'Updated',
-  'project.empty': 'Open a job from “Choose a job” above, or create a new one.',
 
   'settings.title': 'Display settings',
   'settings.tab.basic': 'Basic',
