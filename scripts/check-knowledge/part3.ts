@@ -430,6 +430,38 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     if (!linkNoLen?.endsWith('6600V 38mm2 - m')) fail(`エリア間のケーブルの長さが不明のとき、「- m」と書かれていません（${linkNoLen}）`);
     console.log('  引込点〜責任分界点のケーブル：区分開閉器なし・地上キャビネットなしで「はい」のとき、引込点と責任分界点のあいだに、引込ケーブルと同じ様式で入る');
   }
+  // 区分開閉器が「なし」のとき：引込ケーブルが電力会社のものなら、財産分界点は、DSの一次側（DSが無ければ、LBSの一次側）に移る
+  {
+    const ordered = (a: Answers) => buildComposition({ ...answers, ...a }).map((i) => i.role);
+    const idx = (list: string[], r: string) => list.indexOf(r);
+    const none = { sectionalizer: 'none', groundCabinet: 'no', cableInstallation: 'buried', mainBreakerForm: 'cb' };
+    // 電力会社のケーブル（初期値）：上の線は無く、DSの真上に「財産・責任分界点」
+    const util = ordered(none);
+    const ds = buildComposition({ ...answers, ...none }).find((i) => i.role === 'boundary-ds');
+    if (idx(util, 'boundary-ds') < 0 || idx(util, 'boundary-ds') + 1 !== idx(util, 'ds')) fail('電力会社のケーブル：DSの真上に、分界点の線が入っていません');
+    if (util.includes('boundary') || util.includes('boundary-property') || util.includes('boundary-safety')) fail('電力会社のケーブル：上（引込点の下）の分界点の線が、残っています');
+    if (ds?.label.join('|') !== '財産・責任分界点') fail(`電力会社のケーブル：分界点の文字が違います（${ds?.label.join('|')}）`);
+    if (idx(util, 'vct-indoor') > idx(util, 'boundary-ds')) fail('電力会社のケーブル：分界点の線が、VCTの上に入っています（VCTの下、DSの上のはず）');
+    // PFS形（DSなし）：LBSの一次側
+    const pfs = ordered({ ...none, mainBreakerForm: 'pfs' });
+    if (idx(pfs, 'boundary-ds') < 0 || idx(pfs, 'boundary-ds') + 1 !== idx(pfs, 'main-breaker')) fail('PFS形：LBSの真上に、分界点の線が入っていません');
+    // お客様のケーブル：これまでどおり（引込点の下）
+    const cust = ordered({ ...none, cableOwner: 'customer' });
+    if (!cust.includes('boundary') || cust.includes('boundary-ds')) fail('お客様のケーブル：分界点の線が、引込点の下に入っていません');
+    // 区分開閉器が「あり」・引込ケーブル「なし」・引込点〜責任分界点のケーブルが「ある」・電柱上構成は、これまでどおり
+    const stay = (a: Answers, what: string) => { if (ordered(a).includes('boundary-ds')) fail(`${what}のとき、DSの一次側に、分界点の線が入っています`); };
+    stay({ ...none, sectionalizer: 'pas' }, '区分開閉器が「あり」');
+    stay({ ...none, cableInstallation: 'none' }, '引込ケーブルが「なし」');
+    stay({ ...none, preCable: 'yes' }, '引込点〜責任分界点のケーブルが「ある」');
+    stay({ ...none, mainBreakerForm: 'pole-top' }, '電柱上構成');
+    // 質問：区分開閉器なしのときだけ聞く。電力会社のケーブルのときは、「3点一致ですか？」を聞かない
+    const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+    if (!shown({ sectionalizer: 'none', cableInstallation: 'buried' }).has('cableOwner') || shown({ sectionalizer: 'pas' }).has('cableOwner')) fail('「引込ケーブルは、お客様のものですか、電力会社のものですか？」が、区分開閉器なしのときだけ、出るようになっていません');
+    if (shown({ sectionalizer: 'none', cableInstallation: 'buried' }).has('boundaryPattern')) fail('電力会社のケーブルのとき、「3点一致ですか？」が出ています');
+    if (!shown({ sectionalizer: 'none', cableInstallation: 'buried', cableOwner: 'customer' }).has('boundaryPattern')) fail('お客様のケーブルのとき、「3点一致ですか？」が出ていません');
+    if (QUESTION_DEFAULTS.cableOwner !== 'utility') fail('「引込ケーブルは誰のものか」の初期値が、電力会社のケーブルではありません');
+    console.log('  区分開閉器なし：電力会社のケーブル（初期値）→ DS（無ければLBS）の一次側に「財産・責任分界点」1本・「3点一致」は聞かない／お客様のケーブル → これまでどおり');
+  }
   // 電圧が「6600/」だけ（後ろが未入力）のときは、図面に書かない。書き終えたものは書く
   {
     const trLabel = (v: string) => buildComposition({ ...answers, trVoltage: v, transformerCount: 1 }).find((i) => i.role === 'transformer')?.label.join('|') ?? '';

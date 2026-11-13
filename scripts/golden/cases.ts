@@ -319,6 +319,11 @@ export const GOLDEN_CASES: GoldenCase[] = [
     cableCrossSection: '100',
     cableLength: 30,
   }),
+  mk('30-customer-cable', '区分開閉器なし・引込ケーブルがお客様のもの：財産・責任分界点は、これまでどおり、引込点の下（電力会社のケーブルのときは、DSの一次側に移る）', ['boundary-both=1', 'cable-head=2'], CB, {
+    sectionalizer: 'none',
+    groundCabinet: 'no',
+    cableOwner: 'customer',
+  }),
   // ---- 赤いレイヤー（停電範囲図・絶縁耐力試験範囲図・追加したレイヤー）の印刷 ----
   withLayer(mk('L1-outage', '赤いレイヤー：停電範囲図（メモ・×印・接地・停電範囲の枠・点と印加点の矢印・渡り線）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), outageLayer),
   withLayer(mk('L2-withstand', '赤いレイヤー：絶縁耐力試験範囲図（充電範囲の斜線・印加範囲・4つの形の渡り線・印加点の矢印）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), withstandLayer),

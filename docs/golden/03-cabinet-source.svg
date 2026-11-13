@@ -8,14 +8,14 @@
   <text x="728" y="1045" font-size="9" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">株式会社フジエレックス</text>
   <g transform="translate(362.9 77) scale(1.0000)">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">
-    <path d="M -200 256 L 234.2 256 M -200 256 L -200 282 M 234.2 256 L 234.2 282" fill="none" stroke-width="1" />
-    <text x="-200" y="250" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
+    <path d="M -200 216 L 234.2 216 M -200 216 L -200 242 M 234.2 216 L 234.2 242" fill="none" stroke-width="1" />
+    <text x="-200" y="210" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
     <line x1="0" y1="88" x2="0" y2="104" stroke-width="1" />
     <line x1="0" y1="148" x2="0" y2="164" stroke-width="1" />
-    <line x1="0" y1="188" x2="0" y2="204" stroke-width="1" />
-    <line x1="0" y1="228" x2="0" y2="284" stroke-width="1" stroke-dasharray="5 4" />
-    <line x1="0" y1="308" x2="0" y2="324" stroke-width="1" />
-    <line x1="0" y1="388" x2="0" y2="404" stroke-width="1" />
+    <line x1="0" y1="188" x2="0" y2="244" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="0" y1="268" x2="0" y2="284" stroke-width="1" />
+    <line x1="0" y1="348" x2="0" y2="364" stroke-width="1" />
+    <line x1="0" y1="428" x2="0" y2="444" stroke-width="1" />
     <line x1="0" y1="468" x2="0" y2="484" stroke-width="1" />
     <line x1="0" y1="556" x2="0" y2="582" stroke-width="1" />
     <line x1="0" y1="582" x2="34" y2="582" stroke-width="1" />
@@ -46,44 +46,44 @@
       <line x1="60" y1="26.6" x2="30" y2="34.6" stroke-width="1" />
       <line x1="30" y1="34.6" x2="30" y2="44" stroke-width="1" />
     </g>
-    <g transform="translate(-96 164)">
+    <g transform="translate(-12 164)">
+      <line x1="12" y1="0" x2="12" y2="3.6" stroke-width="1" />
+      <polygon points="3.6,3.6 20.4,3.6 12,18" fill="none" stroke-width="1" />
+      <line x1="12" y1="18" x2="12" y2="24" stroke-width="1" />
+    </g>
+    <text x="22" y="174" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="22" dy="0">埋ケ</tspan><tspan x="22" dy="12.5">CVT</tspan><tspan x="22" dy="12.5">6600V 38mm2 14m</tspan></text>
+    <g transform="translate(-12 244) rotate(180 12 12)">
+      <line x1="12" y1="0" x2="12" y2="3.6" stroke-width="1" />
+      <polygon points="3.6,3.6 20.4,3.6 12,18" fill="none" stroke-width="1" />
+      <line x1="12" y1="18" x2="12" y2="24" stroke-width="1" />
+    </g>
+    <g transform="translate(-22 284)">
+      <line x1="22" y1="0" x2="22" y2="64" stroke-width="1" />
+      <rect x="6" y="8" width="56" height="48" fill="none" stroke-width="1" />
+      <line x1="22" y1="24" x2="32" y2="24" stroke-width="1" />
+      <circle cx="40" cy="24" r="8" fill="none" stroke-width="1" />
+      <circle cx="50" cy="24" r="8" fill="none" stroke-width="1" />
+      <line x1="58" y1="24" x2="72" y2="24" stroke-width="1" />
+      <circle cx="22" cy="42" r="9" fill="none" stroke-width="1" />
+      <line x1="31" y1="42" x2="72" y2="42" stroke-width="1" />
+    </g>
+    <text x="60" y="294" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="60" dy="0">VCT</tspan></text>
+    <g transform="translate(-22 364)">
+      <line x1="22" y1="0" x2="22" y2="64" stroke-width="1" />
+      <rect x="6" y="8" width="56" height="48" fill="none" stroke-width="1" />
+      <line x1="22" y1="24" x2="32" y2="24" stroke-width="1" />
+      <circle cx="40" cy="24" r="8" fill="none" stroke-width="1" />
+      <circle cx="50" cy="24" r="8" fill="none" stroke-width="1" />
+      <line x1="58" y1="24" x2="72" y2="24" stroke-width="1" />
+      <circle cx="22" cy="42" r="9" fill="none" stroke-width="1" />
+      <line x1="31" y1="42" x2="72" y2="42" stroke-width="1" />
+    </g>
+    <text x="60" y="374" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="60" dy="0">VCT</tspan></text>
+    <g transform="translate(-96 444)">
       <line x1="96" y1="0" x2="96" y2="24" stroke-width="1" />
       <line x1="0" y1="12" x2="120" y2="12" stroke-width="1" />
     </g>
-    <text x="-106" y="174" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-106" dy="0">財産・責任分界点</tspan></text>
-    <g transform="translate(-12 204)">
-      <line x1="12" y1="0" x2="12" y2="3.6" stroke-width="1" />
-      <polygon points="3.6,3.6 20.4,3.6 12,18" fill="none" stroke-width="1" />
-      <line x1="12" y1="18" x2="12" y2="24" stroke-width="1" />
-    </g>
-    <text x="22" y="214" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="22" dy="0">埋ケ</tspan><tspan x="22" dy="12.5">CVT</tspan><tspan x="22" dy="12.5">6600V 38mm2 14m</tspan></text>
-    <g transform="translate(-12 284) rotate(180 12 12)">
-      <line x1="12" y1="0" x2="12" y2="3.6" stroke-width="1" />
-      <polygon points="3.6,3.6 20.4,3.6 12,18" fill="none" stroke-width="1" />
-      <line x1="12" y1="18" x2="12" y2="24" stroke-width="1" />
-    </g>
-    <g transform="translate(-22 324)">
-      <line x1="22" y1="0" x2="22" y2="64" stroke-width="1" />
-      <rect x="6" y="8" width="56" height="48" fill="none" stroke-width="1" />
-      <line x1="22" y1="24" x2="32" y2="24" stroke-width="1" />
-      <circle cx="40" cy="24" r="8" fill="none" stroke-width="1" />
-      <circle cx="50" cy="24" r="8" fill="none" stroke-width="1" />
-      <line x1="58" y1="24" x2="72" y2="24" stroke-width="1" />
-      <circle cx="22" cy="42" r="9" fill="none" stroke-width="1" />
-      <line x1="31" y1="42" x2="72" y2="42" stroke-width="1" />
-    </g>
-    <text x="60" y="334" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="60" dy="0">VCT</tspan></text>
-    <g transform="translate(-22 404)">
-      <line x1="22" y1="0" x2="22" y2="64" stroke-width="1" />
-      <rect x="6" y="8" width="56" height="48" fill="none" stroke-width="1" />
-      <line x1="22" y1="24" x2="32" y2="24" stroke-width="1" />
-      <circle cx="40" cy="24" r="8" fill="none" stroke-width="1" />
-      <circle cx="50" cy="24" r="8" fill="none" stroke-width="1" />
-      <line x1="58" y1="24" x2="72" y2="24" stroke-width="1" />
-      <circle cx="22" cy="42" r="9" fill="none" stroke-width="1" />
-      <line x1="31" y1="42" x2="72" y2="42" stroke-width="1" />
-    </g>
-    <text x="60" y="414" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="60" dy="0">VCT</tspan></text>
+    <text x="-106" y="454" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-106" dy="0">財産・責任分界点</tspan></text>
     <g transform="translate(-24 484)">
       <line x1="24" y1="0" x2="24" y2="15" stroke-width="1" />
       <line x1="16" y1="15" x2="32" y2="15" stroke-width="1" />

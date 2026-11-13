@@ -1,5 +1,6 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
+import { PROPERTY_AT_DS } from './questions/common.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
 const MAIN_GROUND_ON: Condition = {
@@ -214,7 +215,7 @@ export const UPSTREAM: Placement[] = [
     labelSide: 'left',
     symbolId: 'boundary-both',
     kind: 'series',
-    when: { key: 'boundaryPattern', eq: 'coincident' },
+    when: { all: [{ key: 'boundaryPattern', eq: 'coincident' }, { not: PROPERTY_AT_DS }] },
     labelTemplate: ['財産・責任分界点'],
     note: '3点一致（約99%）。引込点の図記号とPASの間に横線を引く',
   },
@@ -223,7 +224,7 @@ export const UPSTREAM: Placement[] = [
     labelSide: 'left',
     symbolId: 'boundary-property',
     kind: 'series',
-    when: { key: 'boundaryPattern', eq: 'split' },
+    when: { all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }] },
     labelTemplate: ['財産分界点'],
   },
   {
@@ -393,8 +394,24 @@ export const UPSTREAM: Placement[] = [
   },
 ];
 
+/**
+ * 区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点は、ケーブルの負荷側にある。
+ * VCT（電力会社の持ち物）がケーブルの負荷側にあるので、DSの一次側（DSが無ければ、LBSの一次側）。
+ * 財産と責任の分界点を同じ位置とみなして、「財産・責任分界点」の横線を、DS（LBS）の真上に1本引く
+ */
+const BOUNDARY_AT_DS: Placement = {
+  role: 'boundary-ds',
+  labelSide: 'left',
+  symbolId: 'boundary-both',
+  kind: 'series',
+  when: PROPERTY_AT_DS,
+  labelTemplate: ['財産・責任分界点'],
+  note: '区分開閉器なし＋電力会社のケーブル。財産分界点は、DS（無ければLBS）の一次側。VCTの下、DSの真上に横線を引く',
+};
+
 /** 主遮断装置がLBSの構成 */
 export const PFS_CHAIN: Placement[] = [
+  BOUNDARY_AT_DS,
   {
     role: 'main-breaker',
     symbolId: 'lbs-pf',
@@ -406,6 +423,7 @@ export const PFS_CHAIN: Placement[] = [
 
 /** 主遮断装置がVCBの構成 */
 export const CB_CHAIN: Placement[] = [
+  BOUNDARY_AT_DS,
   { role: 'ds', symbolId: 'ds', kind: 'series', labelTemplate: ['DS', '{dsRating}'] },
   {
     role: 'main-breaker',
@@ -555,6 +573,7 @@ export const DOWNSTREAM: Placement[] = [
     when: {
       all: [
         { key: 'boundaryPattern', eq: 'split' },
+        { not: PROPERTY_AT_DS },
         {
           any: [
             { key: 'mainBreakerForm', eq: 'cb' },

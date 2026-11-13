@@ -35,6 +35,24 @@ export const CABLE_STRUCTURE_OPTIONS: Choice[] = [
   { value: 'CV', label: 'CV' },
 ];
 
+/**
+ * 財産分界点が、DS（無ければLBS）の一次側に移るとき（第13弾 項目17）。
+ * 区分開閉器が「なし」で、引込ケーブルが電力会社のもの（VCTは、電力会社の持ち物で、ケーブルの負荷側にある）。
+ *   ・引込点から責任分界点までのケーブル（項目15）が「ある」ときは、そのあとの引込ケーブルは、お客様のものなので、対象外
+ *   ・引込ケーブルが「なし」・主遮断装置のない構成（電柱上）も、対象外
+ *   ・「引込ケーブルは誰のものか」は、初期値が電力会社のケーブルなので、お客様のケーブルと答えたとき以外は、電力会社のケーブルとして扱う
+ * この条件のとき、「3点一致ですか？」は聞かず、DSの一次側に「財産・責任分界点」の横線を1本引く。
+ */
+export const PROPERTY_AT_DS: Condition = {
+  all: [
+    { key: 'sectionalizer', eq: 'none' },
+    { not: { key: 'cableInstallation', eq: 'none' } },
+    { not: { key: 'preCable', eq: 'yes' } },
+    { not: { key: 'mainBreakerForm', eq: 'pole-top' } },
+    { not: { key: 'cableOwner', eq: 'customer' } },
+  ],
+};
+
 /** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
 export const CABLE_EXISTS: Condition = { not: { key: 'cableInstallation', eq: 'none' } };
 

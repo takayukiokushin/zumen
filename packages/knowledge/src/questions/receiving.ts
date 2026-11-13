@@ -248,6 +248,31 @@ export const RECEIVING_QUESTIONS: Question[] = [
     help: '「なし」は、電柱の上に受電設備を構成する場合などで、区分開閉器の後をケーブルを介さず、ふつうの電線でつなぐとき（ケーブル端末も描かない）',
   },
   {
+    // 区分開閉器が「なし」のときだけ。電力会社のケーブルなら、財産分界点は、DSの一次側（無ければLBSの一次側）に移る
+    id: 'cableOwner',
+    group: 'cable',
+    label: '引込ケーブルは、お客様のものですか、電力会社のものですか？',
+    type: 'select',
+    options: [
+      { value: 'customer', label: 'お客様のケーブル' },
+      { value: 'utility', label: '電力会社のケーブル' },
+    ],
+    defaultValue: 'utility',
+    showIf: {
+      all: [
+        { key: 'sectionalizer', eq: 'none' },
+        CABLE_EXISTS,
+        { not: { key: 'preCable', eq: 'yes' } },
+        { not: { key: 'mainBreakerForm', eq: 'pole-top' } },
+      ],
+    },
+    ask: 'ai-uncertain',
+    help:
+      '区分開閉器が無いとき、財産分界点は、引込ケーブルが誰のものかで決まる。' +
+      'お客様のケーブルなら、ケーブルの電源側（引込点の下）。電力会社のケーブルなら、ケーブルの負荷側で、DSの一次側（DSが無ければ、LBSの一次側）。' +
+      '電力会社のケーブルのときは、財産と責任の分界点を同じ位置の1本の横線で描くので、「3点一致ですか？」は聞かない',
+  },
+  {
     id: 'cableStructure',
     group: 'cable',
     label: 'ケーブルの構造は？',

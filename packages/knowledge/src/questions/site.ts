@@ -1,4 +1,5 @@
 import type { Question } from './types.ts';
+import { PROPERTY_AT_DS } from './common.ts';
 
 /** 質問の定義：お客様・現場、引込元、責任分界点 */
 export const SITE_QUESTIONS: Question[] = [
@@ -94,6 +95,8 @@ export const SITE_QUESTIONS: Question[] = [
       { value: 'split', label: 'いいえ（3点不一致）' },
     ],
     defaultValue: 'coincident',
+    // 区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点がDSの一次側に移る（3点一致ではない）ので、聞かない
+    showIf: { not: PROPERTY_AT_DS },
     ask: 'ai-uncertain',
     required: true,
     help: '引込点・財産分界点・保安上の責任分界点が同じ地点なら「3点一致」',
@@ -110,7 +113,7 @@ export const SITE_QUESTIONS: Question[] = [
     // 主遮断装置の形式が決まっていれば聞かない（CB形ならVCB、PFS形ならLBSに決まる）。
     // 未入力のときだけ聞く
     showIf: {
-      all: [{ key: 'boundaryPattern', eq: 'split' }, { not: { key: 'mainBreakerForm', in: ['cb', 'pfs'] } }],
+      all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }, { not: { key: 'mainBreakerForm', in: ['cb', 'pfs'] } }],
     },
     ask: 'always',
     help: '3点不一致のときは、主遮断装置の図記号の中央に横線を引いて記載する。主遮断装置の形式を入力すれば、この質問は不要（CB形はVCB、PFS形はLBSに自動で決まる）',
