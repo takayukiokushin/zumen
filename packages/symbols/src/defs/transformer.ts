@@ -92,8 +92,15 @@ const TR_1P_LINES = ['{usage}', 'Tr', '1φ{capacity}kVA', '{voltage}'];
 const TR_3P_LINES = ['{usage}', 'Tr', '3φ{capacity}kVA', '{voltage}', '{composition}'];
 
 type Conn = 'y' | 'd';
-const connMark = (conn: Conn, cy: number): Shape[] =>
-  conn === 'y' ? starMark(CX, cy, 6 * SCALE) : [deltaMark(CX, cy, 7 * SCALE)];
+/**
+ * 2つの丸が重なっている（中心の間隔 SEP×2 ＝27 は、半径 R＝18 より小さい）ので、
+ * 丸の中心に印（Y・Δ・V）を置くと、下の丸の印の頂点が、上の丸の下の線に触れたり、上の丸の中へ出たりする（Δは、1.5はみ出す）。
+ * そこで、上の丸の印は上へ、下の丸の印は下へ、MARK_DY だけずらして置く（重なっていない側へ寄せる）。
+ * こうすると、どの印も、自分の丸の線からも、重なっている隣の丸の線からも、3以上離れる（第13弾 項目40）。
+ */
+const MARK_DY = 3 * SCALE;
+const connMark = (conn: Conn, cy: number, dy: number): Shape[] =>
+  conn === 'y' ? starMark(CX, cy + dy, 6 * SCALE) : [deltaMark(CX, cy + dy, 7 * SCALE)];
 
 /** 三相変圧器（結線方式違い）を1つの定義から生成する */
 const threePhase = (id: string, primary: Conn, secondary: Conn, label: string): SymbolDef => ({
@@ -104,7 +111,7 @@ const threePhase = (id: string, primary: Conn, secondary: Conn, label: string): 
   category: 'transformer',
   tags: ['変圧器', '三相', label],
   box: BOX,
-  shapes: body(connMark(primary, CY1), connMark(secondary, CY2)),
+  shapes: body(connMark(primary, CY1, -MARK_DY), connMark(secondary, CY2, MARK_DY)),
   ports: PORTS,
   fields: [USAGE, CAPACITY, VOLTAGE, COMPOSITION],
   status: 'confirmed',
@@ -260,7 +267,7 @@ export const transformerSymbols: SymbolDef[] = [
     category: 'transformer',
     tags: ['変圧器', 'V結線', '単相2台'],
     box: BOX,
-    shapes: body([text(CX, CY1, 'V', { size: 13 * SCALE })], [text(CX, CY2, 'V', { size: 13 * SCALE })]),
+    shapes: body([text(CX, CY1 - MARK_DY, 'V', { size: 13 * SCALE })], [text(CX, CY2 + MARK_DY, 'V', { size: 13 * SCALE })]),
     ports: PORTS,
     fields: [
       USAGE,
@@ -317,7 +324,8 @@ export const transformerSymbols: SymbolDef[] = [
     shapes: body(
       [hline(CY1 + 4 * SCALE, CX - 7 * SCALE, CX + 7 * SCALE), vline(CX, CY1 - 6 * SCALE, CY1 + 4 * SCALE)],
       [
-        vline(CX - 5 * SCALE, CY2 - 6 * SCALE, CY2 + 5 * SCALE),
+        // 縦線の上端は、上の丸の下の線から3以上離す（以前は、1.5まで近づいていた。第13弾 項目40）
+        vline(CX - 5 * SCALE, CY2 - 4 * SCALE, CY2 + 5 * SCALE),
         hline(CY2 + 5 * SCALE, CX - 5 * SCALE, CX + 6 * SCALE),
       ],
     ),

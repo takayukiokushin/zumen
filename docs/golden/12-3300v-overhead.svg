@@ -198,10 +198,10 @@
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
-      <polygon points="24,12 33.093,27.75 14.907,27.75" fill="none" stroke-width="1" />
-      <line x1="24" y1="49.5" x2="24" y2="40.5" stroke-width="1" />
-      <line x1="24" y1="49.5" x2="31.794" y2="54" stroke-width="1" />
-      <line x1="24" y1="49.5" x2="16.206" y2="54" stroke-width="1" />
+      <polygon points="24,7.5 33.093,23.25 14.907,23.25" fill="none" stroke-width="1" />
+      <line x1="24" y1="54" x2="24" y2="45" stroke-width="1" />
+      <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
+      <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
     <text x="34" y="914" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="34" dy="0">動力</tspan><tspan x="34" dy="12.5">Tr</tspan><tspan x="34" dy="12.5">3φ300kVA</tspan><tspan x="34" dy="12.5">3300/210V</tspan></text>
     </g>
