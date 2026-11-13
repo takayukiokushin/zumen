@@ -91,6 +91,19 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     else if ((pv.length > 0) !== want.pv) fail(`${name}：PCSの入力欄を${pv.length > 0 ? '出して' : '出さずに'}います（期待：${want.pv ? '出す' : '出さない'}）`);
     else console.log(`  ${name}：発電機の入力欄 ${want.gen ? `あり（${gen.length}問）` : 'なし'}／PCSの入力欄 ${want.pv ? `あり（${pv.length}問）` : 'なし'}`);
   }
+  // 電動機：「ある」のときだけ、台数・始動方式・容量・設置場所の順に出す。発電機の燃料・用途区分は出さない（第13弾 項目24）
+  {
+    const motor = (a: Answers) => ofGroup(a, 'motor').join();
+    if (motor({ hasMotor: 'no' }) !== '' || motor({}) !== '') fail('電動機が「ない」のに、電動機の入力欄を出しています');
+    if (motor({ hasMotor: 'yes' }) !== 'motorCount,motorStartMethod,motorCapacity,motorPlace') fail(`電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes' })}）`);
+    const opts = (QUESTIONS.find((q) => q.id === 'motorStartMethod')?.options ?? []).map((o) => o.value).join(',');
+    if (opts !== '直入れ始動,リアクトル始動,コンドルファ始動,インバータ始動,スターデルタ始動') fail(`始動方式の選択肢の順番が違います（${opts}）`);
+    if (!shown({ hasMotor: 'no' }).some((q) => q.id === 'hasMotor')) fail('「電動機はありますか？」が出ていません');
+    const spec = shown({ hasMotor: 'yes' }).map((q) => q.id);
+    if (spec.indexOf('hasGenerator') >= spec.indexOf('hasMotor') || spec.indexOf('hasMotor') < 0) fail('「電動機はありますか？」が、特殊設備の発電機の次に出ていません');
+    if (missingRequired({ hasMotor: 'no' }).some((q) => /^motor/.test(q.id))) fail('電動機が「ない」のに、電動機の質問が、必須の入力漏れになっています');
+    console.log('  電動機：ありのときだけ、台数 → 始動方式 → 容量 → 設置場所の順（始動方式の選択肢は、依頼の順）');
+  }
   // 「ありますか？」の質問そのものは、いつも出る。なしのときに、必須の入力漏れとして数えない
   const always = ['hasGenerator', 'hasPv', 'hasBattery'];
   const miss = new Set(missingRequired({ hasGenerator: 'no', hasPv: 'no' }).map((q) => q.id));

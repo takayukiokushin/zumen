@@ -16,6 +16,7 @@ const DEST_OPTIONS: Choice[] = Array.from({ length: COUNT_LIMITS.transformerCoun
 export const EQUIPMENT_QUESTIONS: Question[] = [
   /* ---------------- 特殊設備 ---------------- */
   { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
+  { id: 'hasMotor', group: 'special', label: '電動機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '高圧の電動機（モーター）がある場合。台数・始動方式・容量・設置場所を、台ごとに入力する' },
   { id: 'hasPv', group: 'special', label: '太陽光発電設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'hasBattery', group: 'special', label: '系統用蓄電所ですか？', type: 'select', options: YES_NO_Q, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'batteryCapacity', group: 'special', label: '蓄電ユニットの規模', type: 'text', showIf: { key: 'hasBattery', eq: 'yes' }, ask: 'always' },
@@ -157,6 +158,52 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     defaultValue: 'none',
     ask: 'always',
     help: 'つなぎ先が決まっていなければ「つながない」のままでよい（図面の下に置くだけになる）',
+  },
+
+  /* ---------------- 電動機（台ごと。入力の順番：台数・始動方式・容量・設置場所。接続元は、このあとの項目で足す） ---------------- */
+  {
+    id: 'motorCount',
+    group: 'motor',
+    label: '電動機の台数',
+    type: 'select',
+    options: COUNT_OPTIONS,
+    allowFreeInput: true,
+    unit: '台',
+    defaultValue: '1',
+    ask: 'ai-uncertain',
+  },
+  {
+    id: 'motorStartMethod',
+    group: 'motor',
+    label: '始動方式',
+    type: 'select',
+    // 選択肢の順番は、依頼のとおり（直入れ → リアクトル → コンドルファ → インバータ → スターデルタ）
+    options: [
+      { value: '直入れ始動', label: '直入れ始動' },
+      { value: 'リアクトル始動', label: 'リアクトル始動' },
+      { value: 'コンドルファ始動', label: 'コンドルファ始動' },
+      { value: 'インバータ始動', label: 'インバータ始動' },
+      { value: 'スターデルタ始動', label: 'スターデルタ始動' },
+    ],
+    dropdown: true,
+    ask: 'always',
+    help: '図面には、電動機の記号の右横に書く。分からなければ、空欄のままでよい',
+  },
+  {
+    id: 'motorCapacity',
+    group: 'motor',
+    label: '電動機の容量',
+    type: 'number',
+    unit: 'kW',
+    ask: 'always',
+    help: '図面には、始動方式の下に「500kW」のように書く（台数は、記号の数で分かるので、文字には書かない）',
+  },
+  {
+    id: 'motorPlace',
+    group: 'motor',
+    label: '設置場所',
+    type: 'text',
+    ask: 'always',
   },
 
   /* ---------------- 太陽光（PCS。容量ごとのまとまりで入力） ---------------- */

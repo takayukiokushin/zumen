@@ -67,6 +67,7 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     perArea: true,
   },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
+  { id: 'motor', label: '電動機', repeatCountKey: 'motorCount', repeatUnit: '台', showIf: { key: 'hasMotor', eq: 'yes' }, perArea: true },
   { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
   { id: 'title', label: '表題欄' },
 ];
