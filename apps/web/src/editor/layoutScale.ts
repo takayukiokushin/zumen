@@ -1,9 +1,14 @@
 import { labelRect } from '@zumen/layout';
-import { applyAnchors, groupRootOf, itemBounds } from './doc.ts';
+import { applyAnchors, docBounds, groupRootOf, itemBounds } from './doc.ts';
+import { compactOneAxis } from './layoutCompact.ts';
+import type { Axis } from './layoutCompact.ts';
 import type { Doc, DocItem, DocSymbol } from './doc.ts';
 
 /**
  * 「レイアウトを縮小」「レイアウトを拡大」：図面全体の、記号どうしのすきまを、縮める・広げる。
+ *
+ * 縦・横それぞれ、「この下にある、従来の方式（全体を1本の定規で測る）」と「列ごとに縮める（広げる）方式（layoutCompact.ts）」を
+ * 両方求めて、縮小なら小さいほう、拡大なら大きいほうを選ぶ（scaleLayout）。以下は、従来の方式の説明。
  *
  * 記号や文字の大きさは、変えない。動かすのは、すきまだけ（図面全体の横幅・縦幅も、そのぶん変わる）。
  *
@@ -89,6 +94,30 @@ function axisMap(spans: Span[], factor: number, floorOf: (a: number, b: number) 
  * changed：実際に動いたか（すきまが最小まで縮んでいて、これ以上縮められないときは false）。
  */
 export function scaleLayout(doc: Doc, factor: number): { doc: Doc; changed: boolean } {
+  // 縦・横の順に、1つの向きごとに、「従来の方式（全体を1本の定規で測る）」と「列ごとに縮める（広げる）方式（layoutCompact.ts）」の、
+  // 縮小なら小さくなったほう、拡大なら大きくなったほうを選ぶ。どちらも、記号・文字の大きさと、線の向きは変えない
+  let cur = doc;
+  let changed = false;
+  for (const axis of ['y', 'x'] as const) {
+    const proj = scaleByProjection(cur, factor, axis);
+    const comp = compactOneAxis(cur, axis, factor, { minGap: MIN_GAP, minBar: MIN_BAR });
+    const extent = (d: Doc): number => {
+      const b = docBounds(d);
+      return axis === 'y' ? b.y1 - b.y0 : b.x1 - b.x0;
+    };
+    const better = (a: Doc, b: Doc) => (factor < 1 ? extent(a) < extent(b) - 0.01 : extent(a) > extent(b) + 0.01);
+    let pick: Doc | null = proj.changed ? proj.doc : null;
+    if (comp && (!pick || better(comp, pick))) pick = comp;
+    if (pick) {
+      cur = pick;
+      changed = true;
+    }
+  }
+  return changed ? { doc: cur, changed: true } : { doc, changed: false };
+}
+
+/** 従来の方式：記号・文字が占める範囲を縦（横）に投影して、どこにも何も無いすきまだけを、縮める・広げる */
+export function scaleByProjection(doc: Doc, factor: number, only?: Axis): { doc: Doc; changed: boolean } {
   const byId = new Map(doc.items.map((it) => [it.id, it]));
   const xs: Span[] = [];
   const ys: Span[] = [];
@@ -137,8 +166,9 @@ export function scaleLayout(doc: Doc, factor: number): { doc: Doc; changed: bool
     const insides = bars.map((w) => Math.min(w.b, gb) - Math.max(w.a, ga)).filter((n) => n >= 4);
     return insides.length > 0 ? Math.max(MIN_BAR, ((gb - ga) * MIN_BAR) / Math.min(...insides)) : MIN_GAP;
   };
-  const fx = axisMap(merge(xs), factor, floorFor(hBars));
-  const fy = axisMap(merge(ys), factor, floorFor(vBars));
+  // only があるときは、その向きだけ動かす（もう一方の向きは、そのまま）
+  const fx = only === 'y' ? (v: number) => v : axisMap(merge(xs), factor, floorFor(hBars));
+  const fy = only === 'x' ? (v: number) => v : axisMap(merge(ys), factor, floorFor(vBars));
 
   // 記号の動き：かたまり（親）の中心の変換から、動く量を決める。内蔵品も同じ量だけ動く
   const shiftOf = new Map<string, { dx: number; dy: number }>();

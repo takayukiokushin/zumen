@@ -10,7 +10,7 @@ import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { rotatedBox, findLabelCollisions, labelRect, layout } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
-import { MIN_BAR, SHRINK, scaleLayout } from '../../apps/web/src/editor/layoutScale.ts';
+import { MIN_BAR, SHRINK, scaleByProjection, scaleLayout } from '../../apps/web/src/editor/layoutScale.ts';
 import { inspectDrawing, nudgeSymbolLabel } from '../../apps/web/src/editor/inspect.ts';
 import { portAbs, portX, portY, fail, answers, wires, worstGap } from './common.ts';
 import type { PlacedSymbolLike } from './common.ts';
@@ -768,7 +768,7 @@ console.log('\n■ レイアウトの縮小・拡大');
     let presses = 0;
     let lastChanged = true;
     let broke = '';
-    while (lastChanged && presses < 40) {
+    while (lastChanged && presses < 80) {
       const r = scaleLayout(cur, SHRINK);
       lastChanged = r.changed;
       if (!r.changed) break;
@@ -790,10 +790,35 @@ console.log('\n■ レイアウトの縮小・拡大');
       if (shortBars.length > 0) fail(`${name}：縮めすぎて、線が ${MIN_BAR} より短くなったものがあります（${shortBars.length}本：${shortBars.slice(0, 3).map((w) => `${was.get(w.id)!.toFixed(0)}→${len(w).toFixed(1)}`).join('、')}）`);
     }
     const b1 = bounds(cur);
+    // 列ごとに縮める方式を入れたので、従来の方式（全体を1本の定規で測る）だけで縮めたときより、縦も横も、小さくなる（同じか、それ以下）
+    {
+      let pj = base;
+      for (let k = 0; k < 120; k++) {
+        const r = scaleByProjection(pj, SHRINK);
+        if (!r.changed) break;
+        pj = r.doc;
+      }
+      const bp = bounds(pj);
+      if (b1.x1 - b1.x0 > bp.x1 - bp.x0 + 1 || b1.y1 - b1.y0 > bp.y1 - bp.y0 + 1) {
+        fail(`${name}：列ごとに縮める方式を入れたのに、従来の方式より大きいままです（横 ${(b1.x1 - b1.x0).toFixed(0)} / ${(bp.x1 - bp.x0).toFixed(0)}、縦 ${(b1.y1 - b1.y0).toFixed(0)} / ${(bp.y1 - bp.y0).toFixed(0)}）`);
+      }
+    }
+    // どの線にもつながっていない客柱は、縮めても、PASから離れていかない（もとの間隔より、広がらない）
+    {
+      const gapOf = (d: Doc): number | null => {
+        const ss = d.items.filter((i): i is DocSymbol => i.kind === 'symbol');
+        const cp = ss.find((x) => x.symbolId === 'pole-customer');
+        const pas = ss.find((x) => /^(pas|pgs)/.test(x.symbolId) && !x.parent);
+        return cp && pas ? Math.abs(pas.x - cp.x) : null;
+      };
+      const g0 = gapOf(base);
+      const g1 = gapOf(cur);
+      if (g0 !== null && g1 !== null && g1 > g0 + 1) fail(`${name}：縮めたら、客柱がPASから離れました（${g0.toFixed(0)} → ${g1.toFixed(0)}）`);
+    }
     const shrunkW = (b0.x1 - b0.x0) - (b1.x1 - b1.x0);
     const shrunkH = (b0.y1 - b0.y0) - (b1.y1 - b1.y0);
     if (broke) fail(`${name}：${broke}（${presses}回目）`);
-    else if (presses >= 40) fail(`${name}：40回押しても、縮まなくならない（下限がありません）`);
+    else if (presses >= 80) fail(`${name}：80回押しても、縮まなくならない（下限がありません）`);
     else if (presses === 0) console.log(`  ${name}：すでに、これ以上縮められない`);
     else console.log(`  ${name}：${presses}回で、これ以上縮められなくなる（横 −${shrunkW.toFixed(0)}・縦 −${shrunkH.toFixed(0)}）。記号・文字の大きさ、PASの内蔵品の位置、線の向きは変わらず、重なりは増えない`);
     // 拡大：大きくなり、重ならず、斜めの線ができない。縮めたあとに広げても、記号は壊れない
