@@ -201,6 +201,8 @@ export const miscSymbols: SymbolDef[] = [
     category: 'source',
     tags: ['蓄電', '系統用蓄電所'],
     box: { w: 96, h: 44 },
+    // 追加する文字は、長方形（x＝4〜92、上の辺 y＝10）の真横に、長方形の上の辺へ文字の上端をそろえて置く（PCSと同じ）
+    labelBody: { x0: 4, x1: 92, top: 10 },
     // 上の縦棒は、長方形（x＝4〜92）の真ん中（x＝48）に通す。「蓄電池ユニット」の文字も同じ中央
     shapes: [vline(48, 0, 10), rect(4, 10, 88, 30), text(48, 25, '蓄電池ユニット', { size: 9 })],
     ports: [{ id: 'out', x: 48, y: 0, dir: 'up', role: 'line' }],

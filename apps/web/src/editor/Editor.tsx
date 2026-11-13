@@ -10,7 +10,7 @@ import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
 import { UndoIcon, ZoomIcon } from '../icons.tsx';
-import { chooseSheet, issueLabel } from './inspect.ts';
+import { chooseSheet, issueLabel, nudgeSymbolLabel } from './inspect.ts';
 import type { HeavyApi } from './useHeavyJob.tsx';
 import type { HeavyKind, HeavyRequest, HeavyResult } from './heavy.ts';
 import type { Issue, IssueKind } from './inspect.ts';
@@ -697,7 +697,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     } else {
       const b = docBounds(doc);
       const { doc: next, id } = addSymbol(doc, symbolId, (b.x0 + b.x1) / 2, b.y1 + 60);
-      apply(next);
+      apply(nudgeSymbolLabel(next, id));
       setSelectedId(id);
     }
   };
@@ -1695,7 +1695,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                                 <label className="rating" key={f.key}>
                                   <span>{tx(f.label)}</span>
                                   {f.type === 'select' && !f.allowFreeInput ? (
-                                    <select value={values[f.key] ?? ''} onChange={(e) => apply(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value))}>
+                                    <select value={values[f.key] ?? ''} onChange={(e) => apply(nudgeSymbolLabel(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value), selectedSymbol.id))}>
                                       <option value="">{t('editor.ratings.blank')}</option>
                                       {f.options?.map((o) => (
                                         <option key={o.value} value={o.value}>{tx(o.label)}</option>
@@ -1708,7 +1708,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                                       inputMode={f.type === 'number' ? 'decimal' : undefined}
                                       list={f.type === 'select' ? listId : undefined}
                                       value={values[f.key] ?? ''}
-                                      onChange={(e) => apply(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value))}
+                                      onChange={(e) => apply(nudgeSymbolLabel(setLabelValue(doc, selectedSymbol.id, f.key, e.target.value), selectedSymbol.id))}
                                     />
                                   )}
                                   {f.unit && <span className="unit">{tx(f.unit)}</span>}
@@ -1739,7 +1739,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                     rows={4}
                     maxLength={MAX_TEXT_LENGTH}
                     value={selectedSymbol.label.join('\n')}
-                    onChange={(e) => apply(setLabel(doc, selectedSymbol.id, e.target.value.split('\n')))}
+                    onChange={(e) => apply(nudgeSymbolLabel(setLabel(doc, selectedSymbol.id, e.target.value.split('\n')), selectedSymbol.id))}
                   />
                 </>
               ) : selected.kind === 'text' ? (

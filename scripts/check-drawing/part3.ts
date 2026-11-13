@@ -2,7 +2,7 @@
  * 図面の検証（check-drawing）の3つ目：PASを動かす・ZPD・PV・送り出し・OVGR/DGR・客柱・外箱・縮小拡大・線を引く・範囲選択・3か所以上のエリア・手で直した内容。
  * 共有するものは common.ts。scripts/check-drawing.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { removeItem, addWire, fromLayout, moveItem, docBounds, addText, moveItems, removeItems, itemsInRange, itemBounds, setWireKind, addSymbol, setItemRect, resizeInfoOf } from '../../apps/web/src/editor/doc.ts';
+import { removeItem, addWire, fromLayout, moveItem, docBounds, addText, moveItems, removeItems, itemsInRange, itemBounds, setWireKind, addSymbol, setItemRect, resizeInfoOf, setLabel } from '../../apps/web/src/editor/doc.ts';
 import { rebuildWithOverrides } from '../../apps/web/src/editor/overrides.ts';
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildComposition } from '../../packages/knowledge/src/index.ts';
@@ -11,7 +11,7 @@ import { rotatedBox, findLabelCollisions, labelRect, layout } from '../../packag
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { SHRINK, scaleLayout } from '../../apps/web/src/editor/layoutScale.ts';
-import { inspectDrawing } from '../../apps/web/src/editor/inspect.ts';
+import { inspectDrawing, nudgeSymbolLabel } from '../../apps/web/src/editor/inspect.ts';
 import { portAbs, portX, portY, fail, answers, wires, worstGap } from './common.ts';
 import type { PlacedSymbolLike } from './common.ts';
 import { base } from './part1.ts';
@@ -135,19 +135,6 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
     const viaZpd = w.some((x) => x.at1?.item === zpd.id || x.at2?.item === zpd.id);
     if (!viaZpd) problems.push('ZPDの出口に線がありません');
     if (!w.some((x) => x.at1?.item === dgr.id || x.at2?.item === dgr.id)) problems.push('DGRに線がつながっていません');
-    // 蓄電池ユニットの上の縦棒（接続点）は、長方形（x＝4〜92）の真ん中に通っている（第13弾 項目44）
-    {
-      const bd = getSymbolDef('battery-unit');
-      const bp = bd.ports.find((q) => q.id === 'out')!;
-      const br = bd.shapes.find((sh) => sh.k === 'rect') as { x: number; w: number } | undefined;
-      if (!br || Math.abs(bp.x - (br.x + br.w / 2)) > 0.01) problems.push(`蓄電池ユニットの縦棒が、長方形の真ん中にありません（接続点 x＝${bp.x}）`);
-    }
-    // 編集画面でPCSを足したときも、文字の初めの位置は同じ（四角の真横・上の辺）
-    {
-      const added = addSymbol({ items: [] } as Doc, 'pcs', 100, 100);
-      const ps = added.doc.items.find((it): it is DocSymbol => it.kind === 'symbol')!;
-      if (Math.abs(ps.labelDx - (47 + 10)) > 0.5 || Math.abs(ps.labelDy - (10 + 8.5)) > 0.5) problems.push(`編集画面で足したPCSの文字の位置が違います（${ps.labelDx}, ${ps.labelDy}）`);
-    }
     const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
     if (issues.length) problems.push(`図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);
     if (problems.length) fail(`${name}：${problems.join('、')}`);
@@ -184,6 +171,44 @@ console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
       const lr = labelRect({ x: p.x + p.labelDx, y: p.y + p.labelDy, anchor: p.labelAnchor }, p.label);
       if (Math.abs(lr.y0 - (p.y + 10)) > 0.5) problems.push(`${p.id} の文字の上端が、四角の上の辺とそろっていません（差 ${(lr.y0 - (p.y + 10)).toFixed(1)}）`);
       if (lr.x0 < p.x + 47 || lr.x0 > p.x + 47 + 20) problems.push(`${p.id} の文字が、四角の真横にありません（四角の右端から ${(lr.x0 - (p.x + 47)).toFixed(1)}）`);
+    }
+    // 蓄電池ユニットの上の縦棒（接続点）は、長方形（x＝4〜92）の真ん中に通っている（第13弾 項目44）
+    {
+      const bd = getSymbolDef('battery-unit');
+      const bp = bd.ports.find((q) => q.id === 'out')!;
+      const br = bd.shapes.find((sh) => sh.k === 'rect') as { x: number; w: number } | undefined;
+      if (!br || Math.abs(bp.x - (br.x + br.w / 2)) > 0.01) problems.push(`蓄電池ユニットの縦棒が、長方形の真ん中にありません（接続点 x＝${bp.x}）`);
+    }
+    // 蓄電池ユニットの文字も、長方形の真横・上の辺にそろえて置く。文字を足して、隣の記号に重なったら、重ならない場所へ動く（第13弾 項目45）
+    {
+      const ab: Answers = { ...answers, transformerCount: 2, hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '4', pcsToTr1: 2, pcsToTr2: 2, hasGenerator: 'no', hasCapacitor: 'no', hasBattery: 'yes', batteryCapacity: '100kWh', batteryTransformer: '1' };
+      const d0 = fromLayout(layout(buildComposition(ab), ab));
+      const bat = d0.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.symbolId === 'battery-unit');
+      if (!bat) problems.push('蓄電池ユニットが描かれていません（試験の前提が違います）');
+      else {
+        const lines = ['No.1', '定格 100kWh', '設置場所：屋外', '備考：増設予定'];
+        const long = setLabel(d0, bat.id, [...bat.label, ...lines]);
+        const before = inspectDrawing(long, 'A3', 'landscape').filter((i) => i.kind === 'overlap');
+        // 隣の記号に重なる位置に、文字を置いてみる（自動で置いた位置から、隣の記号の上へ動かす）
+        const neighbour = d0.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.symbolId === 'mccb' && it.y > bat.y - 20 && it.y < bat.y + 20)!;
+        const onNeighbour: Doc = { ...d0, items: d0.items.map((it) => (it.id === bat.id && it.kind === 'symbol' ? { ...it, label: [...it.label, ...lines], labelDx: neighbour.x - it.x + 5, labelDy: neighbour.y - it.y + 20 } : it)) };
+        const clash = inspectDrawing(onNeighbour, 'A3', 'landscape').filter((i) => i.kind === 'overlap');
+        if (clash.length === 0) problems.push('文字が隣の記号に重なっているのに、点検で見つかりません');
+        const fixed = nudgeSymbolLabel(onNeighbour, bat.id);
+        const after = inspectDrawing(fixed, 'A3', 'landscape').filter((i) => i.kind === 'overlap');
+        if (after.length > 0) problems.push(`文字を動かしても、重なりが残っています（${after.map((i) => i.message.slice(0, 20)).join(' / ')}）`);
+        // 重なっていないときは、動かさない（手で動かした位置を、勝手に変えない）
+        if (nudgeSymbolLabel(d0, bat.id) !== d0) problems.push('重なっていないのに、文字が動きました');
+        // 自動で作った図面の文字は、長方形の上の辺に、文字の上端がそろう
+        const lr0 = labelRect({ x: bat.x + bat.labelDx, y: bat.y + bat.labelDy, anchor: bat.labelAnchor }, bat.label);
+        if (before.length === 0 && Math.abs(lr0.y0 - (bat.y + 10)) > 0.5 && Math.abs(lr0.y0 - (bat.y + 10)) < 40) problems.push(`蓄電池ユニットの文字の上端が、長方形の上の辺とそろっていません（差 ${(lr0.y0 - (bat.y + 10)).toFixed(1)}）`);
+      }
+    }
+    // 編集画面でPCSを足したときも、文字の初めの位置は同じ（四角の真横・上の辺）
+    {
+      const added = addSymbol({ items: [] } as Doc, 'pcs', 100, 100);
+      const ps = added.doc.items.find((it): it is DocSymbol => it.kind === 'symbol')!;
+      if (Math.abs(ps.labelDx - (47 + 10)) > 0.5 || Math.abs(ps.labelDy - (10 + 8.5)) > 0.5) problems.push(`編集画面で足したPCSの文字の位置が違います（${ps.labelDx}, ${ps.labelDy}）`);
     }
     const issues = inspectDrawing(d, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
     if (issues.length) problems.push(`図面の点検で問題：${issues.map((i) => i.message.slice(0, 18)).join(' / ')}`);

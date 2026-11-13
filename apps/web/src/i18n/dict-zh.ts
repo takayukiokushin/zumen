@@ -510,6 +510,7 @@ export const zh: Dict = {
   'insp.floatingNear': '线端未连接到任何位置。附近没有找到接点',
   'insp.through': '线穿过了符号（{abbr}）',
   'insp.overlapText': '文字“{text}”与其他对象重叠',
+  'insp.overlapSymbol': '文字“{text}”与符号重叠',
   'insp.skewLocked': '线是倾斜的。两端都连着其他设备，因此无法通过移动来修正',
   'insp.portrait': '纵向',
   'insp.landscape': '横向',

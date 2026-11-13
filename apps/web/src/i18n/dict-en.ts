@@ -513,6 +513,7 @@ export const en: Dict = {
   'insp.floatingNear': 'The end of the line is not connected to anything. No connection point was found nearby',
   'insp.through': 'A line passes through a symbol ({abbr})',
   'insp.overlapText': 'The text “{text}” overlaps something else',
+  'insp.overlapSymbol': 'The text “{text}” overlaps a symbol',
   'insp.skewLocked': 'The line is slanted. Both ends are connected to other equipment, so it could not be fixed by moving it',
   'insp.portrait': 'Portrait',
   'insp.landscape': 'Landscape',

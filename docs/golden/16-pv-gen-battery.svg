@@ -6,9 +6,9 @@
   </g>
   <text x="537.5" y="45" font-size="14" font-weight="700" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">見本工場　キュービクル式高圧受電設備単線結線図</text>
   <text x="1043" y="1490" font-size="9" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">株式会社フジエレックス</text>
-  <g transform="translate(566.9 138.5) scale(1.0000)">
+  <g transform="translate(568.9 138.5) scale(1.0000)">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">
-    <path d="M -408.8 404 L 349.99999999999994 404 M -408.8 404 L -408.8 430 M 349.99999999999994 404 L 349.99999999999994 430" fill="none" stroke-width="1" />
+    <path d="M -408.8 404 L 345.99999999999994 404 M -408.8 404 L -408.8 430 M 345.99999999999994 404 L 345.99999999999994 430" fill="none" stroke-width="1" />
     <text x="-408.8" y="398" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
     <line x1="0" y1="48" x2="0" y2="64" stroke-width="1" />
     <line x1="0" y1="108" x2="0" y2="124" stroke-width="1" />
@@ -303,7 +303,7 @@
       <rect x="4" y="10" width="88" height="30" fill="none" stroke-width="1" />
       <text x="48" y="25" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">蓄電池ユニット</text>
     </g>
-    <text x="268" y="1124.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="268" dy="0">蓄電池ユニット</tspan><tspan x="268" dy="12.5">100kWh</tspan></text>
+    <text x="264" y="1133" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="264" dy="0">蓄電池ユニット</tspan><tspan x="264" dy="12.5">100kWh</tspan></text>
     </g>
   </g>
 </svg>

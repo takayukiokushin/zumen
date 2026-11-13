@@ -877,6 +877,57 @@ function spreadLabels(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] } {
 }
 
 /**
+ * 記号の横の文字を、ほかの記号・自分の記号・ほかの文字に重ならない場所へ動かす（第13弾 項目45）。
+ * 文字を足したり書き換えたりした直後に呼ぶ。重なっていなければ、何も変えない（手で動かした位置も、そのまま）。
+ * 近いところから順に、四方へ少しずつ離して、最初に空いたところに置く。線をまたぐだけなら、重なりとは数えない
+ * （同じ距離で空いているところが複数あるときは、線をまたぐ数がいちばん少ないところを選ぶ）。
+ */
+export function nudgeSymbolLabel(doc: Doc, id: string): Doc {
+  const self = doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === id);
+  if (!self || self.label.length === 0) return doc;
+  const symbols = symbolsOf(doc);
+  const wires = wiresOf(doc);
+  // 動かす文字の相手：ほかの記号の文字・メモ（重なりは重い）と、記号の本体（自分の記号も含む）
+  const texts: Box[] = [];
+  for (const it of doc.items) {
+    if (it.kind === 'symbol' && it.id !== id && it.label.length > 0) texts.push(textBox(it.x + it.labelDx, it.y + it.labelDy, it.label, it.labelAnchor));
+    else if (it.kind === 'text') texts.push(textBox(it.x, it.y, it.lines, it.anchor, clampTextSize(it.size)));
+  }
+  const bodies = symbols.map((s2) => (s2.id === id ? drawnBox(s2) : symbolBox(s2)));
+  const hard = (b: Box): number => texts.filter((o) => overlaps(b, o, 1)).length * CLASH_TEXT + bodies.filter((o) => overlaps(b, o, 0)).length * CLASH_SYMBOL;
+  const soft = (b: Box): number => wires.filter((w) => segmentEntersBox(w, b, 0)).length;
+  const baseX = self.x + self.labelDx;
+  const baseY = self.y + self.labelDy;
+  const at = (dx: number, dy: number): Box => textBox(baseX + dx, baseY + dy, self.label, self.labelAnchor);
+  const start = hard(at(0, 0));
+  if (start === 0) return doc;
+
+  let best = { dx: 0, dy: 0, hard: start };
+  const LIMIT = NUDGE_LIMIT * 3;
+  search: for (let r = 1; r * NUDGE_STEP <= LIMIT; r++) {
+    const ring: { dx: number; dy: number; w: number; d: number }[] = [];
+    for (let i = -r; i <= r; i++) {
+      for (let j = -r; j <= r; j++) {
+        if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
+        const dx = i * NUDGE_STEP;
+        const dy = j * NUDGE_STEP;
+        const b = at(dx, dy);
+        const h = hard(b);
+        if (h < best.hard) best = { dx, dy, hard: h };
+        if (h === 0) ring.push({ dx, dy, w: soft(b), d: Math.hypot(dx, dy) });
+      }
+    }
+    if (ring.length > 0) {
+      ring.sort((a, b) => a.w - b.w || a.d - b.d);
+      best = { dx: ring[0]!.dx, dy: ring[0]!.dy, hard: 0 };
+      break search;
+    }
+  }
+  if (best.dx === 0 && best.dy === 0) return doc;
+  return { ...doc, items: doc.items.map((it) => (it.id === id && it.kind === 'symbol' ? { ...it, labelDx: it.labelDx + best.dx, labelDy: it.labelDy + best.dy } : it)) };
+}
+
+/**
  * つなぎ先が1つも無い斜めの線を、まっすぐにする。
  *
  * 接続点に結びついている線は applyAnchors が面倒を見てくれるが、
@@ -1162,6 +1213,22 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
         x: boxes[i]!.box.x0,
         y: boxes[i]!.box.y0 + 8,
         itemId: boxes[i]!.id,
+      });
+    }
+  }
+
+  // 文字が、ほかの記号に重なっている（自分の記号とは、重ならない位置に置くのがふつうなので、ほかの記号だけ見る）
+  for (const it of symbols) {
+    if (it.label.length === 0) continue;
+    const rows = lineBoxes(it.x + it.labelDx, it.y + it.labelDy, it.label, it.labelAnchor);
+    const hit = symbols.find((o) => o.id !== it.id && rows.some((r) => overlaps(r, drawnBox(o), 0)));
+    if (hit) {
+      issues.push({
+        kind: 'overlap',
+        message: tr('insp.overlapSymbol', { text: it.label[0] ?? '' }),
+        x: it.x + it.labelDx,
+        y: it.y + it.labelDy + 8,
+        itemId: it.id,
       });
     }
   }

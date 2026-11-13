@@ -1170,6 +1170,19 @@ function avoidLabelCollisions(symbols: PlacedSymbol[], wires: Wire[], frames: Fr
         if (bad === 0) break;
       }
     }
+    // 4刻みで空きが見つからなかったときだけ、その半分の刻み（2・6・10…）でも探す（すき間が狭いとき、刻みの間に収まることがある）
+    if (best.bad > 0) {
+      const fine = candidates
+        .filter((c) => c.at.y !== originalAt.y || c.at.x !== originalAt.x)
+        .flatMap((c) => [{ at: { ...c.at, y: c.at.y + NUDGE_STEP / 2 }, cost: c.cost + 1 }, { at: { ...c.at, y: c.at.y - NUDGE_STEP / 2 }, cost: c.cost + 1 }]);
+      for (const c of fine) {
+        if (!near(c.at)) continue;
+        if (collisions(c.at) === 0) {
+          best = { at: c.at, bad: 0, cost: c.cost };
+          break;
+        }
+      }
+    }
     s.labelAt = best.at;
     placed.push(labelRect(best.at, lines));
   }

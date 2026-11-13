@@ -514,6 +514,7 @@ export const fr: Dict = {
   'insp.floatingNear': 'L’extrémité du trait n’est reliée à rien. Aucun point de connexion trouvé à proximité',
   'insp.through': 'Un trait traverse le symbole ({abbr})',
   'insp.overlapText': 'Le texte « {text} » chevauche un autre élément',
+  'insp.overlapSymbol': 'Le texte « {text} » chevauche un symbole',
   'insp.skewLocked': 'Le trait est oblique. Ses deux extrémités sont reliées à d’autres appareils : impossible de le corriger en le déplaçant',
   'insp.portrait': 'portrait',
   'insp.landscape': 'paysage',

@@ -512,6 +512,7 @@ export const ko: Dict = {
   'insp.floatingNear': '선의 끝이 어디에도 연결되어 있지 않습니다. 근처에서 접속점을 찾지 못했습니다',
   'insp.through': '선이 기호({abbr})를 관통하고 있습니다',
   'insp.overlapText': '글자 「{text}」이(가) 다른 것과 겹쳐 있습니다',
+  'insp.overlapSymbol': '글자 「{text}」이(가) 기호와 겹쳐 있습니다',
   'insp.skewLocked': '선이 기울어져 있습니다. 양 끝이 모두 다른 기기에 연결되어 있어 움직여서 고칠 수 없었습니다',
   'insp.portrait': '세로',
   'insp.landscape': '가로',

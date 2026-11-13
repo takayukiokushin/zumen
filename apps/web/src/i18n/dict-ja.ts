@@ -514,6 +514,7 @@ export const ja = {
   'insp.floatingNear': '線の端がどこにもつながっていません。近くに接続点が見つかりませんでした',
   'insp.through': '線が記号（{abbr}）を突き抜けています',
   'insp.overlapText': '文字「{text}」が、ほかのものと重なっています',
+  'insp.overlapSymbol': '文字「{text}」が、記号と重なっています',
   'insp.skewLocked': '線が斜めになっています。両端とも別の機器につながっているため、動かして直せませんでした',
   'insp.portrait': '縦',
   'insp.landscape': '横',
