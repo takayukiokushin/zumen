@@ -976,6 +976,45 @@ console.log('\n■ 範囲選択・複数選択');
   else console.log('  2か所目のLAの上位の開閉器：描かれる。線・文字が重ならない');
 }
 
+/* ---------- 接地コンデンサ（GC）：ZCTの電源側が初期値。上位の開閉器の真下に縦につながる（第13弾 項目21） ---------- */
+{
+  const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', hasGc: 'yes', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
+  const problems = (d: ReturnType<typeof layout>) => findLabelCollisions(d).length > 0 ? '文字が重なっています' : inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind)).length > 0 ? '編集用に取り込むと、問題が出ます' : '';
+  for (const relay of ['none', 'gr', 'dgr']) {
+    for (const zct of ['cable', 'bus-primary', 'bus-secondary']) {
+      for (const sw of ['none', 'ds', 'pc', 'lbs']) {
+        for (const tap of ['zct-source', 'ds-source', 'ds-vcb', 'vcb-ct', 'ct-bus']) {
+          const a: Answers = { ...base, mainGroundRelay: relay, mainZctPos: zct, gcSwitch: sw, gcTap: tap };
+          const d = layout(buildComposition(a), a);
+          const gc = d.symbols.find((s) => s.role === 'site-gc');
+          const label = `GC：地絡継電器=${relay}・ZCT=${zct}・上位=${sw}・位置=${tap}`;
+          if (!gc) { fail(`${label}：GCが描かれていません`); continue; }
+          let bad = '';
+          if (sw !== 'none') {
+            const s1 = d.symbols.find((s) => s.role === 'gc-switch');
+            if (!s1) bad = '開閉器が描かれていません';
+            else {
+              const o = portAbs(s1, 'out');
+              const i = portAbs(gc, 'in');
+              const vertical = Math.abs(o.x - i.x) < 0.5 && o.y < i.y && d.wires.some((w) => Math.abs(w.x1 - o.x) < 0.5 && Math.abs(w.x2 - o.x) < 0.5 && Math.abs(w.y1 - o.y) < 0.5 && Math.abs(w.y2 - i.y) < 0.5);
+              if (!vertical) bad = '開閉器の真下に、GCが縦につながっていません';
+            }
+          }
+          if (!bad && gc.label.join('|') !== 'GC') bad = `文字が「GC」になっていません（${gc.label.join('|')}）`;
+          // ZCTの電源側：GCは、ZCTより上（電源側）
+          if (!bad && tap === 'zct-source' && relay !== 'none') {
+            const z = d.symbols.find((s) => s.role === 'main-zct');
+            if (z && !(gc.y < z.y)) bad = `GCがZCTより上（電源側）にありません（GC y=${Math.round(gc.y)}・ZCT y=${Math.round(z.y)}）`;
+          }
+          bad ||= problems(d);
+          if (bad) fail(`${label}：${bad}`);
+        }
+      }
+    }
+  }
+  console.log('  GC：地絡継電器3種 × ZCT位置3種 × 上位の開閉器4種 × 位置5種：描かれる・ZCTの電源側・縦につながる・線と文字が重ならない');
+}
+
 /* ---------- GR（無方向性）：ZCTだけ。ZPDは無くてよい。位置の選択肢はDGRと同じ ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'no', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', mainGroundRelay: 'gr' };

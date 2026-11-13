@@ -4,7 +4,7 @@ import { pickOwn } from './own.ts';
 import { evaluate, fillTemplate } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
-import { AREA_CHAIN, CHAIN_BY_FORM, CT_SHOWN, DOWNSTREAM, EXTRAS, FEEDERS, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
+import { AREA_CHAIN, CHAIN_BY_FORM, CT_SHOWN, DOWNSTREAM, EXTRAS, FEEDERS, MAIN_GROUND_ON, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
 
 /* ------------------------------------------------------------------ */
@@ -973,7 +973,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' ? laneBase + i : undefined,
           row: p.row,
           unit: countKey ? i : undefined,
-          ...(p.tapFrom ? { tap: String(a[p.tapFrom] ?? 'ct-bus'), separate: true } : {}),
+          ...(p.tapFrom ? { tap: String(a[p.tapFrom] ?? p.tapDefault ?? 'ct-bus'), separate: true } : {}),
           ...(p.upright ? { upright: true } : {}),
           ...(p.hang ? { hang: true } : {}),
           ...(p.posFrom ? { pos: String(a[p.posFrom] ?? '') } : {}),
@@ -1180,7 +1180,8 @@ function moveVtLeftWhenCrowded(list: PlacedItem[]): PlacedItem[] {
 }
 
 /**
- * ZPD・LAを、答えた位置に動かす。
+ * ZPD・LA・GCを、答えた位置に動かす。
+ * - zct-source（ZCTの電源側）：ZCTの直前（GCだけ。ZCTが無いときは、ds-vcb と同じ）
  * - ds-source（DSの一次側）：DSの直前（LAだけ。第13弾 項目20）。DSが無いときは、動かさない
  * - ds-vcb（DSとVCBの間）：主遮断装置（VCB）の直前
  * - vcb-ct・lbs-ct（主遮断装置とCTの間）：主遮断装置の直後
@@ -1188,6 +1189,18 @@ function moveVtLeftWhenCrowded(list: PlacedItem[]): PlacedItem[] {
  * 主遮断装置が無いときは、動かさない。
  */
 function placeByTap(items: PlacedItem[]): PlacedItem[] {
+  // GCの「ZCTの電源側」：ZCT（DGR・GR用）のすぐ上。ZCTが無いときは、DSとVCBの間（主遮断装置の直前）に寄せる（第13弾 項目21）
+  if (items.some((i) => i.tap === 'zct-source')) {
+    const z = items.findIndex((i) => i.role === 'main-zct');
+    if (z >= 0) {
+      const gcs = items.filter((i) => i.tap === 'zct-source');
+      const rest0 = items.filter((i) => !gcs.includes(i));
+      const at0 = rest0.findIndex((i) => i.role === 'main-zct');
+      items = [...rest0.slice(0, at0), ...gcs, ...rest0.slice(at0)];
+    } else {
+      items = items.map((i) => (i.tap === 'zct-source' ? { ...i, tap: 'ds-vcb' } : i));
+    }
+  }
   const dsSide = items.filter((i) => i.tap === 'ds-source');
   if (dsSide.length > 0) {
     const ds = items.findIndex((i) => i.role === 'ds');
@@ -1213,6 +1226,7 @@ function placeByTap(items: PlacedItem[]): PlacedItem[] {
  * 入力画面に出す、注意の文（図面は、そのまま描く。直すかどうかは、人が決める）。
  * group：どの入力のまとまり（グループ）に出すか。view：そのエリアの答え（初期値を足したもの）
  *
+ * - 接地コンデンサ（GC）があるのに、地絡継電器（GR・DGR）が無いとき：GCは、ZCTの電源側につなぐ機器なので、確認を促す
  * - CTが0組（または、CTが入らない構成）なのに、CTにつなぐ継電器（OCRなど）があるとき：
  *   継電器の箱は、つなぐ先が無いので、主回路につながらないまま、図面の下に置かれる。CTの組数を1以上にするか、継電器を0個にするよう知らせる
  */
@@ -1234,6 +1248,14 @@ export function inputNotices(view: Answers): InputNotice[] {
       const text = 'CTが0組（または、CTが無い構成）ですが、CTにつなぐ継電器があります。CTの組数を1以上にするか、継電器の個数を0にしてください（このままだと、継電器は、主回路につながらないまま、図面の下に置かれます）。';
       out.push({ group: 'ctset', text }, { group: 'relay', text });
     }
+  }
+  // 接地コンデンサ（GC）があるのに、主遮断装置の地絡継電器（GR・DGR）が無いとき：GCは、ZCTの電源側につなぐ機器なので、確認を促す（第13弾 項目21）
+  const dv = withDerived(view);
+  if (dv.hasGc === 'yes' && (evaluate({ key: 'intakeVcb', eq: 'yes' }, dv) || evaluate({ key: 'intakeLbs', eq: 'yes' }, dv)) && !evaluate(MAIN_GROUND_ON, dv)) {
+    out.push({
+      group: 'receiving',
+      text: '接地コンデンサ（GC）がありますが、主遮断装置の地絡継電器（GR・DGR）が「なし」です（DGRは、ZPDが「あり」のときだけ描きます）。GCは、ZCTの電源側につなぐ機器なので、地絡継電器とZCTの有無を確かめてください（図面は、このまま描きます）。',
+    });
   }
   return out;
 }

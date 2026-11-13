@@ -3,7 +3,7 @@ import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
 import { PROPERTY_AT_DS } from './questions/common.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
-const MAIN_GROUND_ON: Condition = {
+export const MAIN_GROUND_ON: Condition = {
   any: [{ all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }, { key: 'mainGroundRelay', eq: 'gr' }],
 };
 /** LAの上側に付く開閉器（DS・PC・LBS）。付くときは、LAを、この開閉器の真下に縦につなげて置く */
@@ -37,6 +37,42 @@ const LA_ITEMS: Placement[] = [
     upright: true,
     when: { all: [{ key: 'hasLa', eq: 'yes' }, { not: { key: 'laSwitch', in: LA_SWITCHES } }] },
     labelTemplate: ['LA'],
+  },
+];
+
+/** GCの上側に付く開閉器。LAと同じ作り（開閉器の真下にGCを縦につなげて置く） */
+const GC_ITEMS: Placement[] = [
+  ...(['ds', 'pc', 'lbs'] as const).map((v): Placement => ({
+    role: 'gc-switch',
+    symbolId: v,
+    kind: 'branch-left',
+    tapFrom: 'gcTap',
+    tapDefault: 'zct-source',
+    upright: true,
+    when: { all: [{ key: 'hasGc', eq: 'yes' }, { key: 'gcSwitch', eq: v }] },
+    labelTemplate: [v.toUpperCase()],
+    note: 'GCの上側（主回路の側）に付く開閉器。GCは、この開閉器の真下につなぐ',
+  })),
+  {
+    role: 'site-gc',
+    symbolId: 'gc',
+    kind: 'branch-left',
+    tapFrom: 'gcTap',
+    tapDefault: 'zct-source',
+    upright: true,
+    hang: true,
+    when: { all: [{ key: 'hasGc', eq: 'yes' }, { key: 'gcSwitch', in: LA_SWITCHES }] },
+    labelTemplate: ['GC'],
+  },
+  {
+    role: 'site-gc',
+    symbolId: 'gc',
+    kind: 'branch-left',
+    tapFrom: 'gcTap',
+    tapDefault: 'zct-source',
+    upright: true,
+    when: { all: [{ key: 'hasGc', eq: 'yes' }, { not: { key: 'gcSwitch', in: LA_SWITCHES } }] },
+    labelTemplate: ['GC'],
   },
 ];
 
@@ -128,6 +164,8 @@ export interface Placement {
   attachTo?: string;
   /** つなぐ位置を答える質問のID（ZPD・LA）。答えに応じて、並びの位置を動かす */
   tapFrom?: string;
+  /** つなぐ位置を、まだ答えていないときの位置（無ければ ct-bus。GCは zct-source） */
+  tapDefault?: string;
   /** 分岐するとき、横に回さず、縦のまま置く（LA：真横に出た線が、真下に折れて、記号が縦に並ぶ） */
   upright?: boolean;
   /** 直前の同じ向きの分岐と、横につなげず、別の分岐として出す */
@@ -624,6 +662,7 @@ export const DOWNSTREAM: Placement[] = [
     connectFrom: ['zpd'],
   },
   ...LA_ITEMS,
+  ...GC_ITEMS,
 ];
 
 /**
@@ -744,6 +783,7 @@ export const AREA_CHAIN: Placement[] = [
   { role: 'zpd', symbolId: 'zpd', kind: 'branch-left', tapFrom: 'zpdTap', when: { key: 'hasZpd', eq: 'yes' }, labelTemplate: ['ZPD'] },
   { role: 'ovgr', symbolId: 'relay-ovgr', kind: 'branch-left', tapFrom: 'zpdTap', when: { all: [{ key: 'hasZpd', eq: 'yes' }, { key: 'hasOvgr', eq: 'yes' }] }, connectFrom: ['zpd'] },
   ...LA_ITEMS,
+  ...GC_ITEMS,
 ];
 
 /**

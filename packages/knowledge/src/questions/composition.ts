@@ -410,6 +410,17 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     help: '受電設備側に零相電圧検出装置を置く場合',
   },
   {
+    // 接地コンデンサ（GC）。ZPDの「あり／なし」の、すぐ隣に並べる（第13弾 項目21）
+    id: 'hasGc',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: '接地コンデンサ（GC）はありますか？',
+    type: 'select',
+    options: YES_NO,
+    defaultValue: 'no',
+    ask: 'ai-uncertain',
+    help: '静電容量が小さい回路（3300V系統・低圧系統）で、対地間にコンデンサをつなぎ、ZPDよりも零相電流を流せるようにする機器',
+  },
+  {
     id: 'zpdTap',
     group: 'receiving', section: 'ZPD・LA・接地',
     label: 'ZPDをつなぐ位置は？',
@@ -517,6 +528,43 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     showIf: { key: 'hasLa', eq: 'yes' },
     ask: 'always',
     help: '主回路からLAへ向かう線の途中（LAの上側）に付く開閉器。選ぶと、主回路から横に出た線が真下に折れて、開閉器、LA、アースの順に縦に並ぶ',
+  },
+  {
+    id: 'gcTap',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'GCをつなぐ位置は？',
+    type: 'select',
+    dropdown: true,
+    options: [
+      // 初期値：ZCT（DGR・GR用）の電源側＝ZCTのすぐ上。ZCTが無い構成では、主遮断装置の一次側（DSとVCBの間）に寄せる
+      { value: 'zct-source', label: 'ZCTの電源側（ZCTのすぐ上）' },
+      { value: 'ds-source', label: 'DS（断路器）の一次側', showIf: { key: 'intakeDs', eq: 'yes' } },
+      { value: 'ds-vcb', label: 'DSとVCBの間', showIf: { all: [{ key: 'intakeDs', eq: 'yes' }, { key: 'intakeVcb', eq: 'yes' }] } },
+      { value: 'vcb-ct', label: 'VCBとCTの間', showIf: { key: 'intakeVcb', eq: 'yes' } },
+      { value: 'lbs-ct', label: 'LBSの次（LBSとCTの間）', showIf: { key: 'intakeLbs', eq: 'yes' } },
+      { value: 'ct-bus', label: '変圧器の手前（CTの下・高圧母線の上）' },
+    ],
+    defaultValue: 'zct-source',
+    showIf: { key: 'hasGc', eq: 'yes' },
+    ask: 'always',
+    help: 'ふつうは、ZCT（DGR・GR用）の電源側（ZCTのすぐ上）。ZCTが無い構成（地絡継電器が「なし」）のときは、主遮断装置の一次側（DSとVCBの間）に描く。ZPD・LAとは別々に選べる',
+  },
+  {
+    // GCの上側（主回路の側）に付く開閉器。選んだ開閉器の真下にGCを描く
+    id: 'gcSwitch',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'GCの上位（上側）に開閉器はありますか？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし' },
+      { value: 'ds', label: 'DS（断路器）' },
+      { value: 'pc', label: 'PC（高圧カットアウト）' },
+      { value: 'lbs', label: 'LBS（高圧交流負荷開閉器）' },
+    ],
+    defaultValue: 'none',
+    showIf: { key: 'hasGc', eq: 'yes' },
+    ask: 'always',
+    help: '主回路からGCへ向かう線の途中（GCの上側）に付く開閉器。選ぶと、主回路から横に出た線が真下に折れて、開閉器、GC、アースの順に縦に並ぶ',
   },
   { id: 'earthingNotes', group: 'receiving', section: 'ZPD・LA・接地', label: '接地方式・接地抵抗値等の特記事項', type: 'text', ask: 'always', clearOnDuplicate: true },
 ];

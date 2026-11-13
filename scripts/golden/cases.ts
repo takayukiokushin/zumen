@@ -334,6 +334,16 @@ export const GOLDEN_CASES: GoldenCase[] = [
     ctSetCount: '0',
     relayCount: '0',
   }),
+  mk('33-gc', '接地コンデンサ（GC）：GR・ZCTがあるとき、ZCTの電源側（すぐ上）に、GCを描く（ZPDも入る）', ['vcb=1', 'gc=1', 'zpd=1'], CB, {
+    hasZpd: 'yes',
+    mainGroundRelay: 'gr',
+    hasGc: 'yes',
+  }),
+  mk('34-gc-switch', '接地コンデンサ（GC）：DSの一次側に、上位のPC＋GCを縦につなぐ', ['vcb=1', 'gc=1', 'pc=1'], CB, {
+    hasGc: 'yes',
+    gcTap: 'ds-source',
+    gcSwitch: 'pc',
+  }),
   // ---- 赤いレイヤー（停電範囲図・絶縁耐力試験範囲図・追加したレイヤー）の印刷 ----
   withLayer(mk('L1-outage', '赤いレイヤー：停電範囲図（メモ・×印・接地・停電範囲の枠・点と印加点の矢印・渡り線）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), outageLayer),
   withLayer(mk('L2-withstand', '赤いレイヤー：絶縁耐力試験範囲図（充電範囲の斜線・印加範囲・4つの形の渡り線・印加点の矢印）', ['vcb=1', 'tr-3p-dy=3'], CB, { transformerCount: 3 }), withstandLayer),

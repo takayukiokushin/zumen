@@ -198,8 +198,8 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>75</b><span>記号</span></div>
-      <div class="stat"><b>75</b><span>確定</span></div>
+      <div class="stat"><b>76</b><span>記号</span></div>
+      <div class="stat"><b>76</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
       <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
@@ -229,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>20</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>21</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池<i>4</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -1243,7 +1243,7 @@
     <section class="group" id="cat-protection" data-cat="protection">
       <header class="group-head">
         <h2>保護継電器・避雷器・接地</h2>
-        <span class="count">20</span>
+        <span class="count">21</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-relay-ocr" data-search="過電流継電器  ocr relay-ocr 保護継電器 ocr" data-status="confirmed">
@@ -1711,6 +1711,39 @@
           
           <p class="statusnote">この形でOK。</p>
           <p class="note">PAS内蔵のパターンのほか、PAS内にLAが入っていない場合にPAS〜VCT間に単独で入るパターンがある（その上部にPCが入ることも）。PAS内蔵の場合、LAの接地はPAS本体の接地と同じ箇所で施工するため、接地記号はPASの枠の一番下にまとめて描く。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-gc" data-search="接地コンデンサ  gc gc 接地 零相電流 地絡 3300v" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 76" width="108.8" height="129.2" role="img" aria-label="接地コンデンサ">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="24" y1="0" x2="24" y2="20.8" stroke-width="1" />
+    <rect x="9" y="10" width="30" height="30" fill="none" stroke-width="1" />
+    <line x1="16.35" y1="20.8" x2="31.65" y2="20.8" stroke-width="1" />
+    <line x1="16.35" y1="28" x2="31.65" y2="28" stroke-width="1" />
+    <line x1="24" y1="28" x2="24" y2="50" stroke-width="1" />
+    <line x1="15" y1="50" x2="33" y2="50" stroke-width="1" />
+    <line x1="18.5" y1="54" x2="29.5" y2="54" stroke-width="1" />
+    <line x1="21.5" y1="58" x2="26.5" y2="58" stroke-width="1" />
+    <g class="ports">
+      <circle cx="24" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">GC</span>
+            <h3>接地コンデンサ</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          
+          
+          <p class="idline"><code>gc</code> ・ 接続点 1</p>
+          
+          
+          
+          <p class="statusnote">高圧コンデンサ（SC）と同じ四角の箱・同じ線の太さで、上下に線をつなぎ、下に接地の記号を付ける形にしました（自前の図）。横に「GC」と書きます。</p>
+          <p class="note">静電容量が小さい回路（3300V系統・低圧系統）で使う。ZCTの電源側につなぐのが初期値。三相の内訳（Y結線の3つのコンデンサ）は描かず、1つの記号で表す。</p>
           
         </div>
       </article>

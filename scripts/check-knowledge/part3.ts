@@ -317,6 +317,25 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     ok(seq({ laTap: 'ds-source', laSwitch: 'pc' }) === 'la-switch>site-la>ds>main-breaker', `LAの位置 ds-source ＋上位PCのとき、PC→LA→DSの順のはずです（${seq({ laTap: 'ds-source', laSwitch: 'pc' })}）`);
   }
   ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasLa': 'yes', 'a2:laSwitch': 'lbs' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => r === 'la-switch' || r === 'site-la').join() === 'la-switch,site-la', '2か所目のLAの上位の開閉器が入っていません');
+  // 接地コンデンサ（GC）：ZCTの電源側が初期値。ZCTが無いときは、DSとVCBの間。位置・上位の開閉器はLAと同じ作り（第13弾 項目21）
+  {
+    const gcBase: Answers = { ...laBase, hasLa: 'no', hasGc: 'yes' };
+    const shown2 = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
+    const opts = (id: string, a: Answers) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).filter((o) => evaluate(o.showIf, normalizeAnswers(a))).map((o) => o.value).join(',');
+    const seq = (a: Answers) => buildComposition({ ...gcBase, ...a }).map((i) => i.role).filter((r) => ['ds', 'main-breaker', 'main-zct', 'site-gc', 'gc-switch'].includes(r)).join('>');
+    ok(shown2({ hasGc: 'yes' }).has('gcTap') && shown2({ hasGc: 'yes' }).has('gcSwitch') && !shown2({}).has('gcTap'), 'GCの位置・上位の開閉器は、GCが「あり」のときだけ聞くはずです');
+    ok(opts('gcTap', { mainBreakerForm: 'cb' }) === 'zct-source,ds-source,ds-vcb,vcb-ct,ct-bus', `CB形のとき、GCの位置の選択肢が違います（${opts('gcTap', { mainBreakerForm: 'cb' })}）`);
+    ok(QUESTIONS.find((q) => q.id === 'gcTap')?.defaultValue === 'zct-source', 'GCの位置の初期値は、ZCTの電源側のはずです');
+    ok(seq({ mainGroundRelay: 'gr' }) === 'ds>site-gc>main-zct>main-breaker' || seq({ mainGroundRelay: 'gr' }) === 'site-gc>main-zct>ds>main-breaker' , `GR・ZCTがあるとき、GCはZCTのすぐ上のはずです（${seq({ mainGroundRelay: 'gr' })}）`);
+    ok(seq({ mainGroundRelay: 'none' }) === 'ds>site-gc>main-breaker', `ZCTが無いとき、GCはDSとVCBの間のはずです（${seq({ mainGroundRelay: 'none' })}）`);
+    ok(seq({ mainGroundRelay: 'gr', gcTap: 'ds-source' }) === 'site-gc>ds>main-zct>main-breaker' || seq({ mainGroundRelay: 'gr', gcTap: 'ds-source' }) === 'main-zct>site-gc>ds>main-breaker', `GCの位置 ds-source のとき、GCはDSの手前のはずです（${seq({ mainGroundRelay: 'gr', gcTap: 'ds-source' })}）`);
+    ok(seq({ gcTap: 'vcb-ct', mainGroundRelay: 'none' }) === 'ds>main-breaker>site-gc', `GCの位置 vcb-ct のとき、GCはVCBの次のはずです（${seq({ gcTap: 'vcb-ct', mainGroundRelay: 'none' })}）`);
+    ok(seq({ gcSwitch: 'pc', mainGroundRelay: 'none' }) === 'ds>gc-switch>site-gc>main-breaker', `GCの上位にPCを選ぶと、PC→GCの順のはずです（${seq({ gcSwitch: 'pc', mainGroundRelay: 'none' })}）`);
+    ok(seq({ hasGc: 'no' }) === 'ds>main-breaker', 'GCが「ない」のとき、GCを描いています');
+    // 注意：GCがあって、地絡継電器が無いとき
+    const nt2 = (a: Answers) => inputNotices(withAutoValues({ ...gcBase, ...a })).filter((n) => n.group === 'receiving').length;
+    ok(nt2({ mainGroundRelay: 'none' }) === 1 && nt2({ mainGroundRelay: 'gr' }) === 0 && nt2({ hasGc: 'no' }) === 0, 'GCがあって地絡継電器が無いときだけ、注意を出すはずです');
+  }
   // GR（無方向性）：ZCTだけ。ZPDは要らない。DGRと同じ位置の選択肢
   const noZpd: Answers = { ...cbBase, hasZpd: 'no' };
   const grRoles = (a: Answers) => buildComposition(a).filter((i) => !i.role.startsWith('pas-')).filter((i) => ['main-zct', 'main-ground-relay'].includes(i.role)).map((i) => `${i.role}:${i.symbolId}`).join();
