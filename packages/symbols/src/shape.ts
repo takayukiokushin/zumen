@@ -142,16 +142,6 @@ export const loadContact = (cx: number, cy: number, half: number, leadFrom?: num
   contact(cx, cy),
 ];
 
-/**
- * 開閉器の可動刃（ブレード）。
- * 下側の固定接点を支点に、右上がりに開いた状態で描く（JISの開閉器記号の標準的な表現）。
- */
-export const blade = (x: number, yTop: number, yBottom: number, reach = 11): Shape[] => [
-  contact(x, yTop),
-  contact(x, yBottom),
-  line(x, yBottom - 1.8, x + reach, yTop + 2),
-];
-
 /** 接地記号（3本の横線）。(x, y) は最上段の線の中心 */
 export const earth = (x: number, y: number, scale = 1): Shape[] => [
   hline(y, x - 9 * scale, x + 9 * scale),

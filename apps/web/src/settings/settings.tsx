@@ -121,11 +121,6 @@ export function usableWidth(uiScale: number): number {
   return window.innerWidth / (uiScale > 0 ? uiScale : 1);
 }
 
-/** 実効幅が、スマホの区切り（700px）以下か */
-export function isNarrowScreen(): boolean {
-  return document.documentElement.dataset.uw?.split(' ').includes('700') ?? false;
-}
-
 function applyWidth(uiScale: number): void {
   const w = usableWidth(uiScale);
   const v = WIDTH_STEPS.filter((n) => w <= n).join(' ');

@@ -630,14 +630,6 @@ export function areaLabel(answers: Answers): string {
   return name ? `${name}　${body}` : body;
 }
 
-/**
- * 受電設備エリアの外枠（一点鎖線）を描くかどうか。
- * 2箇所以上あるときだけ囲う。1箇所しかない場合に全体を囲うと、かえって分かりにくい。
- */
-export function shouldDrawAreaFrames(areaCount: number): boolean {
-  return areaCount >= 2;
-}
-
 /* ------------------------------------------------------------------ */
 /* 構成データの組み立て                                                  */
 /* ------------------------------------------------------------------ */

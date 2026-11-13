@@ -34,11 +34,6 @@ function productionAnswers(): Answers[] {
   return list;
 }
 
-/** 集計のやり直しを促す（試験用） */
-export function resetTrendCache(): void {
-  cache = null;
-}
-
 trends.get('/', (c) => {
   if (c.get('user').role === 'sandbox') return c.json({ min: TREND_MIN_COUNT, projects: 0, trends: {} });
   const context = (c.req.query('context') ?? '').slice(0, 40);

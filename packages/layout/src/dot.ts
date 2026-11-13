@@ -18,11 +18,10 @@ export const ARROW_GAP = 2;
 /** 矢印の頭の、長さと、半分の幅 */
 export const ARROW_HEAD = 10;
 export const ARROW_HEAD_HALF = 4;
-/** 矢印の長さ（丸い点の中心から、尾の端まで）の、いちばん短い長さ・いちばん長い長さ・最初の長さ・変えるときの1回ぶん */
+/** 矢印の長さ（丸い点の中心から、尾の端まで）の、いちばん短い長さ・いちばん長い長さ・最初の長さ */
 export const ARROW_LEN_MIN = 20;
 export const ARROW_LEN_MAX = 200;
 export const ARROW_LEN_DEFAULT = 40;
-export const ARROW_LEN_STEP = 4;
 
 /** 尾の向き（丸い点から見て、矢印の根もとがある方向） */
 export type ArrowDir = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
