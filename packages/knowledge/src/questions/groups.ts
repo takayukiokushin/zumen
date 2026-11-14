@@ -60,10 +60,9 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   {
     id: 'auxtr',
     label: '補助変圧器',
-    description: '系統用蓄電所のとき、補助変圧器盤（MCCB→補助変圧器）を、低圧側に描く',
+    description: '補助変圧器盤（MCCB→補助変圧器）を、低圧側に描く。台数が0なら描かない',
     repeatCountKey: 'auxTrCount',
     repeatUnit: '台',
-    showIf: { key: 'hasBattery', eq: 'yes' },
     perArea: true,
   },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },

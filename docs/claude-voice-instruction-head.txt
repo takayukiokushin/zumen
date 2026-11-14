@@ -54,7 +54,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vc8iefu",
+  "version": "v1dyf046",
   "answers": { "項目ID": 値, "項目ID": 値 },
   "uncertain": ["自信がない項目のID"],
   "evidence": { "自信がない項目のID": "話された言葉（短く）" },
@@ -98,7 +98,7 @@
   OCR・UVR・OVRなどの継電器は、relayCount（個数）と、1個ずつ relayType（種類）・relayAt（どこについているか：ct-1＝CT1組目、vt-1＝VT1組目、none＝置き場所が決まっていない）・
   relayTest（手前の試験端子：yes／no）で答えます。**試験端子は、最初は「あり」です。** 図に無いと分かるときだけ no にしてください。
   OCRがあるVCBには、トリップコイル（OCRの出力で動く）が付きます。これは答えなくても自動で描かれます。
-- **補助変圧器（MCCB→補助変圧器）は系統用蓄電所（hasBattery が yes）だけ**です。auxTrCount（台数）・auxTrUsage（用途）・auxTrConnection・auxTrCapacity・
+- **補助変圧器（MCCB→補助変圧器）は、蓄電池の有無（hasBattery）に関わらず**、図に書かれていれば読み取ってください（書かれていなければ答えに入れない）。auxTrCount（台数）・auxTrUsage（用途）・auxTrConnection・auxTrCapacity・
   auxTrVoltage（例：550/220V）・auxTrMccb（MCCBの定格。数字だけ）・auxTrFrom（どの変圧器の低圧側か）を読み取ってください。
 - **分界点の言葉は、「財産・責任分界点」「責任分界点」「財産分界点」の3つだけを使います。** 手書きの図にほかの書き方があっても、この3つのどれかに読み替えます。
   3点一致のときの横線の文言は「財産・責任分界点」です（3点不一致のときだけ、「財産分界点」と「責任分界点」を別々の線で書きます）。

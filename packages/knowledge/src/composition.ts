@@ -1049,14 +1049,13 @@ export const EXTRAS: Placement[] = [
     labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
   },
   /*
-   * 補助変圧器（系統用蓄電所だけ）。選んだ変圧器の低圧側から、補助変圧器盤のMCCB → 補助変圧器の順にぶら下げる。
+   * 補助変圧器（蓄電池の有無に関わらず、台数が1以上のとき）。選んだ変圧器の低圧側から、補助変圧器盤のMCCB → 補助変圧器の順にぶら下げる。
    * 台数ごとに1本の列になる。
    */
   {
     role: 'aux-mccb',
     symbolId: 'mccb',
     kind: 'feeder',
-    when: { key: 'hasBattery', eq: 'yes' },
     labelTemplate: ['補助変圧器盤', 'MCCB{auxTrMccb}A'],
     props: { transformer: 'auxTrFrom' },
     repeatCountKey: 'auxTrCount',
@@ -1067,7 +1066,6 @@ export const EXTRAS: Placement[] = [
     role: 'aux-tr',
     symbolId: '{auxTrSymbol}',
     kind: 'feeder',
-    when: { key: 'hasBattery', eq: 'yes' },
     labelTemplate: ['{auxTrUsageLine}', '{auxTrCapacityLine}', '{auxTrVoltage}'],
     props: { transformer: 'auxTrFrom' },
     repeatCountKey: 'auxTrCount',

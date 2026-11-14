@@ -259,7 +259,7 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       ['1台目の用途', 'trUsage', '電灯', 0], ['1台目の結線方式', 'trConnection', 'tr-1p', 0], ['1台目の電圧', 'trVoltage', '6600/210-105V', 0], ['1台目の上位PC', 'trHasPc', 'no', 0], ['1台目の上位LBS', 'trHasLbs', 'no', 0],
       ['2台目の用途', 'trUsage', '動力', 1], ['2台目の結線方式', 'trConnection', 'tr-3p-yd', 1], ['2台目の電圧', 'trVoltage', '6600/210V', 1], ['2台目の上位PC', 'trHasPc', 'no', 1], ['2台目の上位LBS', 'trHasLbs', 'no', 1],
       ['高圧進相設備', 'hasCapacitor', 'yes'], ['高圧コンデンサの台数', 'capacitorCount', '1'], ['コンデンサ手前のPC', 'capHasPc', 'no'], ['コンデンサ手前のLBS', 'capHasLbs', 'no'], ['コンデンサ手前のVCS', 'capHasVcs', 'no'], ['リアクトル', 'hasReactor', 'no'],
-      ['発電機', 'hasGenerator', 'no'], ['太陽光発電設備', 'hasPv', 'no'], ['系統用蓄電所', 'hasBattery', 'no'],
+      ['発電機', 'hasGenerator', 'no'], ['太陽光発電設備', 'hasPv', 'no'], ['蓄電池', 'hasBattery', 'no'],
     ];
     for (const [name, id, want, unit] of table) {
       const got = valueOf(id, unit ?? 0);
@@ -649,9 +649,10 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   }
   ok(Boolean(getSymbolForCheck('trip-coil')), 'トリップコイルの記号がありません');
 
-  // 補助変圧器：蓄電所のときだけ。選んだ変圧器の低圧側から、MCCB → 補助変圧器
+  // 補助変圧器：蓄電池の有無に関わらず質問する（台数0なら描かない）。選んだ変圧器の低圧側から、MCCB → 補助変圧器
   const shownAux = (a: Answers) => visibleQuestions(a).some((q) => q.id === 'auxTrCapacity');
-  ok(!shownAux(base) && shownAux({ ...base, hasBattery: 'yes' }), '補助変圧器の項目が、蓄電所のときだけ出るはずです');
+  ok(shownAux({ ...base, auxTrCount: '1' }) && shownAux({ ...base, hasBattery: 'yes' }), '補助変圧器の項目が、蓄電池の有無に関わらず出るはずです');
+  ok(withAutoValues(base).auxTrCount === '0' && withAutoValues({ ...base, hasBattery: 'yes' }).auxTrCount === '1', '補助変圧器の台数の初期値は、蓄電池がなければ0台、あれば1台のはずです');
   const aux: Answers = {
     ...base, hasBattery: 'yes', transformerCount: 2, trConnection: 'tr-3p-dy', trConnection__2: 'tr-3p-dy', auxTrCount: '2',
     auxTrFrom: '1', auxTrUsage: '動力', auxTrConnection: 'tr-3p-dy', auxTrCapacity: 150, auxTrVoltage: '550/220V', auxTrMccb: '400',
@@ -667,7 +668,7 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   ok(mc1?.props.transformer === '1' && ax.find((i) => i.id === 'aux-mccb-2')?.props.transformer === '2', '補助変圧器のつなぎ先（どの変圧器か）が違います');
   ok(mc1?.lane === 400 && tr1?.lane === 400 && tr2?.lane === 401, '補助変圧器の列（MCCBと補助変圧器が同じ列）が違います');
   ok(!buildComposition({ ...aux, auxTrCount: '0' }).some((i) => i.role.startsWith('aux-')), '補助変圧器0台なのに、描かれています');
-  ok(!buildComposition({ ...aux, hasBattery: 'no' }).some((i) => i.role.startsWith('aux-')), '蓄電所でないのに、補助変圧器が描かれています');
+  ok(buildComposition({ ...aux, hasBattery: 'no' }).some((i) => i.role.startsWith('aux-')), '蓄電池がなくても、補助変圧器の台数を入れたら描かれるはずです');
   const blank = buildComposition({ ...aux, auxTrConnection: undefined }).find((i) => i.id === 'aux-tr-1');
   ok(blank?.symbolId === 'tr-blank', '結線方式が未入力のとき、円の中が空の変圧器の記号になっていません');
 
@@ -677,7 +678,7 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const everyLabel = [...UPSTREAM, ...DOWNSTREAM, ...EXTRAS].flatMap((p) => p.labelTemplate ?? []).concat(QUESTIONS.flatMap((q) => [q.label, q.help ?? '', q.aiHint ?? '']));
   ok(!everyLabel.some((t) => /財産保安責任分界点|財産責任分界点|財産及び責任分界点|保安上の責任分界点|保安責任分界点|分解点/.test(t)), '分界点の文言に、「財産・責任分界点」以外の書き方が残っています');
   console.log('  VT・CTは組で数え、継電器は1個ずつ「種類・どこについているか・試験端子」を選ぶ。VCBとOCRがあればトリップコイルが入る');
-  console.log('  補助変圧器は蓄電所のときだけ。分界点の文言は「財産・責任分界点」');
+  console.log('  補助変圧器は、蓄電池の有無に関わらず質問し、0台なら描かない。分界点の文言は「財産・責任分界点」');
 }
 
 /* ---------- 「設備を入力して作成」の説明文の整理（第8弾 項目12） ---------- */

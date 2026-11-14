@@ -461,7 +461,7 @@ export function withDerived(rawAnswers: Answers): Answers {
   // 継電器の記号（OCR→relay-ocr）。種類がまだ無いときは、記号を決めない
   d.relaySymbol = answers.relayType ? `relay-${String(answers.relayType).toLowerCase()}` : '';
 
-  // 補助変圧器（系統用蓄電所）。結線方式がまだ無いときは、円の中が空の記号を使う
+  // 補助変圧器。結線方式がまだ無いときは、円の中が空の記号を使う
   d.auxTrSymbol = answers.auxTrConnection ? String(answers.auxTrConnection) : 'tr-blank';
   d.auxTrUsageLine = answers.auxTrUsage ? `${answers.auxTrUsage}用 Tr` : '補助変圧器';
   const auxPhase = String(answers.auxTrConnection ?? '').startsWith('tr-1p') || answers.auxTrConnection === 'tr-vv' ? '1φ' : '3φ';

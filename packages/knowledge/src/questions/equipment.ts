@@ -24,7 +24,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
   { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'hasMotor', group: 'special', label: '電動機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '高圧の電動機（モーター）がある場合。台数・始動方式・容量・設置場所を、台ごとに入力する' },
   { id: 'hasPv', group: 'special', label: '太陽光発電設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
-  { id: 'hasBattery', group: 'special', label: '系統用蓄電所ですか？', type: 'select', options: YES_NO_Q, defaultValue: 'no', ask: 'ai-uncertain' },
+  { id: 'hasBattery', group: 'special', label: '蓄電池はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'batteryCapacity', group: 'special', label: '蓄電ユニットの規模', type: 'text', showIf: { key: 'hasBattery', eq: 'yes' }, ask: 'always' },
   {
     id: 'batteryTransformer',
@@ -40,7 +40,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     help: '最初は、1台目の変圧器につなぐ設定になっている。つなぎ先が決まっていなければ「つながない」を選ぶ',
   },
 
-  /* ---------------- 補助変圧器（系統用蓄電所のとき。台ごと） ---------------- */
+  /* ---------------- 補助変圧器（蓄電池の有無に関わらず、いつも質問する。台ごと） ---------------- */
   {
     id: 'auxTrCount',
     group: 'auxtr',
@@ -49,9 +49,10 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     options: RELAY_COUNT_OPTIONS.slice(0, 5),
     allowFreeInput: true,
     unit: '台',
-    autoValue: [{ value: '1' }],
+    // 蓄電池があれば1台、なければ0台（0台のときは描かない）
+    autoValue: [{ when: { key: 'hasBattery', eq: 'yes' }, value: '1' }, { value: '0' }],
     ask: 'always',
-    help: '蓄電所の補助電源（照明・空調・制御）に使う変圧器。0台にすると描かない',
+    help: '蓄電所などの補助電源（照明・空調・制御）に使う変圧器。蓄電池があれば最初は1台、なければ0台。0台のときは描かない',
   },
   {
     id: 'auxTrFrom',
