@@ -179,7 +179,7 @@
       <circle cx="35" cy="15" r="11" fill="none" stroke-width="1" />
       <line x1="46" y1="15" x2="60" y2="15" stroke-width="1" />
     </g>
-    <text x="162" y="785" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="162" dy="0">VT＋PF×2</tspan><tspan x="162" dy="12.5">V結線</tspan><tspan x="162" dy="12.5">6600/110V</tspan></text>
+    <text x="162" y="785" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="162" dy="0">VT＋PF×2</tspan><tspan x="162" dy="12.5">V結線</tspan><tspan x="162" dy="12.5">3300/110V</tspan></text>
     <g transform="translate(-84 840)">
       <line x1="15" y1="0" x2="15" y2="11" stroke-width="1" />
       <rect x="5.1" y="5.2" width="41.8" height="17.6" fill="none" stroke-width="1" />

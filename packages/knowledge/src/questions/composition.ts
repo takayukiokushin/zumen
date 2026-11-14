@@ -265,9 +265,28 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     label: 'VTの変圧比',
     type: 'text',
     placeholder: '6600/110V',
-    // VTの変圧比は 6600/110V のほかには無い。最初から入れておき、違うときだけ手で直す
-    defaultValue: '6600/110V',
-    autoValue: [{ value: '6600/110V' }],
+    // VTの変圧比は、6600V受電では 6600/110V。3300V系統では 3300/110V。
+    // 最初から入れておく。同じエリアのどこかで 3300V を選んでいたら（区分開閉器・ケーブル・電動機のケーブルなどの電圧）、自動で 3300/110V にする。
+    // 手で直した値は、いつもそちらが優先される。
+    // （defaultValue は置かない：置くと、2か所目以降のエリアで、最初から 6600/110V が入ってしまい、そのエリアの電圧から決める autoValue が効かない）
+    autoValue: [
+      {
+        when: {
+          any: [
+            'pasRatedVoltage',
+            'areaPasRatedVoltage',
+            'areaAsRatedVoltage',
+            'preCableVoltage',
+            'cableVoltage',
+            'motorCableVoltage',
+            'linkCableVoltage',
+            'receivingVoltage',
+          ].map((key) => ({ key, in: ['3300', 3300] })),
+        },
+        value: '3300/110V',
+      },
+      { value: '6600/110V' },
+    ],
     ask: 'ai-uncertain',
   },
   // ---- CT（組ごと）。1組目は、これまでの答え（ctCount・ctRatio）をそのまま使う ----

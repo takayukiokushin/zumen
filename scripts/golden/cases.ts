@@ -135,6 +135,8 @@ export const GOLDEN_CASES: GoldenCase[] = [
   mk('11-apartment-pole', '集合住宅の柱上変圧器', ['tr-1p-2w=1'], { areaForm: 'apartment-pole', trConnection: 'tr-1p-2w', trCapacity: 50, trVoltage: '6600/210-105V' }),
   mk('12-3300v-overhead', '3300V受電・架空引込ケーブル（CV）', ['lbs-pf', 'cable-head'], {
     receivingVoltage: 3300,
+    // VTの変圧比は、3300V を選んでいるので、自動で 3300/110V になる（基本の現場の 6600/110V を、外す）
+    vtRatio: undefined as never,
     pasRatedVoltage: '3300',
     cableInstallation: 'overhead',
     cableStructure: 'CV',

@@ -11,8 +11,18 @@ import { answers } from './part1.ts';
 console.log('\n■ VTの変圧比（6600/110V固定の初期値）とCTの変流比（/5Aを自動で付ける）');
 {
   const vt = QUESTIONS.find((q) => q.id === 'vtRatio');
-  if (vt?.defaultValue !== '6600/110V' || vt.type !== 'text') fail(`VTの変圧比の初期値が 6600/110V の入力欄になっていません（${String(vt?.defaultValue)}）`);
-  else console.log('  VTの変圧比：最初から 6600/110V が入っていて、手で直せる（文字を入れる欄）');
+  // 初期値は、autoValue で入る（最後の決まりが 6600/110V。3300V を選んでいるときは、3300/110V）。手で直せる文字の欄
+  const lastAuto = vt?.autoValue?.at(-1);
+  if (vt?.type !== 'text' || lastAuto?.value !== '6600/110V' || lastAuto.when !== undefined) fail('VTの変圧比が、6600/110V を最後の初期値にした、文字の入力欄になっていません');
+  else {
+    const ratioOf = (a: Record<string, unknown>) => String(withAutoValues({ ...answers, mainBreakerForm: 'cb', vtRatio: undefined, ...a } as never).vtRatio);
+    const ratioOfArea2 = (a: Record<string, unknown>) => String(withAutoValues({ ...answers, mainBreakerForm: 'cb', vtRatio: undefined, areaCount: 2, ...a } as never)['a2:vtRatio']);
+    if (ratioOf({}) !== '6600/110V') fail(`VTの変圧比の初期値が 6600/110V ではありません（${ratioOf({})}）`);
+    else if (ratioOf({ pasRatedVoltage: '3300' }) !== '3300/110V' || ratioOf({ cableVoltage: 3300 }) !== '3300/110V' || ratioOf({ motorCableVoltage: '3300' }) !== '3300/110V') fail('3300V を選んでいるのに、VTの変圧比が 3300/110V になりません');
+    else if (ratioOf({ pasRatedVoltage: '3300', vtRatio: '6600/110V' }) !== '6600/110V') fail('手で直した VTの変圧比が、自動の値で上書きされています');
+    else if (ratioOfArea2({ 'a2:areaPasRatedVoltage': '3300' }) !== '3300/110V' || ratioOfArea2({}) !== '6600/110V') fail('2か所目のVTの変圧比が、そのエリアの電圧で決まっていません');
+    else console.log('  VTの変圧比：最初から 6600/110V。3300V を選んでいるエリアでは、自動で 3300/110V。手で直した値が優先される（エリアごとに決まる）');
+  }
   const ct = QUESTIONS.find((q) => q.id === 'ctRatio');
   if (ct?.appendOnBlur !== '/5A') fail('CTの変流比の欄に、「/5A」を自動で付ける指定がありません');
   const text = (v: unknown) => String(withDerived({ ctRatio: v as string }).ctRatioText);
