@@ -1257,11 +1257,33 @@ function placeByTap(items: PlacedItem[]): PlacedItem[] {
  * - CTが0組（または、CTが入らない構成）なのに、CTにつなぐ継電器（OCRなど）があるとき：
  *   継電器の箱は、つなぐ先が無いので、主回路につながらないまま、図面の下に置かれる。CTの組数を1以上にするか、継電器を0個にするよう知らせる
  */
+/**
+ * 高圧変圧器の合計容量（kVA）。受電設備エリアが2か所以上のときは、すべてのエリアの合計。
+ * 電灯および動力のV結線は、電灯の容量と動力の容量の合計。三相の三巻線変圧器は、一次巻線の容量。
+ * 2か所目以降で、容量がまだ入っていないものは、0として数える（合計は「少なくともこれだけ」になる）。
+ * allKnown：すべてのエリアの容量が入っているか。1か所目が未入力のときの total は NaN。
+ */
+export function totalTransformerKva(raw: Answers): { total: number; allKnown: boolean } {
+  const a = normalizeAnswers(raw);
+  const num = (v: unknown) => (typeof v === 'number' ? v : Number(v));
+  const areaKva = (v: Record<string, unknown>) => {
+    const mixed = v.trConnection === 'tr-vv' && v.trUsage === '電灯・動力';
+    const threeWinding = v.trConnection === 'tr-3w-yyd' || v.trConnection === 'tr-3w-ddy';
+    const unit = mixed ? num(v.trCapacityLight) + num(v.trCapacityPower) : num(threeWinding ? v.trCapacityW1 : v.trCapacity);
+    return unit * Math.max(1, num(v.transformerCount) || 1);
+  };
+  const parts = [areaKva(a)];
+  for (let n = 1; n < areaCountOf(a); n++) parts.push(areaKva(normalizeAnswers(areaView(a, n))));
+  const allKnown = parts.every((p) => Number.isFinite(p));
+  const total = parts.reduce((sum, p, i) => sum + (Number.isFinite(p) ? p : i === 0 ? NaN : 0), 0);
+  return { total, allKnown };
+}
+
 export interface InputNotice {
   group: string;
   text: string;
 }
-export function inputNotices(view: Answers): InputNotice[] {
+export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
   const out: InputNotice[] = [];
   const ctSets = countOf(view.ctSetCount, 0, maxCountOf('ctSetCount'));
   const hasCt = evaluate(CT_SHOWN, view) && ctSets > 0;
@@ -1283,6 +1305,28 @@ export function inputNotices(view: Answers): InputNotice[] {
       group: 'receiving',
       text: '接地コンデンサ（GC）がありますが、主遮断装置の地絡継電器（GR・DGR）が「なし」です（DGRは、ZPDが「あり」のときだけ描きます）。GCは、ZCTの電源側につなぐ機器なので、地絡継電器とZCTの有無を確かめてください（図面は、このまま描きます）。',
     });
+  }
+  // 太陽光発電設備があるのに、ZPD・OVGR が無いとき（ZPDとOVGRはセットで必要。第13弾 項目55 修正9／B-9）。読み取りのときの確認と同じ内容を、手入力でも出す
+  if (dv.hasPv === 'yes' && dv.hasZpd !== 'yes') {
+    out.push({
+      group: 'receiving',
+      text: '太陽光発電設備がありますが、ZPD（零相電圧検出装置）が「なし」です（OVGRも描かれません）。太陽光発電設備があるときは、ZPDとOVGR（地絡過電圧継電器）が、セットで必要です。「ZPDはありますか？」と「OVGRはありますか？」を、確かめてください（図面は、このまま描きます）。',
+    });
+  } else if (dv.hasPv === 'yes' && dv.hasOvgr !== 'yes') {
+    out.push({
+      group: 'receiving',
+      text: '太陽光発電設備がありますが、OVGR（地絡過電圧継電器）が「なし」です。太陽光発電設備があるときは、ZPDとOVGRが、セットで必要です。「OVGRはありますか？」を、確かめてください（図面は、このまま描きます）。',
+    });
+  }
+  // 主遮断装置がPFS形（LBS）なのに、高圧変圧器の合計が300kVAを超えるとき（1か所目の「主遮断装置の形式」のところに出す）
+  if (all && dv.mainBreakerForm === 'pfs' && !(Number(dv.areaNo) > 1)) {
+    const { total } = totalTransformerKva(all);
+    if (Number.isFinite(total) && total > 300) {
+      out.push({
+        group: 'receiving',
+        text: '高圧変圧器の合計容量が300kVAを超えています（受電設備が2か所以上のときは、すべての合計です）。300kVAを超えるときは、主遮断装置はCB形（VCB）にします。「主遮断装置の形式は？」を、確かめてください（図面は、このまま描きます）。',
+      });
+    }
   }
   return out;
 }

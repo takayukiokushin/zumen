@@ -1,4 +1,4 @@
-import { QUESTIONS, areaCountOf, areaView, missingRequired, normalizeAnswers } from '@zumen/knowledge';
+import { QUESTIONS, missingRequired, normalizeAnswers, totalTransformerKva } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import type { AnalysisResult } from './schema.ts';
 
@@ -92,18 +92,7 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
   // 設備容量と主遮断装置の形式
   // 電灯および動力のV結線は、電灯の容量と動力の容量の合計（ふつうは、1台目の容量）
   // 受電設備エリアが2か所以上のときは、すべてのエリアの変圧器の合計で見る
-  const areaKva = (v: Record<string, unknown>) => {
-    const mixed = v.trConnection === 'tr-vv' && v.trUsage === '電灯・動力';
-    const threeWinding = v.trConnection === 'tr-3w-yyd' || v.trConnection === 'tr-3w-ddy';
-    // 三巻線変圧器は、一次巻線の容量で見る
-    const unit = mixed ? num(v.trCapacityLight) + num(v.trCapacityPower) : num(threeWinding ? v.trCapacityW1 : v.trCapacity);
-    return unit * Math.max(1, num(v.transformerCount) || 1);
-  };
-  const parts = [areaKva(a)];
-  for (let n = 1; n < areaCountOf(a); n++) parts.push(areaKva(normalizeAnswers(areaView(a, n))));
-  // 2か所目以降で、容量がまだ入っていないものは、0として数える（合計は「少なくともこれだけ」になる）
-  const allKnown = parts.every((p) => Number.isFinite(p));
-  const total = parts.reduce((sum, p, i) => sum + (Number.isFinite(p) ? p : i === 0 ? NaN : 0), 0);
+  const { total, allKnown } = totalTransformerKva(a);
 
   // 用途と結線方式の組み合わせ（電灯は単相系とV結線、動力は三相とV結線）
   const conn = String(a.trConnection ?? '');

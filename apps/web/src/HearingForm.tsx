@@ -131,7 +131,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
       lead,
       blocks,
       // 図面は、そのまま描く。直したほうがよいところを、入力画面で知らせる
-      notices: inputNotices(view).filter((n) => n.group === group.id).map((n) => n.text),
+      notices: inputNotices(view, effective).filter((n) => n.group === group.id).map((n) => n.text),
       answered: all.filter((r) => effective[r.key] !== undefined).length,
       total: all.length,
       need: all.some((r) => r.question.required && effective[r.key] === undefined),

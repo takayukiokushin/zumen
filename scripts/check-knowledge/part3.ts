@@ -343,8 +343,24 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     ok(seq({ gcSwitch: 'pc', mainGroundRelay: 'none' }) === 'ds>gc-switch>site-gc>main-breaker', `GCの上位にPCを選ぶと、PC→GCの順のはずです（${seq({ gcSwitch: 'pc', mainGroundRelay: 'none' })}）`);
     ok(seq({ hasGc: 'no' }) === 'ds>main-breaker', 'GCが「ない」のとき、GCを描いています');
     // 注意：GCがあって、地絡継電器が無いとき
-    const nt2 = (a: Answers) => inputNotices(withAutoValues({ ...gcBase, ...a })).filter((n) => n.group === 'receiving').length;
+    const nt2 = (a: Answers) => inputNotices(withAutoValues({ ...gcBase, ...a })).filter((n) => n.group === 'receiving' && n.text.includes('接地コンデンサ')).length;
     ok(nt2({ mainGroundRelay: 'none' }) === 1 && nt2({ mainGroundRelay: 'gr' }) === 0 && nt2({ hasGc: 'no' }) === 0, 'GCがあって地絡継電器が無いときだけ、注意を出すはずです');
+  }
+  // 手入力でも注意を出す（第13弾 項目55 修正9／B-9）：太陽光があるのにZPD・OVGRが無いとき／PFS形で変圧器の合計が300kVAを超えるとき
+  {
+    const nts = (a: Answers, word: string) => {
+      const eff = withAutoValues({ transformerCount: 1, trCapacity: 200, ...a });
+      return inputNotices(areaView(eff, 0), eff).filter((n) => n.group === 'receiving' && n.text.includes(word)).length;
+    };
+    ok(nts({ mainBreakerForm: 'cb', hasPv: 'yes', hasZpd: 'no' }, '太陽光') === 1, '太陽光があってZPDが無いとき、注意が出るはずです');
+    ok(nts({ mainBreakerForm: 'cb', hasPv: 'yes', hasZpd: 'yes', hasOvgr: 'no' }, '太陽光') === 1, '太陽光があってOVGRが無いとき、注意が出るはずです');
+    ok(nts({ mainBreakerForm: 'cb', hasPv: 'yes', hasZpd: 'yes', hasOvgr: 'yes' }, '太陽光') === 0, '太陽光があってZPD・OVGRもあるのに、注意が出ています');
+    ok(nts({ mainBreakerForm: 'cb', hasPv: 'no', hasZpd: 'no' }, '太陽光') === 0, '太陽光が無いのに、ZPDの注意が出ています');
+    ok(nts({ mainBreakerForm: 'pfs', trCapacity: 400 }, '300kVA') === 1, 'PFS形で変圧器が300kVAを超えるとき、注意が出るはずです');
+    ok(nts({ mainBreakerForm: 'pfs', trCapacity: 300 }, '300kVA') === 0, 'PFS形で300kVAちょうどなのに、注意が出ています');
+    ok(nts({ mainBreakerForm: 'cb', trCapacity: 400 }, '300kVA') === 0, 'CB形なのに、300kVAの注意が出ています');
+    ok(nts({ mainBreakerForm: 'pfs', trCapacity: 200, transformerCount: 2 }, '300kVA') === 1, 'PFS形で、台数ぶんの合計が300kVAを超えるとき、注意が出るはずです');
+    ok(nts({ mainBreakerForm: 'pfs', trCapacity: 200, areaCount: 2, 'a2:trCapacity': 200, 'a2:transformerCount': 1 }, '300kVA') === 1, '2か所のエリアの合計が300kVAを超えるとき、1か所目に注意が出るはずです');
   }
   // GR（無方向性）：ZCTだけ。ZPDは要らない。DGRと同じ位置の選択肢
   const noZpd: Answers = { ...cbBase, hasZpd: 'no' };
