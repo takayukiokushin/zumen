@@ -438,6 +438,13 @@ export function withDerived(rawAnswers: Answers): Answers {
   // 2か所目以降のエリアの、前のエリアからのケーブルの注記
   d.linkCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.linkCableInstallation)) ?? '';
   d.linkCableSpecLine = cableSpec(answers.linkCableVoltage, answers.linkCableCrossSection, answers.linkCableLength, answers.linkCableLengthApprox);
+  // 2段目〜4段目（送り出しの段）：LBSのパワーヒューズの文字・ケーブルの注記
+  for (const k of [2, 3, 4]) {
+    const p = `link${k}`;
+    d[`${p}FuseText`] = answers[`${p}FuseCurrent`] ? `PF ${answers[`${p}FuseCurrent`]}A` : '';
+    d[`${p}CableInstallationLabel`] = pickOwn(CABLE_INSTALLATION_LABEL, String(answers[`${p}CableInstallation`])) ?? '';
+    d[`${p}CableSpecLine`] = cableSpec(answers[`${p}CableVoltage`], answers[`${p}CableCrossSection`], answers[`${p}CableLength`], answers[`${p}CableLengthApprox`]);
+  }
 
   // 引込点から責任分界点までのケーブルの注記（区分開閉器なし・地上キャビネットなしのとき）
   d.preCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.preCableInstallation)) ?? '';
@@ -684,6 +691,8 @@ export interface PlacedItem {
    * area は、送り出す側のエリア。役割（role）には、送り先の番号（「a3:」など）が付く（第13弾 項目22）
    */
   dest?: number;
+  /** kind==='sendout' のとき、送り出しの何段目か（1始まり）。地絡継電器まわり（ZCT・DGR・GR・TC）は、地絡継電器が付く段 */
+  stage?: number;
   /**
    * ZPD・LAをつなぐ位置の答え（ds-vcb／vcb-ct／lbs-ct／ct-bus）。
    * 位置は、構成の並び（主回路の何番目か）で決まっている。ct-bus＝変圧器の手前（高圧母線の上）
@@ -709,6 +718,8 @@ export interface PlacedItem {
     tap: string;
     /** tap が tr-secondary のとき、何台目の変圧器か（1始まり） */
     trNo?: number;
+    /** 送り出しの段ごとの、線の様子（1段目から順に）。最後の段が、送り先のエリアへ向かう */
+    stages?: { cable: boolean; dashed: boolean; label: string[] }[];
     /** ケーブルでつなぐか（false のときは、ケーブルの図記号を描かず、ふつうの線でつなぐ） */
     cable: boolean;
     /** ケーブルの線を点線（埋設）で描くか */
@@ -833,7 +844,31 @@ export function areaView(answers: Answers, area: number): Answers {
   // 送り出す側のエリア（このエリアへ線を送るエリア）にZPDがあるか。送り出しのDGRが、零相電圧を、そのZPDから得るため
   const from = linkFromOf(out, area);
   out.linkSenderZpd = (from === 0 ? answers.hasZpd : areaView(answers, from).hasZpd) === 'yes' ? 'yes' : 'no';
+  // 送り出しの、地絡継電器（GR・DGR）が付く段：段のうち、はじめに、VCB・LBS（を含む組み合わせ）がある段。DS・VCSだけの段には付かない。無ければ0
+  if (area >= 1) out.linkGroundStage = linkGroundStageOf(out);
   return normalizeAnswers(out);
+}
+
+/** 送り出しの段の数（1〜4）。「変圧器の二次側」から送り出すときだけ、2段以上にできる。答えが無い・おかしいときは1段 */
+export function linkStageCountOf(view: Answers): number {
+  if (view.linkTap !== 'tr-secondary') return 1;
+  const n = Math.round(Number(view.linkStageCount ?? 1));
+  return Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1;
+}
+
+/** k段目（1始まり）の開閉器の答えのキー */
+export const linkSwitchKey = (k: number): string => (k <= 1 ? 'linkSwitch' : `link${k}Switch`);
+/** k段目（1始まり）の、ケーブルの質問の接頭辞（1段目は link、2段目以降は link2・link3・link4） */
+export const linkStagePrefix = (k: number): string => (k <= 1 ? 'link' : `link${k}`);
+
+/** 遮断できる開閉器（VCB・LBS）を含む組み合わせ。地絡継電器（GR・DGR）は、これらにだけ付く */
+const BREAKING_SWITCH = ['vcb', 'lbs', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'];
+
+/** 地絡継電器が付く段（1始まり）。無ければ0 */
+export function linkGroundStageOf(view: Answers): number {
+  const n = linkStageCountOf(view);
+  for (let k = 1; k <= n; k++) if (BREAKING_SWITCH.includes(String(view[linkSwitchKey(k)] ?? ''))) return k;
+  return 0;
 }
 
 /**
@@ -851,6 +886,7 @@ export const VIEW_KEYS: ReadonlySet<string> = new Set([
   'pcsMode',
   'areaNo',
   'linkSenderZpd',
+  'linkGroundStage',
   'unitNo',
   'intakeDs',
   'intakeVcb',
@@ -917,6 +953,18 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
     const prefix = `a${n + 1}:`;
     const items = composeChain(view, [...AREA_CHAIN, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
     const asPlaced = (r: string) => `${prefix}${r}`;
+    // 送り出しの段（1〜4段）ごとの、線（ケーブル／電線）の様子。最後の段のケーブルが、送り先のエリアにつながる
+    const viewD = withDerived(view);
+    const stages = Array.from({ length: linkStageCountOf(view) }, (_, i) => {
+      const p = linkStagePrefix(i + 1);
+      const cable = String(view[`${p}Cable`] ?? 'yes') !== 'no';
+      return {
+        cable,
+        dashed: cable && view[`${p}CableInstallation`] === 'buried',
+        label: cable ? fillTemplate([`{${p}CableInstallationLabel}`, `{${p}CableStructure}`, `{${p}CableSpecLine}`], viewD) : [],
+      };
+    });
+    const lastStage = stages[stages.length - 1]!;
     for (const item of items) {
       out.push({
         ...item,
@@ -929,15 +977,17 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
         ...(item.kind === 'link'
           ? {
               // ケーブルでつなぐときも、ふつうの線でつなぐときも、つなぎ方（どこから・どこへ）は同じ。違いは、ケーブルの図記号を描くか
-              label: view.linkCable === 'no' ? [] : item.label,
+              label: lastStage.label,
               link: {
                 from: linkFromOf(view, n),
                 tap: String(view.linkTap ?? 'bus'),
                 trNo: view.linkTap === 'tr-secondary' ? Math.max(1, Math.round(Number(view.linkSourceTr ?? 1)) || 1) : undefined,
-                cable: view.linkCable !== 'no',
-                dashed: view.linkCable !== 'no' && view.linkCableInstallation === 'buried',
+                cable: lastStage.cable,
+                dashed: lastStage.dashed,
+                // 2段以上のとき、段ごとの線の様子（最後の段は、cable・dashed と同じ）
+                stages,
                 // 送り先名称は、ケーブルの端末があるときだけ（端末の近くに書くため）。空白だけなら、書かない
-                name: view.linkCable !== 'no' && String(view.linkName ?? '').trim() !== '' ? [String(view.linkName).trim()] : [],
+                name: lastStage.cable && String(view.linkName ?? '').trim() !== '' ? [String(view.linkName).trim()] : [],
               },
             }
           : {}),
@@ -945,6 +995,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
     }
     // 送り出す側の開閉器は、送り先（このエリア）ごとに答える。持ち主は、送り出す側のエリア（area）。役割・IDは、送り先の番号つき
     const sends = composeChain(view, SENDOUT);
+    const groundStage = Math.max(1, Number(withDerived(view).linkGroundStage ?? 1) || 1);
     for (const item of sends) {
       out.push({
         ...item,
@@ -952,6 +1003,8 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
         role: asPlaced(item.role),
         area: linkFromOf(view, n),
         dest: n,
+        // 地絡継電器まわり（ZCT・DGR・GR・TC）は、地絡継電器が付く段のもの
+        stage: item.stage ?? groundStage,
       });
     }
   }
@@ -1009,6 +1062,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' ? laneBase + i : undefined,
           row: p.row,
           unit: countKey ? i : undefined,
+          ...(p.stage !== undefined ? { stage: p.stage } : {}),
           ...(p.tapFrom ? { tap: String(a[p.tapFrom] ?? p.tapDefault ?? 'ct-bus'), separate: true } : {}),
           ...(p.upright ? { upright: true } : {}),
           ...(p.hang ? { hang: true } : {}),

@@ -700,7 +700,7 @@ export const AI_HINTS: Record<string, string> = {
     '受電設備が2か所以上のとき、送り出す側のエリアから、このエリア（2か所目以降）へ向かう線の、送り出す側の点に、開閉器が付いているかどうかと、その種類を選ぶ項目です。' +
     '送り先（2か所目以降のエリア）ごとに答えます（キーは、送り先の番号つき。例：a3:linkSwitch は、3か所目へ向かう線の、送り出す側の開閉器です）。' +
     '選べる値は、none（なし。' +
-    '母線から直接）・ds（DS）・vcb（VCB）・lbs（LBS）・ds-vcb（DS＋VCB）です。' +
+    '母線から直接）・ds（DS）・vcb（VCB）・lbs（LBS）・vcs（VCS）・ds-vcb（DS＋VCB）・ds-vcb-vcs（DS＋VCB＋VCS）・vcb-vcs（VCB＋VCS）・lbs-vcs（LBS＋VCS）です。' +
     '図面では、送り出す側のエリアから、このエリアへ向かう線の途中に、その開閉器を描きます。' +
     '開閉器が書かれていないときは、none のままにしてください。' +
     'メモに、送り出しの開閉器が書かれているときだけ、その種類を選んでください。',
@@ -861,3 +861,20 @@ export const AI_HINTS: Record<string, string> = {
     'ふつうは40kAです。' +
     'メモに書かれているときだけ答え、書かれていないときは、答えに入れないでください。',
 };
+
+/*
+ * 送り出しの段（第13弾 項目55 修正19・段階2）：何段つなぐか／2段目〜4段目の開閉器・線の質問は、1段目と同じ内容。
+ * 1段目の説明をもとに、段の番号をつけて作る
+ */
+AI_HINTS.linkStageCount =
+  '送り出しの、段の数（1〜4）を選ぶ項目です。1段は、「開閉器 → 線（電線またはケーブル）」の1組です。' +
+  '分岐の位置（linkTap）が tr-secondary（変圧器の二次側）のときだけ答えます。最初は1段です。' +
+  'メモや図に、開閉器と線が、何組も続いているときだけ、その段数を答えてください（2段目からは、link2Switch・link2Cable…のように、段の番号つきの項目で答えます）。' +
+  '書かれていないときは、答えに入れないでください（1段になります）。';
+for (const k of [2, 3, 4]) {
+  const prefix = `送り出しの${k}段目（分岐の位置が tr-secondary で、段の数が${k}以上のときだけ答えます。1段目は、linkSwitch・linkCable などで答えます）。`;
+  for (const name of ['Switch', 'FuseCurrent', 'Cable', 'CableCrossSection', 'CableLength', 'CableLengthApprox']) {
+    const src = AI_HINTS[`link${name}`];
+    if (src) AI_HINTS[`link${k}${name}`] = prefix + src.replace(/linkSwitch|linkCable/g, (m) => `link${k}${m.slice(4)}`);
+  }
+}

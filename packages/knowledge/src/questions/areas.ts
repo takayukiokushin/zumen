@@ -1,6 +1,26 @@
-import type { Question } from './types.ts';
+import type { Question, Choice } from './types.ts';
 import type { Condition } from '../condition.ts';
-import { BUS_SWITCH_OPTIONS, FUSE_CURRENT_OPTIONS, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
+import { FUSE_CURRENT_OPTIONS, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
+
+/**
+ * 送り出しの開閉器の選択肢（段ごとに同じ。第13弾 項目55 修正19・段階2）。
+ * 並び：なし → DS → VCB → LBS（パワーヒューズ付き）→ VCS → DS＋VCB → DS＋VCB＋VCS → VCB＋VCS → LBS＋VCS。低圧用は入れない
+ */
+const linkSwitchOptions = (first: boolean): Choice[] => [
+  { value: 'none', label: first ? 'なし（母線から直接）' : 'なし' },
+  { value: 'ds', label: 'DS' },
+  { value: 'vcb', label: 'VCB' },
+  { value: 'lbs', label: 'LBS' },
+  { value: 'vcs', label: 'VCS' },
+  { value: 'ds-vcb', label: 'DS＋VCB' },
+  { value: 'ds-vcb-vcs', label: 'DS＋VCB＋VCS' },
+  { value: 'vcb-vcs', label: 'VCB＋VCS' },
+  { value: 'lbs-vcs', label: 'LBS＋VCS' },
+];
+/** 何段目まであるか（k段目の質問を出す条件。段の数は、「変圧器の二次側」から送り出すときだけ選べる） */
+const stageCond = (k: number): Condition => ({
+  all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }],
+});
 
 /** 質問の定義：表題欄、エリア間の接続（分岐する位置・ケーブル・送り出す側の開閉器。送り先ごとに、送り出す側の欄で入力する） */
 export const AREAS_QUESTIONS: Question[] = [
@@ -64,6 +84,19 @@ export const AREAS_QUESTIONS: Question[] = [
     help: '送り出す側のエリアの、何台目の変圧器か。台数より大きい番号は、最後の台に寄せる。二次側が高圧（600Vを超える）の変圧器から送り出す。二次側が低圧（600V以下）のときは、注意を出す',
   },
   {
+    // 「変圧器の二次側」から送り出すときだけ。開閉器と線（電線・ケーブル）を、段にして、何段かつなぐ（最大4段。第13弾 項目55 修正19・段階2）
+    id: 'linkStageCount',
+    noTrend: true,
+    group: 'link',
+    label: '何段つなぎますか？',
+    type: 'select',
+    options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `${n}段` })),
+    defaultValue: '1',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }] },
+    ask: 'always',
+    help: '1段は、「開閉器 → 線（電線またはケーブル）」の1組。1段目は、下の「この送り先へは、ケーブルでつなぎますか？」「送り出しに開閉器はありますか？」で答える。2段以上のときは、2段目からの質問が、このあと（いちばん下）に出る',
+  },
+  {
     id: 'linkCable',
     group: 'link',
     label: 'この送り先へは、ケーブルでつなぎますか？',
@@ -93,7 +126,7 @@ export const AREAS_QUESTIONS: Question[] = [
     group: 'link',
     label: '送り出しに開閉器はありますか？',
     type: 'select',
-    options: BUS_SWITCH_OPTIONS,
+    options: linkSwitchOptions(true),
     defaultValue: 'none',
     dropdown: true,
     showIf: { key: 'areaNo', gt: 1 },
@@ -109,7 +142,7 @@ export const AREAS_QUESTIONS: Question[] = [
     allowFreeInput: true,
     dropdown: true,
     unit: 'A',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', eq: 'lbs' }] },
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['lbs', 'lbs-vcs'] }] },
     ask: 'always',
     help: '送り出しがLBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
   },
@@ -125,10 +158,10 @@ export const AREAS_QUESTIONS: Question[] = [
       { value: 'gr', label: 'GR（無方向性）' },
     ],
     defaultValue: 'none',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundStage', gt: 0 }] },
     ask: 'always',
     help:
-      '送り出しの開閉器が、VCB・LBS・DS＋VCBのときだけ答える（DSだけでは遮断できない）。DGRは、送り出す側のエリアにZPDがあるときだけ描く。GRは、ZCTだけで動くので、ZPDは要らない。' +
+      '送り出しの開閉器に、VCB・LBSが含まれるときだけ答える（DS・VCSだけでは遮断できない）。段が2つ以上のときは、はじめにVCB・LBSがある段の開閉器に付く。DGRは、送り出す側のエリアにZPDがあるときだけ描く。GRは、ZCTだけで動くので、ZPDは要らない。' +
       'DGR・GRを選ぶと、送り出しの高圧ケーブルにZCTを付け、継電器をZCTの横に描き、継電器から送り出しの開閉器まで、TC（遮断の線）を描く',
   },
   {
@@ -145,9 +178,39 @@ export const AREAS_QUESTIONS: Question[] = [
     defaultValue: 'cable',
     dropdown: true,
     showIf: {
-      all: [{ key: 'areaNo', gt: 1 }, { any: [{ key: 'linkGroundRelay', eq: 'gr' }, { all: [{ key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }] }] }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }],
+      all: [{ key: 'areaNo', gt: 1 }, { any: [{ key: 'linkGroundRelay', eq: 'gr' }, { all: [{ key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }] }] }, { key: 'linkGroundStage', gt: 0 }],
     },
     ask: 'always',
     help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
   },
+  ...[2, 3, 4].flatMap((k): Question[] => stageQuestions(k)),
 ];
+
+/**
+ * 2段目〜4段目の質問（開閉器と、線）。1段目と同じ質問・同じ選択肢。小見出しは「2段目」など
+ * （1段目のものと同じ文言は、同じ訳を使う）
+ */
+function stageQuestions(k: number): Question[] {
+  const sec = `${k}段目`;
+  const when = stageCond(k);
+  const p = `link${k}`;
+  return [
+    {
+      id: `${p}Switch`, noTrend: true, group: 'link', section: sec,
+      label: '送り出しに開閉器はありますか？', type: 'select', options: linkSwitchOptions(false), defaultValue: 'none', dropdown: true, showIf: when, ask: 'always',
+      help: `${k}段目の開閉器。VCSの入る組み合わせも選べる。低圧用の開閉器は、選べない`,
+    },
+    {
+      id: `${p}FuseCurrent`, noTrend: true, group: 'link', section: sec,
+      label: 'LBSのパワーヒューズの容量（定格電流）', type: 'select', options: FUSE_CURRENT_OPTIONS, allowFreeInput: true, dropdown: true, unit: 'A',
+      showIf: { all: [when, { key: `${p}Switch`, in: ['lbs', 'lbs-vcs'] }] }, ask: 'always',
+      help: 'LBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
+    },
+    {
+      id: `${p}Cable`, noTrend: true, group: 'link', section: sec,
+      label: 'この送り先へは、ケーブルでつなぎますか？', type: 'select', options: YES_NO_Q, defaultValue: 'yes', showIf: when, ask: 'always',
+      help: `${k}段目の線を、ケーブル（高圧ケーブル）でつなぐかどうか。「いいえ」のときは、電線（端末のない、ふつうの線）`,
+    },
+    ...connectionCableQuestions({ prefix: p, group: 'link', section: sec, when: { all: [when, { key: `${p}Cable`, ne: 'no' }] } }).map((q) => ({ ...q, noTrend: true })),
+  ];
+}

@@ -862,6 +862,35 @@ console.log('\n■ 変圧器の二次側から送り出す（何台目か＋開�
   else if (!d2.symbols.some((x) => x.symbolId === 'vcb' && /sendout/.test(x.role))) fail('送り出しの開閉器（VCB）が描かれていません');
   else if (d2.symbols.filter((x) => x.symbolId === 'cable-head' && x.role.startsWith('cable-head-source')).length === 0 && !d2.symbols.some((x) => x.symbolId === 'cable-head')) fail('送り出しのケーブルの端末が描かれていません');
   else console.log('  変圧器の出口（1台目・2台目）から、送り出しの線が出る。開閉器・ケーブルの端末は、これまでの送り出しと同じ並び');
+  // 段を増やす（段階2）：1段目 DS → ケーブル → 2段目 VCB＋VCS（電線）→ 3段目 LBS → ケーブル。地絡継電器は、はじめにVCB・LBSがある段（2段目のVCB）に付く
+  {
+    const stage3: Answers = {
+      'a2:linkStageCount': '3', 'a2:linkSwitch': 'ds', 'a2:link2Switch': 'vcb-vcs', 'a2:link3Switch': 'lbs', 'a2:linkCable': 'yes', 'a2:linkCableInstallation': 'buried',
+      'a2:link2Cable': 'no', 'a2:link3Cable': 'yes', 'a2:linkGroundRelay': 'gr',
+    };
+    const ds3 = draw(stage3);
+    const ys = (re: RegExp) => ds3.symbols.filter((x) => re.test(x.role)).map((x) => x.y);
+    const roleY = (r: string) => ds3.symbols.find((x) => x.role.endsWith(r))?.y ?? NaN;
+    const order = ['sendout-ds', 'sendout-vcb-2', 'sendout-vcs-2', 'sendout-zct', 'sendout-lbs-3'].map(roleY);
+    if (order.some((v) => !Number.isFinite(v)) || order.some((v, i) => i > 0 && !(v > order[i - 1]!))) fail(`3段の並び（DS→VCB→VCS→ZCT→LBS）が、上から順になっていません（${order.map((v) => Math.round(v)).join('→')}）`);
+    else if (ds3.symbols.filter((x) => /^cable-head-(send(-\d+)?|site-\d+)$/.test(x.role)).length !== 3) fail(`3段（1段目のケーブル＝端末2つ、2段目は電線、3段目のケーブル＝端末1つ）の、送り出し側のケーブルの端末が、3つになっていません（${ds3.symbols.filter((x) => /^cable-head-(send(-\d+)?|site-\d+)$/.test(x.role)).length}）`);
+    else if (!ds3.symbols.some((x) => /^cable-head-site-\d+$/.test(x.role) && x.rotate === 180)) fail('途中の段のケーブルの、向かい側の端末（180°）がありません');
+    else if (ys(/sendout-trip-coil/).length !== 1 || ys(/sendout-ground-relay/).length !== 1) fail('地絡継電器（GR）とTCが、1組ずつ描かれていません');
+    else {
+      // TCは、2段目のVCB（地絡継電器が付く段）の高さにある
+      const tc = ds3.symbols.find((x) => x.role.endsWith('sendout-trip-coil'))!;
+      const vcb = ds3.symbols.find((x) => x.role.endsWith('sendout-vcb-2'))!;
+      if (Math.abs(tc.y - vcb.y) > 40) fail(`TCが、2段目のVCBの近くにありません（TC ${Math.round(tc.y)}・VCB ${Math.round(vcb.y)}）`);
+      else console.log('  3段（DS→ケーブル→VCB＋VCS→LBS→ケーブル）：上から順に並ぶ。途中のケーブルは端末が2つ、地絡継電器は、VCBのある2段目に付く');
+    }
+    // 1段のときは、段階1と同じ（段の数が空でも、1段）
+    const one = draw({ 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes' });
+    const empty = draw({ 'a2:linkStageCount': '1', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes' });
+    if (JSON.stringify(one) !== JSON.stringify(empty)) fail('段の数が「1段」のときと、空のときで、図面が違います');
+    // 「変圧器の二次側」でないときは、段の数は無視する（1段）
+    const bus = draw({ 'a2:linkTap': 'bus', 'a2:linkStageCount': '3', 'a2:link2Switch': 'vcb', 'a2:linkSwitch': 'ds' });
+    if (bus.symbols.some((x) => x.role.endsWith('sendout-vcb-2'))) fail('「変圧器の二次側」でないのに、2段目が描かれています');
+  }
   // 台数より大きい番号は、最後の台に寄せる
   const d9 = draw({ 'a2:linkSourceTr': '8', 'a2:linkCable': 'yes' });
   if (!hasFeed(d9, trOutOf(d9, 1))) fail('台数より大きい番号を選んだとき、最後の台から出ていません');

@@ -594,7 +594,7 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(!ids({ areaCount: 1 }).has('linkSwitch') && !ids({ areaCount: 1 }).has('linkFuseCurrent'), 'エリアが1か所のときに、送り出しの質問が出ています');
   ok(ids(areaView({ areaCount: 2, 'a2:linkSwitch': 'lbs' }, 1)).has('linkFuseCurrent') && !ids(areaView({ areaCount: 2, 'a2:linkSwitch': 'ds' }, 1)).has('linkFuseCurrent'), 'LBSのときだけ、パワーヒューズの容量を聞く、になっていません');
   const sendOpts = (QUESTIONS.find((q) => q.id === 'linkSwitch')?.options ?? []).map((o) => o.value).join(',');
-  ok(sendOpts === 'none,ds,vcb,lbs,ds-vcb', `送り出しの選択肢が違います（${sendOpts}）`);
+  ok(sendOpts === 'none,ds,vcb,lbs,vcs,ds-vcb,ds-vcb-vcs,vcb-vcs,lbs-vcs', `送り出しの選択肢が違います（${sendOpts}）`);
   ok(send({}).length === 0 && send({ 'a2:linkSwitch': 'none' }).length === 0, '「なし」のとき、送り出しの開閉器が入っています');
   ok(send({ 'a2:linkSwitch': 'ds' }).join() === 'a2:sendout-ds:ds:DS', `DSの送り出しが違います（${send({ 'a2:linkSwitch': 'ds' }).join()}）`);
   ok(send({ 'a2:linkSwitch': 'vcb' }).join() === 'a2:sendout-vcb:vcb:VCB', 'VCBの送り出しが違います');
@@ -641,6 +641,16 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(!trQ({}), '分岐の位置が「変圧器の二次側」でないのに、「何台目か」を聞いています');
   const trShown = visibleQuestions(eff2({ 'a2:linkTap': 'tr-secondary' }), {}).some((q) => q.id === 'linkSourceTr');
   ok(trShown && QUESTIONS.find((q) => q.id === 'linkSourceTr')?.defaultValue === '1', '「変圧器の二次側」のとき、「何台目か」（初期値1台目）が出ていません');
+  // 段を増やす（段階2）：「何段つなぎますか？」は、「変圧器の二次側」のときだけ。2段目以降の質問は、段の数が足りているときだけ
+  const qids = (a: Answers) => new Set(visibleQuestions(eff2({ 'a2:linkTap': 'tr-secondary', ...a }), {}).map((q) => q.id));
+  ok(qids({}).has('linkStageCount') && !qids({ 'a2:linkTap': 'bus' }).has('linkStageCount'), '「何段つなぎますか？」は、「変圧器の二次側」のときだけのはずです');
+  ok(!qids({}).has('link2Switch') && qids({ 'a2:linkStageCount': '2' }).has('link2Switch') && !qids({ 'a2:linkStageCount': '2' }).has('link3Switch'), '2段目の質問が、段の数に合わせて出ていません');
+  ok(qids({ 'a2:linkStageCount': '3' }).has('link3Switch') && !qids({ 'a2:linkStageCount': '3' }).has('link4Switch') && qids({ 'a2:linkStageCount': '4' }).has('link4Cable'), '3段目・4段目の質問が、段の数に合わせて出ていません');
+  ok(!qids({ 'a2:linkStageCount': '2', 'a2:link2Cable': 'no' }).has('link2CableLength') && qids({ 'a2:linkStageCount': '2', 'a2:link2Cable': 'yes' }).has('link2CableLength'), '電線（ケーブルなし）のとき、ケーブルの入力欄が出ています');
+  // 地絡継電器が付く段：はじめにVCB・LBS（を含む組み合わせ）がある段。DS・VCSだけでは付かない（質問も出ない）
+  const gs = (a: Answers) => Number(areaView(withAutoValues({ areaCount: 2, 'a2:linkTap': 'tr-secondary', ...a } as Answers), 1).linkGroundStage);
+  ok(gs({ 'a2:linkSwitch': 'vcb' }) === 1 && gs({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'vcb-vcs' }) === 2 && gs({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'vcs' }) === 0, '地絡継電器が付く段が違います');
+  ok(gs({ 'a2:linkSwitch': 'ds' }) === 0 && !qids({ 'a2:linkSwitch': 'ds' }).has('linkGroundRelay') && qids({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'lbs' }).has('linkGroundRelay'), 'DSだけのときは、地絡継電器の質問が出ないはずです（2段目にLBSがあれば出る）');
   // 注意：選んだ変圧器の二次側が低圧（600V以下）／三巻線変圧器のとき。高圧（600Vを超える）のときは、出さない
   const linkNote = (a: Answers) => {
     const eff = withAutoValues({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:linkTap': 'tr-secondary', trVoltage: '6600/210V', trVoltage__2: '6600/3300V', ...a } as Answers);

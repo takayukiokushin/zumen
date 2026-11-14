@@ -1355,7 +1355,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
    * 間にほかのエリアがあっても、その上を通るので、エリアの中を横切らない。
    * 同じ位置から出る線は、1本の縦線（幹）を共有し、高さごとに横へ分かれる。
    */
-  type LinkInfo = { n: number; from: number; sx: number; sy: number; /** 変圧器の二次側から出すとき、出口の高さ（低圧の回線が無いときだけ。ここから分岐の高さまで、線を引く） */ feedFrom?: number; label: string[]; dashed: boolean; cable: boolean; /** 送り先名称（送り出し側の端末の近くに書く） */ name: string[] };
+  type LinkInfo = { n: number; from: number; sx: number; sy: number; /** 送り出しの段（1段目から順に）ごとの、線（ケーブル／電線）の様子。最後の段が、送り先のエリアへ向かう */ stages: { cable: boolean; dashed: boolean; label: string[] }[]; /** 変圧器の二次側から出すとき、出口の高さ（低圧の回線が無いときだけ。ここから分岐の高さまで、線を引く） */ feedFrom?: number; label: string[]; dashed: boolean; cable: boolean; /** 送り先名称（送り出し側の端末の近くに書く） */ name: string[] };
   const linkInfos: LinkInfo[] = [];
   for (const part of parts) {
     const link = part.link?.link;
@@ -1381,7 +1381,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     // 位置が決まらないときは、高圧母線の右端（母線が無ければ、主回路の末端）から出る
     const sy = (trTap ? trTap.y + TAP_OFFSET : (y ?? (t.bus ? t.bus.y : t.end))) + dys[link.from]!;
     const sx = trTap ? trTap.x : y !== undefined ? 0 : t.bus ? t.bus.x : 0;
-    linkInfos.push({ n: part.n, from: link.from, sx, sy, feedFrom: trTap && !trTap.lv ? trTap.y + dys[link.from]! : undefined, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
+    linkInfos.push({ n: part.n, from: link.from, sx, sy, stages: link.stages && link.stages.length > 0 ? link.stages : [{ cable: link.cable !== false, dashed: link.dashed, label: part.link?.label ?? [] }], feedFrom: trTap && !trTap.lv ? trTap.y + dys[link.from]! : undefined, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
   }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
   type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 同じ位置から出るケーブルの線の中での順番（0＝いちばん近いエリアへ）と、本数 */ gi: number; gn: number };
@@ -1389,7 +1389,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   for (const li of linkInfos) {
     // ケーブルでつなぐ線は、1本ずつ、別の幹にする（ケーブルは、線ごとに別の物なので、端末も、線の数だけ描く）。
     // ふつうの線でつなぐ線は、同じ位置から出るものを、1つの幹にまとめる
-    let tr = li.cable ? undefined : trunks.find((x) => x.from === li.from && !x.cable && Math.abs(x.sy - li.sy) < 0.5);
+    let tr = li.cable || li.stages.length > 1 ? undefined : trunks.find((x) => x.from === li.from && !x.cable && Math.abs(x.sy - li.sy) < 0.5);
     if (!tr) {
       tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, gi: 0, gn: 1 };
       trunks.push(tr);
@@ -1425,7 +1425,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   };
   const destOf = (tr: Trunk): number => tr.links[0]!.n;
   /** この幹に、送り出しの縦の並び（開閉器・ZCT・ケーブルの端末）を作るか。開閉器があるときのほか、ケーブルでつなぐだけのときも、端末は、必ず下向きにするため */
-  const stackedTrunk = (tr: Trunk): boolean => sendoutsOfDest(destOf(tr)).length > 0 || tr.cable;
+  const stackedTrunk = (tr: Trunk): boolean => sendoutsOfDest(destOf(tr)).length > 0 || tr.cable || tr.links[0]!.stages.slice(0, -1).some((x) => x.cable);
   /** 送り出しの縦の並びを作る幹が、1本でもあるエリアか */
   const stackedArea = (area: number): boolean => trunks.some((x) => x.from === area && stackedTrunk(x));
 
@@ -1434,7 +1434,11 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const base = trunks.some((x) => x.from === area && groundOfDest(destOf(x))) ? STACK_W_GROUND : STACK_W;
     // 送り先名称が長いときは、端末の右に書く名称が入る広さにする（縦の線にかからないように）
     const head = getSymbol('cable-head');
-    const names = trunks.filter((x) => x.from === area && x.cable).flatMap((x) => x.links.flatMap((l) => (l.name.length > 0 ? [labelWidth(l.name)] : [])));
+    const names = [
+      ...trunks.filter((x) => x.from === area && x.cable).flatMap((x) => x.links.flatMap((l) => (l.name.length > 0 ? [labelWidth(l.name)] : []))),
+      // 途中の段のケーブルの注記（ケーブルの端末の右に書く）
+      ...trunks.filter((x) => x.from === area).flatMap((x) => x.links[0]!.stages.slice(0, -1).flatMap((st) => (st.cable && st.label.length > 0 ? [labelWidth(st.label)] : []))),
+    ];
     const need = names.length > 0 ? head.box.w + LABEL_GAP + Math.max(...names) + 14 : 0;
     return Math.max(base, need);
   };
@@ -1553,15 +1557,19 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       ext(startX, sy, xs, sy);
       let y = sy;
       /** 縦の並びに、記号を1つ置く。入口を、いまの位置から SENDOUT_GAP 下に。出口の高さを返す */
-      const stackPut = (id: string, role: string, symbolId: string, label: string[]): PlacedSymbol => {
+      const stackPut = (id: string, role: string, symbolId: string, label: string[], opt: { rotate?: 0 | 180; dashedIn?: boolean } = {}): PlacedSymbol => {
         const d0 = getSymbol(symbolId);
         const ip = portOf(d0, 'in') ?? d0.ports[0]!;
         const op = portOf(d0, 'out') ?? d0.ports[d0.ports.length - 1]!;
+        // 180°回した記号（途中のケーブルの、向かい側の端末）は、回したあとの入口・出口を使う
+        const rot = opt.rotate ?? 0;
+        const entry = rot === 180 ? { x: rotatedPort(d0.box, op.x, op.y, 180)[0], y: rotatedPort(d0.box, op.x, op.y, 180)[1] } : ip;
+        const exit = rot === 180 ? { x: rotatedPort(d0.box, ip.x, ip.y, 180)[0], y: rotatedPort(d0.box, ip.x, ip.y, 180)[1] } : op;
         const entryY = y + SENDOUT_GAP;
-        wires.push({ x1: xs, y1: y, x2: xs, y2: entryY });
+        wires.push({ x1: xs, y1: y, x2: xs, y2: entryY, ...(opt.dashedIn ? { dashed: true } : {}) });
         const sym: PlacedSymbol = {
-          id, role, symbolId, x: xs - ip.x, y: entryY - ip.y, rotate: 0, label,
-          labelAt: { x: xs - ip.x + d0.box.w + LABEL_GAP, y: entryY - ip.y + 10, anchor: 'start' },
+          id, role, symbolId, x: xs - entry.x, y: entryY - entry.y, rotate: rot, label,
+          labelAt: { x: xs - entry.x + d0.box.w + LABEL_GAP, y: entryY - entry.y + 10, anchor: 'start' },
         };
         symbols.push(sym);
         ext(sym.x, sym.y, sym.x + d0.box.w, sym.y + d0.box.h);
@@ -1569,7 +1577,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
           const lr = labelRect(sym.labelAt, label);
           ext(lr.x0, lr.y0, lr.x1, lr.y1);
         }
-        y = sym.y + op.y;
+        y = sym.y + exit.y;
         ext(xs, entryY, xs, y);
         return sym;
       };
@@ -1577,21 +1585,40 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       const zctPos = gr?.zct.pos === 'bus-primary' || gr?.zct.pos === 'bus-secondary' ? gr.zct.pos : 'cable';
       let zsym: PlacedSymbol | undefined;
       const putZct = () => {
-        if (gr) zsym = stackPut(`${gr.zct.id}`, `${gr.zct.role}`, 'zct', []);
+        if (gr && !zsym) zsym = stackPut(`${gr.zct.id}`, `${gr.zct.role}`, 'zct', []);
       };
       let breaker: PlacedSymbol | undefined;
-      for (const it of sends) {
-        const breaking = it.symbolId === 'vcb' || it.symbolId === 'lbs' || it.symbolId === 'lbs-pf';
-        if (breaking && zctPos === 'bus-primary') putZct();
-        breaker = stackPut(`${it.id}`, `${it.role}`, it.symbolId, it.label);
-        if (breaking && zctPos === 'bus-secondary') putZct();
-      }
-      // 送り出し側のケーブルの端末：頂点が下（ケーブル側）を向く、ふつうの向き
-      if (tr.cable) {
-        const hid0 = `${tr.from === 0 ? '' : `a${tr.from + 1}:`}cable-head-send${sfx}`;
-        stackPut(hid0, hid0, 'cable-head', tr.links[0]!.name);
-      }
-      if (zctPos === 'cable') putZct();
+      // 段ごと（1段目から順に）：開閉器 → 線（ケーブルなら、端末）。最後の段のケーブルは、送り先のエリアへ向かう（端末は下向きの1つだけ。もう一方は、送り先の側）
+      const stages = tr.links[0]!.stages;
+      const groundStage = gr?.zct.stage ?? 1;
+      const base = tr.from === 0 ? '' : `a${tr.from + 1}:`;
+      stages.forEach((st, si) => {
+        const k = si + 1;
+        const last = k === stages.length;
+        for (const it of sends.filter((x) => (x.stage ?? 1) === k)) {
+          const breaking = it.symbolId === 'vcb' || it.symbolId === 'lbs' || it.symbolId === 'lbs-pf';
+          const mine = breaking && k === groundStage;
+          if (mine && zctPos === 'bus-primary') putZct();
+          const put = stackPut(`${it.id}`, `${it.role}`, it.symbolId, it.label);
+          if (mine) breaker = put;
+          if (mine && zctPos === 'bus-secondary') putZct();
+        }
+        if (last) {
+          // 送り出し側のケーブルの端末：頂点が下（ケーブル側）を向く、ふつうの向き
+          if (tr.cable) {
+            const hid0 = `${base}cable-head-send${sfx}`;
+            stackPut(hid0, hid0, 'cable-head', tr.links[0]!.name);
+          }
+        } else if (st.cable) {
+          // 途中の段のケーブル：下向きの端末と、向かい側の端末（180°回す）を並べる。注記は、向かい側の端末の右に書く。埋設は、2つの端末のあいだを点線にする
+          const hs = `${base}cable-head-send${sfx}-${k}`;
+          stackPut(hs, hs, 'cable-head', []);
+          if (k === groundStage && zctPos === 'cable') putZct();
+          const hr = `${base}cable-head-site${sfx}-${k}`;
+          stackPut(hr, hr, 'cable-head', st.label, { rotate: 180, dashedIn: st.dashed });
+        }
+        if (k === groundStage && zctPos === 'cable' && (last || !st.cable)) putZct();
+      });
       // 外側の線は、内側の線の並びの下を通って、右へ出る。端末のあとを、その分、下へ延ばす（ここから先が、ケーブル）
       if (tr.cable && tr.gn > 1 && tr.gi < tr.gn - 1) {
         const extra = DROP_STEP * (tr.gn - 1 - tr.gi);

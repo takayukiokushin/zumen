@@ -161,6 +161,8 @@ export interface Placement {
   connectFrom?: string[];
   /** 文字を記号のどちら側に書くか（既定は右） */
   labelSide?: 'left' | 'right';
+  /** kind==='sendout' のとき、送り出しの何段目か（1始まり） */
+  stage?: number;
   /** kind==='overlay'・'beside-left' のとき、重ねる（横に置く）先の記号のロール */
   attachTo?: string;
   /** つなぐ位置を答える質問のID（ZPD・LA）。答えに応じて、並びの位置を動かす */
@@ -806,53 +808,49 @@ export const AREA_CHAIN: Placement[] = [
  * 並び：DS → VCB（DS＋VCBのとき）。LBSは、パワーヒューズ付き（LBS＋PF）で描く。
  */
 export const SENDOUT: Placement[] = [
-  {
-    role: 'sendout-ds',
-    symbolId: 'ds',
-    kind: 'sendout',
-    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['ds', 'ds-vcb'] }] },
-    labelTemplate: ['DS'],
-  },
-  {
-    role: 'sendout-vcb',
-    symbolId: 'vcb',
-    kind: 'sendout',
-    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['vcb', 'ds-vcb'] }] },
-    labelTemplate: ['VCB'],
-  },
-  {
-    role: 'sendout-lbs',
-    symbolId: 'lbs-pf',
-    kind: 'sendout',
-    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', eq: 'lbs' }] },
-    labelTemplate: ['LBS', '{linkFuseText}'],
-    note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く',
-  },
-  // 送り出しの開閉器に付くDGR：ZCTは送り出しの高圧ケーブルに、DGRはその横（上）に、TCは開閉器の上に描く（layout が置く）
+  // 開閉器は、段ごと（最大4段）。1段目は、これまでの役割の名前（sendout-ds など）。2段目以降は、段の番号つき（sendout-ds-2 など）
+  ...[1, 2, 3, 4].flatMap((k): Placement[] => {
+    const sw = k === 1 ? 'linkSwitch' : `link${k}Switch`;
+    const fuse = k === 1 ? '{linkFuseText}' : `{link${k}FuseText}`;
+    const suffix = k === 1 ? '' : `-${k}`;
+    // 2段目以降は、段の数が足りているときだけ
+    const here: Condition = k === 1 ? { key: 'areaNo', gt: 1 } : { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }] };
+    return [
+      { role: `sendout-ds${suffix}`, symbolId: 'ds', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['ds', 'ds-vcb', 'ds-vcb-vcs'] }] }, labelTemplate: ['DS'] },
+      { role: `sendout-vcb${suffix}`, symbolId: 'vcb', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] }, labelTemplate: ['VCB'] },
+      {
+        role: `sendout-lbs${suffix}`, symbolId: 'lbs-pf', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['lbs', 'lbs-vcs'] }] }, labelTemplate: ['LBS', fuse],
+        ...(k === 1 ? { note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く' } : {}),
+      },
+      { role: `sendout-vcs${suffix}`, symbolId: 'vcs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcs', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'] }] }, labelTemplate: ['VCS'] },
+    ];
+  }),
+  // 送り出しの開閉器に付くDGR：ZCTは送り出しの高圧ケーブルに、DGRはその横（上）に、TCは開閉器の上に描く（layout が置く）。
+  // 地絡継電器は、VCB・LBSにだけ付く。段のうち、はじめにVCB・LBSがある段（linkGroundStage）の開閉器に付ける
   {
     role: 'sendout-zct',
     symbolId: 'zct',
     kind: 'sendout',
     posFrom: 'linkZctPos',
-    when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkGroundStage', gt: 0 }] },
   },
   {
     role: 'sendout-ground-relay',
     symbolId: 'relay-dgr',
     kind: 'sendout',
-    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }, { key: 'linkGroundStage', gt: 0 }] },
   },
   {
     role: 'sendout-ground-relay',
     symbolId: 'relay-gr',
     kind: 'sendout',
-    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundRelay', eq: 'gr' }, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundRelay', eq: 'gr' }, { key: 'linkGroundStage', gt: 0 }] },
   },
   {
     role: 'sendout-trip-coil',
     symbolId: 'trip-coil',
     kind: 'sendout',
-    when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkSwitch', in: ['vcb', 'lbs', 'ds-vcb'] }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkGroundStage', gt: 0 }] },
   },
 ];
 
