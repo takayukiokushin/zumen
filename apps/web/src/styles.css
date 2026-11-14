@@ -569,7 +569,7 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 /* ㉚ 案件の一覧                                                        */
 /* ------------------------------------------------------------------ */
 .joblist .search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 4px; }
-.joblist .search-row input { flex: 1; }
+.joblist .search-row input { flex: 1; min-width: 0; }
 .joblist .count { font-size: calc(12px * var(--text-scale)); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 table.jobs { width: 100%; border-collapse: collapse; font-size: calc(13px * var(--text-scale)); }
 table.jobs th { text-align: left; font-weight: var(--weight-strong); color: var(--muted);
@@ -1088,10 +1088,11 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .joblist .pager-ctl { display: flex; align-items: center; flex-wrap: wrap; gap: calc(8px * var(--text-scale)); margin-left: auto; }
 .joblist .pager-ctl select { min-height: calc(32px * var(--ctl-scale)); font-size: calc(12.5px * var(--ctl-scale)); }
 
-/* スマホ：ページ送り（前のページ・ページ選択・次のページ）を、1行に収める */
-:where(html[data-uw~="700"]) .joblist .pager-ctl { flex: 1 1 100%; flex-wrap: nowrap; gap: calc(4px * var(--text-scale)); }
-:where(html[data-uw~="700"]) .joblist .pager-ctl select { flex: 1 1 0; min-width: 0; }
-:where(html[data-uw~="700"]) .joblist .pager-ctl .btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; padding-left: calc(8px * var(--ctl-scale)); padding-right: calc(8px * var(--ctl-scale)); }
+/* スマホ：ページ送り（前のページ・ページ選択・次のページ）は、入るなら1行に。大きな文字（160%など）で入らないときは、はみ出さずに、次の行へ折り返す
+   （ページ選択を1行目いっぱいに出し、「前のページ」「次のページ」を、2行目に半分ずつ） */
+:where(html[data-uw~="700"]) .joblist .pager-ctl { flex: 1 1 100%; flex-wrap: wrap; gap: calc(4px * var(--text-scale)); }
+:where(html[data-uw~="700"]) .joblist .pager-ctl select { flex: 1 1 calc(96px * var(--ctl-scale)); min-width: 0; }
+:where(html[data-uw~="700"]) .joblist .pager-ctl .btn { flex: 1 1 auto; min-width: 0; white-space: nowrap; padding-left: calc(8px * var(--ctl-scale)); padding-right: calc(8px * var(--ctl-scale)); }
 
 /* 保存はできたが、入れ忘れがあるときの注意（例：事業場名称が空）。ほかの帯（使い方の案内などのオレンジ）と見分けがつくよう、赤にする */
 .bar-warn { margin: 0; padding: 8px 16px; background: var(--need-soft); border-bottom: 1px solid var(--need); color: var(--need); font-size: calc(12.5px * var(--text-scale)); flex: 0 0 auto; }
@@ -1256,3 +1257,6 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .server-status .status-table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
 .server-status .status-table th { text-align: left; font-weight: 600; padding: 4px 12px 4px 0; white-space: nowrap; vertical-align: top; }
 .server-status .status-table td { padding: 4px 0; }
+/* 狭い画面（スマホ・大きな文字）：項目名が長くて表がはみ出さないよう、項目名も折り返す */
+:where(html[data-uw~="700"]) .server-status .status-table th { white-space: normal; width: 42%; padding-right: calc(8px * var(--text-scale)); }
+:where(html[data-uw~="700"]) .server-status .status-table td { overflow-wrap: anywhere; }
