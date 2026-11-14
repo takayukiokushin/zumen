@@ -187,7 +187,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
     const cx = def.box.w / 2;
     const cy = def.box.h / 2;
     body.push(
-      `    <g transform="translate(${round(s.x)} ${round(s.y)})${s.rotate ? ` rotate(${s.rotate} ${cx} ${cy})` : ''}">`,
+      `    <g transform="translate(${round(s.x)} ${round(s.y)})${s.rotate ? ` rotate(${s.rotate} ${cx} ${cy})` : ''}"${def.color ? ` stroke="${def.color}" color="${def.color}"` : ''}>`,
       shapesToSvg(def.shapes, '      '),
       `    </g>`,
     );
@@ -196,7 +196,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
         .map((l, i) => `<tspan x="${round(s.labelAt.x)}" dy="${i === 0 ? 0 : LABEL_LINE}">${esc(l)}</tspan>`)
         .join('');
       body.push(
-        `    <text x="${round(s.labelAt.x)}" y="${round(s.labelAt.y)}" font-size="${LABEL_FONT}" text-anchor="${s.labelAt.anchor}" font-family="${FONT_FAMILY}" fill="currentColor" stroke="none">${tspans}</text>`,
+        `    <text x="${round(s.labelAt.x)}" y="${round(s.labelAt.y)}" font-size="${LABEL_FONT}" text-anchor="${s.labelAt.anchor}" font-family="${FONT_FAMILY}" fill="${def.color ?? 'currentColor'}" stroke="none">${tspans}</text>`,
       );
     }
   }

@@ -1,4 +1,5 @@
 import type { SymbolDef } from '../types.ts';
+import { EARTH_GREEN } from '../types.ts';
 import { CONTACT_R, arrowDown, circle, earth, hline, rect, text, vline } from '../shape.ts';
 
 
@@ -225,14 +226,21 @@ export const protectionSymbols: SymbolDef[] = [
     note: 'PAS・PGSの外箱に出す接地の記号は、最大1つ。LAとZPDが両方あるときは、LAのものだけを描く。',
   },
   {
+    // 接地の種別の記号（第13弾 項目55 修正17／B-7）。線・記号・文字は、すべて緑。初期の図面には付かない（記号の一覧から、元の図面に直接足す）。
+    // 位置は自由、大きさは、横の端をつかんで（幅だけで）変えられ、角度は、回して決める
     id: 'earth',
+    labelLines: ['{earthType}'],
     abbr: 'E',
-    nameJa: '接地',
+    nameJa: '接地（種別つき）',
     category: 'protection',
-    tags: ['アース', '接地'],
+    tags: ['アース', '接地', 'EA', 'EB', 'EC', 'ED', 'A種', 'B種', 'C種', 'D種'],
     box: { w: 28, h: 20 },
+    // 文字（EA〜ED）は、記号の右横に置く
+    labelBody: { x0: 5, x1: 23, top: 0 },
     shapes: [vline(14, 0, 8), ...earth(14, 8)],
     ports: [{ id: 'in', x: 14, y: 0, dir: 'up', role: 'earth' }],
+    resizable: { w: { min: 14, max: 112, step: 7 }, style: 'earth' },
+    color: EARTH_GREEN,
     fields: [
       {
         key: 'earthType',
@@ -244,12 +252,12 @@ export const protectionSymbols: SymbolDef[] = [
           { value: 'EC', label: 'C種（EC）' },
           { value: 'ED', label: 'D種（ED）' },
         ],
-        allowFreeInput: true,
-        help: '図面には EA / EB / ED のように記載する',
+        defaultValue: 'EA',
+        help: '図面には、緑色で、EA・EB・EC・ED（大文字2文字）と書く',
       },
-      { key: 'resistance', label: '接地抵抗値', type: 'text', unit: 'Ω' },
     ],
     status: 'confirmed',
-    statusNote: 'この形でOK。接地種別は実図面のとおり「EA」等の表記で脇に記載します。',
+    statusNote: '線・記号・文字は緑色。接地の種別（EA・EB・EC・ED）を、記号の右横に書きます。位置・大きさ・角度は自由に決められます。',
+    note: '初期の図面には付かない。記号の一覧から、必要なところへ足す。接地抵抗値は書かない。',
   },
 ];

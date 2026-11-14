@@ -1,6 +1,6 @@
 import type { SymbolDef } from './types.ts';
 import { validateSymbol } from './types.ts';
-import { hline, rect, shapesToSvg, vline } from './shape.ts';
+import { earth, hline, rect, shapesToSvg, vline } from './shape.ts';
 import { incomingSymbols } from './defs/incoming.ts';
 import { switchgearSymbols } from './defs/switchgear.ts';
 import { instrumentSymbols } from './defs/instrument.ts';
@@ -60,6 +60,17 @@ export function sizedSymbol(def: SymbolDef, size?: SymbolSize): SymbolDef {
   if (!def.resizable || !size) return def;
   const { w, h } = clampSize(def, size);
   if (w === def.box.w && h === def.box.h) return def;
+  // 接地の記号：幅だけで決める（縦横の比は、定義のまま）。縦の線・3本の横線の長さは、同じ比で伸び縮みし、線の太さは変えない
+  if (def.resizable.style === 'earth') {
+    const k = w / def.box.w;
+    const hh = Math.round(def.box.h * k * 10) / 10;
+    return {
+      ...def,
+      box: { w, h: hh },
+      shapes: [vline(w / 2, 0, 8 * k), ...earth(w / 2, 8 * k, k)],
+      ports: def.ports.map((p) => ({ ...p, x: w / 2 })),
+    };
+  }
   const shapes =
     def.resizable.style === 'bracket'
       ? [hline(6, 0, w), vline(0, 6, h), vline(w, 6, h)]
@@ -114,7 +125,7 @@ export function symbolToSvg(def: SymbolDef, opts: SvgOptions = {}): string {
     : '';
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" role="img" aria-label="${(opts.label ?? def.nameJa).replace(/"/g, '&quot;')}">`,
-    `  <g transform="translate(${pad} ${pad})" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">`,
+    `  <g transform="translate(${pad} ${pad})" stroke="${def.color ?? 'currentColor'}"${def.color ? ` color="${def.color}"` : ''} fill="none" stroke-linecap="round" stroke-linejoin="round">`,
     shapesToSvg(def.shapes),
     ports,
     `  </g>`,

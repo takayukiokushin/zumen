@@ -2,7 +2,7 @@
  * 図面の検証（check-drawing）の3つ目：PASを動かす・ZPD・PV・送り出し・OVGR/DGR・客柱・外箱・縮小拡大・線を引く・範囲選択・3か所以上のエリア・手で直した内容。
  * 共有するものは common.ts。scripts/check-drawing.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { removeItem, addWire, fromLayout, moveItem, docBounds, addText, moveItems, removeItems, itemsInRange, itemBounds, setWireKind, addSymbol, setItemRect, resizeInfoOf, setLabel } from '../../apps/web/src/editor/doc.ts';
+import { removeItem, addWire, fromLayout, moveItem, docBounds, addText, moveItems, removeItems, itemsInRange, itemBounds, setWireKind, addSymbol, setItemRect, resizeInfoOf, setLabel, setLabelValue, defOf } from '../../apps/web/src/editor/doc.ts';
 import { rebuildWithOverrides } from '../../apps/web/src/editor/overrides.ts';
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildComposition } from '../../packages/knowledge/src/index.ts';
@@ -206,6 +206,26 @@ console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
         const lr0 = labelRect({ x: bat.x + bat.labelDx, y: bat.y + bat.labelDy, anchor: bat.labelAnchor }, bat.label);
         if (before.length === 0 && Math.abs(lr0.y0 - (bat.y + 10)) > 0.5 && Math.abs(lr0.y0 - (bat.y + 10)) < 40) problems.push(`蓄電池ユニットの文字の上端が、長方形の上の辺とそろっていません（差 ${(lr0.y0 - (bat.y + 10)).toFixed(1)}）`);
       }
+    }
+    // 接地の種別の記号（EA〜ED。第13弾 項目55 修正17／B-7）：線・記号・文字は緑。位置・大きさ（幅だけ）・角度は自由。初期の図面には付かない
+    {
+      const g = addSymbol({ items: [] } as Doc, 'earth', 100, 100);
+      const es = g.doc.items.find((it): it is DocSymbol => it.kind === 'symbol')!;
+      if (es.label.join('|') !== 'EA') problems.push(`接地の記号を足したときの文字が「EA」になっていません（${es.label.join('|')}）`);
+      const typed = setLabelValue(g.doc, es.id, 'earthType', 'ED');
+      if ((typed.items.find((it) => it.id === es.id) as DocSymbol).label.join('|') !== 'ED') problems.push('接地の種別を「D種（ED）」にしても、文字が「ED」になりません');
+      // 大きさ：横の端をつかんで、幅だけで変える（縦は、同じ比で変わる）。接続点は、上の縦線の真ん中のまま
+      const big = setItemRect(g.doc, es.id, { x: es.x, y: es.y, w: 56, h: 20 });
+      const bs = big.items.find((it): it is DocSymbol => it.kind === 'symbol')!;
+      const bd = defOf(bs);
+      if (bd.box.w !== 56 || Math.abs(bd.box.h - 40) > 0.11 || bd.ports[0]!.x !== 28) problems.push(`接地の記号の大きさ変更が違います（${bd.box.w}×${bd.box.h}・接続点 ${bd.ports[0]!.x}）`);
+      if (!resizeInfoOf(es)?.w2 || resizeInfoOf(es)?.h2) problems.push('接地の記号は、幅だけ変えられるはずです');
+      const rot = { ...big, items: big.items.map((it) => (it.id === es.id && it.kind === 'symbol' ? { ...it, rotate: 90 } : it)) } as Doc;
+      // 印刷（PDFの元の図）：線・文字が緑。回した角度も入る
+      const svgE = buildSheetSvg(rot, { site: '確認', name: '確認' } as never);
+      if (!/stroke="#0a8a2a" color="#0a8a2a"/.test(svgE) || !/fill="#0a8a2a" stroke="none">\s*<tspan[^>]*>EA</.test(svgE) || !/rotate\(90 /.test(svgE)) problems.push('接地の記号が、緑の線・緑の文字・回した角度で、印刷の図に出ていません');
+      // 初期の図面（自動で作る図面）には、付かない
+      if (d.items.some((it) => it.kind === 'symbol' && it.symbolId === 'earth')) problems.push('自動で作った図面に、接地の種別の記号が付いています');
     }
     // 編集画面でPCSを足したときも、文字の初めの位置は同じ（四角の真横・上の辺）
     {

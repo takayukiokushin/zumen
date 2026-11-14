@@ -865,6 +865,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             <g {...common}>
               <g
                 transform={`translate(${it.x} ${it.y})${it.rotate ? ` rotate(${it.rotate} ${cx} ${cy})` : ''}`}
+                {...(def.color ? { stroke: def.color, color: def.color } : {})}
                 dangerouslySetInnerHTML={{ __html: shapesToSvg(def.shapes, '') }}
               />
               {it.label.length > 0 && (
@@ -874,7 +875,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
                   fontSize={LABEL_FONT}
                   textAnchor={it.labelAnchor}
                   fontFamily={FONT_FAMILY}
-                  fill="currentColor"
+                  fill={def.color ?? 'currentColor'}
                   stroke="none"
                 >
                   {it.label.map((l, i) => (

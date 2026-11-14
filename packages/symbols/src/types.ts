@@ -13,6 +13,9 @@ export type SymbolCategory =
   | 'enclosure'     // キュービクル・電気室などの外枠
   | 'wiring';       // 母線・接続点など結線要素
 
+/** 接地の種別の記号（EA〜ED）の色（緑） */
+export const EARTH_GREEN = '#0a8a2a';
+
 export const CATEGORY_LABEL: Record<SymbolCategory, string> = {
   incoming: '引込元・引込点',
   boundary: '責任分界点',
@@ -129,6 +132,11 @@ export interface SymbolDef {
    * これが無い記号（ヒューズ単体・変圧器など）には、×印を付けられない。
    */
   markCenter?: { x: number; y: number };
+  /**
+   * 線・記号・文字の色（無ければ、ほかの記号と同じ黒）。接地の種別の記号（EA〜ED）の緑のように、色で見分けたい記号だけ。
+   * 画面・印刷（PDF）のどちらにも、この色で出す
+   */
+  color?: string;
   /** 現場レビューの確認状態 */
   status: SymbolStatus;
   /** 確認状態の補足（何を待っているか、何がOKになったか） */
@@ -149,8 +157,8 @@ export interface SymbolDef {
   resizable?: {
     w?: SizeRange;
     h?: SizeRange;
-    /** 形の作り方。bracket＝「コ」の字（上辺＋両端の短い縦線）／area＝一点鎖線の四角 */
-    style: 'bracket' | 'area';
+    /** 形の作り方。bracket＝「コ」の字（上辺＋両端の短い縦線）／area＝一点鎖線の四角／earth＝接地の記号（幅だけで、縦横の比を保って拡大・縮小） */
+    style: 'bracket' | 'area' | 'earth';
   };
 }
 
