@@ -605,7 +605,7 @@ export const INSTRUMENTS: Placement[] = [
 /** 主遮断装置の下流（PFS形・CB形で共通） */
 export const DOWNSTREAM: Placement[] = [
   {
-    // 3点不一致のとき、保安上の責任分界点は主遮断装置の図記号の位置に置く。
+    // 3点不一致のとき、責任分界点は主遮断装置の図記号の位置に置く。
     // 図記号の中央に横線を引き、その線に文言を書く（CB形ならVCB、PFS形ならLBS）
     role: 'boundary-safety',
     symbolId: 'boundary-safety',

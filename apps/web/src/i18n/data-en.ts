@@ -110,7 +110,7 @@ const data: Record<string, string> = {
   "キャビネット名称": "Cabinet name",
   "「キャビネット番号：」が最初から入っている。その後ろに、キャビネットの名称を入力する": "「キャビネット番号：」(= “Cabinet No.:”) is already entered. Enter the cabinet name after it",
   "3点一致ですか？": "Do the 3 points coincide?",
-  "引込点・財産分界点・保安上の責任分界点が同じ地点なら「3点一致」": "If the point of supply, the property demarcation point and the safety-responsibility demarcation point are the same location, choose “3 points coincide”",
+  "引込点・財産分界点・責任分界点が同じ地点なら「3点一致」": "If the point of supply, the property demarcation point and the demarcation point of responsibility are the same location, choose “3 points coincide”",
   "はい（3点一致）": "Yes (3 points coincide)",
   "いいえ（3点不一致）": "No (3 points differ)",
   "責任分界点は、LBSですか、VCBですか？": "Is the demarcation point of responsibility an LBS or a VCB?",

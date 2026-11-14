@@ -99,7 +99,7 @@ export const SITE_QUESTIONS: Question[] = [
     showIf: { not: PROPERTY_AT_DS },
     ask: 'ai-uncertain',
     required: true,
-    help: '引込点・財産分界点・保安上の責任分界点が同じ地点なら「3点一致」',
+    help: '引込点・財産分界点・責任分界点が同じ地点なら「3点一致」',
   },
   {
     id: 'boundarySafetyDevice',

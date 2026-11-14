@@ -104,7 +104,7 @@ const data: Record<string, string> = {
   "キャビネット名称": "Nom de l’armoire",
   "「キャビネット番号：」が最初から入っている。その後ろに、キャビネットの名称を入力する": "« キャビネット番号： » est déjà inscrit au début. Saisissez le nom de l’armoire après ce texte.",
   "3点一致ですか？": "Les 3 points sont-ils confondus ?",
-  "引込点・財産分界点・保安上の責任分界点が同じ地点なら「3点一致」": "Si le point de branchement, le point de démarcation de propriété et le point de démarcation de responsabilité en matière de sécurité sont au même endroit : « 3 points confondus ».",
+  "引込点・財産分界点・責任分界点が同じ地点なら「3点一致」": "Si le point de branchement, le point de démarcation de propriété et le point de démarcation de responsabilité sont au même endroit : « 3 points confondus ».",
   "はい（3点一致）": "Oui (3 points confondus)",
   "いいえ（3点不一致）": "Non (3 points distincts)",
   "責任分界点は、LBSですか、VCBですか？": "Le point de démarcation de responsabilité est-il le LBS ou le VCB ?",

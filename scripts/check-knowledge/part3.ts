@@ -671,11 +671,11 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const blank = buildComposition({ ...aux, auxTrConnection: undefined }).find((i) => i.id === 'aux-tr-1');
   ok(blank?.symbolId === 'tr-blank', '結線方式が未入力のとき、円の中が空の変圧器の記号になっていません');
 
-  // 分界点の文言：「財産・責任分界点」で統一する（今後の案件もすべて）。「財産保安責任分界点」は使わない
+  // 分界点の文言：「財産・責任分界点」で統一する（今後の案件もすべて）。ほかの言い方は使わない
   const boundary = buildComposition({ ...base, boundaryPattern: 'coincident' }).find((i) => i.role === 'boundary');
   ok(boundary?.label.join('') === '財産・責任分界点', `3点一致の分界点の文言が違います（${boundary?.label.join('')}）`);
   const everyLabel = [...UPSTREAM, ...DOWNSTREAM, ...EXTRAS].flatMap((p) => p.labelTemplate ?? []).concat(QUESTIONS.flatMap((q) => [q.label, q.help ?? '', q.aiHint ?? '']));
-  ok(!everyLabel.some((t) => /財産保安責任分界点|財産責任分界点|財産及び責任分界点/.test(t)), '分界点の文言に、「財産・責任分界点」以外の書き方が残っています');
+  ok(!everyLabel.some((t) => /財産保安責任分界点|財産責任分界点|財産及び責任分界点|保安上の責任分界点|保安責任分界点|分解点/.test(t)), '分界点の文言に、「財産・責任分界点」以外の書き方が残っています');
   console.log('  VT・CTは組で数え、継電器は1個ずつ「種類・どこについているか・試験端子」を選ぶ。VCBとOCRがあればトリップコイルが入る');
   console.log('  補助変圧器は蓄電所のときだけ。分界点の文言は「財産・責任分界点」');
 }
