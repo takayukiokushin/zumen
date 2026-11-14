@@ -940,6 +940,8 @@ export const FEEDERS: Placement[] = Array.from({ length: COUNT_LIMITS.transforme
 const MOTOR_ON: Condition = { key: 'hasMotor', eq: 'yes' };
 const MOTOR_BUS: Condition = { all: [MOTOR_ON, { key: 'motorSource', eq: 'bus' }] };
 const MOTOR_SECONDARY: Condition = { all: [MOTOR_ON, { key: 'motorSource', eq: 'secondary' }] };
+/** 接続元を、まだ選んでいない（空欄）：線をつながずに、図面の下に置く */
+const MOTOR_FREE: Condition = { all: [MOTOR_ON, { not: { key: 'motorSource', in: ['bus', 'secondary'] } }] };
 const MOTOR_CABLE: Condition = { key: 'motorCable', eq: 'yes' };
 const MOTOR_LABEL = ['{motorStartMethod}', '{motorCapacityText}'];
 const MOTOR_CABLE_LABEL = ['{motorCableInstallationLabel}', '{motorCableStructure}', '{motorCableSpecLine}'];
@@ -957,6 +959,8 @@ const MOTOR_ITEMS: Placement[] = [
   { role: 'motor-cable-source', symbolId: 'cable-head', kind: 'feeder', when: { all: [MOTOR_SECONDARY, MOTOR_CABLE] }, dashedAfter: { key: 'motorCableInstallation', eq: 'buried' }, props: { transformer: 'motorSourceTr' }, repeatCountKey: 'motorCount', laneBase: MOTOR_LANE_BASE, zeroOk: true },
   { role: 'motor-cable-site', symbolId: 'cable-head', kind: 'feeder', when: { all: [MOTOR_SECONDARY, MOTOR_CABLE] }, labelTemplate: MOTOR_CABLE_LABEL, props: { transformer: 'motorSourceTr' }, repeatCountKey: 'motorCount', laneBase: MOTOR_LANE_BASE, zeroOk: true },
   { role: 'motor', symbolId: 'motor', kind: 'feeder', when: MOTOR_SECONDARY, labelTemplate: MOTOR_LABEL, props: { startMethod: 'motorStartMethod', capacity: 'motorCapacity', place: 'motorPlace', transformer: 'motorSourceTr' }, repeatCountKey: 'motorCount', laneBase: MOTOR_LANE_BASE, zeroOk: true },
+  // ---- 接続元を選んでいない電動機（空欄）：線をつながずに、図面の下に並べる ----
+  { role: 'motor', symbolId: 'motor', kind: 'free', when: MOTOR_FREE, labelTemplate: MOTOR_LABEL, props: { startMethod: 'motorStartMethod', capacity: 'motorCapacity', place: 'motorPlace' }, repeatCountKey: 'motorCount', zeroOk: true },
 ];
 
 /** 高圧進相設備・特殊設備 */
@@ -1021,11 +1025,22 @@ export const EXTRAS: Placement[] = [
     role: 'generator',
     symbolId: 'generator',
     kind: 'feeder',
-    when: { all: [{ key: 'hasGenerator', eq: 'yes' }, { key: 'generatorTransformer', ne: 'none' }] },
+    when: { all: [{ key: 'hasGenerator', eq: 'yes' }, { not: { key: 'generatorTransformer', in: ['none', 'bus'] } }] },
     labelTemplate: ['G', '{generatorText}', '{generatorPlace}'],
     props: { usage: 'generatorUsage', place: 'generatorPlace', fuel: 'generatorFuel', transformer: 'generatorTransformer' },
     repeatCountKey: 'generatorCount',
     laneBase: 100,
+  },
+  {
+    // 高圧母線から分岐して接続する発電機（高圧母線から下へぶら下がる列。開閉器・切替器・連系保護の記号は、描かない）
+    role: 'generator',
+    symbolId: 'generator',
+    kind: 'parallel',
+    row: ROW.main,
+    when: { all: [{ key: 'hasGenerator', eq: 'yes' }, { key: 'generatorTransformer', eq: 'bus' }] },
+    labelTemplate: ['G', '{generatorText}', '{generatorPlace}'],
+    props: { usage: 'generatorUsage', place: 'generatorPlace', fuel: 'generatorFuel' },
+    repeatCountKey: 'generatorCount',
   },
   {
     role: 'generator',

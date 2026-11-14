@@ -357,6 +357,7 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.generatorText = [
     pickOwn(GENERATOR_USAGE_LABEL, String(answers.generatorUsage)) ?? '',
     answers.generatorCapacity ? String(answers.generatorCapacity) : '',
+    answers.generatorRatedVoltage ? `${answers.generatorRatedVoltage}V` : '',
     pickOwn(GENERATOR_FUEL_LABEL, String(answers.generatorFuel)) ?? (answers.generatorFuel ? String(answers.generatorFuel) : ''),
   ]
     .filter(Boolean)
@@ -445,7 +446,12 @@ export function withDerived(rawAnswers: Answers): Answers {
   // 電動機（台ごとの答えで組み立てる）：途中のケーブルの注記は、ほかのケーブルと同じ書き方。容量は「500kW」、LBSのパワーヒューズは「PF 30A」
   d.motorCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.motorCableInstallation)) ?? '';
   d.motorCableSpecLine = cableSpec(answers.motorCableVoltage, answers.motorCableCrossSection, answers.motorCableLength, answers.motorCableLengthApprox);
-  d.motorCapacityText = answers.motorCapacity !== undefined && answers.motorCapacity !== null && answers.motorCapacity !== '' ? `${answers.motorCapacity}kW` : '';
+  d.motorCapacityText = [
+    answers.motorCapacity !== undefined && answers.motorCapacity !== null && answers.motorCapacity !== '' ? `${answers.motorCapacity}kW` : '',
+    answers.motorRatedVoltage !== undefined && answers.motorRatedVoltage !== null && answers.motorRatedVoltage !== '' ? `${answers.motorRatedVoltage}V` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   d.motorFuseText = answers.motorFuseCurrent ? `PF ${answers.motorFuseCurrent}A` : '';
 
   // CT・VTの台数。2台以上のときだけ「CT×2」「VT＋PF×2」のように書く
@@ -1283,6 +1289,14 @@ export interface InputNotice {
   group: string;
   text: string;
 }
+/** t+1台目の変圧器の、二次側の電圧（V）。「6600/210-105V」なら210。読み取れなければ NaN */
+function secondaryVolts(view: Answers, t: number): number {
+  const text = String(viewAt(view, t).trVoltage ?? '');
+  const after = text.split('/')[1] ?? '';
+  const m = after.match(/\d+(\.\d+)?/);
+  return m ? Number(m[0]) : NaN;
+}
+
 export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
   const out: InputNotice[] = [];
   const ctSets = countOf(view.ctSetCount, 0, maxCountOf('ctSetCount'));
@@ -1317,6 +1331,32 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
       group: 'receiving',
       text: '太陽光発電設備がありますが、OVGR（地絡過電圧継電器）が「なし」です。太陽光発電設備があるときは、ZPDとOVGRが、セットで必要です。「OVGRはありますか？」を、確かめてください（図面は、このまま描きます）。',
     });
+  }
+  // 低圧の電動機・発電機：図面に描くのは、高圧（1000V以上）だけ。定格電圧（無ければ、つなぎ先の変圧器の二次側の電圧）が低圧のとき、知らせる（第13弾 項目55 修正15／A-4・B-6）
+  for (const [on, countKey, groupId, what] of [
+    ['hasMotor', 'motorCount', 'motor', '電動機'],
+    ['hasGenerator', 'generatorCount', 'generator', '発電機'],
+  ] as const) {
+    if (dv[on] !== 'yes') continue;
+    const units = countOf(view[countKey], 1, maxCountOf(countKey));
+    let low = false;
+    for (let i = 0; i < units; i++) {
+      const u = withDerived(viewAt(view, i));
+      const rated = Number(u[groupId === 'motor' ? 'motorRatedVoltage' : 'generatorRatedVoltage']);
+      let volts = Number.isFinite(rated) && rated > 0 ? rated : NaN;
+      if (!Number.isFinite(volts)) {
+        // 定格電圧を入れていないとき：二次側につないでいれば、その変圧器の二次側の電圧で見る（母線につないでいれば、高圧）
+        const dest = groupId === 'motor' ? (u.motorSource === 'secondary' ? (u.motorSourceTr ?? '1') : undefined) : /^\d+$/.test(String(u.generatorTransformer ?? '')) ? u.generatorTransformer : undefined;
+        if (dest !== undefined) volts = secondaryVolts(view, Math.max(1, Number(dest)) - 1);
+      }
+      if (Number.isFinite(volts) && volts < 1000) low = true;
+    }
+    if (low) {
+      out.push({
+        group: groupId,
+        text: `低圧（1000V未満）の${what}があります。この図面に描くのは、高圧（3300V・6600Vなど）の${what}だけです。低圧の${what}は、描かないでください（図面は、このまま描きます）。`,
+      });
+    }
   }
   // 主遮断装置がPFS形（LBS）なのに、高圧変圧器の合計が300kVAを超えるとき（1か所目の「主遮断装置の形式」のところに出す）
   if (all && dv.mainBreakerForm === 'pfs' && !(Number(dv.areaNo) > 1)) {

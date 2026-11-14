@@ -5,6 +5,10 @@ import { BUS_SWITCH_OPTIONS, CABLE_VOLTAGE_OPTIONS, COUNT_OPTIONS, FUSE_CURRENT_
 
 /** 電動機：変圧器があるエリアか（変圧器が0台のエリアは、二次側から接続できない） */
 const MOTOR_HAS_TR: Condition = { not: { key: 'transformerCount', lte: 0 } };
+/** 電動機：接続元を選んだあと（空欄のあいだは、続きの質問を出さない） */
+const MOTOR_SOURCE_CHOSEN: Condition = { key: 'motorSource', in: ['bus', 'secondary'] };
+/** 電動機・発電機の定格電圧の選択肢（高圧・低圧の区別は付けない。ほかの電圧は手で入力できる）。図面に描くのは、高圧（3300V・6600Vなど）だけ */
+const RATED_VOLTAGE_OPTIONS: Choice[] = [200, 400, 3300, 6600].map((v) => ({ value: String(v), label: `${v}V` }));
 /** 電動機：接続元が、変圧器の二次側のとき */
 const MOTOR_FROM_SECONDARY: Condition = { key: 'motorSource', eq: 'secondary' };
 
@@ -18,11 +22,18 @@ const DEST_OPTIONS: Choice[] = Array.from({ length: COUNT_LIMITS.transformerCoun
   showIf: { key: 'transformerCount', gt: j },
 }));
 
+/** 発電機の接続先：つながない／高圧母線／何台目の変圧器の二次側 */
+const GENERATOR_DEST_CHOICES: Choice[] = [
+  TRANSFORMER_CHOICES[0]!,
+  { value: 'bus', label: '高圧母線から接続する' },
+  ...TRANSFORMER_CHOICES.slice(1).map((c) => ({ ...c, label: `${c.label}の二次側` })),
+];
+
 /** 質問の定義：特殊設備、補助変圧器、発電機、太陽光 */
 export const EQUIPMENT_QUESTIONS: Question[] = [
   /* ---------------- 特殊設備 ---------------- */
-  { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
-  { id: 'hasMotor', group: 'special', label: '電動機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '高圧の電動機（モーター）がある場合。台数・始動方式・容量・設置場所を、台ごとに入力する' },
+  { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '図面に描くのは、高圧の発電機だけ（低圧の発電機は描かない）' },
+  { id: 'hasMotor', group: 'special', label: '電動機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '高圧の電動機（モーター）がある場合。台数・始動方式・容量・設置場所を、台ごとに入力する。図面に描くのは、高圧の電動機だけ（低圧の電動機は描かない）' },
   { id: 'hasPv', group: 'special', label: '太陽光発電設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'hasBattery', group: 'special', label: '蓄電池はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'batteryCapacity', group: 'special', label: '蓄電ユニットの規模', type: 'text', showIf: { key: 'hasBattery', eq: 'yes' }, ask: 'always' },
@@ -161,6 +172,17 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     ask: 'always',
   },
   {
+    id: 'generatorRatedVoltage',
+    group: 'generator',
+    label: '定格電圧',
+    type: 'select',
+    options: RATED_VOLTAGE_OPTIONS,
+    allowFreeInput: true,
+    dropdown: true,
+    ask: 'always',
+    help: '図面には、容量の横に「6600V」のように書く。図面に描くのは、高圧（3300V・6600Vなど）の発電機だけ。分からなければ、空欄でよい',
+  },
+  {
     id: 'generatorPlace',
     group: 'generator',
     label: '設置場所',
@@ -173,12 +195,12 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     id: 'generatorTransformer',
     noTrend: true,
     group: 'generator',
-    label: 'この発電機は、どの変圧器につなぎますか？',
+    label: 'この発電機の接続先は？',
     type: 'select',
-    options: TRANSFORMER_CHOICES,
+    options: GENERATOR_DEST_CHOICES,
     defaultValue: 'none',
     ask: 'always',
-    help: 'つなぎ先が決まっていなければ「つながない」のままでよい（図面の下に置くだけになる）',
+    help: '高圧母線から分岐して接続するか、何台目の変圧器の二次側（低圧側）から接続するか。つなぎ先が決まっていなければ「つながない」のままでよい（図面の下に置くだけになる）。図面に描くのは、高圧の発電機だけ',
   },
 
   /* ---------------- 電動機（台ごと。入力の順番：台数・始動方式・容量・設置場所。接続元は、このあとの項目で足す） ---------------- */
@@ -221,6 +243,17 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     help: '図面には、始動方式の下に「500kW」のように書く（台数は、記号の数で分かるので、文字には書かない）',
   },
   {
+    id: 'motorRatedVoltage',
+    group: 'motor',
+    label: '定格電圧',
+    type: 'select',
+    options: RATED_VOLTAGE_OPTIONS,
+    allowFreeInput: true,
+    dropdown: true,
+    ask: 'always',
+    help: '図面には、容量の横に「6600V」のように書く。図面に描くのは、高圧（3300V・6600Vなど）の電動機だけ。分からなければ、空欄でよい',
+  },
+  {
     id: 'motorPlace',
     group: 'motor',
     label: '設置場所',
@@ -230,7 +263,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
 
   /* ---- 電動機の接続元と、途中にあるもの（第13弾 項目25）。台ごとに答える ---- */
   {
-    // 初期値：変圧器があるときは二次側、変圧器が0台のエリアは母線
+    // 初期値は空欄（選ぶまでは、線をつながずに、図面の下に置く）。変圧器が0台のエリアは、母線だけ選べる
     id: 'motorSource',
     group: 'motor', section: '接続元',
     label: '接続元は？',
@@ -239,10 +272,9 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
       { value: 'secondary', label: '変圧器の二次側から接続する', showIf: MOTOR_HAS_TR },
       { value: 'bus', label: '母線（高圧母線）から分岐して接続する' },
     ],
-    autoValue: [{ when: MOTOR_HAS_TR, value: 'secondary' }, { value: 'bus' }],
     dropdown: true,
     ask: 'always',
-    help: '変圧器の二次側（低圧側）から接続するか、高圧母線から分岐して接続するか。変圧器が0台のエリアは、母線だけ選べる',
+    help: '変圧器の二次側から接続するか、高圧母線から分岐して接続するか。空欄のあいだは、線をつながずに、図面の下に置く。変圧器が0台のエリアは、母線だけ選べる。図面に描くのは、高圧の電動機だけ',
   },
   {
     id: 'motorSourceTr',
@@ -264,6 +296,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     type: 'select',
     options: YES_NO_Q,
     defaultValue: 'no',
+    showIf: MOTOR_SOURCE_CHOSEN,
     ask: 'always',
     help: '接続元から電動機までの間に、ケーブルがあるかどうか。引込・エリア間と同じ入力欄（種類・構造・定格電圧・断面積・長さ）で答える',
   },
@@ -272,13 +305,17 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     prefix: 'motor',
     group: 'motor',
     section: '接続元',
-    when: { key: 'motorCable', eq: 'yes' },
+    when: { all: [MOTOR_SOURCE_CHOSEN, { key: 'motorCable', eq: 'yes' }] },
     voltage: {
-      options: [
-        ...CABLE_VOLTAGE_OPTIONS.map((o) => ({ ...o, showIf: { not: MOTOR_FROM_SECONDARY } as Condition })),
-        { value: '600', label: '600V', showIf: MOTOR_FROM_SECONDARY },
+      // 二次側からでも、高圧（3.3kVなど）の電動機があるので、高圧に絞らず、どちらの接続元でも、同じ選択肢
+      options: [{ value: '600', label: '600V' }, ...CABLE_VOLTAGE_OPTIONS],
+      // 初期値は、電動機の定格電圧（3300V・6600Vを入れていれば、同じ電圧）。入れていなければ、母線からは6600V、二次側からは600V
+      autoValue: [
+        { when: { key: 'motorRatedVoltage', in: ['3300', 3300] }, value: '3300' },
+        { when: { key: 'motorRatedVoltage', in: ['6600', 6600] }, value: '6600' },
+        { when: MOTOR_FROM_SECONDARY, value: '600' },
+        { value: '6600' },
       ],
-      autoValue: [{ when: MOTOR_FROM_SECONDARY, value: '600' }, { value: '6600' }],
       allowFreeInput: true,
     },
   }),
@@ -288,6 +325,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     group: 'motor', section: '接続元',
     label: '途中に開閉器はありますか？',
     type: 'select',
+    showIf: MOTOR_SOURCE_CHOSEN,
     options: [
       ...BUS_SWITCH_OPTIONS.map((o) => ({ ...o, showIf: { not: MOTOR_FROM_SECONDARY } as Condition })),
       { value: 'none', label: 'なし', showIf: MOTOR_FROM_SECONDARY },

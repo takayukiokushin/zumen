@@ -3,7 +3,7 @@
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
 import { fillLabelLines, findSymbol, initialLabelValues, labelFields, SYMBOLS } from '../../packages/symbols/src/index.ts';
-import { buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, NEW_PROJECT_ANSWERS, withDerived, normalizeAnswers } from '../../packages/knowledge/src/index.ts';
+import { inputNotices, buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, NEW_PROJECT_ANSWERS, withDerived, normalizeAnswers } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { fail } from './common.ts';
 import { answers } from './part1.ts';
@@ -105,7 +105,10 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
   {
     const motor = (a: Answers) => ofGroup(a, 'motor').join();
     if (motor({ hasMotor: 'no' }) !== '' || motor({}) !== '') fail('電動機が「ない」のに、電動機の入力欄を出しています');
-    if (motor({ hasMotor: 'yes' }) !== 'motorCount,motorStartMethod,motorCapacity,motorPlace,motorSource,motorCable,motorSwitch') fail(`電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes' })}）`);
+    // 接続元を選ぶまでは、続き（ケーブル・開閉器）の質問は出さない
+    if (motor({ hasMotor: 'yes' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource') fail(`電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes' })}）`);
+    if (motor({ hasMotor: 'yes', motorSource: 'bus' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource,motorCable,motorSwitch') fail(`接続元を選んだあとの、電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes', motorSource: 'bus' })}）`);
+    if (withAutoValues({ hasMotor: 'yes', transformerCount: 2 } as Answers).motorSource !== undefined) fail('電動機の接続元は、最初は空欄のはずです');
     const opts = (QUESTIONS.find((q) => q.id === 'motorStartMethod')?.options ?? []).map((o) => o.value).join(',');
     if (opts !== '直入れ始動,リアクトル始動,コンドルファ始動,インバータ始動,スターデルタ始動') fail(`始動方式の選択肢の順番が違います（${opts}）`);
     if (!shown({ hasMotor: 'no' }).some((q) => q.id === 'hasMotor')) fail('「電動機はありますか？」が出ていません');
@@ -117,12 +120,16 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     const opt = (id: string, a: Answers) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).filter((o) => evaluate(o.showIf, viewAt(normalizeAnswers({ ...base, ...a }), 0))).map((o) => o.value).join(',');
     if (opt('motorSwitch', { motorSource: 'bus' }) !== 'none,ds,vcb,lbs,ds-vcb') fail(`母線からのとき、開閉器の選択肢が違います（${opt('motorSwitch', { motorSource: 'bus' })}）`);
     if (opt('motorSwitch', { motorSource: 'secondary' }) !== 'none,mccb') fail(`二次側からのとき、開閉器の選択肢が違います（${opt('motorSwitch', { motorSource: 'secondary' })}）`);
-    if (opt('motorCableVoltage', { motorSource: 'bus' }) !== '3300,6600,22000,33000' || opt('motorCableVoltage', { motorSource: 'secondary' }) !== '600') fail('途中のケーブルの定格電圧の選択肢が、接続元で変わっていません');
+    // 二次側からでも、高圧（3.3kVなど）の電動機があるので、高圧に絞らず、どちらの接続元でも同じ選択肢
+    if (opt('motorCableVoltage', { motorSource: 'bus' }) !== '600,3300,6600,22000,33000' || opt('motorCableVoltage', { motorSource: 'secondary' }) !== '600,3300,6600,22000,33000') fail('途中のケーブルの定格電圧の選択肢が、違います');
+    // ケーブルの定格電圧の初期値：電動機の定格電圧が3300V・6600Vならその電圧。無ければ、母線からは6600V・二次側からは600V
+    const cv = (a: Answers) => withAutoValues({ hasMotor: 'yes', transformerCount: 2, motorCable: 'yes', ...a } as Answers).motorCableVoltage;
+    if (cv({ motorSource: 'bus' }) !== '6600' || cv({ motorSource: 'secondary' }) !== '600' || cv({ motorSource: 'secondary', motorRatedVoltage: '3300' }) !== '3300' || cv({ motorSource: 'bus', motorRatedVoltage: '3300' }) !== '3300' || cv({ motorSource: 'secondary', motorRatedVoltage: '400' }) !== '600') fail('ケーブルの定格電圧の初期値が違います');
     if (opt('motorSource', { transformerCount: 0 }) !== 'bus') fail(`変圧器が0台のとき、母線だけのはずです（${opt('motorSource', { transformerCount: 0 })}）`);
     const ids2 = (a: Answers) => ofGroup({ ...base, ...a }, 'motor').join();
     if (!ids2({ motorSource: 'secondary' }).includes('motorSourceTr')) fail('変圧器が2台で二次側からのとき、「何台目」を聞いていません');
     if (ids2({ motorSource: 'bus' }).includes('motorSourceTr') || ofGroup({ hasMotor: 'yes', transformerCount: 1, motorSource: 'secondary' }, 'motor').includes('motorSourceTr')) fail('母線から・変圧器が1台のとき、「何台目」を聞いています');
-    if (ids2({ motorCable: 'yes' }).split(',').filter((x) => /^motorCable/.test(x)).length !== 6) fail(`ケーブルが「はい」のとき、ケーブルの入力欄（6つ）が出ていません（${ids2({ motorCable: 'yes' })}）`);
+    if (ids2({ motorSource: 'bus', motorCable: 'yes' }).split(',').filter((x) => /^motorCable/.test(x)).length !== 6) fail(`ケーブルが「はい」のとき、ケーブルの入力欄（6つ）が出ていません（${ids2({ motorSource: 'bus', motorCable: 'yes' })}）`);
     if (/motorCableLength/.test(ids2({ motorCable: 'no' }))) fail('ケーブルが「いいえ」なのに、ケーブルの入力欄が出ています');
     if (!ids2({ motorSwitch: 'lbs', motorSource: 'bus' }).includes('motorFuseCurrent') || ids2({ motorSwitch: 'ds', motorSource: 'bus' }).includes('motorFuseCurrent')) fail('LBSのときだけ、パワーヒューズの容量を聞くはずです');
     // 変圧器0台：2か所目以降のエリアだけ。1か所目は、1台以上
@@ -146,6 +153,26 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     const cab = mroles({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorCable: 'yes', motorCableInstallation: 'buried', motorCableLength: 30, motorCableStructure: 'CVT', motorCableVoltage: '6600', motorCableCrossSection: '60' });
     if (cab.find((i) => i.role === 'motor-cable-site')?.label.join('|') !== '埋ケ|CVT|6600V 60mm2 30m') fail(`電動機のケーブルの文字が違います（${cab.find((i) => i.role === 'motor-cable-site')?.label.join('|')}）`);
     if (cab.find((i) => i.role === 'motor-cable-source')?.dashedAfter !== true) fail('埋設のとき、ケーブルの端末のあいだが、点線になっていません');
+    // 接続元が空欄のあいだは、線をつながずに、図面の下に置く（第13弾 項目55 修正15／A-4）
+    if (sig({ hasMotor: 'yes', motorCount: 2 }) !== 'motor:free:0,motor:free:1') fail(`接続元が空欄のとき、電動機が、つながない形（free）で並んでいません（${sig({ hasMotor: 'yes', motorCount: 2 })}）`);
+    if (sig({ hasMotor: 'yes', motorCount: 2, motorSource__2: 'bus' }) !== 'motor:free:0,motor:parallel:1') fail('電動機の1台だけ接続元を選んだとき、その1台だけが接続されるはずです');
+    // 定格電圧：容量の横に書く（「55kW 6600V」）。入れていなければ、容量だけ
+    const mt = (a: Answers) => mroles({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorCapacity: 55, ...a }).find((i) => i.role === 'motor')?.label.join('|');
+    if (mt({ motorStartMethod: '直入れ始動', motorRatedVoltage: '6600' }) !== '直入れ始動|55kW 6600V' || mt({ motorStartMethod: '直入れ始動' }) !== '直入れ始動|55kW') fail(`電動機の定格電圧の文字が違います（${mt({ motorStartMethod: '直入れ始動', motorRatedVoltage: '6600' })}）`);
+    // 発電機：高圧母線から接続できる（高圧母線から下へぶら下がる）。定格電圧は、容量の次に書く
+    const groles = (a: Answers) => buildComposition({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, hasGenerator: 'yes', generatorCount: 1, ...a }).filter((i) => i.role === 'generator');
+    const gsig = (a: Answers) => groles(a).map((i) => `${i.kind}`).join();
+    if (gsig({ generatorTransformer: 'bus' }) !== 'parallel' || gsig({ generatorTransformer: 'none' }) !== 'free' || gsig({ generatorTransformer: '2' }) !== 'feeder') fail(`発電機の接続先ごとの描き方が違います（${gsig({ generatorTransformer: 'bus' })}／${gsig({ generatorTransformer: 'none' })}／${gsig({ generatorTransformer: '2' })}）`);
+    if (groles({ generatorTransformer: 'bus', generatorUsage: 'emergency', generatorCapacity: '500kVA', generatorRatedVoltage: '6600' })[0]?.label.join('|').indexOf('非常用 500kVA 6600V') !== 2) fail(`発電機の定格電圧の文字が違います（${groles({ generatorTransformer: 'bus', generatorUsage: 'emergency', generatorCapacity: '500kVA', generatorRatedVoltage: '6600' })[0]?.label.join('|')}）`);
+    // 低圧の電動機・発電機の注意（第13弾 項目55 修正15）：定格電圧（無ければ、二次側の変圧器の二次側の電圧）が1000V未満のとき。母線からで、電圧が無いときは、出さない
+    const note = (a: Answers) => {
+      const eff = withAutoValues({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, trVoltage: '6600/210V', trVoltage__2: '3300/3300V', ...a } as Answers);
+      return inputNotices(areaView(eff, 0), eff).filter((n) => n.group === 'motor' || n.group === 'generator').map((n) => n.group).join();
+    };
+    if (note({ hasMotor: 'yes', motorSource: 'secondary', motorSourceTr: '1' }) !== 'motor') fail('低圧の二次側につないだ電動機に、注意が出ていません');
+    if (note({ hasMotor: 'yes', motorSource: 'secondary', motorSourceTr: '2' }) !== '') fail('3300Vの二次側につないだ電動機に、注意が出ています');
+    if (note({ hasMotor: 'yes', motorSource: 'bus' }) !== '' || note({ hasMotor: 'yes', motorSource: 'bus', motorRatedVoltage: '400' }) !== 'motor' || note({ hasMotor: 'yes', motorSource: 'secondary', motorSourceTr: '1', motorRatedVoltage: '6600' }) !== '') fail('電動機の定格電圧による注意の出方が違います');
+    if (note({ hasGenerator: 'yes', generatorTransformer: '1' }) !== 'generator' || note({ hasGenerator: 'yes', generatorTransformer: 'bus' }) !== '' || note({ hasGenerator: 'yes', generatorTransformer: 'bus', generatorRatedVoltage: '200' }) !== 'generator' || note({ hasGenerator: 'no', generatorTransformer: '1' }) !== '') fail('発電機の注意の出方が違います');
     const two = mroles({ hasMotor: 'yes', motorCount: 2, motorSource: 'bus', motorSource__2: 'secondary', motorSourceTr__2: '2' });
     if (two.map((i) => i.kind).join() !== 'parallel,feeder' || String(two[1]!.props?.transformer) !== '2') fail('1台は母線・1台は二次側のとき、それぞれの列になっていません');
     if (buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:transformerCount': 0, 'a2:hasMotor': 'yes', 'a2:motorCount': 2 }).filter((i) => i.role === 'a2:motor').length !== 2) fail('変圧器が0台の2か所目のエリアに、電動機が2台入っていません');
