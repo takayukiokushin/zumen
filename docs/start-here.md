@@ -141,14 +141,19 @@ Mac mini 1台を「サーバー役」にして、社内の他のパソコンやi
    行頭の # を消すこと。例:
      BACKUP_DIR=/Users/ユーザー名/Dropbox/単線結線図_控え
 
-7. 利用者を登録する。アカウントは3種類あります。
+7. 利用者を登録する。アカウントの種類は3つあります。
      admin   … 管理用。すべての案件＋画面から利用者の管理ができる
      member  … 標準。案件をみんなで共有する。ふだん使うのはこれ
      sandbox … 練習用。自分が作ったものだけ。他の人には見えない
-   最初はこの3つを作ります。パスワードは10文字以上で、私が決めます:
-     pnpm --filter @zumen/server user:add kanri 管理者 <パスワード> admin
-     pnpm --filter @zumen/server user:add fujielex 株式会社フジエレックス <パスワード> member
-     pnpm --filter @zumen/server user:add renshu 練習用 <パスワード> sandbox
+   最初は、次の4つを作ります（管理者1・保安・事務・練習用）。IDとパスワードは、私が決めます。
+   IDの決め方は docs/setup-memo.md にあります（パスワードは10文字以上）。
+   管理用のIDは、ほかの人が推測できない名前にして、チャットにもリポジトリにも書かない
+   （admin や kanri のような、ありがちな名前は使わない）:
+     pnpm --filter @zumen/server user:add '<管理用のID>' 管理者 '<パスワード>' admin
+     pnpm --filter @zumen/server user:add '<保安のID>' 保安 '<パスワード>' member
+     pnpm --filter @zumen/server user:add '<事務のID>' 事務 '<パスワード>' member
+     pnpm --filter @zumen/server user:add '<練習用のID>' 練習用 '<パスワード>' sandbox
+   （パスワードは、シングルクォート ' で囲みます。チャットには書かないでください）
    一覧:         pnpm --filter @zumen/server user:list
    消す:         pnpm --filter @zumen/server user:remove <ID>
    パスワード変更: pnpm --filter @zumen/server user:passwd <ID> <新しいパスワード>
@@ -206,7 +211,7 @@ Mac mini 1台を「サーバー役」にして、社内の他のパソコンやi
 ────────────────────────────────────────
 次の5つを、私がメモできる形でまとめて出してください。
   1. 社内の他のパソコンから開く住所（http://192.168.x.x:8787）
-  2. 作ったアカウントのID3つ（パスワードは書かないでください）
+  2. 作ったアカウントのID（保安・事務・練習用。管理用のIDと、パスワードは、書かないでください）
   3. 控え（バックアップ）の保存先
   4. アプリのフォルダの場所
   5. 次にアプリを新しくするときの手順（3行で）

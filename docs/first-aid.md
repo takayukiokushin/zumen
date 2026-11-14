@@ -111,10 +111,12 @@ claude
    ANTHROPIC_API_KEY= の右側にAPIキーを貼って保存
    確認は `pnpm --filter @zumen/server apikey`
 6. 同じ .env の一番下の BACKUP_DIR= に、Dropboxなど同期フォルダのパスを書く（先頭の#を消す）
-7. 最初のアカウントを作る（パスワードは10文字以上）
-   pnpm --filter @zumen/server user:add kanri 管理者 パスワード admin
-   pnpm --filter @zumen/server user:add fujielex 株式会社フジエレックス パスワード member
-   pnpm --filter @zumen/server user:add renshu 練習用 パスワード sandbox
+7. 最初のアカウントを4つ作る（管理者・保安・事務・練習用。IDの決め方は docs/setup-memo.md）。
+   IDとパスワードは私が決める（パスワードは10文字以上。管理用のIDは、ありがちな名前にしない）
+   pnpm --filter @zumen/server user:add 'ID' 管理者 'パスワード' admin
+   pnpm --filter @zumen/server user:add 'ID' 保安 'パスワード' member
+   pnpm --filter @zumen/server user:add 'ID' 事務 'パスワード' member
+   pnpm --filter @zumen/server user:add 'ID' 練習用 'パスワード' sandbox
    一覧は user:list、消すのは user:remove <ID>、パスワード変更は user:passwd <ID> <新>
 8. `./install-autostart.command` で自動起動にする
 9. `pnpm start` の2行目に出る「社内の他のパソコンからは: http://192.168.x.x:8787」を控える
@@ -154,7 +156,7 @@ GitHubの画面でそのまま読める（ダウンロード不要）。
 | 「利用券（APIキー）が設定されていません」 | `.env` が無い／名前違い | `.env.txt` になっていないか確認 |
 | 「アカウントの残高がありません」 | クレジット未購入 | <https://platform.claude.com/settings/billing> で残高を買う |
 | ログインが10回失敗して止まった | 総当たり対策 | 30分待つか、管理用アカウントの「利用者の管理」→「ログインを解除」 |
-| 管理用のパスワードも分からない | — | ターミナルで `pnpm --filter @zumen/server user:passwd kanri 新しいパスワード` |
+| 管理用のパスワードも分からない | — | ターミナルで `pnpm --filter @zumen/server user:passwd 管理用のID 新しいパスワード` |
 | 画面が古いまま変わらない | ブラウザのキャッシュ | `command + shift + R` で読み込み直す |
 | 「サーバーのディスクがいっぱいで、保存やログインができません」 | サーバー役のMacのディスクの空きが無い | 不要なファイル（ダウンロード・ゴミ箱・古い控えなど）を消して、空きを作る。**サーバーを起動し直す必要はない**（空きができれば、そのまま保存・ログインできる）。それまで、すでに開いている画面の入力は消えないので、閉じずに待つ。控えの保存先も満杯のときは、そこも空ける |
 | 更新したら、サーバーが立ち上がらない・動きがおかしい | 新しい版の不具合 | アプリのフォルダの **`rollback-mac.command` をダブルクリック**（更新前の版に戻る。案件は、そのまま残る。詳しくは `docs/server-setup.md` の「更新がうまくいかなかったとき」） |
