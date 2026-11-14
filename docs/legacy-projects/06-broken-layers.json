@@ -1,0 +1,821 @@
+{
+  "name": "壊れたレイヤーのある図面",
+  "era": "レイヤーの中身が壊れている図面（開けて、壊れた部分だけが整理されること）",
+  "answers": {
+    "siteName": "手直しの図面",
+    "mainBreakerForm": "cb",
+    "sectionalizer": "pas",
+    "sourceType": "pole",
+    "transformerCount": 2,
+    "trCapacity": "300",
+    "trCapacity__2": "200",
+    "trUsage": "動力",
+    "trUsage__2": "電灯",
+    "hasCapacitor": "yes",
+    "capacitorCount": 1
+  },
+  "drawing": {
+    "items": [
+      {
+        "kind": "frame",
+        "id": "frame-22",
+        "x": -200,
+        "y": 340,
+        "w": 434.2,
+        "label": "受電設備"
+      },
+      {
+        "kind": "wire",
+        "id": "wire-23",
+        "x1": 0,
+        "y1": 48,
+        "x2": 0,
+        "y2": 64,
+        "dashed": false,
+        "at1": {
+          "item": "source-pole",
+          "port": "out"
+        },
+        "at2": {
+          "item": "incoming-point",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-24",
+        "x1": 0,
+        "y1": 108,
+        "x2": 0,
+        "y2": 124,
+        "dashed": false,
+        "at1": {
+          "item": "incoming-point",
+          "port": "out"
+        },
+        "at2": {
+          "item": "pas",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-25",
+        "x1": 0,
+        "y1": 272,
+        "x2": 0,
+        "y2": 288,
+        "dashed": false,
+        "at1": {
+          "item": "pas",
+          "port": "out"
+        },
+        "at2": {
+          "item": "cable-head-source",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-26",
+        "x1": 0,
+        "y1": 312,
+        "x2": 0,
+        "y2": 368,
+        "dashed": false,
+        "at1": {
+          "item": "cable-head-source",
+          "port": "out"
+        },
+        "at2": {
+          "item": "cable-head-site",
+          "port": "out"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-27",
+        "x1": 0,
+        "y1": 392,
+        "x2": 0,
+        "y2": 408,
+        "dashed": false,
+        "at1": {
+          "item": "cable-head-site",
+          "port": "in"
+        },
+        "at2": {
+          "item": "ds",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-28",
+        "x1": 0,
+        "y1": 480,
+        "x2": 0,
+        "y2": 506,
+        "dashed": false,
+        "at1": {
+          "item": "ds",
+          "port": "out"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-29",
+        "x1": 0,
+        "y1": 506,
+        "x2": 34,
+        "y2": 506,
+        "at2": {
+          "item": "ds-vt-pf",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-30",
+        "x1": 78,
+        "y1": 506,
+        "x2": 92,
+        "y2": 506,
+        "at1": {
+          "item": "ds-vt-pf",
+          "port": "out"
+        },
+        "at2": {
+          "item": "ds-vt",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-31",
+        "x1": 0,
+        "y1": 506,
+        "x2": 0,
+        "y2": 540,
+        "dashed": false,
+        "at2": {
+          "item": "main-breaker",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-32",
+        "x1": 0,
+        "y1": 612,
+        "x2": 0,
+        "y2": 628,
+        "dashed": false,
+        "at1": {
+          "item": "main-breaker",
+          "port": "out"
+        },
+        "at2": {
+          "item": "ct",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-33",
+        "x1": 0,
+        "y1": 672,
+        "x2": 0,
+        "y2": 698,
+        "dashed": false,
+        "at1": {
+          "item": "ct",
+          "port": "out"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-34",
+        "x1": 0,
+        "y1": 698,
+        "x2": 34,
+        "y2": 698,
+        "at2": {
+          "item": "relay-tt",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-35",
+        "x1": 86,
+        "y1": 698,
+        "x2": 151,
+        "y2": 698,
+        "at1": {
+          "item": "relay-tt",
+          "port": "out"
+        },
+        "at2": {
+          "item": "relay",
+          "port": "l"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-36",
+        "x1": 10.303030303030305,
+        "y1": 576,
+        "x2": 155,
+        "y2": 576,
+        "dashed": true,
+        "at2": {
+          "item": "trip-coil",
+          "port": "l"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-37",
+        "x1": 170,
+        "y1": 587,
+        "x2": 170,
+        "y2": 686,
+        "at1": {
+          "item": "trip-coil",
+          "port": "b"
+        },
+        "at2": {
+          "item": "relay",
+          "port": "top"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-38",
+        "x1": 0,
+        "y1": 698,
+        "x2": 0,
+        "y2": 734,
+        "dashed": false
+      },
+      {
+        "kind": "wire",
+        "id": "wire-39",
+        "x1": -160,
+        "y1": 734,
+        "x2": 160,
+        "y2": 734
+      },
+      {
+        "kind": "wire",
+        "id": "wire-40",
+        "x1": -160,
+        "y1": 734,
+        "x2": -160,
+        "y2": 750,
+        "at2": {
+          "item": "transformer-1",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-41",
+        "x1": 0,
+        "y1": 734,
+        "x2": 0,
+        "y2": 750,
+        "at2": {
+          "item": "transformer-2",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-42",
+        "x1": 160,
+        "y1": 734,
+        "x2": 160,
+        "y2": 750,
+        "at2": {
+          "item": "capacitor",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "symbol",
+        "id": "source-pole",
+        "symbolId": "pole-utility",
+        "x": -16,
+        "y": 0,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 46,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "incoming-point",
+        "symbolId": "incoming-point",
+        "x": -30,
+        "y": 64,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 70,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "pas",
+        "symbolId": "pas",
+        "x": -28,
+        "y": 124,
+        "rotate": 0,
+        "label": [
+          "PAS"
+        ],
+        "labelDx": 96,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "customer-pole",
+        "symbolId": "pole-customer",
+        "x": -68,
+        "y": 181,
+        "rotate": 0,
+        "label": [],
+        "labelDx": -10,
+        "labelDy": 10,
+        "labelAnchor": "end"
+      },
+      {
+        "kind": "symbol",
+        "id": "cable-head-source",
+        "symbolId": "cable-head",
+        "x": -12,
+        "y": 288,
+        "rotate": 0,
+        "label": [
+          "- m"
+        ],
+        "labelDx": 34,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "cable-head-site",
+        "symbolId": "cable-head",
+        "x": -12,
+        "y": 368,
+        "rotate": 180,
+        "label": [],
+        "labelDx": 34,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ds",
+        "symbolId": "ds",
+        "x": -24,
+        "y": 408,
+        "rotate": 0,
+        "label": [
+          "DS"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ds-vt-pf",
+        "symbolId": "pf",
+        "x": 36,
+        "y": 484,
+        "rotate": -90,
+        "label": [],
+        "labelDx": 50,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ds-vt",
+        "symbolId": "vt",
+        "x": 92,
+        "y": 491,
+        "rotate": 0,
+        "label": [
+          "VT＋PF×2",
+          "V結線",
+          "6600/110V"
+        ],
+        "labelDx": 70,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "main-breaker",
+        "symbolId": "vcb",
+        "x": -24,
+        "y": 540,
+        "rotate": 0,
+        "label": [
+          "VCB"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ct",
+        "symbolId": "ct",
+        "x": -24,
+        "y": 628,
+        "rotate": 0,
+        "label": [
+          "CT×2"
+        ],
+        "labelDx": 66,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "relay-tt",
+        "symbolId": "test-terminal",
+        "x": 34,
+        "y": 687,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 62,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "relay",
+        "symbolId": "relay-ocr",
+        "x": 151,
+        "y": 686,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 48,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "trip-coil",
+        "symbolId": "trip-coil",
+        "x": 155,
+        "y": 565,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 40,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "transformer-1",
+        "symbolId": "tr-3p-yd",
+        "x": -168,
+        "y": 750,
+        "rotate": 0,
+        "label": [
+          "動力",
+          "Tr",
+          "3φ300kVA",
+          "6600/210V"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "transformer-2",
+        "symbolId": "tr-1p",
+        "x": -24,
+        "y": 750,
+        "rotate": 0,
+        "label": [
+          "電灯",
+          "Tr",
+          "1φ200kVA",
+          "6600/210-105V"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "capacitor",
+        "symbolId": "sc",
+        "x": 136,
+        "y": 750,
+        "rotate": 0,
+        "label": [
+          "SC"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "text",
+        "id": "text-cur1",
+        "x": -64,
+        "y": 730,
+        "lines": [
+          "注記（いまの形）"
+        ],
+        "anchor": "start"
+      }
+    ],
+    "basis": "1f6sl9n",
+    "edited": true,
+    "base": {
+      "symbols": {
+        "source-pole": {
+          "symbolId": "pole-utility",
+          "x": -16,
+          "y": 0,
+          "rotate": 0,
+          "label": [],
+          "labelDx": 46,
+          "labelDy": 10
+        },
+        "incoming-point": {
+          "symbolId": "incoming-point",
+          "x": -30,
+          "y": 64,
+          "rotate": 0,
+          "label": [],
+          "labelDx": 70,
+          "labelDy": 10
+        },
+        "pas": {
+          "symbolId": "pas",
+          "x": -28,
+          "y": 124,
+          "rotate": 0,
+          "label": [
+            "PAS"
+          ],
+          "labelDx": 96,
+          "labelDy": 10
+        },
+        "customer-pole": {
+          "symbolId": "pole-customer",
+          "x": -68,
+          "y": 181,
+          "rotate": 0,
+          "label": [],
+          "labelDx": -10,
+          "labelDy": 10
+        },
+        "cable-head-source": {
+          "symbolId": "cable-head",
+          "x": -12,
+          "y": 288,
+          "rotate": 0,
+          "label": [
+            "- m"
+          ],
+          "labelDx": 34,
+          "labelDy": 10
+        },
+        "cable-head-site": {
+          "symbolId": "cable-head",
+          "x": -12,
+          "y": 368,
+          "rotate": 180,
+          "label": [],
+          "labelDx": 34,
+          "labelDy": 10
+        },
+        "ds": {
+          "symbolId": "ds",
+          "x": -24,
+          "y": 408,
+          "rotate": 0,
+          "label": [
+            "DS"
+          ],
+          "labelDx": 58,
+          "labelDy": 10
+        },
+        "ds-vt-pf": {
+          "symbolId": "pf",
+          "x": 36,
+          "y": 484,
+          "rotate": -90,
+          "label": [],
+          "labelDx": 50,
+          "labelDy": 10
+        },
+        "ds-vt": {
+          "symbolId": "vt",
+          "x": 92,
+          "y": 491,
+          "rotate": 0,
+          "label": [
+            "VT＋PF×2",
+            "V結線",
+            "6600/110V"
+          ],
+          "labelDx": 70,
+          "labelDy": 10
+        },
+        "main-breaker": {
+          "symbolId": "vcb",
+          "x": -24,
+          "y": 540,
+          "rotate": 0,
+          "label": [
+            "VCB"
+          ],
+          "labelDx": 58,
+          "labelDy": 10
+        },
+        "ct": {
+          "symbolId": "ct",
+          "x": -24,
+          "y": 628,
+          "rotate": 0,
+          "label": [
+            "CT×2"
+          ],
+          "labelDx": 66,
+          "labelDy": 10
+        },
+        "relay-tt": {
+          "symbolId": "test-terminal",
+          "x": 34,
+          "y": 687,
+          "rotate": 0,
+          "label": [],
+          "labelDx": 62,
+          "labelDy": 10
+        },
+        "relay": {
+          "symbolId": "relay-ocr",
+          "x": 151,
+          "y": 686,
+          "rotate": 0,
+          "label": [],
+          "labelDx": 48,
+          "labelDy": 10
+        },
+        "trip-coil": {
+          "symbolId": "trip-coil",
+          "x": 155,
+          "y": 565,
+          "rotate": 0,
+          "label": [],
+          "labelDx": 40,
+          "labelDy": 10
+        },
+        "transformer": {
+          "symbolId": "tr-3p-yd",
+          "x": -184,
+          "y": 750,
+          "rotate": 0,
+          "label": [
+            "動力",
+            "Tr",
+            "3φ300kVA",
+            "6600/210V"
+          ],
+          "labelDx": 58,
+          "labelDy": 10
+        },
+        "transformer-2": {
+          "symbolId": "tr-1p",
+          "x": -24,
+          "y": 750,
+          "rotate": 0,
+          "label": [
+            "電灯",
+            "Tr",
+            "1φ200kVA",
+            "6600/210-105V"
+          ],
+          "labelDx": 58,
+          "labelDy": 10
+        },
+        "capacitor": {
+          "symbolId": "sc",
+          "x": 136,
+          "y": 750,
+          "rotate": 0,
+          "label": [
+            "SC"
+          ],
+          "labelDx": 58,
+          "labelDy": 10
+        }
+      },
+      "wires": [
+        "incoming-point.in>source-pole.out",
+        "incoming-point.out>pas.in",
+        "cable-head-source.in>pas.out",
+        "cable-head-site.out>cable-head-source.out",
+        "cable-head-site.in>ds.in",
+        "ds-vt-pf.out>ds-vt.in",
+        "ct.in>main-breaker.out",
+        "relay-tt.out>relay.l",
+        "relay.top>trip-coil.b"
+      ],
+      "wireIds": [
+        "wire-23",
+        "wire-24",
+        "wire-25",
+        "wire-26",
+        "wire-27",
+        "wire-28",
+        "wire-29",
+        "wire-30",
+        "wire-31",
+        "wire-32",
+        "wire-33",
+        "wire-34",
+        "wire-35",
+        "wire-36",
+        "wire-37",
+        "wire-38",
+        "wire-39",
+        "wire-40",
+        "wire-41",
+        "wire-42"
+      ],
+      "textIds": [],
+      "frames": [
+        {
+          "x": -200,
+          "y": 340,
+          "w": 434.2
+        }
+      ]
+    },
+    "overrides": {
+      "moved": {
+        "transformer": {
+          "dx": 16,
+          "dy": 0
+        }
+      },
+      "removed": [],
+      "wiresRemoved": [],
+      "added": []
+    },
+    "layers": [
+      {
+        "id": "outage",
+        "items": [
+          {
+            "kind": "text",
+            "id": "ok1",
+            "x": 10,
+            "y": 10,
+            "lines": [
+              "残る"
+            ],
+            "anchor": "start",
+            "red": true
+          },
+          {
+            "kind": "nonsense",
+            "id": "x"
+          },
+          {
+            "kind": "text",
+            "id": "bad",
+            "x": "a",
+            "y": null,
+            "lines": "文字列",
+            "anchor": "xx"
+          }
+        ]
+      },
+      {
+        "id": "unknown-layer",
+        "items": []
+      },
+      "junk",
+      null
+    ]
+  }
+}

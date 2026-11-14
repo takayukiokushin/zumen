@@ -1,0 +1,30 @@
+{
+  "name": "初期の案件",
+  "era": "最初のころ（区分開閉器の質問が無い／引込点の区分と名称が別々／OCGR／VT・CTは台数だけ）",
+  "answers": {
+    "siteName": "初期の工場",
+    "customerNo": "A-001",
+    "receivingType": "extra-high",
+    "receivingVoltage": 6600,
+    "hasPas": "yes",
+    "sourceType": "pole",
+    "polePrefix": "柱番 ",
+    "poleName": "1234",
+    "mainBreakerForm": "cb",
+    "vtCount": 2,
+    "ctCount": 2,
+    "ctRatio": "100",
+    "relayCount": 2,
+    "relayType": "OCR",
+    "relayType__2": "OCGR",
+    "transformerCount": 2,
+    "trCapacity": "300",
+    "trCapacity__2": "200",
+    "trUsage": "動力",
+    "trUsage__2": "電灯",
+    "trConnection": "tr-3p",
+    "trConnection__2": "tr-1p",
+    "obsoleteKeyFromOldVersion": "残っていても落ちない"
+  },
+  "drawing": null
+}

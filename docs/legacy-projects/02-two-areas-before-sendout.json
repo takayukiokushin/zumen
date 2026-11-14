@@ -1,0 +1,27 @@
+{
+  "name": "2か所（送り出しの開閉器が無い時代）",
+  "era": "エリアが2か所以上。送り出しの開閉器・段・途中の機器が無い時代",
+  "answers": {
+    "siteName": "2か所の工場",
+    "mainBreakerForm": "cb",
+    "sectionalizer": "pas",
+    "sourceType": "pole",
+    "transformerCount": 2,
+    "trCapacity": "300",
+    "trCapacity__2": "300",
+    "trUsage": "動力",
+    "trUsage__2": "動力",
+    "areaCount": 2,
+    "areaForm2": "cubicle",
+    "a2:areaIntake": "ds-vcb",
+    "a2:linkFrom": "1",
+    "a2:linkTap": "vcb-load",
+    "a2:linkCable": "yes",
+    "a2:linkCableVoltage": "6600",
+    "a2:linkCableCrossSection": "60",
+    "a2:linkCableLength": 30,
+    "a2:transformerCount": 1,
+    "a2:trCapacity": "200"
+  },
+  "drawing": null
+}

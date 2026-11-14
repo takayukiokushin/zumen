@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { KEEP, dayOf, msUntilMidnight, pickToDelete, stamp } from '../../apps/server/src/backup-rules.ts';
-import { say, ok, ng, check, runNode, dataDir, backupDir } from './common.ts';
+import { ROOT, say, ok, ng, check, runNode, dataDir, backupDir } from './common.ts';
 import type { part2 } from './part2.ts';
 
 export async function part3(c: Awaited<ReturnType<typeof part2>>) {
@@ -168,6 +168,22 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     odb2.close();
     rmSync(old, { recursive: true, force: true });
     check('以前からある案件にも、事業場名称・お客様番号・探すための文字・名前順の文字が、更新のときに写される', mig.code === 0 && row.site_name === '古い工場' && row.customer_no === 'OLD-7' && row.search_text.includes('old-7') && row.name_sort === '古い案件' && ver === 3, `${row.site_name}/${row.customer_no}/v${ver}`);
+  }
+
+  /* ---------- 7b2b. 古い形式の案件（docs/legacy-projects/） ---------- */
+  say('\n■ 古い形式の案件');
+  {
+    const dir = join(ROOT, 'docs', 'legacy-projects');
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
+      const smp = JSON.parse(readFileSync(join(dir, f), 'utf8')) as { name: string; answers: Record<string, unknown>; drawing: unknown };
+      const mk = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: `見本 ${smp.name}`, answers: smp.answers }) })).json()) as { id: string };
+      const put = await call(a, `/api/projects/${mk.id}`, { method: 'PUT', body: JSON.stringify({ answers: smp.answers, ...(smp.drawing ? { drawing: smp.drawing } : {}) }) });
+      const back = (await (await call(a, `/api/projects/${mk.id}`)).json()) as { answers: unknown; drawing: unknown };
+      const same = put.ok && JSON.stringify(back.answers) === JSON.stringify(smp.answers) && JSON.stringify(back.drawing ?? null) === JSON.stringify(smp.drawing ?? null);
+      check(`古い形式の案件「${f}」を、サーバーが受け取って、そのまま返せる`, same, same ? '' : put.ok ? '回答・図面が、保存の前と違います' : `保存できません（${put.status}）`);
+      const dup = await call(a, `/api/projects/${mk.id}/duplicate`, { method: 'POST' });
+      check(`古い形式の案件「${f}」を、複製できる`, dup.ok, dup.ok ? '' : `（${dup.status}）`);
+    }
   }
 
   /* ---------- 7b3. 並び替え ---------- */
