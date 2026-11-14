@@ -17,10 +17,10 @@ const hasJapanese = (s: string) => /[぀-ヿ一-鿿]/.test(s);
 
 export function describeAnalyzeFailure(e: unknown): string {
   if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {
-    return `手書きメモの読み取りに使う利用券（APIキー）に問題があるようです。管理者に伝えてください。`;
+    return `「スケッチ読み取り」に使う利用券（APIキー）に問題があるようです。管理者に伝えてください。`;
   }
   if (e instanceof Anthropic.APIError && /credit balance is too low/i.test(e.message)) {
-    return '手書きメモの読み取りに使う残高がなくなっているようです。管理者に、残高の追加を頼んでください。';
+    return '「スケッチ読み取り」に使う残高がなくなっているようです。管理者に、残高の追加を頼んでください。';
   }
   if (e instanceof Anthropic.RateLimitError) {
     return `いま混み合っているか、利用の上限に達しています。しばらく待ってから、もう一度お試しください。${ASK_ADMIN}`;

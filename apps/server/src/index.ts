@@ -103,7 +103,7 @@ app.post('/api/analyze', requireAuth, async (c) => {
     return c.json(
       {
         error:
-          '手書きメモの読み取りは、まだ使えるようになっていません。' +
+          '「スケッチ読み取り」は、まだ使えるようになっていません。' +
           'サーバーに Claude の利用券（APIキー）を設定すると使えるようになります。' +
           '設定のしかたは docs/install.md の「1-4. Claude APIキーを置く」を見てください。',
       },
