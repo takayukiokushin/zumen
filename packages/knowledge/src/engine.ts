@@ -1341,6 +1341,7 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
  * - ct-bus：変圧器の手前（CT・VT・継電器のあと、高圧母線の上）
  * VCBに並列に付く励磁突入電流抑制開閉器や、責任分界点の印は、VCBについているので、その次に入れる。
  * VCTが2台のときは、2台とも、同じ位置にまとめて動かす（上下の並びは、そのまま）。
+ * 区分開閉器なし＋電力会社のケーブルのときの分界線（boundary-ds）は、動かしたVCTの真下に移す。
  */
 function placeVct(items: PlacedItem[], pos: string): PlacedItem[] {
   if (pos === 'cable') return items;
@@ -1361,7 +1362,15 @@ function placeVct(items: PlacedItem[], pos: string): PlacedItem[] {
     at = (bus < 0 ? rest.length : bus) - 1;
   }
   if (at < 0) return items;
-  return [...rest.slice(0, at + 1), ...vcts, ...rest.slice(at + 1)];
+  const moved = [...rest.slice(0, at + 1), ...vcts, ...rest.slice(at + 1)];
+  // 区分開閉器なし＋電力会社のケーブルのときの「財産・責任分界点」の線（boundary-ds）は、VCT（電力会社の持ち物）の下にある。
+  // VCTを初期位置以外へ動かしたら、線も、VCTの真下へ移す（そうしないと、電力会社の持ち物が、線の需要家側に入ってしまう）（第13弾 項目55 修正12／A-9）
+  const bd = moved.findIndex((i) => i.role === 'boundary-ds');
+  if (bd < 0) return moved;
+  const line = moved[bd]!;
+  const without = moved.filter((_, k) => k !== bd);
+  const lastVct = without.reduce((m, i, k) => (i.role === 'vct-indoor' ? k : m), -1);
+  return [...without.slice(0, lastVct + 1), line, ...without.slice(lastVct + 1)];
 }
 
 /**

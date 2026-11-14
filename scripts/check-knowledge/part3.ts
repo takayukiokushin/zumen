@@ -556,6 +556,18 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
     const ordered = (a: Answers) => buildComposition({ ...answers, ...a }).map((i) => i.role);
     const idx = (list: string[], r: string) => list.indexOf(r);
     const none = { sectionalizer: 'none', groundCabinet: 'no', cableInstallation: 'buried', mainBreakerForm: 'cb' };
+    // VCTを初期位置以外へ動かしたら、分界線（boundary-ds）も、VCTの真下に移る（第13弾 項目55 修正12／A-9）
+    {
+      const ok = (c: boolean, m: string) => { if (!c) fail(m); };
+      const seq = (a: Answers) => ordered({ ...none, vctLocation: 'indoor', vctCount: 1, ...a }).filter((r) => ['vct-indoor', 'boundary-ds', 'ds', 'main-breaker', 'ct'].includes(r)).join('>');
+      ok(seq({}) === 'vct-indoor>boundary-ds>ds>main-breaker>ct', `VCTが初期位置のとき、分界線はVCTの下・DSの上のはずです（${seq({})}）`);
+      ok(seq({ vctTap: 'ds-vcb' }) === 'ds>vct-indoor>boundary-ds>main-breaker>ct', `VCTをDSの次へ動かしたとき、分界線もVCTの真下に移るはずです（${seq({ vctTap: 'ds-vcb' })}）`);
+      ok(seq({ vctTap: 'vcb-ct' }) === 'ds>main-breaker>vct-indoor>boundary-ds>ct', `VCTをVCBの次へ動かしたとき、分界線もVCTの真下に移るはずです（${seq({ vctTap: 'vcb-ct' })}）`);
+      ok(seq({ vctTap: 'vcb-ct', vctCount: 2 }) === 'ds>main-breaker>vct-indoor>vct-indoor>boundary-ds>ct', `VCTが2台のとき、分界線は2台の下に移るはずです（${seq({ vctTap: 'vcb-ct', vctCount: 2 })}）`);
+      // 動かせないとき（PFS形でDSが無いのに「DSとVCBの間」を選んだとき）は、VCTも分界線も動かない
+      const pfsNoDs = (a: Answers) => ordered({ ...none, mainBreakerForm: 'pfs', vctLocation: 'indoor', ...a }).filter((r) => ['vct-indoor', 'boundary-ds', 'main-breaker'].includes(r)).join('>');
+      ok(pfsNoDs({ vctTap: 'ds-vcb' }) === pfsNoDs({}), 'DSが無くてVCTが動けないのに、分界線だけ動いています');
+    }
     // 電力会社のケーブル（初期値）：上の線は無く、DSの真上に「財産・責任分界点」
     const util = ordered(none);
     const ds = buildComposition({ ...answers, ...none }).find((i) => i.role === 'boundary-ds');
