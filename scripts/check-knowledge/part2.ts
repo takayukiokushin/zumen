@@ -173,6 +173,17 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
   else if (none?.kind !== 'free') fail('「つながない」を選んでも、単独（free）になっていません');
   else if (second?.kind !== 'feeder') fail('2台目を選んでも、つながる形になっていません');
   else console.log('  蓄電池ユニット：何も選ばなければ1台目の変圧器につなぐ／「つながない」なら単独／2台目も選べる');
+  // 蓄電池があれば、PCSは必ず入る（変圧器 → PCS → 蓄電池ユニット）。PCSの容量は、答えたときだけ、PCSの文字になる
+  const comp = (a: Answers) => buildComposition({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, hasBattery: 'yes', batteryCapacity: '2,000kW', ...a });
+  const pcsOf = (a: Answers) => comp(a).find((i) => i.role === 'battery-pcs');
+  const lane = (a: Answers) => comp(a).filter((i) => i.role === 'battery-pcs' || i.role === 'battery').map((i) => `${i.role}:${i.kind}`).join('>');
+  if (lane({}) !== 'battery-pcs:feeder>battery:feeder') fail(`蓄電池は、変圧器 → PCS → 蓄電池ユニットの順のはずです（${lane({})}）`);
+  if (lane({ batteryTransformer: 'none' }) !== 'battery-pcs:free>battery:free') fail(`「つながない」のときも、PCSと蓄電池ユニットが並ぶはずです（${lane({ batteryTransformer: 'none' })}）`);
+  if (comp({ hasBattery: 'no' }).some((i) => i.role === 'battery-pcs')) fail('蓄電池が無いのに、PCSが描かれています');
+  if (pcsOf({})?.label.length !== 0) fail('PCSの容量を答えていないのに、PCSの文字があります');
+  if (pcsOf({ batteryPcsCapacity: '100kW×5' })?.label.join('|') !== '100kW×5') fail(`PCSの容量の文字が違います（${pcsOf({ batteryPcsCapacity: '100kW×5' })?.label.join('|')}）`);
+  if (!shown({ hasBattery: 'yes' }).some((q) => q.id === 'batteryPcsCapacity') || shown({ hasBattery: 'no' }).some((q) => q.id === 'batteryPcsCapacity')) fail('PCSの容量の質問は、蓄電池があるときだけ出るはずです');
+  else console.log('  蓄電池のPCS：必ず入る（変圧器→PCS→蓄電池ユニット）。容量は、答えたときだけ、PCSの右横に書く');
 }
 
 console.log('\n■ 変圧器の用途で、結線方式の選択肢を絞る／電灯および動力のV結線の容量');

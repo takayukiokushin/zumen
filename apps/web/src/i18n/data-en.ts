@@ -357,6 +357,8 @@ const data: Record<string, string> = {
   "はい": "Yes",
   "いいえ": "No",
   "蓄電ユニットの規模": "Battery unit scale",
+  "蓄電池のPCSの容量": "Capacity of the battery PCS",
+  "図面の記載例：100kW×5。空のままでもよい（PCSの枠だけ描く）": "Example on the drawing: 100kW×5. It may be left blank (only the PCS box is drawn)",
   "蓄電池ユニットは、どの変圧器につなぎますか？": "Which transformer is the battery unit connected to?",
   "最初は、1台目の変圧器につなぐ設定になっている。つなぎ先が決まっていなければ「つながない」を選ぶ。図面には、変圧器 → PCS → 蓄電池ユニットの順に描く（PCSは必ず入る）": "By default it is set to connect to the 1st transformer. If the connection is not decided, choose “Do not connect”. The drawing shows transformer → PCS → battery unit, in that order (the PCS is always included).",
   "つながない（単独で置く）": "Do not connect (place separately)",

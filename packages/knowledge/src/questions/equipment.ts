@@ -27,6 +27,17 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
   { id: 'hasBattery', group: 'special', label: '蓄電池はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'batteryCapacity', group: 'special', label: '蓄電ユニットの規模', type: 'text', showIf: { key: 'hasBattery', eq: 'yes' }, ask: 'always' },
   {
+    // 蓄電池の手前のPCS（蓄電池があれば、PCSは必ず入る）。容量の文字は、PCSの右横に書く。空のままでもよい
+    id: 'batteryPcsCapacity',
+    noTrend: true,
+    group: 'special',
+    label: '蓄電池のPCSの容量',
+    type: 'text',
+    showIf: { key: 'hasBattery', eq: 'yes' },
+    ask: 'always',
+    help: '図面の記載例：100kW×5。空のままでもよい（PCSの枠だけ描く）',
+  },
+  {
     id: 'batteryTransformer',
     noTrend: true,
     group: 'special',
