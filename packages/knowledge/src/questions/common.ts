@@ -98,6 +98,9 @@ export const BUS_SWITCH_OPTIONS: Choice[] = [
 /** LBS（パワーヒューズ付き）のパワーヒューズの容量の選択肢 */
 export const FUSE_CURRENT_OPTIONS: Choice[] = [10, 15, 20, 30, 40, 50, 75, 100, 150, 200].map((v) => ({ value: String(v), label: `${v}A` }));
 
+/** 電柱上の構成（高圧マンションなど。主遮断装置のVCB・LBSが無い） */
+export const POLE_TOP: Condition = { key: 'mainBreakerForm', eq: 'pole-top' };
+
 /**
  * 財産分界点が、DS（無ければLBS）の一次側に移るとき（第13弾 項目17）。
  * 区分開閉器が「なし」で、引込ケーブルが電力会社のもの（VCTは、電力会社の持ち物で、ケーブルの負荷側にある）。

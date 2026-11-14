@@ -568,6 +568,24 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
       const pfsNoDs = (a: Answers) => ordered({ ...none, mainBreakerForm: 'pfs', vctLocation: 'indoor', ...a }).filter((r) => ['vct-indoor', 'boundary-ds', 'main-breaker'].includes(r)).join('>');
       ok(pfsNoDs({ vctTap: 'ds-vcb' }) === pfsNoDs({}), 'DSが無くてVCTが動けないのに、分界線だけ動いています');
     }
+    // 電柱上の構成（主遮断装置なし）の分界線（第13弾 項目55 修正13／A-8）：
+    // 区分開閉器（PAS・PGS・UGS）があれば、3点一致・不一致のどちらを答えても、その位置に「財産・責任分界点」を1本。区分開閉器が無ければ、線なし
+    {
+      const ok = (c: boolean, m: string) => { if (!c) fail(m); };
+      const lines = (a: Answers) => {
+        const items = buildComposition({ ...answers, mainBreakerForm: 'pole-top', cableInstallation: 'none', groundCabinet: 'no', ...a });
+        return items.filter((i) => ['boundary', 'boundary-property', 'boundary-safety', 'boundary-ds'].includes(i.role)).map((i) => `${i.role}:${i.label.join('')}`).join(',');
+      };
+      for (const sectionalizer of ['pas', 'pgs', 'ugs']) {
+        for (const boundaryPattern of ['coincident', 'split']) {
+          ok(lines({ sectionalizer, boundaryPattern }) === 'boundary:財産・責任分界点', `電柱上・${sectionalizer}・${boundaryPattern}：財産・責任分界点が1本のはずです（${lines({ sectionalizer, boundaryPattern })}）`);
+        }
+      }
+      for (const boundaryPattern of ['coincident', 'split']) ok(lines({ sectionalizer: 'none', boundaryPattern }) === '', `電柱上・区分開閉器なし・${boundaryPattern}：線は引かないはずです（${lines({ sectionalizer: 'none', boundaryPattern })}）`);
+      // 主遮断装置があるときは、これまでどおり（3点不一致は、財産分界点と責任分界点の2本）
+      const cbSplit = buildComposition({ ...answers, mainBreakerForm: 'cb', sectionalizer: 'pas', boundaryPattern: 'split' }).map((i) => i.role);
+      ok(cbSplit.includes('boundary-property') && cbSplit.includes('boundary-safety') && !cbSplit.includes('boundary'), 'CB形の3点不一致が、2本の線（財産分界点・責任分界点）ではなくなっています');
+    }
     // 電力会社のケーブル（初期値）：上の線は無く、DSの真上に「財産・責任分界点」
     const util = ordered(none);
     const ds = buildComposition({ ...answers, ...none }).find((i) => i.role === 'boundary-ds');

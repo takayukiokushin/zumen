@@ -178,7 +178,8 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
 
   // 3点不一致のときは、どの機器の上に責任分界点があるか要る。
   // ただし主遮断装置の形式が決まっていれば、そこから決まる（CB形ならVCB、PFS形ならLBS）ので聞かない
-  const mainKnown = a.mainBreakerForm === 'cb' || a.mainBreakerForm === 'pfs';
+  // 電柱上の構成（pole-top）は、主遮断装置が無いので、聞かない（区分開閉器の位置に、財産・責任分界点を1本引く）
+  const mainKnown = a.mainBreakerForm === 'cb' || a.mainBreakerForm === 'pfs' || a.mainBreakerForm === 'pole-top';
   if (a.boundaryPattern === 'split' && !mainKnown && !a.boundarySafetyDevice) {
     items.push({
       level: 'ask',

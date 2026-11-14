@@ -1,6 +1,6 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
-import { PROPERTY_AT_DS } from './questions/common.ts';
+import { PROPERTY_AT_DS, POLE_TOP } from './questions/common.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
 export const MAIN_GROUND_ON: Condition = {
@@ -254,16 +254,28 @@ export const UPSTREAM: Placement[] = [
     labelSide: 'left',
     symbolId: 'boundary-both',
     kind: 'series',
-    when: { all: [{ key: 'boundaryPattern', eq: 'coincident' }, { not: PROPERTY_AT_DS }] },
+    // 電柱上の構成（主遮断装置なし）は、「3点一致ですか？」にどちらを答えても、区分開閉器（PAS・PGS・UGS）の位置に、この線を1本だけ引く
+    // （責任分界点を置く主遮断装置が無いため）。区分開閉器も無ければ、線は引かない（第13弾 項目55 修正13／A-8）
+    when: {
+      all: [
+        { not: PROPERTY_AT_DS },
+        {
+          any: [
+            { all: [{ key: 'boundaryPattern', eq: 'coincident' }, { not: POLE_TOP }] },
+            { all: [POLE_TOP, { not: { key: 'sectionalizer', eq: 'none' } }] },
+          ],
+        },
+      ],
+    },
     labelTemplate: ['財産・責任分界点'],
-    note: '3点一致（約99%）。引込点の図記号とPASの間に横線を引く',
+    note: '3点一致（約99%）。引込点の図記号とPASの間に横線を引く。電柱上の構成（主遮断装置なし）は、3点不一致でも、区分開閉器の位置に、この1本だけ引く（区分開閉器が無ければ引かない）',
   },
   {
     role: 'boundary-property',
     labelSide: 'left',
     symbolId: 'boundary-property',
     kind: 'series',
-    when: { all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }] },
+    when: { all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }, { not: POLE_TOP }] },
     labelTemplate: ['財産分界点'],
   },
   {

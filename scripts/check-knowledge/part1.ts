@@ -332,7 +332,8 @@ console.log('\n■ 責任分界点の質問（3点不一致のとき、主遮断
     ['3点不一致・CB形', { boundaryPattern: 'split', mainBreakerForm: 'cb' }, false],
     ['3点不一致・PFS形', { boundaryPattern: 'split', mainBreakerForm: 'pfs' }, false],
     ['3点不一致・主遮断装置が未入力', { boundaryPattern: 'split' }, true],
-    ['3点不一致・主遮断装置が電柱上構成（それ以外）', { boundaryPattern: 'split', mainBreakerForm: 'pole-top' }, true],
+    // 電柱上の構成には、LBSもVCBも無いので、聞かない（区分開閉器の位置に、財産・責任分界点を1本引く）
+    ['3点不一致・主遮断装置が電柱上構成（それ以外）', { boundaryPattern: 'split', mainBreakerForm: 'pole-top' }, false],
   ];
   for (const [name, ans, want] of cases) {
     if (asked(ans) !== want) fail(`${name}：質問を${asked(ans) ? '出して' : '出さずに'}います（期待：${want ? '出す' : '出さない'}）`);
@@ -341,6 +342,9 @@ console.log('\n■ 責任分界点の質問（3点不一致のとき、主遮断
   // AIの読み取り結果の確認事項も、同じ条件にそろえる
   if (reviewAsks({ boundaryPattern: 'split', mainBreakerForm: 'cb' })) fail('CB形なのに、責任分界点の位置を確認事項に出しています');
   if (!reviewAsks({ boundaryPattern: 'split' })) fail('主遮断装置が未入力なのに、責任分界点の位置を確認事項に出していません');
+  if (reviewAsks({ boundaryPattern: 'split', mainBreakerForm: 'pole-top' })) fail('電柱上の構成なのに、責任分界点の位置（LBS・VCB）を確認事項に出しています');
+  // 「3点一致ですか？」は、電柱上の構成でも出す
+  if (!visibleQuestions(withDerived({ mainBreakerForm: 'pole-top' }), {}).some((q) => q.id === 'boundaryPattern')) fail('電柱上の構成で、「3点一致ですか？」が出ていません');
 }
 
 console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネットの質問');

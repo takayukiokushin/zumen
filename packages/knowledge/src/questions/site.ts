@@ -113,7 +113,8 @@ export const SITE_QUESTIONS: Question[] = [
     // 主遮断装置の形式が決まっていれば聞かない（CB形ならVCB、PFS形ならLBSに決まる）。
     // 未入力のときだけ聞く
     showIf: {
-      all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }, { not: { key: 'mainBreakerForm', in: ['cb', 'pfs'] } }],
+      // 電柱上の構成（主遮断装置が無い）では、LBSもVCBも無いので聞かない
+      all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }, { not: { key: 'mainBreakerForm', in: ['cb', 'pfs', 'pole-top'] } }],
     },
     ask: 'always',
     help: '3点不一致のときは、主遮断装置の図記号の中央に横線を引いて記載する。主遮断装置の形式を入力すれば、この質問は不要（CB形はVCB、PFS形はLBSに自動で決まる）',
