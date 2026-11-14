@@ -1,6 +1,7 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
 import { PROPERTY_AT_DS, POLE_TOP } from './questions/common.ts';
+import { LINK_PART_MAX, linkPartKey, linkPartOpen } from './link-parts.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
 export const MAIN_GROUND_ON: Condition = {
@@ -852,6 +853,21 @@ export const SENDOUT: Placement[] = [
     kind: 'sendout',
     when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkGroundStage', gt: 0 }] },
   },
+  // 送り出しの途中に付ける部品（VT・CT・ZPD・GC。最大6個。第13弾 項目55 修正19・段階3-1）。
+  // 役割は sendout-part-{n}-{種類}。位置（tr・sw1・line1…）は pos に入り、layout が縦の並びの、その位置に置く。VTには、必ずPFが付く
+  ...Array.from({ length: LINK_PART_MAX }, (_, i) => i + 1).flatMap((n): Placement[] => {
+    const open = linkPartOpen(n);
+    const kind = (k: string): Condition => ({ all: [open, { key: linkPartKey(n, 'Kind'), eq: k }] });
+    const posFrom = linkPartKey(n, 'Pos');
+    return [
+      { role: `sendout-part-${n}-vt-pf`, symbolId: 'pf', kind: 'sendout', posFrom, when: kind('vt'), labelTemplate: [`{linkPart${n}VtHead}`, `{linkPart${n}VtConnText}`, `{${linkPartKey(n, 'VtRatio')}}`] },
+      { role: `sendout-part-${n}-vt`, symbolId: 'vt', kind: 'sendout', posFrom, when: kind('vt'), props: { ratio: linkPartKey(n, 'VtRatio') } },
+      { role: `sendout-part-${n}-ct`, symbolId: 'ct', kind: 'sendout', posFrom, when: kind('ct'), labelTemplate: ['CT', `{linkPart${n}CtRatioText}`], props: { ratio: `linkPart${n}CtRatioText` } },
+      { role: `sendout-part-${n}-zpd`, symbolId: 'zpd', kind: 'sendout', posFrom, when: kind('zpd'), labelTemplate: ['ZPD'] },
+      { role: `sendout-part-${n}-ovgr`, symbolId: 'relay-ovgr', kind: 'sendout', posFrom, when: { all: [kind('zpd'), { key: linkPartKey(n, 'Ovgr'), eq: 'yes' }] } },
+      { role: `sendout-part-${n}-gc`, symbolId: 'gc', kind: 'sendout', posFrom, when: kind('gc'), labelTemplate: ['GC'] },
+    ];
+  }),
 ];
 
 /** 変圧器（台数分くり返す） */

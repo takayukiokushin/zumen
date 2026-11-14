@@ -651,6 +651,23 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const gs = (a: Answers) => Number(areaView(withAutoValues({ areaCount: 2, 'a2:linkTap': 'tr-secondary', ...a } as Answers), 1).linkGroundStage);
   ok(gs({ 'a2:linkSwitch': 'vcb' }) === 1 && gs({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'vcb-vcs' }) === 2 && gs({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'vcs' }) === 0, '地絡継電器が付く段が違います');
   ok(gs({ 'a2:linkSwitch': 'ds' }) === 0 && !qids({ 'a2:linkSwitch': 'ds' }).has('linkGroundRelay') && qids({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'lbs' }).has('linkGroundRelay'), 'DSだけのときは、地絡継電器の質問が出ないはずです（2段目にLBSがあれば出る）');
+  // 途中に付ける機器（VT・CT・ZPD・GC。段階3-1）：個数が0のときは、なにも聞かない。個数に合わせて、種類・位置の質問が出る。VTのときだけ台数・変圧比、CTのときだけ変流比、ZPDのときだけOVGR
+  ok(qids({}).has('linkPartCount') && !qids({ 'a2:linkTap': 'bus' }).has('linkPartCount'), '「途中に付ける機器は何個ですか？」は、「変圧器の二次側」のときだけのはずです');
+  ok(!qids({}).has('linkPart1Kind') && qids({ 'a2:linkPartCount': '2' }).has('linkPart2Kind') && !qids({ 'a2:linkPartCount': '2' }).has('linkPart3Kind'), '途中の機器の質問が、個数に合わせて出ていません');
+  ok(qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'vt' }).has('linkPart1VtRatio') && !qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'ct' }).has('linkPart1VtRatio') && qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'ct' }).has('linkPart1CtRatio') && qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'zpd' }).has('linkPart1Ovgr'), '種類に合わせた入力欄（VT：変圧比／CT：変流比／ZPD：OVGR）が出ていません');
+  const partDraw = (a: Answers) => {
+    const eff = withAutoValues({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:linkTap': 'tr-secondary', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes', ...a } as Answers);
+    return { items: buildComposition(eff), notes: inputNotices(areaView(eff, 1), eff).filter((n) => n.group === 'link').length };
+  };
+  const vtItems = partDraw({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'vt', 'a2:linkPart1Pos': 'sw1' }).items.filter((i) => /sendout-part-1-/.test(i.role));
+  ok(vtItems.some((i) => i.symbolId === 'pf') && vtItems.some((i) => i.symbolId === 'vt'), 'VTには、必ずヒューズ（PF）が付くはずです');
+  ok(vtItems.find((i) => i.symbolId === 'pf')?.label.join('/') === 'VT＋PF×2/V結線/6600/110V', `VTの文字が違います（${vtItems.find((i) => i.symbolId === 'pf')?.label.join('/')}）`);
+  ok(partDraw({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'ct', 'a2:linkPart1CtRatio': '100' }).items.find((i) => /sendout-part-1-ct/.test(i.role))?.label.join('/') === 'CT/100/5A', 'CTの文字（100 → 100/5A）が違います');
+  ok(!partDraw({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'zpd', 'a2:linkPart1Ovgr': 'no' }).items.some((i) => /sendout-part-1-ovgr/.test(i.role)) && partDraw({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'zpd', 'a2:linkPart1Ovgr': 'yes' }).items.some((i) => /sendout-part-1-ovgr/.test(i.role)), 'ZPDのOVGRの有無が、答えのとおりになっていません');
+  // 位置が、いまの構成に無いとき（1段目の開閉器が「なし」なのに、その次に付ける）は、描かずに知らせる
+  const gone = partDraw({ 'a2:linkSwitch': 'none', 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'gc', 'a2:linkPart1Pos': 'sw1' });
+  ok(!gone.items.some((i) => /sendout-part-/.test(i.role)) && gone.notes >= 1, '位置が無い機器は、描かずに、知らせるはずです');
+  ok(partDraw({ 'a2:linkPartCount': '0', 'a2:linkPart1Kind': 'gc' }).items.every((i) => !/sendout-part-/.test(i.role)), '個数が0のときは、1つも描かないはずです');
   // 注意：選んだ変圧器の二次側が低圧（600V以下）／三巻線変圧器のとき。高圧（600Vを超える）のときは、出さない
   const linkNote = (a: Answers) => {
     const eff = withAutoValues({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:linkTap': 'tr-secondary', trVoltage: '6600/210V', trVoltage__2: '6600/3300V', ...a } as Answers);

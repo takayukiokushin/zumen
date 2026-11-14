@@ -1412,7 +1412,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
    * 送り出しの開閉器（DS・VCB・LBS）。送り先（線の行き先のエリア）ごとに答える。エリアどうしのすきまに、線の上に横向きに置く。
    * 同じ幹には、1組だけ描く（幹の先頭の送り先の答えを使う）。
    */
-  const SEND_EXTRA = /sendout-(zct|ground-relay|trip-coil)$/;
+  const SEND_EXTRA = /sendout-(zct|ground-relay|trip-coil)$|sendout-part-\d+-/;
   const sendoutsOfDest = (dest: number) =>
     allItems.filter((i) => i.kind === 'sendout' && i.dest === dest && findSymbol(i.symbolId) && !SEND_EXTRA.test(i.role));
   /** 送り出しの開閉器に付くDGR（ZCT・DGR・TC）。3つそろっているときだけ */
@@ -1424,8 +1424,41 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     return zct && relay && coil ? { zct, relay, coil } : undefined;
   };
   const destOf = (tr: Trunk): number => tr.links[0]!.n;
+  /**
+   * 送り出しの途中に付ける部品（VT・CT・ZPD・GC）を、個数（n）ごとにまとめる。位置は、tr（変圧器の出口の次）・sw1〜sw4（開閉器の次）・line1〜line4（線の次）
+   */
+  type PartGroup = { n: number; pos: string; kind: 'vt' | 'ct' | 'zpd' | 'gc'; main: PlacedItem; pf?: PlacedItem; ovgr?: PlacedItem };
+  const partsOfDest = (dest: number): PartGroup[] => {
+    const mine = allItems.filter((i) => i.kind === 'sendout' && i.dest === dest && /sendout-part-\d+-/.test(i.role));
+    const groups: PartGroup[] = [];
+    for (const it of mine) {
+      const m = /sendout-part-(\d+)-(vt-pf|vt|ct|zpd|ovgr|gc)$/.exec(it.role);
+      if (!m || !findSymbol(it.symbolId)) continue;
+      const n = Number(m[1]);
+      let g = groups.find((x) => x.n === n);
+      if (m[2] === 'vt-pf' || m[2] === 'ovgr') {
+        if (!g) { g = { n, pos: String(it.pos ?? 'tr'), kind: m[2] === 'vt-pf' ? 'vt' : 'zpd', main: it }; groups.push(g); }
+        if (m[2] === 'vt-pf') g.pf = it; else g.ovgr = it;
+        continue;
+      }
+      if (!g) { g = { n, pos: String(it.pos ?? 'tr'), kind: m[2] as PartGroup['kind'], main: it }; groups.push(g); }
+      else g.main = it;
+    }
+    return groups.filter((g) => (g.kind !== 'vt' || (g.pf && g.main.symbolId === 'vt'))).sort((a, b) => a.n - b.n);
+  };
+  // 部品の寸法（縦の並びの縦線から見た位置）
+  const PART_VT_DX = 30;
+  const PART_ZPD_X = (g: PartGroup) => (g.ovgr ? 62 : 24);
+  const PART_GC_DX = 30;
+  /** 部品が、縦の並びの縦線から右へ伸びる幅（文字まで） */
+  const partRight = (g: PartGroup): number => {
+    if (g.kind === 'ct') return getSymbol('ct').box.w / 2 + LABEL_GAP + labelWidth(g.main.label);
+    if (g.kind === 'vt') return PART_VT_DX + getSymbol('pf').box.h + 10 + getSymbol('vt').box.w + LABEL_GAP + labelWidth(g.pf!.label);
+    if (g.kind === 'zpd') return PART_ZPD_X(g) + getSymbol('zpd').box.w + LABEL_GAP + labelWidth(['ZPD']);
+    return PART_GC_DX + getSymbol('gc').box.w / 2 + LABEL_GAP + labelWidth(g.main.label);
+  };
   /** この幹に、送り出しの縦の並び（開閉器・ZCT・ケーブルの端末）を作るか。開閉器があるときのほか、ケーブルでつなぐだけのときも、端末は、必ず下向きにするため */
-  const stackedTrunk = (tr: Trunk): boolean => sendoutsOfDest(destOf(tr)).length > 0 || tr.cable || tr.links[0]!.stages.slice(0, -1).some((x) => x.cable);
+  const stackedTrunk = (tr: Trunk): boolean => sendoutsOfDest(destOf(tr)).length > 0 || partsOfDest(destOf(tr)).length > 0 || tr.cable || tr.links[0]!.stages.slice(0, -1).some((x) => x.cable);
   /** 送り出しの縦の並びを作る幹が、1本でもあるエリアか */
   const stackedArea = (area: number): boolean => trunks.some((x) => x.from === area && stackedTrunk(x));
 
@@ -1440,7 +1473,9 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       ...trunks.filter((x) => x.from === area).flatMap((x) => x.links[0]!.stages.slice(0, -1).flatMap((st) => (st.cable && st.label.length > 0 ? [labelWidth(st.label)] : []))),
     ];
     const need = names.length > 0 ? head.box.w + LABEL_GAP + Math.max(...names) + 14 : 0;
-    return Math.max(base, need);
+    // 途中に付ける部品（VT・ZPD・GCは横に出る）が入る広さ
+    const partNeed = Math.max(0, ...trunks.filter((x) => x.from === area).flatMap((x) => partsOfDest(destOf(x)).map((g) => partRight(g) + 14)));
+    return Math.max(base, need, partNeed);
   };
   /** エリアの手前（左）のすきまの広さ。そのエリアの左のエリアから出る線の幹と、送り出しの開閉器の並びが入る広さ */
   const gapBefore = (p: number): number => {
@@ -1592,9 +1627,95 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       const stages = tr.links[0]!.stages;
       const groundStage = gr?.zct.stage ?? 1;
       const base = tr.from === 0 ? '' : `a${tr.from + 1}:`;
+      // 送り出しの途中に付ける部品（VT・CT・ZPD・GC）。縦の並びの、いまの位置から、順に置く
+      const parts = partsOfDest(destOf(tr));
+      const putParts = (slot: string) => {
+        for (const g of parts.filter((x) => x.pos === slot)) {
+          if (g.kind === 'ct') {
+            stackPut(g.main.id, g.main.role, 'ct', g.main.label);
+            continue;
+          }
+          // 横に出る部品：縦の線の途中から、右へ分岐する
+          const tapY = y + (g.kind === 'vt' ? 38 : 24);
+          wires.push({ x1: xs, y1: y, x2: xs, y2: tapY });
+          ext(xs, y, xs, tapY);
+          let bottom = tapY;
+          const place = (it: PlacedItem, x: number, yy: number, rotate: number, label: string[], at: { x: number; y: number }): PlacedSymbol => {
+            const d = getSymbol(it.symbolId);
+            const sym: PlacedSymbol = { id: it.id, role: it.role, symbolId: it.symbolId, x, y: yy, rotate, label, labelAt: { x: at.x, y: at.y, anchor: 'start' } };
+            symbols.push(sym);
+            const rb = rotatedBox(d.box, rotate);
+            ext(x + rb.dx, yy + rb.dy, x + rb.dx + rb.w, yy + rb.dy + rb.h);
+            if (label.length > 0) {
+              const lr = labelRect(sym.labelAt, label);
+              ext(lr.x0, lr.y0, lr.x1, lr.y1);
+            }
+            return sym;
+          };
+          if (g.kind === 'vt') {
+            // PF（左へ90°回す：入口が左、出口が右）→ VT。ラベルはVTの右
+            const pfd = getSymbol('pf');
+            const pin = portOf(pfd, 'in')!;
+            const pout = portOf(pfd, 'out')!;
+            const [ix, iy] = rotatedPort(pfd.box, pin.x, pin.y, 270);
+            const [ox, oy] = rotatedPort(pfd.box, pout.x, pout.y, 270);
+            const px = xs + PART_VT_DX - ix;
+            const py = tapY - iy;
+            const vtd = getSymbol('vt');
+            const vin = portOf(vtd, 'in')!;
+            const vx = px + ox + 10 - vin.x;
+            const lbl = g.pf!.label;
+            const ly = tapY - ((lbl.length - 1) * LABEL_LINE) / 2 + 4;
+            // 文字は、PFのもの（主回路のVTと同じ）。位置は、VTの右に書く
+            place(g.pf!, px, py, 270, lbl, { x: vx + vtd.box.w + LABEL_GAP, y: ly });
+            place(g.main, vx, tapY - vin.y, 0, [], { x: vx, y: tapY });
+            wires.push({ x1: xs, y1: tapY, x2: xs + PART_VT_DX, y2: tapY });
+            wires.push({ x1: px + ox, y1: py + oy, x2: vx + vin.x, y2: tapY });
+            ext(xs, tapY, xs + PART_VT_DX, tapY);
+            bottom = tapY + Math.max(pfd.box.w / 2, 22);
+          } else if (g.kind === 'zpd') {
+            const zd = getSymbol('zpd');
+            const zin = portOf(zd, 'in')!;
+            const zout = portOf(zd, 'out')!;
+            const zx = xs + PART_ZPD_X(g);
+            const zy = tapY + HANG_GAP;
+            place(g.main, zx, zy, 0, ['ZPD'], { x: zx + zd.box.w + LABEL_GAP, y: zy + 14 });
+            wires.push({ x1: xs, y1: tapY, x2: zx + zin.x, y2: tapY });
+            wires.push({ x1: zx + zin.x, y1: tapY, x2: zx + zin.x, y2: zy + zin.y });
+            ext(xs, tapY, zx + zin.x, tapY);
+            bottom = zy + zd.box.h;
+            if (g.ovgr) {
+              const od = getSymbol('relay-ovgr');
+              const orr = portOf(od, 'r')!;
+              const oy = zy + zout.y - orr.y;
+              const ox = zx - 14 - orr.x;
+              place(g.ovgr, ox, oy, 0, [], { x: ox, y: oy });
+              wires.push({ x1: ox + orr.x, y1: zy + zout.y, x2: zx + zout.x, y2: zy + zout.y });
+              ext(ox, oy, ox + od.box.w, oy + od.box.h);
+            }
+          } else {
+            const gd = getSymbol('gc');
+            const gin = portOf(gd, 'in')!;
+            const gx0 = xs + PART_GC_DX - gin.x;
+            const gy = tapY + HANG_GAP;
+            place(g.main, gx0, gy, 0, g.main.label, { x: gx0 + gd.box.w + LABEL_GAP, y: gy + gd.box.h / 2 });
+            wires.push({ x1: xs, y1: tapY, x2: xs + PART_GC_DX, y2: tapY });
+            wires.push({ x1: xs + PART_GC_DX, y1: tapY, x2: xs + PART_GC_DX, y2: gy + gin.y });
+            ext(xs, tapY, xs + PART_GC_DX, tapY);
+            bottom = gy + gd.box.h;
+          }
+          // 縦の線は、部品の下まで通して、次の記号につなぐ
+          const next = bottom + SENDOUT_GAP;
+          wires.push({ x1: xs, y1: tapY, x2: xs, y2: next });
+          ext(xs, tapY, xs, next);
+          y = next;
+        }
+      };
+      putParts('tr');
       stages.forEach((st, si) => {
         const k = si + 1;
         const last = k === stages.length;
+        const hadSwitch = sends.some((x) => (x.stage ?? 1) === k);
         for (const it of sends.filter((x) => (x.stage ?? 1) === k)) {
           const breaking = it.symbolId === 'vcb' || it.symbolId === 'lbs' || it.symbolId === 'lbs-pf';
           const mine = breaking && k === groundStage;
@@ -1603,6 +1724,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
           if (mine) breaker = put;
           if (mine && zctPos === 'bus-secondary') putZct();
         }
+        if (hadSwitch) putParts(`sw${k}`);
         if (last) {
           // 送り出し側のケーブルの端末：頂点が下（ケーブル側）を向く、ふつうの向き
           if (tr.cable) {
@@ -1618,6 +1740,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
           stackPut(hr, hr, 'cable-head', st.label, { rotate: 180, dashedIn: st.dashed });
         }
         if (k === groundStage && zctPos === 'cable' && (last || !st.cable)) putZct();
+        if (st.cable) putParts(`line${k}`);
       });
       // 外側の線は、内側の線の並びの下を通って、右へ出る。端末のあとを、その分、下へ延ばす（ここから先が、ケーブル）
       if (tr.cable && tr.gn > 1 && tr.gi < tr.gn - 1) {

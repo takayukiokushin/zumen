@@ -1,6 +1,7 @@
 import type { Answers, Value } from './condition.ts';
 import { PCS_INPUT_MAX, countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
+import { LINK_PART_MAX, linkPartKey, linkPartOpen } from './link-parts.ts';
 import { evaluate, fillTemplate } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
@@ -470,6 +471,16 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.vtPfHead = `VT＋PF${times(answers.vtCount)}`;
   // V結線は、VTが2台以上あるときだけ書く
   d.vtConnectionText = answers.vtConnection === 'v' && Math.floor(Number(answers.vtCount)) >= 2 ? 'V結線' : '';
+
+  // 送り出しの途中に付ける部品（VT・CT）の文字（第13弾 項目55 修正19・段階3-1）。VT・CTの書き方は、主回路のものと同じ
+  for (let n = 1; n <= LINK_PART_MAX; n++) {
+    const cnt = Math.floor(Number(answers[linkPartKey(n, 'VtCount')]));
+    const vtCount = Number.isFinite(cnt) && cnt >= 2 ? cnt : 1;
+    d[`linkPart${n}VtHead`] = `VT＋PF${vtCount >= 2 ? `×${vtCount}` : ''}`;
+    d[`linkPart${n}VtConnText`] = answers[linkPartKey(n, 'VtConn')] === 'v' && vtCount >= 2 ? 'V結線' : '';
+    const pct = String(answers[linkPartKey(n, 'CtRatio')] ?? '').trim();
+    d[`linkPart${n}CtRatioText`] = /^\d+(\.\d+)?$/.test(pct) ? `${pct}/5A` : pct;
+  }
 
   // 継電器の記号（OCR→relay-ocr）。種類がまだ無いときは、記号を決めない
   d.relaySymbol = answers.relayType ? `relay-${String(answers.relayType).toLowerCase()}` : '';
@@ -1408,6 +1419,18 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
       out.push({
         group: 'link',
         text: '選んだ変圧器の二次側は、低圧（600V以下）です。送り出し先は、高圧の設備です。二次側が高圧（600Vを超える）の変圧器から送り出していませんか（図面は、このまま描きます）。',
+      });
+    }
+  }
+  // 送り出しの途中の機器（VT・CT・ZPD・GC）：位置が、いまの構成（開閉器・線）に無いときは、描かない。知らせる（段階3-1）
+  if (Number(dv.areaNo) > 1 && dv.linkTap === 'tr-secondary') {
+    const n = countOf(view.linkPartCount, 0, LINK_PART_MAX);
+    const bad: number[] = [];
+    for (let i = 1; i <= n; i++) if (!evaluate(linkPartOpen(i), dv)) bad.push(i);
+    if (bad.length > 0) {
+      out.push({
+        group: 'link',
+        text: '途中に付ける機器のうち、付ける位置が、いまの構成にないものがあります（その段の開閉器が「なし」、または線が「電線」、または段が足りません）。位置を選び直してください（その機器は、図面に描きません）。',
       });
     }
   }

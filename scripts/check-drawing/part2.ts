@@ -891,6 +891,37 @@ console.log('\n■ 変圧器の二次側から送り出す（何台目か＋開�
     const bus = draw({ 'a2:linkTap': 'bus', 'a2:linkStageCount': '3', 'a2:link2Switch': 'vcb', 'a2:linkSwitch': 'ds' });
     if (bus.symbols.some((x) => x.role.endsWith('sendout-vcb-2'))) fail('「変圧器の二次側」でないのに、2段目が描かれています');
   }
+  // 送り出しの途中に付ける機器（段階3-1）：変圧器の出口の次にVT、1段目の開閉器の次にCT・ZPD(OVGR付き)、1段目の線の次にGC。上から順に並ぶ。0個のときは、これまでと同じ
+  {
+    const parted: Answers = {
+      'a2:linkStageCount': '2', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes', 'a2:link2Switch': 'ds', 'a2:link2Cable': 'yes', 'a2:linkPartCount': '5',
+      'a2:linkPart1Kind': 'vt', 'a2:linkPart1Pos': 'tr', 'a2:linkPart2Kind': 'ct', 'a2:linkPart2Pos': 'sw1', 'a2:linkPart3Kind': 'zpd', 'a2:linkPart3Pos': 'sw1', 'a2:linkPart3Ovgr': 'yes',
+      'a2:linkPart4Kind': 'gc', 'a2:linkPart4Pos': 'line1', 'a2:linkPart5Kind': 'vt', 'a2:linkPart5Pos': 'line2', 'a2:linkPart5VtCount': '1',
+    };
+    const dp = draw(parted);
+    const sy = (r: string) => dp.symbols.find((x) => x.role.endsWith(r))?.y ?? NaN;
+    const order = ['sendout-part-1-vt', 'sendout-vcb', 'sendout-part-2-ct', 'sendout-part-3-zpd', 'cable-head-send-1', 'sendout-part-4-gc', 'sendout-ds-2', 'sendout-part-5-vt'].map(sy);
+    if (order.some((v) => !Number.isFinite(v))) fail(`途中の機器が、描かれていません（${order.map((v) => Math.round(v)).join('・')}）`);
+    else if (order.some((v, i) => i > 0 && !(v > order[i - 1]! - 20))) fail(`途中の機器が、上から順に並んでいません（${order.map((v) => Math.round(v)).join('・')}）`);
+    else if (dp.symbols.filter((x) => /sendout-part-\d+-vt-pf$/.test(x.role) && x.symbolId === 'pf' && x.rotate === 270).length !== 2) fail('VTには、必ずPFが付いて（横向きに）描かれるはずです');
+    else if (!dp.symbols.some((x) => /sendout-part-3-ovgr$/.test(x.role))) fail('ZPDのOVGRが描かれていません');
+    else {
+      // 記号どうしが重ならない（途中の機器と、ほかの記号）
+      const boxes = dp.symbols.map((x) => { const d = getSymbolDef(x.symbolId); const rb = rotatedBox(d.box, x.rotate); return { id: x.role, x0: x.x + rb.dx, y0: x.y + rb.dy, x1: x.x + rb.dx + rb.w, y1: x.y + rb.dy + rb.h }; });
+      const hits: string[] = [];
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!, b = boxes[j]!;
+        if (!(/sendout-part/.test(a.id) || /sendout-part/.test(b.id))) continue;
+        if (a.x0 < b.x1 - 1 && b.x0 < a.x1 - 1 && a.y0 < b.y1 - 1 && b.y0 < a.y1 - 1) hits.push(`${a.id}×${b.id}`);
+      }
+      if (hits.length > 0) fail(`途中の機器が、ほかの記号に重なっています（${hits.slice(0, 4).join('・')}）`);
+      else console.log('  送り出しの途中の機器（VT＋PF・CT・ZPD＋OVGR・GC）：上から順に並ぶ。VTには必ずPFが付く。記号どうしは重ならない');
+    }
+    // 個数が0のとき、種類・位置を答えていても、図面は、段階2と同じ
+    const zero = draw({ 'a2:linkStageCount': '2', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes', 'a2:link2Switch': 'ds' });
+    const zero2 = draw({ 'a2:linkStageCount': '2', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes', 'a2:link2Switch': 'ds', 'a2:linkPartCount': '0', 'a2:linkPart1Kind': 'vt', 'a2:linkPart1Pos': 'sw1' });
+    if (JSON.stringify(zero) !== JSON.stringify(zero2)) fail('個数が0のときは、機器を答えていても、図面は変わらないはずです');
+  }
   // 台数より大きい番号は、最後の台に寄せる
   const d9 = draw({ 'a2:linkSourceTr': '8', 'a2:linkCable': 'yes' });
   if (!hasFeed(d9, trOutOf(d9, 1))) fail('台数より大きい番号を選んだとき、最後の台から出ていません');

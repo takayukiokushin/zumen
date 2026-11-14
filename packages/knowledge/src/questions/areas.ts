@@ -1,6 +1,7 @@
 import type { Question, Choice } from './types.ts';
 import type { Condition } from '../condition.ts';
 import { FUSE_CURRENT_OPTIONS, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
+import { LINK_PART_MAX, linkPartKey, linkPartPositions } from '../link-parts.ts';
 
 /**
  * 送り出しの開閉器の選択肢（段ごとに同じ。第13弾 項目55 修正19・段階2）。
@@ -184,6 +185,7 @@ export const AREAS_QUESTIONS: Question[] = [
     help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
   },
   ...[2, 3, 4].flatMap((k): Question[] => stageQuestions(k)),
+  ...partQuestions(),
 ];
 
 /**
@@ -213,4 +215,73 @@ function stageQuestions(k: number): Question[] {
     },
     ...connectionCableQuestions({ prefix: p, group: 'link', section: sec, when: { all: [when, { key: `${p}Cable`, ne: 'no' }] } }).map((q) => ({ ...q, noTrend: true })),
   ];
+}
+
+/**
+ * 送り出しの途中に付ける部品（VT・CT・ZPD・GC）の質問。最大6個。個数が0のときは、なにも聞かない
+ * （第13弾 項目55 修正19・段階3-1）。位置は、いまの構成にある位置だけを選べる
+ */
+function partQuestions(): Question[] {
+  const base: Condition = { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }] };
+  // VTの変圧比：送り出しのケーブルが3300Vなら 3300/110V、それ以外は 6600/110V
+  const volt3300: Condition = { any: ['link', 'link2', 'link3', 'link4'].map((p) => ({ key: `${p}CableVoltage`, in: ['3300', 3300] })) };
+  const out: Question[] = [
+    {
+      id: 'linkPartCount',
+      noTrend: true,
+      group: 'link',
+      label: '途中に付ける機器（VT・CT・ZPD・GC）は何個ですか？',
+      type: 'select',
+      options: Array.from({ length: LINK_PART_MAX + 1 }, (_, i) => ({ value: String(i), label: i === 0 ? '0（なし）' : `${i}個` })),
+      defaultValue: '0',
+      showIf: base,
+      ask: 'always',
+      help: '送り出しの途中（変圧器の出口・開閉器・線のあと）に、VT・CT・ZPD・GCを付けるとき、その個数。最大6個。0のときは、なにも付けない',
+    },
+  ];
+  for (let n = 1; n <= LINK_PART_MAX; n++) {
+    const sec = `途中の機器${n}`;
+    const here: Condition = { all: [base, { key: 'linkPartCount', gt: n - 1 }] };
+    const kind = (k: string): Condition => ({ all: [here, { key: linkPartKey(n, 'Kind'), eq: k }] });
+    const q = (x: Omit<Question, 'group' | 'section' | 'noTrend' | 'ask'>): Question => ({ ...x, group: 'link', section: sec, noTrend: true, ask: 'always' });
+    out.push(
+      q({
+        id: linkPartKey(n, 'Kind'), label: '機器の種類は？', type: 'select', dropdown: true,
+        options: [{ value: 'vt', label: 'VT' }, { value: 'ct', label: 'CT' }, { value: 'zpd', label: 'ZPD' }, { value: 'gc', label: 'GC（接地コンデンサ）' }],
+        defaultValue: 'vt', showIf: here,
+        help: 'VTには、必ずヒューズ（PF）が付く。ZPDは、OVGRを一緒に描くか選べる。GCは、接地コンデンサ',
+      }),
+      q({
+        id: linkPartKey(n, 'Pos'), label: '付ける位置は？', type: 'select', dropdown: true,
+        options: linkPartPositions().map((o) => ({ value: o.value, label: o.label, ...(o.open ? { showIf: o.open } : {}) })),
+        defaultValue: 'tr', showIf: here,
+        help: '送り出しの途中の、どこに付けるか。その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない',
+      }),
+      q({
+        id: linkPartKey(n, 'VtCount'), label: 'VTの台数', type: 'select', options: [{ value: '1', label: '1' }, { value: '2', label: '2' }], defaultValue: '2', unit: '台',
+        showIf: kind('vt'), help: '2台のときは、図面に「VT＋PF×2」のように書く',
+      }),
+      q({
+        id: linkPartKey(n, 'VtRatio'), label: 'VTの変圧比', type: 'text', placeholder: '6600/110V',
+        autoValue: [{ when: volt3300, value: '3300/110V' }, { value: '6600/110V' }],
+        showIf: kind('vt'),
+      }),
+      q({
+        id: linkPartKey(n, 'VtConn'), label: 'VTの接続', type: 'select',
+        options: [{ value: 'independent', label: '独立（それぞれ別に接続）' }, { value: 'v', label: 'V結線' }],
+        autoValue: [{ when: { key: linkPartKey(n, 'VtCount'), in: ['2', 2] }, value: 'v' }, { value: 'independent' }],
+        showIf: { all: [kind('vt'), { key: linkPartKey(n, 'VtCount'), gt: 1 }] },
+        help: 'V結線のときは、図面に「V結線」と書く',
+      }),
+      q({
+        id: linkPartKey(n, 'CtRatio'), label: 'CTの変流比', type: 'text', placeholder: '100/5A', showIf: kind('ct'),
+        help: '数字だけ（100）なら、「100/5A」と書く',
+      }),
+      q({
+        id: linkPartKey(n, 'Ovgr'), label: 'OVGR（地絡過電圧継電器）も描きますか？', type: 'select', options: YES_NO_Q, defaultValue: 'no', showIf: kind('zpd'),
+        help: 'ZPDにつなぐOVGRを、ZPDの横に描く',
+      }),
+    );
+  }
+  return out;
 }
