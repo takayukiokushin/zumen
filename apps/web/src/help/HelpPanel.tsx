@@ -8,7 +8,7 @@ import { useEscapeToClose } from '../useEscapeToClose.ts';
  * 文章は i18n に置いてある（help.1.t / help.1.b …）。
  */
 
-const TOPICS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+const TOPICS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] as const;
 
 export function HelpPanel({ onClose }: { onClose: () => void }) {
   const t = useT();
