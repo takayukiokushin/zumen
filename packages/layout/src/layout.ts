@@ -93,6 +93,8 @@ export interface DrawingLayout {
 
 /** 主回路どうしの標準の間隔 */
 const GAP = 16;
+/** 蓄電池ユニットを、PCSの下に置くときの、GAP への足し分 */
+const BATTERY_EXTRA_GAP = 6;
 /** キュービクルなどの枠の横線から、その下の、ケーブルの上向きの三角（受ける側の端末）の頂点までの間隔（引込ケーブルの、2つの三角の頂点のちょうど真ん中に、枠の横線を通すため。ケーブルの区間の標準の長さ56の、半分） */
 const CABLE_FRAME_TO_HEAD = 28;
 /** 別の記号の左に印を置くときの、記号との隙間（客柱とPAS・PGSの枠のあいだ） */
@@ -875,12 +877,14 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
           const entry = rot === 180 && outP ? { x: flip(def, outP.x, outP.y, rot)[0], y: flip(def, outP.x, outP.y, rot)[1] } : inP;
           const exit = rot === 180 ? { x: flip(def, inP.x, inP.y, rot)[0], y: flip(def, inP.x, inP.y, rot)[1] } : outP;
           const x = laneX(slot) - entry.x;
-          const yy = ly + (i === 0 ? 0 : GAP) - entry.y;
+          // 蓄電池ユニット（PCSの下）は、PCSとの間を、少しだけ広げる。ほかの列の文字（補助変圧器盤の文字など）の下端と、
+          // 蓄電池ユニットの上端が、たまたま4以内に近づくと、「結線を整える」が、そこを狭すぎる帯として広げてしまうため
+          const yy = ly + (i === 0 ? 0 : item.role === 'battery' ? GAP + BATTERY_EXTRA_GAP : GAP) - entry.y;
           if (i > 0) wires.push({ x1: laneX(slot), y1: ly, x2: laneX(slot), y2: yy + entry.y, ...(prevDashed ? { dashed: true } : {}) });
           const sym = add(item, def, x, yy, rot, 'right');
           prevDashed = item.dashedAfter === true;
-          // 電動機の列は、文字を、記号の右横に書く（始動方式・容量・ケーブルの注記）
-          if (i > 0 && !item.role.startsWith('motor')) {
+          // 電動機の列と、蓄電池ユニット（PCSの下）は、文字を、記号の右横に書く（電動機：始動方式・容量・ケーブルの注記）
+          if (i > 0 && !item.role.startsWith('motor') && item.role !== 'battery') {
             // 2つ目以降は記号の下に中央揃えで文字を書く
             sym.labelAt = { x: laneX(slot) + def.box.w / 2 - entry.x, y: yy + def.box.h + 12, anchor: 'middle' };
           }

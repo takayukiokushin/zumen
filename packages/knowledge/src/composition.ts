@@ -1044,6 +1044,21 @@ export const EXTRAS: Placement[] = [
     when: { all: [{ key: 'hasPv', eq: 'yes' }, { key: 'pcsAssigned', eq: 'no' }] },
     labelTemplate: ['PV', '{pcsText}'],
   },
+  /*
+   * 蓄電池：変圧器 → PCS → 蓄電池ユニットの順（太陽光の「PCS → パネル」と同じ形。第13弾 項目55 修正14／A-5）。
+   * 蓄電池があれば、PCSは必ず入る（PCSの質問は無い。文字は、PCSの枠の中の「PCS」だけ）。
+   * 変圧器につながないときも、PCSと蓄電池ユニットを、結線せずに並べて置く
+   */
+  {
+    role: 'battery-pcs',
+    symbolId: 'pcs',
+    kind: 'feeder',
+    when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', ne: 'none' }] },
+    labelTemplate: [],
+    props: { transformer: 'batteryTransformer' },
+    laneBase: 300,
+    note: '蓄電池ユニットの手前に入るPCS。変圧器の低圧側 → PCS → 蓄電池ユニットの順に、下へつなぐ',
+  },
   {
     role: 'battery',
     symbolId: 'battery-unit',
@@ -1052,6 +1067,13 @@ export const EXTRAS: Placement[] = [
     labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
     props: { transformer: 'batteryTransformer' },
     laneBase: 300,
+  },
+  {
+    role: 'battery-pcs',
+    symbolId: 'pcs',
+    kind: 'free',
+    when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', eq: 'none' }] },
+    labelTemplate: [],
   },
   {
     role: 'battery',

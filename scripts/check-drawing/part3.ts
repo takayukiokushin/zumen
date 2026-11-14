@@ -190,7 +190,10 @@ console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
         const long = setLabel(d0, bat.id, [...bat.label, ...lines]);
         const before = inspectDrawing(long, 'A3', 'landscape').filter((i) => i.kind === 'overlap');
         // 隣の記号に重なる位置に、文字を置いてみる（自動で置いた位置から、隣の記号の上へ動かす）
-        const neighbour = d0.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.symbolId === 'mccb' && it.y > bat.y - 20 && it.y < bat.y + 20)!;
+        // （蓄電池ユニットはPCSの下に移ったので、隣の列にある、MCCB・PCS以外の記号のうち、高さの近いものを探す）
+        const neighbour = d0.items
+          .filter((it): it is DocSymbol => it.kind === 'symbol' && it.id !== bat.id && Math.abs(it.x - bat.x) > 20 && it.y > bat.y - 60 && it.y < bat.y + 60)
+          .sort((p, q) => Math.abs(p.y - bat.y) - Math.abs(q.y - bat.y))[0]!;
         const onNeighbour: Doc = { ...d0, items: d0.items.map((it) => (it.id === bat.id && it.kind === 'symbol' ? { ...it, label: [...it.label, ...lines], labelDx: neighbour.x - it.x + 5, labelDy: neighbour.y - it.y + 20 } : it)) };
         const clash = inspectDrawing(onNeighbour, 'A3', 'landscape').filter((i) => i.kind === 'overlap');
         if (clash.length === 0) problems.push('文字が隣の記号に重なっているのに、点検で見つかりません');

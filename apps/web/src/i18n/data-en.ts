@@ -358,7 +358,7 @@ const data: Record<string, string> = {
   "いいえ": "No",
   "蓄電ユニットの規模": "Battery unit scale",
   "蓄電池ユニットは、どの変圧器につなぎますか？": "Which transformer is the battery unit connected to?",
-  "最初は、1台目の変圧器につなぐ設定になっている。つなぎ先が決まっていなければ「つながない」を選ぶ": "By default it is set to connect to the 1st transformer. If the connection is not decided, choose “Do not connect”",
+  "最初は、1台目の変圧器につなぐ設定になっている。つなぎ先が決まっていなければ「つながない」を選ぶ。図面には、変圧器 → PCS → 蓄電池ユニットの順に描く（PCSは必ず入る）": "By default it is set to connect to the 1st transformer. If the connection is not decided, choose “Do not connect”. The drawing shows transformer → PCS → battery unit, in that order (the PCS is always included).",
   "つながない（単独で置く）": "Do not connect (place separately)",
   "1台目": "1st unit",
   "2台目": "2nd unit",

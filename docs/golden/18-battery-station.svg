@@ -6,7 +6,7 @@
   </g>
   <text x="537.5" y="45" font-size="14" font-weight="700" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">見本工場　キュービクル式高圧受電設備単線結線図</text>
   <text x="1043" y="1490" font-size="9" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">株式会社フジエレックス</text>
-  <g transform="translate(523 77) scale(1.0000)">
+  <g transform="translate(523 75) scale(1.0000)">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">
     <path d="M -205.2 404 L 234.2 404 M -205.2 404 L -205.2 430 M 234.2 404 L 234.2 430" fill="none" stroke-width="1" />
     <text x="-205.2" y="398" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
@@ -281,12 +281,17 @@
       <line x1="15" y1="52.5" x2="33" y2="52.5" stroke-width="1" />
     </g>
     <text x="-30" y="1266.5" font-size="10" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-30" dy="0">電灯用 Tr</tspan><tspan x="-30" dy="12.5">1φ20kVA</tspan><tspan x="-30" dy="12.5">6600/210-105V</tspan></text>
-    <g transform="translate(-48 1348)">
+    <g transform="translate(-113 1348)">
+      <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
+      <rect x="9" y="10" width="38" height="28" fill="none" stroke-width="1" />
+      <text x="28" y="24" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">PCS</text>
+    </g>
+    <g transform="translate(37 1348)">
       <line x1="48" y1="0" x2="48" y2="10" stroke-width="1" />
       <rect x="4" y="10" width="88" height="30" fill="none" stroke-width="1" />
       <text x="48" y="25" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">蓄電池ユニット</text>
     </g>
-    <text x="54" y="1366.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="54" dy="0">蓄電池ユニット</tspan><tspan x="54" dy="12.5">200kWh</tspan></text>
+    <text x="139" y="1366.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="139" dy="0">蓄電池ユニット</tspan><tspan x="139" dy="12.5">200kWh</tspan></text>
     </g>
   </g>
 </svg>

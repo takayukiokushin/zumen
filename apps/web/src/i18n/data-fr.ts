@@ -352,7 +352,7 @@ const data: Record<string, string> = {
   "いいえ": "Non",
   "蓄電ユニットの規模": "Taille de l’unité de stockage",
   "蓄電池ユニットは、どの変圧器につなぎますか？": "À quel transformateur l’unité de batteries est-elle raccordée ?",
-  "最初は、1台目の変圧器につなぐ設定になっている。つなぎ先が決まっていなければ「つながない」を選ぶ": "Par défaut, elle est raccordée au 1er transformateur. Si le point de raccordement n’est pas défini, choisissez « Non raccordée ».",
+  "最初は、1台目の変圧器につなぐ設定になっている。つなぎ先が決まっていなければ「つながない」を選ぶ。図面には、変圧器 → PCS → 蓄電池ユニットの順に描く（PCSは必ず入る）": "Par défaut, elle est raccordée au 1er transformateur. Si le point de raccordement n’est pas défini, choisissez « Non raccordée ». Le dessin montre transformateur → PCS → unité de batterie, dans cet ordre (le PCS est toujours inclus).",
   "つながない（単独で置く）": "Non raccordée (placée seule)",
   "1台目": "1er",
   "2台目": "2e",
