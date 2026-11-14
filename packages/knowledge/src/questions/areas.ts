@@ -1,6 +1,6 @@
 import type { Question } from './types.ts';
 import type { Condition } from '../condition.ts';
-import { BUS_SWITCH_OPTIONS, FUSE_CURRENT_OPTIONS, YES_NO_Q, connectionCableQuestions } from './common.ts';
+import { BUS_SWITCH_OPTIONS, FUSE_CURRENT_OPTIONS, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
 
 /** 質問の定義：表題欄、エリア間の接続（分岐する位置・ケーブル・送り出す側の開閉器。送り先ごとに、送り出す側の欄で入力する） */
 export const AREAS_QUESTIONS: Question[] = [
@@ -42,11 +42,26 @@ export const AREAS_QUESTIONS: Question[] = [
       { value: 'ds-vcb', label: 'DSとVCBの間' },
       { value: 'vcb-load', label: 'VCBの負荷側（CTの下）' },
       { value: 'bus', label: '高圧母線（変圧器の手前）' },
+      { value: 'tr-secondary', label: '変圧器の二次側' },
     ],
     showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
     required: true,
-    help: 'このエリア（送り出す側）の、どこから、この送り先へ線を出すか。変圧器の手前は、高圧母線として扱う',
+    help: 'このエリア（送り出す側）の、どこから、この送り先へ線を出すか。変圧器の手前は、高圧母線として扱う。「変圧器の二次側」を選ぶと、何台目の変圧器かを、次の質問で選ぶ（二次側が高圧のとき）',
+  },
+  {
+    // 「変圧器の二次側」から送り出すときだけ（第13弾 項目55 修正19）。台数より大きい番号は、最後の台に寄せる
+    id: 'linkSourceTr',
+    noTrend: true,
+    group: 'link',
+    label: '何台目の変圧器の二次側ですか？',
+    type: 'select',
+    options: TRANSFORMER_CHOICES.slice(1),
+    defaultValue: '1',
+    dropdown: true,
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }] },
+    ask: 'always',
+    help: '送り出す側のエリアの、何台目の変圧器か。台数より大きい番号は、最後の台に寄せる。二次側が高圧（600Vを超える）の変圧器から送り出す。二次側が低圧（600V以下）のときは、注意を出す',
   },
   {
     id: 'linkCable',

@@ -152,6 +152,8 @@ interface AreaTaps {
   breakerEntry?: number;
   breakerExit?: number;
   bus?: { x: number; y: number };
+  /** 変圧器の二次側の出口（何台目か＝配列の番号＋1）。三巻線変圧器（出口が決まっていない）は、null */
+  trOut?: ({ x: number; y: number; /** その出口から、低圧の回線が下へ出ているか */ lv: boolean } | null)[];
   /** 主回路のいちばん下 */
   end: number;
 }
@@ -235,6 +237,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   let feederAnchorY: number | null = null;
   /** 変圧器ごとの低圧側の出口（1台目から順に）。低圧の回線はここからぶら下げる */
   const transformerOut: { x: number; y: number }[] = [];
+  /** 低圧の回線が下へ出ている変圧器（0始まり）。送り出しの線の、つなぎ方に使う */
+  let trWithLv: Map<number, number[]> = new Map();
   /** 下の出口を決めていない変圧器（三巻線変圧器）の番号（0始まり） */
   const transformerNoOut = new Set<number>();
 
@@ -838,6 +842,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
 
     // 変圧器ごとに、その下へぶら下げる回線をまとめる
     const byTransformer = new Map<number, number[]>();
+    trWithLv = byTransformer;
     for (const lane of laneIds) {
       const t = targetOf(lane);
       const list = byTransformer.get(t);
@@ -978,6 +983,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     breakerEntry: portY('main-breaker', 'in'),
     breakerExit: portY('main-breaker', 'out', 'sec'),
     bus: busInfo,
+    trOut: Array.from({ length: transformerOut.length }, (_, t) => (transformerOut[t] && !transformerNoOut.has(t) ? { ...transformerOut[t]!, lv: trWithLv.has(t) } : null)),
     end: spineY,
   };
   return { symbols, wires, frames, bounds: { x0, y0, x1, y1 }, taps };
@@ -1349,7 +1355,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
    * 間にほかのエリアがあっても、その上を通るので、エリアの中を横切らない。
    * 同じ位置から出る線は、1本の縦線（幹）を共有し、高さごとに横へ分かれる。
    */
-  type LinkInfo = { n: number; from: number; sx: number; sy: number; label: string[]; dashed: boolean; cable: boolean; /** 送り先名称（送り出し側の端末の近くに書く） */ name: string[] };
+  type LinkInfo = { n: number; from: number; sx: number; sy: number; /** 変圧器の二次側から出すとき、出口の高さ（低圧の回線が無いときだけ。ここから分岐の高さまで、線を引く） */ feedFrom?: number; label: string[]; dashed: boolean; cable: boolean; /** 送り先名称（送り出し側の端末の近くに書く） */ name: string[] };
   const linkInfos: LinkInfo[] = [];
   for (const part of parts) {
     const link = part.link?.link;
@@ -1364,12 +1370,18 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     if (link.tap === 'ds-source' && dsTop !== undefined) y = dsTop - TAP_OFFSET;
     else if (link.tap === 'ds-vcb' && breakerTop !== undefined) y = t.breakerEntry !== undefined ? t.breakerEntry - 5 : breakerTop + TAP_OFFSET;
     else if (link.tap === 'vcb-load' && breakerBottom !== undefined) y = breakerBottom + TAP_OFFSET;
+    // 変圧器の二次側：選んだ変圧器（台数より大きい番号は最後の台）の、下の出口から出す。三巻線変圧器（出口が決まっていない）は、高圧母線から出す
+    let trTap: { x: number; y: number; lv: boolean } | undefined;
+    if (link.tap === 'tr-secondary' && t.trOut && t.trOut.length > 0) {
+      const idx = Math.max(0, Math.min(t.trOut.length - 1, (link.trNo ?? 1) - 1));
+      trTap = t.trOut[idx] ?? undefined;
+    }
     // 主回路の縦線から右へ出る線が、右にある機器（トリップコイルなど）や文字を突き抜けるときは、近くの空いた高さへずらす
     if (y !== undefined) y = clearRunY(src.result, y, t.bus ? t.bus.y - 8 : t.end);
     // 位置が決まらないときは、高圧母線の右端（母線が無ければ、主回路の末端）から出る
-    const sy = (y ?? (t.bus ? t.bus.y : t.end)) + dys[link.from]!;
-    const sx = y !== undefined ? 0 : t.bus ? t.bus.x : 0;
-    linkInfos.push({ n: part.n, from: link.from, sx, sy, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
+    const sy = (trTap ? trTap.y + TAP_OFFSET : (y ?? (t.bus ? t.bus.y : t.end))) + dys[link.from]!;
+    const sx = trTap ? trTap.x : y !== undefined ? 0 : t.bus ? t.bus.x : 0;
+    linkInfos.push({ n: part.n, from: link.from, sx, sy, feedFrom: trTap && !trTap.lv ? trTap.y + dys[link.from]! : undefined, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
   }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
   type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 同じ位置から出るケーブルの線の中での順番（0＝いちばん近いエリアへ）と、本数 */ gi: number; gn: number };
@@ -1514,6 +1526,11 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     // 分岐する位置のx：高圧母線のときは母線の右端、それ以外は主回路の縦線
     const sx = tr.links[0]!.sx + from.dx;
     const sy = tr.sy;
+    const feedFrom = tr.links[0]!.feedFrom;
+    if (feedFrom !== undefined) {
+      wires.push({ x1: sx, y1: feedFrom, x2: sx, y2: sy });
+      ext(sx, feedFrom, sx, sy);
+    }
     const gx = trunkX(tr);
     const tops = tr.links.map(tyOf);
     const topY = Math.min(...tops);

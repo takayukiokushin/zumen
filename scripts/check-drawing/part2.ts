@@ -833,6 +833,44 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
   }
 }
 
+/* ---------- 26b. 変圧器の二次側から送り出す（第13弾 項目55 修正19・段階1） ---------- */
+console.log('\n■ 変圧器の二次側から送り出す（何台目か＋開閉器1つ＋ケーブル1本）');
+{
+  const mk = (extra: Answers): Answers =>
+    withAutoValues({
+      ...answers, mainBreakerForm: 'cb', transformerCount: 2, hasPv: 'no', hasCapacitor: 'no', hasBattery: 'no', hasGenerator: 'no',
+      areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:linkTap': 'tr-secondary', ...extra,
+    } as Answers);
+  const trOutOf = (d: ReturnType<typeof layout>, n: number) => {
+    const tr = d.symbols.find((x) => x.role === `transformer`)!;
+    void tr;
+    const t = d.symbols.filter((x) => x.role === 'transformer' || /^transformer(-\d+)?$/.test(x.role))[n]!;
+    const def = getSymbolDef(t.symbolId);
+    const out = def.ports.find((q) => q.id === 'out')!;
+    return { x: t.x + out.x, y: t.y + out.y };
+  };
+  const draw = (extra: Answers) => { const a = mk(extra); return layout(buildComposition(a), a); };
+  // 1台目・2台目：線の出る位置（x）が、変圧器ごとに違う。出口から、まっすぐ下へ（低圧の回線が無いときは、線を足す）。開閉器・ケーブルの端末は、これまでの送り出しと同じ
+  const d1 = draw({ 'a2:linkSourceTr': '1', 'a2:linkCable': 'yes' });
+  const d2 = draw({ 'a2:linkSourceTr': '2', 'a2:linkCable': 'yes', 'a2:linkSwitch': 'vcb' });
+  const o1 = trOutOf(d1, 0);
+  const o2 = trOutOf(d2, 1);
+  const hasFeed = (d: ReturnType<typeof layout>, o: { x: number; y: number }) => d.wires.some((w) => Math.abs(w.x1 - o.x) < 0.5 && Math.abs(w.x2 - o.x) < 0.5 && Math.min(w.y1, w.y2) <= o.y + 0.5 && Math.max(w.y1, w.y2) >= o.y + 7.5);
+  if (!hasFeed(d1, o1)) fail('1台目の変圧器の出口から、送り出しの線が出ていません');
+  else if (!hasFeed(d2, o2)) fail('2台目の変圧器の出口から、送り出しの線が出ていません');
+  else if (Math.abs(o1.x - o2.x) < 20) fail('1台目と2台目の、出口の位置が、同じです（試験の前提が違います）');
+  else if (!d2.symbols.some((x) => x.symbolId === 'vcb' && /sendout/.test(x.role))) fail('送り出しの開閉器（VCB）が描かれていません');
+  else if (d2.symbols.filter((x) => x.symbolId === 'cable-head' && x.role.startsWith('cable-head-source')).length === 0 && !d2.symbols.some((x) => x.symbolId === 'cable-head')) fail('送り出しのケーブルの端末が描かれていません');
+  else console.log('  変圧器の出口（1台目・2台目）から、送り出しの線が出る。開閉器・ケーブルの端末は、これまでの送り出しと同じ並び');
+  // 台数より大きい番号は、最後の台に寄せる
+  const d9 = draw({ 'a2:linkSourceTr': '8', 'a2:linkCable': 'yes' });
+  if (!hasFeed(d9, trOutOf(d9, 1))) fail('台数より大きい番号を選んだとき、最後の台から出ていません');
+  // 三巻線変圧器は、二次側の出口が決まっていないので、高圧母線から出す（出口からの線は無い）
+  const d3 = draw({ 'a2:linkSourceTr': '1', trConnection: 'tr-3w-yyd', 'a2:linkCable': 'yes' });
+  if (d3.symbols.length === 0) fail('三巻線変圧器のとき、図面が描けていません');
+  else console.log('  台数より大きい番号は最後の台に寄せる。三巻線変圧器は、高圧母線から出す');
+}
+
 /* ---------- 27. 記号を消したあと、「結線を整える」で途切れた線をつなぎ直す ---------- */
 console.log('\n■ 記号を消したあとの「結線を整える」（途切れた線のつなぎ直し）');
 {

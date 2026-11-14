@@ -705,8 +705,10 @@ export interface PlacedItem {
   link?: {
     /** どのエリアから分岐するか（0始まり） */
     from: number;
-    /** 分岐の位置：ds-source（DSの電源側）／ds-vcb（DSとVCBの間）／vcb-load（VCBの負荷側）／bus（高圧母線） */
+    /** 分岐の位置：ds-source（DSの電源側）／ds-vcb（DSとVCBの間）／vcb-load（VCBの負荷側）／bus（高圧母線）／tr-secondary（変圧器の二次側） */
     tap: string;
+    /** tap が tr-secondary のとき、何台目の変圧器か（1始まり） */
+    trNo?: number;
     /** ケーブルでつなぐか（false のときは、ケーブルの図記号を描かず、ふつうの線でつなぐ） */
     cable: boolean;
     /** ケーブルの線を点線（埋設）で描くか */
@@ -931,6 +933,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
               link: {
                 from: linkFromOf(view, n),
                 tap: String(view.linkTap ?? 'bus'),
+                trNo: view.linkTap === 'tr-secondary' ? Math.max(1, Math.round(Number(view.linkSourceTr ?? 1)) || 1) : undefined,
                 cable: view.linkCable !== 'no',
                 dashed: view.linkCable !== 'no' && view.linkCableInstallation === 'buried',
                 // 送り先名称は、ケーブルの端末があるときだけ（端末の近くに書くため）。空白だけなら、書かない
@@ -1289,6 +1292,10 @@ export interface InputNotice {
   group: string;
   text: string;
 }
+/** 交流の低圧は、600V以下（法令）。600Vを超えるものが高圧。電圧が分からない（NaN）ときは、低圧とは見なさない */
+export const LOW_VOLTAGE_MAX = 600;
+export const isLowVoltage = (volts: number): boolean => Number.isFinite(volts) && volts <= LOW_VOLTAGE_MAX;
+
 /** t+1台目の変圧器の、二次側の電圧（V）。「6600/210-105V」なら210。読み取れなければ NaN */
 function secondaryVolts(view: Answers, t: number): number {
   const text = String(viewAt(view, t).trVoltage ?? '');
@@ -1332,7 +1339,25 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
       text: '太陽光発電設備がありますが、OVGR（地絡過電圧継電器）が「なし」です。太陽光発電設備があるときは、ZPDとOVGRが、セットで必要です。「OVGRはありますか？」を、確かめてください（図面は、このまま描きます）。',
     });
   }
-  // 低圧の電動機・発電機：図面に描くのは、高圧（1000V以上）だけ。定格電圧（無ければ、つなぎ先の変圧器の二次側の電圧）が低圧のとき、知らせる（第13弾 項目55 修正15／A-4・B-6）
+  // 変圧器の二次側から送り出す（第13弾 項目55 修正19）：選んだ変圧器の二次側が低圧（600V以下）、または三巻線変圧器のときの注意
+  if (all && dv.linkTap === 'tr-secondary' && Number(dv.areaNo) > 1) {
+    const from = linkFromOf(dv, Number(dv.areaNo) - 1);
+    const sender = areaView(all, from);
+    const t = Math.max(0, Math.min(Math.max(1, countOf(sender.transformerCount, 1, maxCountOf('transformerCount'))), Math.round(Number(dv.linkSourceTr ?? 1)) || 1) - 1);
+    const conn = String(viewAt(sender, t).trConnection ?? '');
+    if (conn === 'tr-3w-yyd' || conn === 'tr-3w-ddy') {
+      out.push({
+        group: 'link',
+        text: '選んだ変圧器は三巻線変圧器です。二次側の出口が決まっていない記号なので、「変圧器の二次側」からではなく、高圧母線から送り出す形で描きます（図面は、そのまま描きます）。',
+      });
+    } else if (isLowVoltage(secondaryVolts(sender, t))) {
+      out.push({
+        group: 'link',
+        text: '選んだ変圧器の二次側は、低圧（600V以下）です。送り出し先は、高圧の設備です。二次側が高圧（600Vを超える）の変圧器から送り出していませんか（図面は、このまま描きます）。',
+      });
+    }
+  }
+  // 低圧の電動機・発電機：図面に描くのは、高圧（600Vを超えるもの）だけ。定格電圧（無ければ、つなぎ先の変圧器の二次側の電圧）が低圧のとき、知らせる（第13弾 項目55 修正15／A-4・B-6）
   for (const [on, countKey, groupId, what] of [
     ['hasMotor', 'motorCount', 'motor', '電動機'],
     ['hasGenerator', 'generatorCount', 'generator', '発電機'],
@@ -1349,12 +1374,12 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
         const dest = groupId === 'motor' ? (u.motorSource === 'secondary' ? (u.motorSourceTr ?? '1') : undefined) : /^\d+$/.test(String(u.generatorTransformer ?? '')) ? u.generatorTransformer : undefined;
         if (dest !== undefined) volts = secondaryVolts(view, Math.max(1, Number(dest)) - 1);
       }
-      if (Number.isFinite(volts) && volts < 1000) low = true;
+      if (isLowVoltage(volts)) low = true;
     }
     if (low) {
       out.push({
         group: groupId,
-        text: `低圧（1000V未満）の${what}があります。この図面に描くのは、高圧（3300V・6600Vなど）の${what}だけです。低圧の${what}は、描かないでください（図面は、このまま描きます）。`,
+        text: `低圧（600V以下）の${what}があります。この図面に描くのは、高圧（3300V・6600Vなど）の${what}だけです。低圧の${what}は、描かないでください（図面は、このまま描きます）。`,
       });
     }
   }

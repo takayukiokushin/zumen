@@ -177,7 +177,7 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     const gsig = (a: Answers) => groles(a).map((i) => `${i.kind}`).join();
     if (gsig({ generatorTransformer: 'bus' }) !== 'parallel' || gsig({ generatorTransformer: 'none' }) !== 'free' || gsig({ generatorTransformer: '2' }) !== 'feeder') fail(`発電機の接続先ごとの描き方が違います（${gsig({ generatorTransformer: 'bus' })}／${gsig({ generatorTransformer: 'none' })}／${gsig({ generatorTransformer: '2' })}）`);
     if (groles({ generatorTransformer: 'bus', generatorUsage: 'emergency', generatorCapacity: '500kVA', generatorRatedVoltage: '6600' })[0]?.label.join('|').indexOf('非常用 500kVA 6600V') !== 2) fail(`発電機の定格電圧の文字が違います（${groles({ generatorTransformer: 'bus', generatorUsage: 'emergency', generatorCapacity: '500kVA', generatorRatedVoltage: '6600' })[0]?.label.join('|')}）`);
-    // 低圧の電動機・発電機の注意（第13弾 項目55 修正15）：定格電圧（無ければ、二次側の変圧器の二次側の電圧）が1000V未満のとき。母線からで、電圧が無いときは、出さない
+    // 低圧の電動機・発電機の注意（第13弾 項目55 修正15）：定格電圧（無ければ、二次側の変圧器の二次側の電圧）が600V以下（交流の低圧）のとき。母線からで、電圧が無いときは、出さない
     const note = (a: Answers) => {
       const eff = withAutoValues({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, trVoltage: '6600/210V', trVoltage__2: '3300/3300V', ...a } as Answers);
       return inputNotices(areaView(eff, 0), eff).filter((n) => n.group === 'motor' || n.group === 'generator').map((n) => n.group).join();
@@ -185,6 +185,8 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     if (note({ hasMotor: 'yes', motorSource: 'secondary', motorSourceTr: '1' }) !== 'motor') fail('低圧の二次側につないだ電動機に、注意が出ていません');
     if (note({ hasMotor: 'yes', motorSource: 'secondary', motorSourceTr: '2' }) !== '') fail('3300Vの二次側につないだ電動機に、注意が出ています');
     if (note({ hasMotor: 'yes', motorSource: 'bus' }) !== '' || note({ hasMotor: 'yes', motorSource: 'bus', motorRatedVoltage: '400' }) !== 'motor' || note({ hasMotor: 'yes', motorSource: 'secondary', motorSourceTr: '1', motorRatedVoltage: '6600' }) !== '') fail('電動機の定格電圧による注意の出方が違います');
+    // 境目：600Vは低圧、600Vを超えると高圧
+    if (note({ hasMotor: 'yes', motorSource: 'bus', motorRatedVoltage: '600' }) !== 'motor' || note({ hasMotor: 'yes', motorSource: 'bus', motorRatedVoltage: '601' }) !== '') fail('低圧の境目（600V以下が低圧・600Vを超えると高圧）が違います');
     if (note({ hasGenerator: 'yes', generatorTransformer: '1' }) !== 'generator' || note({ hasGenerator: 'yes', generatorTransformer: 'bus' }) !== '' || note({ hasGenerator: 'yes', generatorTransformer: 'bus', generatorRatedVoltage: '200' }) !== 'generator' || note({ hasGenerator: 'no', generatorTransformer: '1' }) !== '') fail('発電機の注意の出方が違います');
     const two = mroles({ hasMotor: 'yes', motorCount: 2, motorSource: 'bus', motorSource__2: 'secondary', motorSourceTr__2: '2' });
     if (two.map((i) => i.kind).join() !== 'parallel,feeder' || String(two[1]!.props?.transformer) !== '2') fail('1台は母線・1台は二次側のとき、それぞれの列になっていません');
@@ -632,7 +634,22 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const fromOpts = (n: number) => (from?.options ?? []).filter((o) => evaluate(o.showIf, { areaNo: n })).map((o) => o.value).join(',');
   ok(fromOpts(3) === '1,2' && fromOpts(2) === '1', `分岐元の選択肢が違います（3か所目：${fromOpts(3)}）`);
   const tap = QUESTIONS.find((q) => q.id === 'linkTap')?.options?.map((o) => o.value).join(',');
-  ok(tap === 'ds-source,ds-vcb,vcb-load,bus', `分岐の位置の選択肢が違います（${tap}）`);
+  ok(tap === 'ds-source,ds-vcb,vcb-load,bus,tr-secondary', `分岐の位置の選択肢が違います（${tap}）`);
+  // 「変圧器の二次側」を選んだときだけ、「何台目の変圧器か」を聞く（初期値は1台目。第13弾 項目55 修正19）
+  const trQ = (a: Answers) => visibleQuestions(withDerived({ areaCount: 2, 'a2:areaIntake': 'ds-vcb', ...a } as Answers), {}).some((q) => q.id === 'linkSourceTr');
+  const eff2 = (a: Answers) => areaView(withAutoValues({ areaCount: 2, ...a } as Answers), 1);
+  ok(!trQ({}), '分岐の位置が「変圧器の二次側」でないのに、「何台目か」を聞いています');
+  const trShown = visibleQuestions(eff2({ 'a2:linkTap': 'tr-secondary' }), {}).some((q) => q.id === 'linkSourceTr');
+  ok(trShown && QUESTIONS.find((q) => q.id === 'linkSourceTr')?.defaultValue === '1', '「変圧器の二次側」のとき、「何台目か」（初期値1台目）が出ていません');
+  // 注意：選んだ変圧器の二次側が低圧（600V以下）／三巻線変圧器のとき。高圧（600Vを超える）のときは、出さない
+  const linkNote = (a: Answers) => {
+    const eff = withAutoValues({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:linkTap': 'tr-secondary', trVoltage: '6600/210V', trVoltage__2: '6600/3300V', ...a } as Answers);
+    return inputNotices(areaView(eff, 1), eff).filter((n) => n.group === 'link').length;
+  };
+  ok(linkNote({ 'a2:linkSourceTr': '1' }) === 1 && linkNote({ 'a2:linkSourceTr': '2' }) === 0, '変圧器の二次側が低圧のときだけ、注意が出るはずです（1台目＝210V：注意／2台目＝3300V：なし）');
+  ok(linkNote({ 'a2:linkSourceTr': '2', trVoltage__2: '6600/600V' }) === 1 && linkNote({ 'a2:linkSourceTr': '2', trVoltage__2: '6600/601V' }) === 0, '低圧の境目（600V以下が低圧・600Vを超えると高圧）が違います');
+  ok(linkNote({ 'a2:linkSourceTr': '1', trConnection: 'tr-3w-yyd' }) === 1, '三巻線変圧器のとき、注意が出るはずです');
+  ok(linkNote({ 'a2:linkSourceTr': '2', 'a2:linkTap': 'bus' }) === 0, '「変圧器の二次側」でないのに、注意が出ています');
   // ケーブルでつなぐ・つながないで、聞くことは同じ（分岐の位置は、どちらでも聞く。ケーブルの種類・断面積・長さだけ、ケーブルのとき）
   const noCableQs = ids(areaView({ areaCount: 3, 'a2:linkCable': 'no' }, 1));
   ok(noCableQs.has('linkTap') && noCableQs.has('linkCable') && !noCableQs.has('linkCableInstallation') && !noCableQs.has('linkCableCrossSection') && !noCableQs.has('linkCableLength'), '「いいえ」のとき、分岐の位置は聞き、ケーブルの種類・断面積・長さは聞かない、になっていません');
