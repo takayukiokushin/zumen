@@ -8,9 +8,22 @@ echo "単線結線図作成：サーバーを起動します"
 echo
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js が見つかりません。https://nodejs.org/ja から LTS版 を入れてください。"
+  echo "Node.js が見つかりません。https://nodejs.org/ja/download で、バージョンの欄から 22 を選んで入れてください。"
   read -r -p "Enterキーで閉じます"
   exit 1
+fi
+
+# Node.js の版：動作を確かめてあるのは 22 系（22.13 以上）。古いと止め、新しすぎると知らせる
+NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
+NODE_MINOR=$(node -p "process.versions.node.split('.')[1]")
+if [ "$NODE_MAJOR" -lt 22 ] || { [ "$NODE_MAJOR" -eq 22 ] && [ "$NODE_MINOR" -lt 13 ]; }; then
+  echo "[×] Node.js の版が古いです（いま：$(node -v)）。「22」の版を使います。"
+  echo "    https://nodejs.org/ja/download で、バージョンの欄から 22 を選んで入れ直してください。"
+  read -r -p "Enterキーで閉じます"
+  exit 1
+fi
+if [ "$NODE_MAJOR" -gt 22 ]; then
+  echo "※ Node.js の版が新しすぎます（いま：$(node -v)）。動作を確かめてあるのは「22」の版です。このまま進めますが、おかしいときは 22 の版に入れ直してください。"
 fi
 
 # pnpm の用意。管理者権限が要らない順に試す。

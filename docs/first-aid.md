@@ -102,7 +102,7 @@ claude
 私はプログラマーではないので、専門用語を使わず、1つずつ区切って進めてください。
 
 【やること】
-1. Node.js（LTS版）を https://nodejs.org/ja から入れる。`node -v` で v22 以上を確認
+1. Node.js の「22」の版を https://nodejs.org/ja/download から入れる（バージョンの欄から22を選ぶ。一番新しい版は選ばない）。`node -v` で `v22.13` 以上の `v22.` から始まる数字を確認
 2. https://github.com/takayukiokushin/zumen を開き、緑の「Code」→「Download ZIP」
    展開してデスクトップに置く（test-mac.command が見えるところが本体）
 3. ターミナルでそのフォルダに cd して `xattr -dr com.apple.quarantine .`
@@ -144,7 +144,7 @@ GitHubの画面でそのまま読める（ダウンロード不要）。
 
 | 症状 | 原因 | どうするか |
 |---|---|---|
-| `command not found: node` | Node.js が未インストール | <https://nodejs.org/ja> のLTS版を入れ、ターミナルを開き直す |
+| `command not found: node` | Node.js が未インストール | <https://nodejs.org/ja/download> で「22」の版を入れ（一番新しい版は選ばない）、ターミナルを開き直す |
 | `command not found: pnpm` | 準備が未了 | 先に `./test-mac.command` を1回動かす |
 | 「マルウェアが含まれていないことを検証できません」 | macOSの保護 | フォルダで `xattr -dr com.apple.quarantine .` |
 | `./test-mac.command` が「問題が見つかりました」 | — | 同じフォルダの `test-result.txt` の中身を見せる |

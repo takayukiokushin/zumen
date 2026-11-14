@@ -23,7 +23,7 @@
     "dist:win": "pnpm --filter @zumen/desktop dist:win"
   },
   "engines": {
-    "node": ">=22.6.0"
+    "node": ">=22.13.0 <23"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

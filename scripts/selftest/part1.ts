@@ -15,8 +15,8 @@ export async function part1() {
   const [major, minor] = process.versions.node.split('.').map(Number);
   check(
     'Node.js のバージョン',
-    major! > 22 || (major === 22 && minor! >= 6),
-    `${process.version}（22.6 以上が必要）`,
+    major === 22 && minor! >= 13,
+    `${process.version}（動作を確かめてあるのは 22.13 以上の 22 系）`,
   );
   check('TypeScriptをそのまま動かせる', true, '型ストリップが有効');
   try {
