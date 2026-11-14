@@ -67,7 +67,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
   {
     id: 'pasControl',
     group: 'pas',
-    label: 'SOG（制御装置）は？',
+    label: 'GR・DGR（制御装置）は？',
     type: 'select',
     options: [
       { value: 'none', label: 'なし' },
@@ -98,7 +98,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     defaultValue: 'yes',
     showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
-    help: 'SOGが無いPASでも内蔵されていることがある',
+    help: '制御装置（GR・DGR）が無いPASでも内蔵されていることがある',
   },
   {
     id: 'pasRatedVoltage',

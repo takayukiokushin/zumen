@@ -168,9 +168,9 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
     items.push({
       level: 'confirm',
       questionId: 'pasControl',
-      label: 'PASのSOG',
+      label: 'PASの制御装置（GR・DGR）',
       value: 'なし',
-      message: 'ZPDがあるのにSOGが「なし」になっています。GRかDGRではありませんか。',
+      message: 'ZPDがあるのに制御装置（GR・DGR）が「なし」になっています。GRかDGRではありませんか。',
     });
   }
 
@@ -180,9 +180,9 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
       level: 'error',
       questionId: 'pasControl',
       label: 'PASの内蔵VT',
-      value: 'SOGなし・VT内蔵あり',
+      value: '制御装置なし・VT内蔵あり',
       message:
-        'SOGが無いPASにVTは内蔵されません。SOG（GRまたはDGR）があるか、' +
+        '制御装置（GR・DGR）が無いPASにVTは内蔵されません。制御装置（GRまたはDGR）があるか、' +
         'VTは内蔵されていないかのどちらかです。',
     });
   }
