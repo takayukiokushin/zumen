@@ -27,14 +27,21 @@ export const SYMBOLS: readonly SymbolDef[] = [
 
 const byId = new Map(SYMBOLS.map((s) => [s.id, s]));
 
+/**
+ * 廃止した記号。以前の版で保存した図面・案件に、まだ残っているものを、開けるようにするための読み替え。
+ * 記号の一覧（パレット・カタログ）には出さない。読み込むと、右の記号として描かれる。
+ *   relay-ocgr（地絡過電流継電器）→ relay-gr（地絡継電器）：OCGRは、GRで足りるので、記号をやめた
+ */
+export const RETIRED_SYMBOLS: Readonly<Record<string, string>> = { 'relay-ocgr': 'relay-gr' };
+
 export function getSymbol(id: string): SymbolDef {
-  const def = byId.get(id);
+  const def = byId.get(id) ?? byId.get(RETIRED_SYMBOLS[id] ?? '');
   if (!def) throw new Error(`未登録の記号ID: ${id}`);
   return def;
 }
 
 export function findSymbol(id: string): SymbolDef | undefined {
-  return byId.get(id);
+  return byId.get(id) ?? byId.get(RETIRED_SYMBOLS[id] ?? '');
 }
 
 /** 図面の上で決めた大きさ。省いた向きは、記号定義の大きさのまま */

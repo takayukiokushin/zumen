@@ -699,10 +699,11 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const noVt = withAutoValues(normalizeAnswers({ ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no', relayCount: '3' }));
   ok(noVt.relayAt__3 !== 'vt-1', 'VTが無いのに、OVRがVTにつく初期値になっています');
   // 継電器の記号が、すべての種類にある
-  for (const c of ['OCR', 'UVR', 'OVR', 'OCGR', 'UFR', 'OFR', 'RPR', 'UPR', 'DSR', '2E', '3E']) {
+  for (const c of ['OCR', 'UVR', 'OVR', 'UFR', 'OFR', 'RPR', 'UPR', 'DSR', '2E', '3E']) {
     ok(Boolean(getSymbolForCheck(`relay-${c.toLowerCase()}`)), `継電器 ${c} の記号がありません`);
   }
   ok(Boolean(getSymbolForCheck('trip-coil')), 'トリップコイルの記号がありません');
+  ok(getSymbolForCheck('relay-ocgr')?.id === 'relay-gr' && getSymbolForCheck('relay-ocgr') === getSymbolForCheck('relay-gr'), '廃止したOCGRの記号は、GRの記号として読み込まれるはずです（以前の案件を開けるため）');
 
   // 補助変圧器：蓄電池の有無に関わらず質問する（台数0なら描かない）。選んだ変圧器の低圧側から、MCCB → 補助変圧器
   const shownAux = (a: Answers) => visibleQuestions(a).some((q) => q.id === 'auxTrCapacity');

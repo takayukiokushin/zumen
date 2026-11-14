@@ -27,7 +27,7 @@ const fail = (msg: string) => {
 interface Sample { name: string; era: string; answers: Answers; drawing: Doc | null }
 const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
 console.log('■ 古い形式の案件（docs/legacy-projects/）');
-if (files.length < 6) fail(`見本が足りません（${files.length}件。6件以上あるはずです。見本を消してはいけません）`);
+if (files.length < 7) fail(`見本が足りません（${files.length}件。7件以上あるはずです。見本を消してはいけません）`);
 
 /** 図面の画面を開くときの手順（Editor.tsx の最初の組み立てと同じ） */
 function openLikeEditor(answers: Answers, saved: Doc | null): Doc {

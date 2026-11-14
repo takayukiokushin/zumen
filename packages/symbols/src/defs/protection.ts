@@ -23,7 +23,6 @@ export const RELAY_TYPES: RelayType[] = [
   { code: 'OCR', nameJa: '過電流継電器', note: 'CB形の基本構成で、CTの次に入る。' },
   { code: 'GR', nameJa: '地絡継電器（無方向性）', note: 'GR方式のPASに入る。ZCTが必要。' },
   { code: 'DGR', nameJa: '地絡方向継電器（方向性）', note: 'DGR方式のPASに入る。ZCTに加えZPDが必要。GRの上位互換。' },
-  { code: 'OCGR', nameJa: '地絡過電流継電器' },
   { code: 'OVGR', nameJa: '地絡過電圧継電器' },
   { code: 'UVR', nameJa: '不足電圧継電器' },
   { code: 'OVR', nameJa: '過電圧継電器' },

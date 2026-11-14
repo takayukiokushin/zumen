@@ -1,0 +1,552 @@
+{
+  "name": "廃止したOCGRの記号がある図面",
+  "era": "OCGRの記号（relay-ocgr）が入っている、手で直した図面。OCGRは、GRで足りるので、記号をやめた（開くと、GRの記号になる）",
+  "answers": {
+    "siteName": "OCGRのある図面",
+    "mainBreakerForm": "cb",
+    "sectionalizer": "pas",
+    "sourceType": "pole",
+    "transformerCount": 1,
+    "trCapacity": "300",
+    "trUsage": "動力",
+    "hasSiteCt": "yes",
+    "relayCount": 2,
+    "relayType": "OCR",
+    "relayType__2": "OCGR",
+    "relayAt": "ct-1",
+    "relayAt__2": "ct-1"
+  },
+  "drawing": {
+    "items": [
+      {
+        "kind": "frame",
+        "id": "frame-1",
+        "x": -200,
+        "y": 340,
+        "w": 434.2,
+        "label": "受電設備"
+      },
+      {
+        "kind": "wire",
+        "id": "wire-2",
+        "x1": 0,
+        "y1": 48,
+        "x2": 0,
+        "y2": 64,
+        "dashed": false,
+        "at1": {
+          "item": "source-pole",
+          "port": "out"
+        },
+        "at2": {
+          "item": "incoming-point",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-3",
+        "x1": 0,
+        "y1": 108,
+        "x2": 0,
+        "y2": 124,
+        "dashed": false,
+        "at1": {
+          "item": "incoming-point",
+          "port": "out"
+        },
+        "at2": {
+          "item": "pas",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-4",
+        "x1": 0,
+        "y1": 272,
+        "x2": 0,
+        "y2": 288,
+        "dashed": false,
+        "at1": {
+          "item": "pas",
+          "port": "out"
+        },
+        "at2": {
+          "item": "cable-head-source",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-5",
+        "x1": 0,
+        "y1": 312,
+        "x2": 0,
+        "y2": 368,
+        "dashed": false,
+        "at1": {
+          "item": "cable-head-source",
+          "port": "out"
+        },
+        "at2": {
+          "item": "cable-head-site",
+          "port": "out"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-6",
+        "x1": 0,
+        "y1": 392,
+        "x2": 0,
+        "y2": 408,
+        "dashed": false,
+        "at1": {
+          "item": "cable-head-site",
+          "port": "in"
+        },
+        "at2": {
+          "item": "ds",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-7",
+        "x1": 0,
+        "y1": 480,
+        "x2": 0,
+        "y2": 506,
+        "dashed": false,
+        "at1": {
+          "item": "ds",
+          "port": "out"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-8",
+        "x1": 0,
+        "y1": 506,
+        "x2": 34,
+        "y2": 506,
+        "at2": {
+          "item": "ds-vt-pf",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-9",
+        "x1": 78,
+        "y1": 506,
+        "x2": 92,
+        "y2": 506,
+        "at1": {
+          "item": "ds-vt-pf",
+          "port": "out"
+        },
+        "at2": {
+          "item": "ds-vt",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-10",
+        "x1": 0,
+        "y1": 506,
+        "x2": 0,
+        "y2": 540,
+        "dashed": false,
+        "at2": {
+          "item": "main-breaker",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-11",
+        "x1": 0,
+        "y1": 612,
+        "x2": 0,
+        "y2": 628,
+        "dashed": false,
+        "at1": {
+          "item": "main-breaker",
+          "port": "out"
+        },
+        "at2": {
+          "item": "ct",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-12",
+        "x1": 0,
+        "y1": 672,
+        "x2": 0,
+        "y2": 698,
+        "dashed": false,
+        "at1": {
+          "item": "ct",
+          "port": "out"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-13",
+        "x1": 0,
+        "y1": 698,
+        "x2": 34,
+        "y2": 698,
+        "at2": {
+          "item": "relay-tt-1",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-14",
+        "x1": 86,
+        "y1": 698,
+        "x2": 151,
+        "y2": 698,
+        "at1": {
+          "item": "relay-tt-1",
+          "port": "out"
+        },
+        "at2": {
+          "item": "relay-1",
+          "port": "l"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-15",
+        "x1": 0,
+        "y1": 698,
+        "x2": 0,
+        "y2": 735,
+        "dashed": false
+      },
+      {
+        "kind": "wire",
+        "id": "wire-16",
+        "x1": 0,
+        "y1": 735,
+        "x2": 34,
+        "y2": 735,
+        "at2": {
+          "item": "relay-tt-2",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-17",
+        "x1": 86,
+        "y1": 735,
+        "x2": 138,
+        "y2": 735,
+        "at1": {
+          "item": "relay-tt-2",
+          "port": "out"
+        },
+        "at2": {
+          "item": "relay-2",
+          "port": "l"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-18",
+        "x1": 10.303030303030305,
+        "y1": 576,
+        "x2": 155,
+        "y2": 576,
+        "dashed": true,
+        "at2": {
+          "item": "trip-coil",
+          "port": "l"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-19",
+        "x1": 170,
+        "y1": 587,
+        "x2": 170,
+        "y2": 686,
+        "at1": {
+          "item": "trip-coil",
+          "port": "b"
+        },
+        "at2": {
+          "item": "relay-1",
+          "port": "top"
+        }
+      },
+      {
+        "kind": "wire",
+        "id": "wire-20",
+        "x1": 0,
+        "y1": 735,
+        "x2": 0,
+        "y2": 756,
+        "dashed": false
+      },
+      {
+        "kind": "wire",
+        "id": "wire-21",
+        "x1": 0,
+        "y1": 756,
+        "x2": 0,
+        "y2": 772,
+        "at2": {
+          "item": "transformer",
+          "port": "in"
+        }
+      },
+      {
+        "kind": "symbol",
+        "id": "source-pole",
+        "symbolId": "pole-utility",
+        "x": -16,
+        "y": 0,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 46,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "incoming-point",
+        "symbolId": "incoming-point",
+        "x": -30,
+        "y": 64,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 70,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "pas",
+        "symbolId": "pas",
+        "x": -28,
+        "y": 124,
+        "rotate": 0,
+        "label": [
+          "PAS"
+        ],
+        "labelDx": 96,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "customer-pole",
+        "symbolId": "pole-customer",
+        "x": -68,
+        "y": 181,
+        "rotate": 0,
+        "label": [],
+        "labelDx": -10,
+        "labelDy": 10,
+        "labelAnchor": "end"
+      },
+      {
+        "kind": "symbol",
+        "id": "cable-head-source",
+        "symbolId": "cable-head",
+        "x": -12,
+        "y": 288,
+        "rotate": 0,
+        "label": [
+          "- m"
+        ],
+        "labelDx": 34,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "cable-head-site",
+        "symbolId": "cable-head",
+        "x": -12,
+        "y": 368,
+        "rotate": 180,
+        "label": [],
+        "labelDx": 34,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ds",
+        "symbolId": "ds",
+        "x": -24,
+        "y": 408,
+        "rotate": 0,
+        "label": [
+          "DS"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ds-vt-pf",
+        "symbolId": "pf",
+        "x": 36,
+        "y": 484,
+        "rotate": -90,
+        "label": [],
+        "labelDx": 50,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ds-vt",
+        "symbolId": "vt",
+        "x": 92,
+        "y": 491,
+        "rotate": 0,
+        "label": [
+          "VT＋PF×2",
+          "V結線",
+          "6600/110V"
+        ],
+        "labelDx": 70,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "main-breaker",
+        "symbolId": "vcb",
+        "x": -24,
+        "y": 540,
+        "rotate": 0,
+        "label": [
+          "VCB"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "ct",
+        "symbolId": "ct",
+        "x": -24,
+        "y": 628,
+        "rotate": 0,
+        "label": [
+          "CT×2"
+        ],
+        "labelDx": 66,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "relay-tt-1",
+        "symbolId": "test-terminal",
+        "x": 34,
+        "y": 687,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 62,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "relay-1",
+        "symbolId": "relay-ocr",
+        "x": 151,
+        "y": 686,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 48,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "relay-tt-2",
+        "symbolId": "test-terminal",
+        "x": 34,
+        "y": 724,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 62,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "relay-2",
+        "symbolId": "relay-ocgr",
+        "x": 138,
+        "y": 723,
+        "rotate": 0,
+        "label": [
+          "OCGR"
+        ],
+        "labelDx": 48,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "trip-coil",
+        "symbolId": "trip-coil",
+        "x": 155,
+        "y": 565,
+        "rotate": 0,
+        "label": [],
+        "labelDx": 40,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "symbol",
+        "id": "transformer",
+        "symbolId": "tr-3p-yd",
+        "x": -24,
+        "y": 772,
+        "rotate": 0,
+        "label": [
+          "動力",
+          "Tr",
+          "3φ300kVA",
+          "6600/210V"
+        ],
+        "labelDx": 58,
+        "labelDy": 10,
+        "labelAnchor": "start"
+      },
+      {
+        "kind": "text",
+        "id": "text-old1",
+        "x": 198,
+        "y": 693,
+        "lines": [
+          "OCGRの図面の注記"
+        ],
+        "anchor": "start"
+      }
+    ],
+    "basis": "1kjib3c",
+    "edited": true
+  }
+}

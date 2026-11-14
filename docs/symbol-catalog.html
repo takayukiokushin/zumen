@@ -198,8 +198,8 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>77</b><span>記号</span></div>
-      <div class="stat"><b>77</b><span>確定</span></div>
+      <div class="stat"><b>76</b><span>記号</span></div>
+      <div class="stat"><b>76</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
       <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
@@ -229,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>21</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池・電動機<i>5</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>20</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池・電動機<i>5</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -1243,7 +1243,7 @@
     <section class="group" id="cat-protection" data-cat="protection">
       <header class="group-head">
         <h2>保護継電器・避雷器・接地</h2>
-        <span class="count">21</span>
+        <span class="count">20</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-relay-ocr" data-search="過電流継電器  ocr relay-ocr 保護継電器 ocr" data-status="confirmed">
@@ -1330,35 +1330,6 @@
           
           <p class="statusnote">長方形の中に継電器の種類を記載する。枠の外には何も書かない。引出線は結線側で引くため、記号は枠のみ。</p>
           <p class="note">DGR方式のPASに入る。ZCTに加えZPDが必要。GRの上位互換。</p>
-          
-        </div>
-      </article>
-      <article class="card card--confirmed" id="sym-relay-ocgr" data-search="地絡過電流継電器  ocgr relay-ocgr 保護継電器 ocgr" data-status="confirmed">
-        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 40" width="91.8" height="68" role="img" aria-label="地絡過電流継電器">
-  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="0" y="0" width="38" height="24" fill="none" stroke-width="1" />
-    <text x="19" y="12" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" letter-spacing="1.6" fill="currentColor" stroke="none">OCGR</text>
-    <g class="ports">
-      <circle cx="0" cy="12" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="38" cy="12" r="2.2" fill="currentColor" stroke="none" class="port" />
-      <circle cx="19" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
-    </g>
-  </g>
-</svg></div>
-        <div class="card-body">
-          <div class="card-head">
-            <span class="abbr">OCGR</span>
-            <h3>地絡過電流継電器</h3>
-            <span class="badge badge--confirmed">確定</span>
-          </div>
-          
-          
-          <p class="idline"><code>relay-ocgr</code> ・ 接続点 3</p>
-          
-          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">整定値・タップ</span></div>
-          
-          <p class="statusnote">長方形の中に継電器の種類を記載する。枠の外には何も書かない。引出線は結線側で引くため、記号は枠のみ。</p>
-          
           
         </div>
       </article>

@@ -228,7 +228,7 @@ export const RELAY_COUNT_OPTIONS: Choice[] = Array.from({ length: 9 }, (_, i) =>
 export const RELAY_ON_CT_TYPES = ['OCR', '2E', '3E'];
 export const RELAY_ON_VT_TYPES = ['UVR', 'OVR', 'RPR', 'UPR', 'DSR', 'UFR', 'OFR'];
 
-/** VCBの継電器として選べる種類（GR・DGRはPAS、OVGRはZPDの有無の質問で答えるので、ここには入れない。OCGRは、GRで足りるので入れない：記号 relay-ocgr は、以前の案件のために残してある） */
+/** VCBの継電器として選べる種類（GR・DGRはPAS、OVGRはZPDの有無の質問で答えるので、ここには入れない。OCGRは、GRで足りるので入れない：記号はやめた。以前の案件に残っているものは、GRの記号として開く） */
 export const RELAY_CHOICES: Choice[] = [
   ['OCR', '過電流継電器'],
   ['UVR', '不足電圧継電器'],

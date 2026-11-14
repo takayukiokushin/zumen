@@ -15,5 +15,6 @@
 | 04-edited-drawing-old-format.json | 手で直した図面。自動で作った図面の控え・手で直した内容の記録・レイヤーが、まだ無かった時代 |
 | 05-edited-drawing-current-format.json | 手で直した図面。控え・手で直した内容の記録・レイヤー（停電範囲図）が入っている形 |
 | 06-broken-layers.json | レイヤーの中身が壊れている図面（開けて、壊れた部分だけが整理されること） |
+| 07-retired-ocgr-symbol.json | 廃止したOCGRの記号（relay-ocgr）が入っている、手で直した図面。開くと、GRの記号になる（`RETIRED_SYMBOLS`） |
 
 各ファイルは `{ name, era, answers, drawing }` の形です（`drawing` が null のものは、図面を手で直していない案件）。
