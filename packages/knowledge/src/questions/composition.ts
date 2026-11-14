@@ -338,7 +338,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     type: 'text',
     placeholder: '100',
     appendOnBlur: '/5A',
-    help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、ふつう5A',
+    help: '一次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。二次側は、ふつう5A',
     ask: 'ai-uncertain',
   },
   // ---- 保護継電器（1個ずつ） ----

@@ -302,7 +302,7 @@ function relayQuestions(): Question[] {
       id: linkRelayKey(r.code), group: 'link', section: sec, noTrend: true, ask: 'always', type: 'boolean', size: 'm',
       label: label(r.code, r.name),
       showIf: r.special ? { all: [base, { any: [{ key: LINK_RELAY_SPECIAL_KEY, eq: 'yes' }, anySpecialLinkRelay] }] } : base,
-      ...(r.code === 'OCR' ? { help: '付けるものにチェックを入れる。OCR・GR・DGRがVCB・LBSにつくときは、トリップコイル（TC）も描く。GR・DGRは、上の「地絡継電器」で答える' } : {}),
+      ...(r.code === 'OCR' ? { help: '付けるものにチェックを入れる。OCR・GR・DGRがVCB・LBSにつくときは、トリップコイル（TC）も描く。GR・DGRは、上の「送り出しの開閉器の地絡継電器は？」で答える' } : {}),
     });
     if (r.code === 'RPR') {
       out.push({
