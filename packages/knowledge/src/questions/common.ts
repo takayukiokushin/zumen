@@ -221,6 +221,10 @@ export const TRANSFORMER_CHOICES = [
 /** 継電器の個数（0個もありうる） */
 export const RELAY_COUNT_OPTIONS: Choice[] = Array.from({ length: 9 }, (_, i) => ({ value: String(i), label: String(i) }));
 
+/** 継電器の種類のうち、最初から「CTの二次側」につくもの／「VTの二次側」につくもの（relayAt の初期値） */
+export const RELAY_ON_CT_TYPES = ['OCR', '2E', '3E'];
+export const RELAY_ON_VT_TYPES = ['UVR', 'OVR', 'RPR', 'UPR', 'DSR', 'UFR', 'OFR'];
+
 /** VCBの継電器として選べる種類（GR・DGRはPAS、OVGRはZPDの有無の質問で答えるので、ここには入れない） */
 export const RELAY_CHOICES: Choice[] = [
   ['OCR', '過電流継電器'],

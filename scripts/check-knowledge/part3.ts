@@ -236,6 +236,15 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR' }).relayAt === undefined, 'CTの有無が未回答のとき、置き場所が自動で入っています');
   ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR', hasSiteCt: 'yes' }).relayAt === 'ct-1', 'CTが「あり」のとき、OCRの置き場所がCT1組目になっていません');
   ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', hasSiteCt: 'yes' }).relayAt === undefined, 'VTの有無が未回答なのに、UVRの置き場所が決まっています');
+  // 継電器の置き場所の初期値（第13弾 項目55 修正10／B-4）：OCR・2E・3E＝CT／UVR・OVR・RPR・UPR・DSR・UFR・OFR＝VT（何個目でも）。OCGRは、1個目＝CT・2個目以降＝VT（これまでどおり）
+  {
+    const both = { ...lbsBase, hasSiteCt: 'yes', hasSiteVt: 'yes' } as Answers;
+    const at = (type: string, unit: 1 | 2) =>
+      withAutoValues({ ...both, relayCount: '2', ...(unit === 1 ? { relayType: type } : { relayType: 'OCR', relayType__2: type }) } as Answers)[unit === 1 ? 'relayAt' : 'relayAt__2'];
+    for (const ty of ['OCR', '2E', '3E']) for (const u of [1, 2] as const) ok(at(ty, u) === 'ct-1', `${ty}（${u}個目）の置き場所が、CT1組目になっていません（${at(ty, u)}）`);
+    for (const ty of ['UVR', 'OVR', 'RPR', 'UPR', 'DSR', 'UFR', 'OFR']) for (const u of [1, 2] as const) ok(at(ty, u) === 'vt-1', `${ty}（${u}個目）の置き場所が、VT1組目になっていません（${at(ty, u)}）`);
+    ok(at('OCGR', 1) === 'ct-1' && at('OCGR', 2) === 'vt-1', `OCGRの置き場所は、これまでどおり（1個目＝CT・2個目＝VT）のはずです（${at('OCGR', 1)}／${at('OCGR', 2)}）`);
+  }
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
   // 新しい案件の初期設定（第7弾 項目3）：初期値の一覧どおりになる。質問の既定値は変えない（保存済みの案件は変わらない）

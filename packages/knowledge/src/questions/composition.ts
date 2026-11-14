@@ -1,7 +1,7 @@
 import type { Question } from './types.ts';
 import type { Condition } from '../condition.ts';
 import { CT_AT_VALUES, CT_SHOWN, VT_AT_VALUES, VT_SHOWN } from '../composition.ts';
-import { COUNT_OPTIONS, YES_NO, PF_RATINGS, SHORT_CIRCUIT, RELAY_COUNT_OPTIONS, RELAY_CHOICES } from './common.ts';
+import { COUNT_OPTIONS, YES_NO, PF_RATINGS, SHORT_CIRCUIT, RELAY_COUNT_OPTIONS, RELAY_CHOICES, RELAY_ON_CT_TYPES, RELAY_ON_VT_TYPES } from './common.ts';
 
 /** 質問の定義：受電設備の構成（VT・CT・保護継電器を含む） */
 export const COMPOSITION_QUESTIONS: Question[] = [
@@ -391,15 +391,18 @@ export const COMPOSITION_QUESTIONS: Question[] = [
       })),
       { value: 'none', label: '置き場所は決まっていない（名前だけ書く）' },
     ],
-    // 種類で決める：OCRはCT、UVR・OVRはVT。どちらも無ければ「置き場所は決まっていない」
+    // 種類で決める（第13弾 項目55 修正10／B-4）：
+    //   OCR・2E・3E は、CTの二次側（CT）／UVR・OVR・RPR・UPR・DSR・UFR・OFR は、VTの二次側（VT）。
+    //   上のどれでもない種類（OCGRなど）は、これまでどおり（1個目はCT、2個目以降はVT）。
+    //   どちらも無ければ「置き場所は決まっていない」。OVGRは、ここには無い（ZPDの「OVGRはありますか？」で答える。図面ではZPDにつく）
     autoValue: [
-      { when: { all: [{ key: 'relayType', eq: 'OCR' }, CT_SHOWN] }, value: 'ct-1' },
-      { when: { all: [{ key: 'relayType', in: ['UVR', 'OVR'] }, VT_SHOWN] }, value: 'vt-1' },
-      { when: { all: [{ key: 'unitNo', eq: 1 }, CT_SHOWN, { not: { key: 'relayType', in: ['UVR', 'OVR'] } }] }, value: 'ct-1' },
-      { when: { all: [{ key: 'unitNo', gt: 1 }, VT_SHOWN] }, value: 'vt-1' },
+      { when: { all: [{ key: 'relayType', in: RELAY_ON_CT_TYPES }, CT_SHOWN] }, value: 'ct-1' },
+      { when: { all: [{ key: 'relayType', in: RELAY_ON_VT_TYPES }, VT_SHOWN] }, value: 'vt-1' },
+      { when: { all: [{ key: 'unitNo', eq: 1 }, CT_SHOWN, { not: { key: 'relayType', in: RELAY_ON_VT_TYPES } }] }, value: 'ct-1' },
+      { when: { all: [{ key: 'unitNo', gt: 1 }, VT_SHOWN, { not: { key: 'relayType', in: RELAY_ON_CT_TYPES } }] }, value: 'vt-1' },
       // CT・VTが「ない」と答えてあるときだけ、置き場所は「決まっていない」にする。
       // CT・VTの有無を答えていないときは、推測で決めず、置き場所を聞き返す（答えるまで、その継電器は描かない）
-      { when: { any: [{ all: [{ key: 'relayType', in: ['UVR', 'OVR'] }, { key: 'hasSiteVt', eq: 'no' }] }, { all: [{ not: { key: 'relayType', in: ['UVR', 'OVR'] } }, { key: 'hasSiteCt', eq: 'no' }] }] }, value: 'none' },
+      { when: { any: [{ all: [{ key: 'relayType', in: RELAY_ON_VT_TYPES }, { key: 'hasSiteVt', eq: 'no' }] }, { all: [{ not: { key: 'relayType', in: RELAY_ON_VT_TYPES } }, { key: 'hasSiteCt', eq: 'no' }] }] }, value: 'none' },
       { when: { key: 'intakeStandard', eq: 'yes' }, value: 'none' },
     ],
     ask: 'always',
