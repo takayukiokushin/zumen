@@ -107,7 +107,7 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     if (motor({ hasMotor: 'no' }) !== '' || motor({}) !== '') fail('電動機が「ない」のに、電動機の入力欄を出しています');
     // 接続元を選ぶまでは、続き（ケーブル・開閉器）の質問は出さない
     if (motor({ hasMotor: 'yes' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource') fail(`電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes' })}）`);
-    if (motor({ hasMotor: 'yes', motorSource: 'bus' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource,motorCable,motorSwitch') fail(`接続元を選んだあとの、電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes', motorSource: 'bus' })}）`);
+    if (motor({ hasMotor: 'yes', motorSource: 'bus' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource,motorCable,motorSwitch,motorSwitch2') fail(`接続元を選んだあとの、電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes', motorSource: 'bus' })}）`);
     if (withAutoValues({ hasMotor: 'yes', transformerCount: 2 } as Answers).motorSource !== undefined) fail('電動機の接続元は、最初は空欄のはずです');
     const opts = (QUESTIONS.find((q) => q.id === 'motorStartMethod')?.options ?? []).map((o) => o.value).join(',');
     if (opts !== '直入れ始動,リアクトル始動,コンドルファ始動,インバータ始動,スターデルタ始動') fail(`始動方式の選択肢の順番が違います（${opts}）`);
@@ -118,7 +118,7 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     // 接続元（第13弾 項目25）：二次側／母線で、開閉器・定格電圧の選択肢が変わる。ケーブル・LBSのときだけ、続きを聞く
     const base: Answers = { hasMotor: 'yes', transformerCount: 2 };
     const opt = (id: string, a: Answers) => (QUESTIONS.find((q) => q.id === id)?.options ?? []).filter((o) => evaluate(o.showIf, viewAt(normalizeAnswers({ ...base, ...a }), 0))).map((o) => o.value).join(',');
-    if (opt('motorSwitch', { motorSource: 'bus' }) !== 'none,ds,vcb,lbs,ds-vcb') fail(`母線からのとき、開閉器の選択肢が違います（${opt('motorSwitch', { motorSource: 'bus' })}）`);
+    if (opt('motorSwitch', { motorSource: 'bus' }) !== 'none,ds,vcb,ds-vcb,lbs-plain,lbs') fail(`母線からのとき、開閉器の選択肢が違います（${opt('motorSwitch', { motorSource: 'bus' })}）`);
     if (opt('motorSwitch', { motorSource: 'secondary' }) !== 'none,mccb') fail(`二次側からのとき、開閉器の選択肢が違います（${opt('motorSwitch', { motorSource: 'secondary' })}）`);
     // 二次側からでも、高圧（3.3kVなど）の電動機があるので、高圧に絞らず、どちらの接続元でも同じ選択肢
     if (opt('motorCableVoltage', { motorSource: 'bus' }) !== '600,3300,6600,22000,33000' || opt('motorCableVoltage', { motorSource: 'secondary' }) !== '600,3300,6600,22000,33000') fail('途中のケーブルの定格電圧の選択肢が、違います');
@@ -153,6 +153,19 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     const cab = mroles({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorCable: 'yes', motorCableInstallation: 'buried', motorCableLength: 30, motorCableStructure: 'CVT', motorCableVoltage: '6600', motorCableCrossSection: '60' });
     if (cab.find((i) => i.role === 'motor-cable-site')?.label.join('|') !== '埋ケ|CVT|6600V 60mm2 30m') fail(`電動機のケーブルの文字が違います（${cab.find((i) => i.role === 'motor-cable-site')?.label.join('|')}）`);
     if (cab.find((i) => i.role === 'motor-cable-source')?.dashedAfter !== true) fail('埋設のとき、ケーブルの端末のあいだが、点線になっていません');
+    // 電動機の開閉器は2段階（第13弾 項目55 修正16／B-5）：1段目＝なし／DS／VCB／DS＋VCB／LBS（PFなし）／LBS（PF付）、2段目＝なし／VCS。母線から接続するときだけ2段目を聞く
+    const sw2 = (a: Answers) => ofGroup({ ...base, ...a }, 'motor').includes('motorSwitch2');
+    if (!sw2({ motorSource: 'bus' }) || sw2({ motorSource: 'secondary' }) || sw2({})) fail('2段目の開閉器の質問は、母線から接続するときだけ出るはずです');
+    const sw1 = (a: Answers) => sig({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', ...a });
+    if (sw1({ motorSwitch: 'ds-vcb', motorSwitch2: 'vcs' }) !== 'motor-ds:parallel:0,motor-vcb:parallel:0,motor-vcs:parallel:0,motor:parallel:0') fail(`DS＋VCB＋VCSの並びが違います（${sw1({ motorSwitch: 'ds-vcb', motorSwitch2: 'vcs' })}）`);
+    if (sw1({ motorSwitch: 'vcb', motorSwitch2: 'vcs' }) !== 'motor-vcb:parallel:0,motor-vcs:parallel:0,motor:parallel:0') fail('VCB＋VCSの並びが違います');
+    if (sw1({ motorSwitch: 'lbs', motorSwitch2: 'vcs' }) !== 'motor-lbs:parallel:0,motor-vcs:parallel:0,motor:parallel:0') fail('LBS（PF付）＋VCSの並びが違います');
+    if (sw1({ motorSwitch: 'lbs-plain', motorSwitch2: 'vcs' }) !== 'motor-lbs-plain:parallel:0,motor-vcs:parallel:0,motor:parallel:0') fail('LBS（PFなし）＋VCSの並びが違います');
+    if (sw1({ motorSwitch: 'none', motorSwitch2: 'vcs' }) !== 'motor-vcs:parallel:0,motor:parallel:0' || sw1({ motorSwitch: 'ds', motorSwitch2: 'none' }) !== 'motor-ds:parallel:0,motor:parallel:0') fail('VCSだけ／2段目なしの並びが違います');
+    if (sw1({ motorSwitch: 'vcb', motorSwitch2: 'vcs', motorCable: 'yes' }) !== 'motor-vcb:parallel:0,motor-vcs:parallel:0,motor-cable-source:parallel:0,motor-cable-site:parallel:0,motor:parallel:0') fail('VCBの次にVCS、そのあとにケーブルの並びが違います');
+    const lp = mroles({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorSwitch: 'lbs-plain' }).find((i) => i.role === 'motor-lbs-plain');
+    if (lp?.symbolId !== 'lbs' || lp.label.join('|') !== 'LBS') fail('LBS（PFなし）が、PFなしのLBSの記号・「LBS」の文字になっていません');
+    if (mroles({ hasMotor: 'yes', motorCount: 1, motorSource: 'bus', motorSwitch: 'lbs' }).find((i) => i.role === 'motor-lbs')?.symbolId !== 'lbs-pf') fail('LBS（PF付）が、PF付のLBSの記号になっていません（保存済みの「LBS」は、これまでどおりPF付）');
     // 接続元が空欄のあいだは、線をつながずに、図面の下に置く（第13弾 項目55 修正15／A-4）
     if (sig({ hasMotor: 'yes', motorCount: 2 }) !== 'motor:free:0,motor:free:1') fail(`接続元が空欄のとき、電動機が、つながない形（free）で並んでいません（${sig({ hasMotor: 'yes', motorCount: 2 })}）`);
     if (sig({ hasMotor: 'yes', motorCount: 2, motorSource__2: 'bus' }) !== 'motor:free:0,motor:parallel:1') fail('電動機の1台だけ接続元を選んだとき、その1台だけが接続されるはずです');

@@ -22,6 +22,19 @@ const DEST_OPTIONS: Choice[] = Array.from({ length: COUNT_LIMITS.transformerCoun
   showIf: { key: 'transformerCount', gt: j },
 }));
 
+/**
+ * 電動機の、母線からの1段目の開閉器。「LBS」は、これまでどおりPF付（保存済みの案件の答えを変えない）。PFなしは、新しい値 lbs-plain
+ * 2段目（VCS）は、この次の質問（motorSwitch2）で答える
+ */
+const MOTOR_BUS_SWITCH_OPTIONS: Choice[] = [
+  { value: 'none', label: 'なし（母線から直接）' },
+  { value: 'ds', label: 'DS' },
+  { value: 'vcb', label: 'VCB' },
+  { value: 'ds-vcb', label: 'DS＋VCB' },
+  { value: 'lbs-plain', label: 'LBS（PFなし）', share: '実務では、ほとんど使わない' },
+  { value: 'lbs', label: 'LBS（PF付）' },
+];
+
 /** 発電機の接続先：つながない／高圧母線／何台目の変圧器の二次側 */
 const GENERATOR_DEST_CHOICES: Choice[] = [
   TRANSFORMER_CHOICES[0]!,
@@ -327,14 +340,30 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     type: 'select',
     showIf: MOTOR_SOURCE_CHOSEN,
     options: [
-      ...BUS_SWITCH_OPTIONS.map((o) => ({ ...o, showIf: { not: MOTOR_FROM_SECONDARY } as Condition })),
+      ...MOTOR_BUS_SWITCH_OPTIONS.map((o) => ({ ...o, showIf: { not: MOTOR_FROM_SECONDARY } as Condition })),
       { value: 'none', label: 'なし', showIf: MOTOR_FROM_SECONDARY },
       { value: 'mccb', label: 'MCCB（配線用遮断器）', showIf: MOTOR_FROM_SECONDARY },
     ],
     defaultValue: 'none',
     dropdown: true,
     ask: 'always',
-    help: '接続元から電動機までの間に付く開閉器。接続元が母線のときは、DS・VCB・LBS・DS＋VCB。変圧器の二次側のときは、低圧側のもの（いまは、MCCBだけ）',
+    help: '接続元から電動機までの間に付く、1段目の開閉器。接続元が母線のときは、DS・VCB・DS＋VCB・LBS（PFなし／PF付）。変圧器の二次側のときは、低圧側のもの（いまは、MCCBだけ）。2段目（VCS）は、次の質問で答える',
+  },
+  {
+    // 2段目の開閉器（VCS）。母線から接続するときだけ（DS・VCB・LBSの次に入る）
+    id: 'motorSwitch2',
+    group: 'motor', section: '接続元',
+    label: '2段目の開閉器はありますか？',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'なし' },
+      { value: 'vcs', label: 'VCS（真空電磁接触器）' },
+    ],
+    defaultValue: 'none',
+    dropdown: true,
+    showIf: { key: 'motorSource', eq: 'bus' },
+    ask: 'always',
+    help: '1段目（DS・VCB・LBS）の次に入る開閉器。VCSを選ぶと、「DS＋VCB＋VCS」「VCB＋VCS」「LBS＋VCS」などの組み合わせになる。母線から接続するときだけ',
   },
   {
     id: 'motorFuseCurrent',
@@ -347,7 +376,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     unit: 'A',
     showIf: { key: 'motorSwitch', eq: 'lbs' },
     ask: 'always',
-    help: 'LBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
+    help: 'LBS（PF付）のときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
   },
 
   /* ---------------- 太陽光（PCS。容量ごとのまとまりで入力） ---------------- */
