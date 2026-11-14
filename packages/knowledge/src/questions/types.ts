@@ -61,7 +61,7 @@ export interface Question {
   placeholder?: string;
   /**
    * 文字を入れる欄のとき、数字だけが入力されたら、欄を離れたときに、この文字を後ろに足す。
-   * 例：CTの変流比で「100」と入れると「100/5A」になる（2次側は必ず5A）
+   * 例：CTの変流比で「100」と入れると「100/5A」になる（2次側はふつう5A）
    */
   appendOnBlur?: string;
   /**

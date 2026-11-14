@@ -31,7 +31,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
       { value: 'ds-vcb', label: 'DS＋VCB（CB形の標準）' },
       { value: 'vcb', label: 'VCBのみ（DSなし）' },
       { value: 'lbs-pf', label: 'LBS（PF付）' },
-      { value: 'lbs', label: 'LBS（PFなし）' },
+      { value: 'lbs', label: 'LBS（PFなし）', share: '実務では、ほとんど使わない' },
       { value: 'ds', label: 'DSのみ' },
       { value: 'none', label: 'なし（ケーブルが母線に直接つながる）' },
     ],
@@ -74,7 +74,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     label: 'PAS（区分開閉器）の定格電圧は？',
     type: 'select',
     dropdown: true,
-    options: [3300, 6600, 7200].map((v) => ({ value: String(v), label: `${v}V` })),
+    options: [3300, 6600, 7200, 22000, 23000, 33000, 34500].map((v) => ({ value: String(v), label: `${v}V` })), // 1か所目のPASの定格電圧と同じ選択肢
     ask: 'ai-uncertain',
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'areaPas', eq: 'yes' }] },
   },
@@ -95,7 +95,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     label: 'AS（気中開閉器）の定格電圧は？',
     type: 'select',
     dropdown: true,
-    options: [3300, 6600, 7200].map((v) => ({ value: String(v), label: `${v}V` })),
+    options: [3300, 6600, 7200, 22000, 23000, 33000, 34500].map((v) => ({ value: String(v), label: `${v}V` })), // 1か所目のPASの定格電圧と同じ選択肢
     ask: 'ai-uncertain',
     showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'areaAs', eq: 'yes' }] },
   },
@@ -220,7 +220,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     label: 'VTの位置',
     type: 'select',
     options: [
-      { value: 'primary', label: '主遮断装置（VCB・LBS）の一次側（DSの次）' },
+      { value: 'primary', label: '主遮断装置（VCB・LBS）の一次側（DSがあれば、DSの次）' },
       { value: 'secondary', label: '主遮断装置の二次側' },
     ],
     // DS＋VCBの標準構成の1組目は、DSの次に並列接続する。それ以外（2組目以降・標準でない構成）は、主遮断装置の二次側
@@ -338,7 +338,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     type: 'text',
     placeholder: '100',
     appendOnBlur: '/5A',
-    help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、必ず5A',
+    help: '1次側の電流の数字だけを入れると、「/5A」が自動で付く（例：100 → 100/5A）。2次側は、ふつう5A',
     ask: 'ai-uncertain',
   },
   // ---- 保護継電器（1個ずつ） ----
@@ -440,7 +440,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     options: YES_NO,
     defaultValue: 'no',
     ask: 'ai-uncertain',
-    help: '静電容量が小さい回路（3300V系統・低圧系統）で、対地間にコンデンサをつなぎ、ZPDよりも零相電流を流せるようにする機器',
+    help: '静電容量が小さい高圧回路で、地絡電流を確保する機器（対地間にコンデンサをつなぐ）',
   },
   {
     id: 'zpdTap',

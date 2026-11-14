@@ -13,7 +13,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     options: [
       // PAS・PGSは電柱上に設置するもの。UGSはキャビネット内に設置するもの（図記号も構造も同じで、名前だけ違う）。
       // 引込元が地上キャビネットのときは、PAS・PGSは無い（UGSかなし）
-      { value: 'pas', label: 'PAS', showIf: { key: 'sourceType', ne: 'cabinet' } },
+      { value: 'pas', label: 'PAS（電柱上）', showIf: { key: 'sourceType', ne: 'cabinet' } },
       { value: 'pgs', label: 'PGS（電柱上）', showIf: { key: 'sourceType', ne: 'cabinet' } },
       { value: 'ugs', label: 'UGS（キャビネット内）' },
       { value: 'none', label: 'なし' },

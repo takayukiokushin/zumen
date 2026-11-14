@@ -468,7 +468,7 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.auxTrCapacityLine = answers.auxTrCapacity ? `${auxPhase}${answers.auxTrCapacity}kVA` : '';
 
   // CTの変流比。数字（100）だけなら、2次側の「/5A」を足して「100/5A」にする。
-  // 2次側は必ず5Aなので、「100/5A」「40A/5A」のように、すでに書いてあるものは、そのまま使う
+  // 2次側はふつう5Aなので、「100/5A」「40A/5A」のように、すでに書いてあるものは、そのまま使う
   const ct = String(answers.ctRatio ?? '').trim();
   d.ctRatioText = /^\d+(\.\d+)?$/.test(ct) ? `${ct}/5A` : ct;
 

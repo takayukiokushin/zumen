@@ -442,7 +442,7 @@ console.log('\n■ 区分開閉器（PAS／PGS／なし）と地上キャビネ�
     if (!findSymbol('ugs') || findSymbol('ugs')?.abbr !== 'UGS') fail('編集画面に出す UGS の記号がありません');
     // 区分開閉器の選択肢の表示名
     const optLabels = (secQ?.options ?? []).map((o) => `${o.value}=${o.label}`).join('、');
-    if (optLabels !== 'pas=PAS、pgs=PGS（電柱上）、ugs=UGS（キャビネット内）、none=なし') fail(`区分開閉器の選択肢の表示名が違います（${optLabels}）`);
+    if (optLabels !== 'pas=PAS（電柱上）、pgs=PGS（電柱上）、ugs=UGS（キャビネット内）、none=なし') fail(`区分開閉器の選択肢の表示名が違います（${optLabels}）`);
     // UGSのときだけ、UGS用のキャビネット名称を聞き、定格の欄のすぐ上（先頭）に書く
     const ugsAsked = (a: Answers) => visibleQuestions(a, {}).some((q) => q.id === 'ugsCabinetName');
     if (!ugsAsked({ sourceType: 'cabinet' }) || !ugsAsked({ sourceType: 'pole', sectionalizer: 'ugs' })) fail('UGSのとき、UGSのキャビネット名称を聞いていません');
