@@ -51,3 +51,38 @@ export const linkPartOpen = (n: number): Condition => ({
     },
   ],
 });
+
+/**
+ * 送り出しの途中に付ける保護継電器（第13弾 項目55 修正19・段階3-2）。
+ * 個数は聞かず、チェックボックスで「付けるもの」を選ぶ。よく使うもの（OCR・UVR・RPR）は最初から見える。
+ * それ以外は「特殊な継電器を選ぶ」にチェックしたとき（または、どれかにチェックが入っているとき）だけ見える。
+ * GR・DGRは段階2、OVGRはZPD（3-1）で選ぶので、ここには入れない。OCGRは、GRで足りるので入れない。
+ * on：つなぐ先の機器（ct＝途中のCTの二次側／vt＝途中のVTの二次側）
+ */
+export interface LinkRelay { code: string; name: string; on: 'ct' | 'vt'; special: boolean }
+export const LINK_RELAYS: readonly LinkRelay[] = [
+  { code: 'OCR', name: '過電流継電器', on: 'ct', special: false },
+  { code: 'UVR', name: '不足電圧継電器', on: 'vt', special: false },
+  { code: 'RPR', name: '逆電力継電器', on: 'vt', special: false },
+  { code: 'OVR', name: '過電圧継電器', on: 'vt', special: true },
+  { code: 'UFR', name: '不足周波数継電器', on: 'vt', special: true },
+  { code: 'OFR', name: '過周波数継電器', on: 'vt', special: true },
+  { code: 'DSR', name: '短絡方向継電器', on: 'vt', special: true },
+  { code: 'UPR', name: '不足電力継電器', on: 'vt', special: true },
+  { code: '2E', name: '電動機保護継電器（2要素）', on: 'ct', special: true },
+  { code: '3E', name: '電動機保護継電器（3要素）', on: 'ct', special: true },
+];
+/** 質問ID：チェック（付けるか）／つなぐ先の答え／つなぐ先（決まった値。engine が作る） */
+export const linkRelayKey = (code: string, kind: '' | 'At' | 'Target' = ''): string => `linkRelay${code}${kind}`;
+/** 「特殊な継電器を選ぶ」のチェックと、試験端子を付けないチェック */
+export const LINK_RELAY_SPECIAL_KEY = 'linkRelaySpecial';
+export const LINK_RELAY_NO_TEST_KEY = 'linkRelayNoTest';
+/** 途中の機器n個目につなぐ試験端子を入れるか（engine が作る 'yes'／'no'） */
+export const linkRelayTtKey = (n: number): string => `linkRelayTt${n}`;
+/** 途中のCT・VTの数（areaView が作る） */
+export const LINK_PART_CT_COUNT = 'linkPartCtCount';
+export const LINK_PART_VT_COUNT = 'linkPartVtCount';
+/** 継電器のどれかにチェックが入っているか */
+export const anyLinkRelay: Condition = { any: LINK_RELAYS.map((r): Condition => ({ key: linkRelayKey(r.code), eq: 'yes' })) };
+/** 特殊な継電器のどれかにチェックが入っているか */
+export const anySpecialLinkRelay: Condition = { any: LINK_RELAYS.filter((r) => r.special).map((r): Condition => ({ key: linkRelayKey(r.code), eq: 'yes' })) };

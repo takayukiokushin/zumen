@@ -668,6 +668,28 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const gone = partDraw({ 'a2:linkSwitch': 'none', 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'gc', 'a2:linkPart1Pos': 'sw1' });
   ok(!gone.items.some((i) => /sendout-part-/.test(i.role)) && gone.notes >= 1, '位置が無い機器は、描かずに、知らせるはずです');
   ok(partDraw({ 'a2:linkPartCount': '0', 'a2:linkPart1Kind': 'gc' }).items.every((i) => !/sendout-part-/.test(i.role)), '個数が0のときは、1つも描かないはずです');
+  // 途中に付ける継電器（段階3-2）：個数は聞かない。OCR・UVR・RPRは最初から見える。特殊な継電器は、「特殊な継電器を選ぶ」にチェックしたとき（またはどれかにチェックがあるとき）だけ
+  ok(qids({}).has('linkRelayOCR') && qids({}).has('linkRelayUVR') && qids({}).has('linkRelayRPR') && qids({}).has('linkRelaySpecial') && !qids({ 'a2:linkTap': 'bus' }).has('linkRelayOCR'), 'OCR・UVR・RPRは、「変圧器の二次側」のとき、最初から見えるはずです');
+  ok(!qids({}).has('linkRelayOVR') && qids({ 'a2:linkRelaySpecial': 'yes' }).has('linkRelay2E') && qids({ 'a2:linkRelayOFR': 'yes' }).has('linkRelayUPR'), '特殊な継電器は、「特殊な継電器を選ぶ」にチェックしたとき（またはどれかにチェックがあるとき）だけ出るはずです');
+  ok(!QUESTIONS.some((q) => q.id === 'linkRelayOCGR') && !qids({ 'a2:linkRelaySpecial': 'yes' }).has('linkRelayOCGR'), 'OCGRは、出さない（GRで足りる）');
+  ok(!qids({ 'a2:linkRelayOCR': 'yes' }).has('linkRelayOCRAt') && !qids({ 'a2:linkRelayOCR': 'yes' }).has('linkRelayNoTest') === false, 'つなぐ先の候補が無いときは聞かず、試験端子の質問は、継電器にチェックがあるときだけ出るはずです');
+  const ctTwo = { 'a2:linkPartCount': '2', 'a2:linkPart1Kind': 'ct', 'a2:linkPart2Kind': 'ct', 'a2:linkPart2Pos': 'line1' };
+  ok(qids({ ...ctTwo, 'a2:linkRelayOCR': 'yes' }).has('linkRelayOCRAt') && !qids({ ...ctTwo, 'a2:linkRelayUVR': 'yes' }).has('linkRelayUVRAt') && !qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'ct', 'a2:linkRelayOCR': 'yes' }).has('linkRelayOCRAt'), 'つなぐ先は、候補（CT・VT）が2つ以上のときだけ聞くはずです');
+  {
+    const rd = (a: Answers) => partDraw({ 'a2:linkPartCount': '2', 'a2:linkPart1Kind': 'vt', 'a2:linkPart1Pos': 'tr', 'a2:linkPart2Kind': 'ct', 'a2:linkPart2Pos': 'sw1', ...a });
+    const refs = (a: Answers) => Object.fromEntries(rd(a).items.filter((i) => /sendout-relay-(?!tt)/.test(i.role)).map((i) => [i.role.replace(/^.*sendout-relay-/, ''), i.ref]));
+    const r = refs({ 'a2:linkRelayOCR': 'yes', 'a2:linkRelayUVR': 'yes', 'a2:linkRelay2E': 'yes', 'a2:linkRelayOVR': 'yes' });
+    ok(r.ocr === 'part-2' && r['2e'] === 'part-2' && r.uvr === 'part-1' && r.ovr === 'part-1', `つなぐ先の初期値が違います（OCR・2E＝CT／UVR・OVR＝VT）：${JSON.stringify(r)}`);
+    ok(refs({ 'a2:linkRelayUVR': 'yes', 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'ct' }).uvr === 'none', 'つなぐVTが無いUVRは、名前だけ（none）のはずです');
+    ok(Object.keys(refs({})).length === 0, '継電器にチェックが無いときは、1つも描かないはずです');
+    const tt = (a: Answers) => rd({ 'a2:linkRelayUVR': 'yes', 'a2:linkRelayOVR': 'yes', ...a }).items.filter((i) => /sendout-relay-tt-/.test(i.role)).length;
+    ok(tt({}) === 1 && tt({ 'a2:linkRelayNoTest': 'yes' }) === 0, '試験端子は、VTにつなぐ継電器が2つあっても1つ。「付けない」で0のはずです');
+    // トリップコイル（TC）：OCR・GR・DGRがVCB・LBSにつくときだけ。DS・VCSだけ、UVRなどには付けない
+    const tc = (a: Answers) => rd(a).items.filter((i) => /sendout-trip-coil$/.test(i.role)).length;
+    ok(tc({ 'a2:linkRelayOCR': 'yes' }) === 1 && tc({ 'a2:linkRelayOCR': 'yes', 'a2:linkGroundRelay': 'gr' }) === 1 && tc({ 'a2:linkGroundRelay': 'gr' }) === 1, 'OCR・GRがVCBにつくとき、TCは1つのはずです');
+    ok(tc({ 'a2:linkRelayUVR': 'yes' }) === 0 && tc({ 'a2:linkRelayOCR': 'yes', 'a2:linkSwitch': 'ds' }) === 0 && tc({ 'a2:linkRelayOCR': 'yes', 'a2:linkPartCount': '0' }) === 0, 'UVRだけ・DSだけ・名前だけのOCRには、TCは付かないはずです');
+    ok(rd({ 'a2:linkRelayOCR': 'yes', 'a2:linkSwitch': 'ds' }).notes > rd({ 'a2:linkRelayOCR': 'yes' }).notes && rd({ 'a2:linkRelay2E': 'yes', 'a2:linkSwitch': 'ds' }).notes > rd({ 'a2:linkRelay2E': 'yes' }).notes && rd({ 'a2:linkRelay2E': 'yes', 'a2:linkSwitch': 'vcs' }).notes === rd({ 'a2:linkRelay2E': 'yes' }).notes, 'OCR・2E・3Eの組み合わせの案内が違います');
+  }
   // 注意：選んだ変圧器の二次側が低圧（600V以下）／三巻線変圧器のとき。高圧（600Vを超える）のときは、出さない
   const linkNote = (a: Answers) => {
     const eff = withAutoValues({ ...answers, mainBreakerForm: 'cb', transformerCount: 2, areaCount: 2, 'a2:areaIntake': 'ds-vcb', 'a2:linkTap': 'tr-secondary', trVoltage: '6600/210V', trVoltage__2: '6600/3300V', ...a } as Answers);

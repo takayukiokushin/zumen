@@ -1,7 +1,7 @@
 import type { Question, Choice } from './types.ts';
 import type { Condition } from '../condition.ts';
 import { FUSE_CURRENT_OPTIONS, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
-import { LINK_PART_MAX, linkPartKey, linkPartPositions } from '../link-parts.ts';
+import { LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, LINK_RELAY_SPECIAL_KEY, anyLinkRelay, anySpecialLinkRelay, linkPartKey, linkPartOpen, linkPartPositions, linkRelayKey } from '../link-parts.ts';
 
 /**
  * 送り出しの開閉器の選択肢（段ごとに同じ。第13弾 項目55 修正19・段階2）。
@@ -186,6 +186,7 @@ export const AREAS_QUESTIONS: Question[] = [
   },
   ...[2, 3, 4].flatMap((k): Question[] => stageQuestions(k)),
   ...partQuestions(),
+  ...relayQuestions(),
 ];
 
 /**
@@ -283,5 +284,53 @@ function partQuestions(): Question[] {
       }),
     );
   }
+  return out;
+}
+
+/**
+ * 送り出しの途中に付ける継電器の質問（第13弾 項目55 修正19・段階3-2）。個数は聞かず、チェックボックスで選ぶ。
+ * よく使うもの（OCR・UVR・RPR）は最初から見える。特殊なものは、「特殊な継電器を選ぶ」にチェックしたときだけ出る。
+ * つなぐ先は、候補（途中のCT・VT）が2つ以上あるときだけ聞く（1つなら自動、無ければ「名前だけ書く」）
+ */
+function relayQuestions(): Question[] {
+  const base: Condition = { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }] };
+  const sec = '途中の継電器';
+  const label = (code: string, name: string) => `${code}（${name}）`;
+  const out: Question[] = [];
+  for (const r of LINK_RELAYS) {
+    out.push({
+      id: linkRelayKey(r.code), group: 'link', section: sec, noTrend: true, ask: 'always', type: 'boolean', size: 'm',
+      label: label(r.code, r.name),
+      showIf: r.special ? { all: [base, { any: [{ key: LINK_RELAY_SPECIAL_KEY, eq: 'yes' }, anySpecialLinkRelay] }] } : base,
+      ...(r.code === 'OCR' ? { help: '付けるものにチェックを入れる。OCR・GR・DGRがVCB・LBSにつくときは、トリップコイル（TC）も描く。GR・DGRは、上の「地絡継電器」で答える' } : {}),
+    });
+    if (r.code === 'RPR') {
+      out.push({
+        id: LINK_RELAY_SPECIAL_KEY, group: 'link', section: sec, noTrend: true, ask: 'always', type: 'boolean', size: 'm',
+        label: '特殊な継電器を選ぶ', showIf: base,
+        help: 'OVR・UFR・OFR・DSR・UPR・2E・3Eのような、あまり使わない継電器を選ぶとき、チェックを入れる（どれかにチェックが入っているあいだは、開いたままになる）',
+      });
+    }
+  }
+  // つなぐ先（候補が2つ以上のときだけ聞く）。値：part-n（途中の機器n個目）／none（名前だけ書く）
+  for (const r of LINK_RELAYS) {
+    const kind = r.on;
+    const cands = Array.from({ length: LINK_PART_MAX }, (_, i) => i + 1);
+    out.push({
+      id: linkRelayKey(r.code, 'At'), group: 'link', section: sec, noTrend: true, ask: 'always', type: 'select', dropdown: true,
+      label: `${r.code}は、どこにつなぎますか？`,
+      options: [
+        ...cands.map((n) => ({ value: `part-${n}`, label: `途中の機器${n}（${kind === 'ct' ? 'CT' : 'VT'}）`, showIf: { all: [linkPartOpen(n), { key: linkPartKey(n, 'Kind'), eq: kind }] } as Condition })),
+        { value: 'none', label: '置き場所は決まっていない（名前だけ書く）' },
+      ],
+      autoValue: [...cands.map((n) => ({ when: { all: [linkPartOpen(n), { key: linkPartKey(n, 'Kind'), eq: kind }] } as Condition, value: `part-${n}` })), { value: 'none' }],
+      showIf: { all: [base, { key: linkRelayKey(r.code), eq: 'yes' }, { key: kind === 'ct' ? LINK_PART_CT_COUNT : LINK_PART_VT_COUNT, gt: 1 }] },
+    });
+  }
+  out.push({
+    id: LINK_RELAY_NO_TEST_KEY, group: 'link', section: sec, noTrend: true, ask: 'always', type: 'boolean', size: 'm',
+    label: '試験端子を付けない', showIf: { all: [base, anyLinkRelay] },
+    help: '継電器の手前には、ふつう試験端子（テストターミナル）が付く。付けないときだけ、チェックを入れる。VTにつく継電器の試験端子は、VTごとに1つだけ',
+  });
   return out;
 }

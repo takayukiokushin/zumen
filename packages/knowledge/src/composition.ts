@@ -1,7 +1,7 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
 import { PROPERTY_AT_DS, POLE_TOP } from './questions/common.ts';
-import { LINK_PART_MAX, linkPartKey, linkPartOpen } from './link-parts.ts';
+import { LINK_PART_MAX, LINK_RELAYS, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
 export const MAIN_GROUND_ON: Condition = {
@@ -848,10 +848,17 @@ export const SENDOUT: Placement[] = [
     when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkGroundRelay', eq: 'gr' }, { key: 'linkGroundStage', gt: 0 }] },
   },
   {
+    // トリップコイル（TC）：VCB・LBSがある段（linkGroundStage）の開閉器に付く。地絡継電器（GR・DGR）がつくとき、または、OCRがつくとき（OCRは、途中のCTにつなぐものだけ。名前だけのものには付けない）
     role: 'sendout-trip-coil',
     symbolId: 'trip-coil',
     kind: 'sendout',
-    when: { all: [{ key: 'areaNo', gt: 1 }, SENDOUT_GROUND_ON, { key: 'linkGroundStage', gt: 0 }] },
+    when: {
+      all: [
+        { key: 'areaNo', gt: 1 },
+        { key: 'linkGroundStage', gt: 0 },
+        { any: [SENDOUT_GROUND_ON, { all: [{ key: 'linkTap', eq: 'tr-secondary' }, { key: linkRelayKey('OCR'), eq: 'yes' }, { key: linkRelayKey('OCR', 'Target'), ne: 'none' }] }] },
+      ],
+    },
   },
   // 送り出しの途中に付ける部品（VT・CT・ZPD・GC。最大6個。第13弾 項目55 修正19・段階3-1）。
   // 役割は sendout-part-{n}-{種類}。位置（tr・sw1・line1…）は pos に入り、layout が縦の並びの、その位置に置く。VTには、必ずPFが付く
@@ -866,8 +873,18 @@ export const SENDOUT: Placement[] = [
       { role: `sendout-part-${n}-zpd`, symbolId: 'zpd', kind: 'sendout', posFrom, when: kind('zpd'), labelTemplate: ['ZPD'] },
       { role: `sendout-part-${n}-ovgr`, symbolId: 'relay-ovgr', kind: 'sendout', posFrom, when: { all: [kind('zpd'), { key: linkPartKey(n, 'Ovgr'), eq: 'yes' }] } },
       { role: `sendout-part-${n}-gc`, symbolId: 'gc', kind: 'sendout', posFrom, when: kind('gc'), labelTemplate: ['GC'] },
+      // 途中の機器（CT・VT）につなぐ継電器の試験端子（機器ごとに1つ）
+      { role: `sendout-relay-tt-${n}`, symbolId: 'test-terminal', kind: 'sendout', when: { all: [open, { key: linkRelayTtKey(n), eq: 'yes' }] } },
     ];
   }),
+  // 送り出しの途中の継電器（チェックしたものだけ。第13弾 項目55 修正19・段階3-2）。つなぐ先（ref）は、part-n（途中の機器n個目）／none（名前だけ書く）
+  ...LINK_RELAYS.map((r): Placement => ({
+    role: `sendout-relay-${r.code.toLowerCase()}`,
+    symbolId: `relay-${r.code.toLowerCase()}`,
+    kind: 'sendout',
+    refFrom: linkRelayKey(r.code, 'Target'),
+    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }, { key: linkRelayKey(r.code), eq: 'yes' }] },
+  })),
 ];
 
 /** 変圧器（台数分くり返す） */

@@ -393,7 +393,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     ],
     // 種類で決める（第13弾 項目55 修正10／B-4）：
     //   OCR・2E・3E は、CTの二次側（CT）／UVR・OVR・RPR・UPR・DSR・UFR・OFR は、VTの二次側（VT）。
-    //   上のどれでもない種類（OCGRなど）は、これまでどおり（1個目はCT、2個目以降はVT）。
+    //   上のどれでもない種類（以前の案件に残っている、OCGRなど）は、これまでどおり（1個目はCT、2個目以降はVT）。
     //   どちらも無ければ「置き場所は決まっていない」。OVGRは、ここには無い（ZPDの「OVGRはありますか？」で答える。図面ではZPDにつく）
     autoValue: [
       { when: { all: [{ key: 'relayType', in: RELAY_ON_CT_TYPES }, CT_SHOWN] }, value: 'ct-1' },

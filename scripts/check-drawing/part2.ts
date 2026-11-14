@@ -922,6 +922,60 @@ console.log('\n■ 変圧器の二次側から送り出す（何台目か＋開�
     const zero2 = draw({ 'a2:linkStageCount': '2', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes', 'a2:link2Switch': 'ds', 'a2:linkPartCount': '0', 'a2:linkPart1Kind': 'vt', 'a2:linkPart1Pos': 'sw1' });
     if (JSON.stringify(zero) !== JSON.stringify(zero2)) fail('個数が0のときは、機器を答えていても、図面は変わらないはずです');
   }
+  // 送り出しの途中の継電器（段階3-2）：VT → 試験端子 → UVR・RPR・OVR（縦に並ぶ）／CT → 試験端子 → OCR・2E。OCR・GRは、同じTCにつなぐ。名前だけのものは、いちばん下
+  {
+    const rel: Answers = {
+      'a2:linkStageCount': '2', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes', 'a2:link2Switch': 'ds', 'a2:link2Cable': 'yes', 'a2:linkGroundRelay': 'gr',
+      'a2:linkPartCount': '3', 'a2:linkPart1Kind': 'vt', 'a2:linkPart1Pos': 'tr', 'a2:linkPart2Kind': 'ct', 'a2:linkPart2Pos': 'sw1', 'a2:linkPart3Kind': 'ct', 'a2:linkPart3Pos': 'line1',
+      'a2:linkRelayOCR': 'yes', 'a2:linkRelayUVR': 'yes', 'a2:linkRelayRPR': 'yes', 'a2:linkRelayOVR': 'yes', 'a2:linkRelay2E': 'yes', 'a2:linkRelayOCRAt': 'part-2', 'a2:linkRelay2EAt': 'part-3',
+    };
+    const dr = draw(rel);
+    const at = (r: string) => dr.symbols.find((x) => x.role.endsWith(r));
+    const need = ['sendout-relay-ocr', 'sendout-relay-uvr', 'sendout-relay-rpr', 'sendout-relay-ovr', 'sendout-relay-2e', 'sendout-relay-tt-1', 'sendout-relay-tt-2', 'sendout-relay-tt-3', 'sendout-trip-coil', 'sendout-ground-relay'];
+    const missing = need.filter((r) => !at(r));
+    if (missing.length > 0) fail(`途中の継電器まわりが、描かれていません（${missing.join('・')}）`);
+    else {
+      const ct2 = at('sendout-part-2-ct')!;
+      const ocr = at('sendout-relay-ocr')!;
+      const uvr = at('sendout-relay-uvr')!;
+      const rpr = at('sendout-relay-rpr')!;
+      const tc = at('sendout-trip-coil')!;
+      if (Math.abs(ocr.y + 12 - (ct2.y + 22)) > 1) fail('OCRが、CTの二次側の高さにありません');
+      else if (!(rpr.y > uvr.y) || Math.abs(rpr.x - uvr.x) > 1) fail('UVR・RPR・OVRが、縦に並んでいません');
+      else if (!(tc.x > ocr.x + 38) || !(tc.x > at('sendout-ground-relay')!.x + 38)) fail('TCが、OCR・GRの右にありません');
+      else {
+        // OCRとGRが、同じTCの列につながっている（TCの上下の端子に、縦の線がある）
+        const col = tc.x + 15;
+        const tcWires = dr.wires.filter((w) => Math.abs(w.x1 - col) < 0.5 && Math.abs(w.x2 - col) < 0.5);
+        const ocrY = ocr.y + 12;
+        const grY = at('sendout-ground-relay')!.y + 12;
+        const reach = (y: number) => tcWires.some((w) => Math.min(w.y1, w.y2) <= y + 0.5 && Math.max(w.y1, w.y2) >= y - 0.5);
+        if (!reach(ocrY) || !reach(grY)) fail('OCRとGRが、同じTCにつながっていません');
+        else console.log('  送り出しの途中の継電器：CT→試験端子→OCR・2E／VT→試験端子→UVR・RPR・OVR（縦に並ぶ）。OCR・GRは同じTCにつながる');
+      }
+      // 記号どうしが重ならない
+      const boxes = dr.symbols.map((x) => { const d = getSymbolDef(x.symbolId); const rb = rotatedBox(d.box, x.rotate); return { id: x.role, x0: x.x + rb.dx, y0: x.y + rb.dy, x1: x.x + rb.dx + rb.w, y1: x.y + rb.dy + rb.h }; });
+      const hits: string[] = [];
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!, b = boxes[j]!;
+        if (!(/sendout-/.test(a.id) || /sendout-/.test(b.id))) continue;
+        if (a.x0 < b.x1 - 1 && b.x0 < a.x1 - 1 && a.y0 < b.y1 - 1 && b.y0 < a.y1 - 1) hits.push(`${a.id}×${b.id}`);
+      }
+      if (hits.length > 0) fail(`送り出しの途中の継電器が、ほかの記号に重なっています（${hits.slice(0, 4).join('・')}）`);
+    }
+    // チェックが無いときは、段階3-1と同じ。OCRだけ（GRなし）でも、TCが付く。つなぐ先が無いものは、いちばん下に名前だけ
+    const none = draw({ ...rel, 'a2:linkRelayOCR': 'no', 'a2:linkRelayUVR': 'no', 'a2:linkRelayRPR': 'no', 'a2:linkRelayOVR': 'no', 'a2:linkRelay2E': 'no' });
+    if (none.symbols.some((x) => /sendout-relay-/.test(x.role))) fail('チェックが無いのに、継電器が描かれています');
+    const ocrOnly = draw({ ...rel, 'a2:linkGroundRelay': 'none', 'a2:linkRelayUVR': 'no', 'a2:linkRelayRPR': 'no', 'a2:linkRelayOVR': 'no', 'a2:linkRelay2E': 'no' });
+    const o = ocrOnly.symbols.find((x) => x.role.endsWith('sendout-relay-ocr'));
+    const t = ocrOnly.symbols.find((x) => x.role.endsWith('sendout-trip-coil'));
+    if (!o || !t || !(t.x > o.x + 38)) fail('地絡継電器が無く、OCRだけのときも、OCRの右にTCが付くはずです');
+    const loose = draw({ ...rel, 'a2:linkPartCount': '0' });
+    const lu = loose.symbols.find((x) => x.role.endsWith('sendout-relay-uvr'));
+    const lastSpine = Math.max(...loose.symbols.filter((x) => /sendout-(ds|vcb)/.test(x.role)).map((x) => x.y));
+    if (!lu || !(lu.y > lastSpine)) fail('つなぐ先が無い継電器は、縦の並びの下に、名前だけ書くはずです');
+    else console.log('  つなぐ先が無い継電器は、縦の並びの下に名前だけ書く。OCRだけでもTCが付く。チェックが無ければ何も描かない');
+  }
   // 台数より大きい番号は、最後の台に寄せる
   const d9 = draw({ 'a2:linkSourceTr': '8', 'a2:linkCable': 'yes' });
   if (!hasFeed(d9, trOutOf(d9, 1))) fail('台数より大きい番号を選んだとき、最後の台から出ていません');

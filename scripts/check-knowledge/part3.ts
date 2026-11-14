@@ -243,7 +243,7 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       withAutoValues({ ...both, relayCount: '2', ...(unit === 1 ? { relayType: type } : { relayType: 'OCR', relayType__2: type }) } as Answers)[unit === 1 ? 'relayAt' : 'relayAt__2'];
     for (const ty of ['OCR', '2E', '3E']) for (const u of [1, 2] as const) ok(at(ty, u) === 'ct-1', `${ty}（${u}個目）の置き場所が、CT1組目になっていません（${at(ty, u)}）`);
     for (const ty of ['UVR', 'OVR', 'RPR', 'UPR', 'DSR', 'UFR', 'OFR']) for (const u of [1, 2] as const) ok(at(ty, u) === 'vt-1', `${ty}（${u}個目）の置き場所が、VT1組目になっていません（${at(ty, u)}）`);
-    ok(at('OCGR', 1) === 'ct-1' && at('OCGR', 2) === 'vt-1', `OCGRの置き場所は、これまでどおり（1個目＝CT・2個目＝VT）のはずです（${at('OCGR', 1)}／${at('OCGR', 2)}）`);
+    ok(!(QUESTIONS.find((q) => q.id === 'relayType')?.options ?? []).some((o) => o.value === 'OCGR'), 'OCGRは、継電器の種類の選択肢から消えているはずです（GRで足りる）');
   }
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');

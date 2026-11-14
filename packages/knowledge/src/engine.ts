@@ -1,7 +1,7 @@
 import type { Answers, Value } from './condition.ts';
 import { PCS_INPUT_MAX, countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
-import { LINK_PART_MAX, linkPartKey, linkPartOpen } from './link-parts.ts';
+import { LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 import { evaluate, fillTemplate } from './condition.ts';
 import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
@@ -482,6 +482,22 @@ export function withDerived(rawAnswers: Answers): Answers {
     d[`linkPart${n}CtRatioText`] = /^\d+(\.\d+)?$/.test(pct) ? `${pct}/5A` : pct;
   }
 
+  // 送り出しの途中の継電器（段階3-2）：つなぐ先（途中の機器n個目＝part-n／名前だけ＝none）と、試験端子を入れる機器
+  {
+    const kinds = linkPartsByKind(answers);
+    const tt = new Set<number>();
+    for (const r of LINK_RELAYS) {
+      const cands = r.on === 'ct' ? kinds.ct : kinds.vt;
+      const given = String(answers[linkRelayKey(r.code, 'At')] ?? '');
+      // 答えが、いま選べる機器ならそのまま。答えが「名前だけ」ならそのまま。それ以外（まだ・古い答え）は、最初の候補
+      const target = cands.some((n) => given === `part-${n}`) ? given : given === 'none' ? 'none' : cands.length > 0 ? `part-${cands[0]}` : 'none';
+      d[linkRelayKey(r.code, 'Target')] = target;
+      const m = /^part-(\d+)$/.exec(target);
+      if (m && answers[linkRelayKey(r.code)] === 'yes') tt.add(Number(m[1]));
+    }
+    for (let n = 1; n <= LINK_PART_MAX; n++) d[linkRelayTtKey(n)] = tt.has(n) && answers[LINK_RELAY_NO_TEST_KEY] !== 'yes' ? 'yes' : 'no';
+  }
+
   // 継電器の記号（OCR→relay-ocr）。種類がまだ無いときは、記号を決めない
   d.relaySymbol = answers.relayType ? `relay-${String(answers.relayType).toLowerCase()}` : '';
 
@@ -857,7 +873,26 @@ export function areaView(answers: Answers, area: number): Answers {
   out.linkSenderZpd = (from === 0 ? answers.hasZpd : areaView(answers, from).hasZpd) === 'yes' ? 'yes' : 'no';
   // 送り出しの、地絡継電器（GR・DGR）が付く段：段のうち、はじめに、VCB・LBS（を含む組み合わせ）がある段。DS・VCSだけの段には付かない。無ければ0
   if (area >= 1) out.linkGroundStage = linkGroundStageOf(out);
+  // 送り出しの途中のCT・VTの数（継電器のつなぐ先を、2つ以上のときだけ聞くため）
+  if (area >= 1) {
+    const kinds = linkPartsByKind(out);
+    out[LINK_PART_CT_COUNT] = kinds.ct.length;
+    out[LINK_PART_VT_COUNT] = kinds.vt.length;
+  }
   return normalizeAnswers(out);
+}
+
+/** 送り出しの途中に、いま付けられる機器（VT・CT）の番号。種類ごと（個数の範囲内で、位置がいまの構成にあるものだけ） */
+export function linkPartsByKind(view: Answers): { ct: number[]; vt: number[] } {
+  const ct: number[] = [];
+  const vt: number[] = [];
+  for (let n = 1; n <= LINK_PART_MAX; n++) {
+    if (!evaluate(linkPartOpen(n), view)) continue;
+    const kind = String(view[linkPartKey(n, 'Kind')] ?? 'vt');
+    if (kind === 'ct') ct.push(n);
+    else if (kind === 'vt') vt.push(n);
+  }
+  return { ct, vt };
 }
 
 /** 送り出しの段の数（1〜4）。「変圧器の二次側」から送り出すときだけ、2段以上にできる。答えが無い・おかしいときは1段 */
@@ -898,6 +933,15 @@ export const VIEW_KEYS: ReadonlySet<string> = new Set([
   'areaNo',
   'linkSenderZpd',
   'linkGroundStage',
+  LINK_PART_CT_COUNT,
+  LINK_PART_VT_COUNT,
+  linkRelayTtKey(1),
+  linkRelayTtKey(2),
+  linkRelayTtKey(3),
+  linkRelayTtKey(4),
+  linkRelayTtKey(5),
+  linkRelayTtKey(6),
+  ...LINK_RELAYS.map((r) => linkRelayKey(r.code, 'Target')),
   'unitNo',
   'intakeDs',
   'intakeVcb',
@@ -1432,6 +1476,22 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
         group: 'link',
         text: '途中に付ける機器のうち、付ける位置が、いまの構成にないものがあります（その段の開閉器が「なし」、または線が「電線」、または段が足りません）。位置を選び直してください（その機器は、図面に描きません）。',
       });
+    }
+  }
+  // 送り出しの途中の継電器（段階3-2）：OCRはVCB・LBSと組み合わせる／2E・3EはVCB・LBS・VCSのとき／つなぐ先のCT・VTが無いとき
+  if (Number(dv.areaNo) > 1 && dv.linkTap === 'tr-secondary') {
+    const on = (code: string) => dv[linkRelayKey(code)] === 'yes';
+    const n = linkStageCountOf(dv);
+    const sw = Array.from({ length: n }, (_, i) => String(dv[linkSwitchKey(i + 1)] ?? 'none'));
+    if (on('OCR') && Number(dv.linkGroundStage ?? 0) === 0) {
+      out.push({ group: 'link', text: 'OCRは、VCB・LBSと組み合わせて使います。送り出しの開閉器に、VCB・LBSが無いので、トリップコイル（TC）は描きません。開閉器を確かめてください（図面は、このまま描きます）。' });
+    }
+    if ((on('2E') || on('3E')) && !sw.some((v) => /vcb|lbs|vcs/.test(v))) {
+      out.push({ group: 'link', text: '2E・3Eは、VCB・LBS・VCSと組み合わせて使うことがあります。送り出しの開閉器に、どれも無いので、確かめてください（図面は、このまま描きます）。' });
+    }
+    const noTarget = LINK_RELAYS.some((r) => on(r.code) && Number(dv[r.on === 'ct' ? LINK_PART_CT_COUNT : LINK_PART_VT_COUNT] ?? 0) === 0);
+    if (noTarget) {
+      out.push({ group: 'link', text: 'つなぐ先の機器（CT・VT）が無い継電器があります。「途中に付ける機器」で、CT・VTを付けてください。付けないときは、継電器の名前だけを、縦の並びの下に書きます。' });
     }
   }
   // 低圧の電動機・発電機：図面に描くのは、高圧（600Vを超えるもの）だけ。定格電圧（無ければ、つなぎ先の変圧器の二次側の電圧）が低圧のとき、知らせる（第13弾 項目55 修正15／A-4・B-6）
