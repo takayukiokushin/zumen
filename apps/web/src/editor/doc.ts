@@ -1,3 +1,4 @@
+import { healBeforeRemove } from './rewire.ts';
 import { clampSize, fillLabelLines, getSymbol, initialLabelValues, sideLabelOrigin, sizedSymbol } from '@zumen/symbols';
 import type { SizeRange, SymbolDef } from '@zumen/symbols';
 import { LABEL_FONT, LABEL_LINE, clampTextSize, labelRect, labelWidth, rotatedBox, rotatedPort, snap, straighten } from '@zumen/layout';
@@ -264,6 +265,8 @@ export const defOf = (it: { symbolId: string; w?: number; h?: number }): SymbolD
 
 let seq = 0;
 const nextId = (prefix: string) => `${prefix}-${++seq}`;
+/** 新しい線のid（rewire.ts が、線を割るときに使う） */
+export const newWireId = (): string => nextId('wire');
 
 /** 接続点どうしをつなぐ、まっすぐな線を1本作る（「結線を整える」が、つなぎ忘れの隙間を埋めるのに使う） */
 export function makeWire(x1: number, y1: number, x2: number, y2: number, at1: Anchor, at2: Anchor): DocWire {
@@ -783,7 +786,13 @@ export const removeItems = (doc: Doc, ids: string[]): Doc => {
   let cur = doc;
   // 記号を先に消し、そのあとで、選ばれている線を消す（記号を消すと、つないであった線が、つなぎ先を失った印になる）
   const order = [...ids].sort((a, b) => Number(cur.items.find((x) => x.id === a)?.kind === 'wire') - Number(cur.items.find((x) => x.id === b)?.kind === 'wire'));
-  for (const id of order) if (cur.items.some((x) => x.id === id)) cur = removeItem(cur, id);
+  const picked = new Set(ids);
+  for (const id of order) {
+    if (!cur.items.some((x) => x.id === id)) continue;
+    // 選んだ線も一緒に消すときは、その線を、つなぎ直さない（利用者が、消すと決めた線）
+    const noHeal = cur.items.some((x) => x.kind === 'wire' && picked.has(x.id) && ((x.at1 && x.at1.item === id) || (x.at2 && x.at2.item === id)));
+    cur = removeItem(cur, id, { noHeal });
+  }
   return cur;
 };
 
@@ -895,7 +904,9 @@ export const addWire = (
 };
 
 /** 要素を消す。記号を消すと、内蔵しているものも一緒に消える */
-export const removeItem = (doc: Doc, id: string): Doc => {
+export const removeItem = (doc: Doc, id: string, opts: { noHeal?: boolean } = {}): Doc => {
+  // 消す前に、上下の線を1本につなぐ（鎖の端なら、行き止まりの線も消す）（第13弾 項目55 修正18／B-10）
+  if (!opts.noHeal) doc = healBeforeRemove(doc, id);
   const gone = new Set(groupOf(doc, id));
   // 消す記号（と文字）が占めていた高さを覚えておく。あとで、ここに残った余白を詰める
   const freed: { y0: number; y1: number; x0: number; x1: number }[] = [];

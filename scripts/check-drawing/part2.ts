@@ -3,13 +3,14 @@
  * 共有するものは common.ts。scripts/check-drawing.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
 import { readFileSync } from 'node:fs';
-import { removeItem, fromLayout, moveItem, docBounds } from '../../apps/web/src/editor/doc.ts';
+import { removeItem, removeItems, portsOf, fromLayout, moveItem, docBounds } from '../../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, pcsInputMode, visibleQuestions, withAutoValues, QUESTION_DEFAULTS } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { rotatedBox, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
-import { inspectDrawing, tidyDrawing } from '../../apps/web/src/editor/inspect.ts';
+import { insertTarget, moveWithInsert } from '../../apps/web/src/editor/rewire.ts';
+import { inspectDrawing, nudgeSymbolLabel, tidyDrawing } from '../../apps/web/src/editor/inspect.ts';
 import { fail, answers, spreadUnits } from './common.ts';
 
 /* ---------- 14. 高圧進相設備（SC・SR）の図記号 ---------- */
@@ -848,11 +849,62 @@ console.log('\n■ 記号を消したあとの「結線を整える」（途切�
     const broken = floating(cut);
     const r = tidyDrawing(cut, 'A3', 'landscape');
     const left = r.issues.filter((i) => i.kind === 'floating').length;
-    if (broken === 0) fail(`${id}：消しても線が途切れていません（試験の前提が違います）`);
+    // 消すと同時に、上下の線は自動で1本につなぐ（第13弾 項目55 修正18／B-10）ので、消した直後に、途切れた線は残らない。整えても、残らない
+    if (broken > 0) fail(`${id}：消した直後に、途切れた線が ${broken}か所 残っています（自動でつなぐか、行き止まりの線は消えるはずです）`);
     else if (left > 0) fail(`${id}：消したあと、整えても、つながっていない線が ${left}件 残りました`);
-    else console.log(`  ${id} を消す：途切れ ${broken}か所 → 整えると 0か所`);
+    else console.log(`  ${id} を消す：途切れ ${broken}か所（自動でつなぐ／行き止まりの線は消える）→ 整えても 0か所`);
     // もとの図面は書き換えない（元に戻せるように、新しい図面を返す）
-    if (JSON.stringify(cut) === JSON.stringify(r.doc) && broken > 0) fail(`${id}：整えても図面が変わっていません`);
+    if (JSON.stringify(base) === JSON.stringify(cut)) fail(`${id}：消しても図面が変わっていません`);
+  }
+  // あとから動かしやすく（第13弾 項目55 修正18／B-10）：消したら、上下の線を1本の直線につなぐ／線の上に離したら、線を割って入れる／余計な線を残さない
+  {
+    const wiresOnly = (d: Doc) => d.items.filter((it): it is DocWire => it.kind === 'wire');
+    const straight = (w: DocWire) => Math.abs(w.x1 - w.x2) < 0.5 || Math.abs(w.y1 - w.y2) < 0.5;
+    // 消しても、斜めの線はできない
+    for (const id of ['vct-indoor-1', 'ds', 'main-breaker', 'ct', 'transformer']) {
+      if (wiresOnly(removeItem(base, id)).some((w) => !straight(w))) fail(`${id}を消したら、斜めの線ができました`);
+    }
+    // VCB（main-breaker）を消すと、上（ds-vt の分岐の下）から、下（ct）まで、1本の直線につながる
+    const cutV = removeItem(base, 'main-breaker');
+    const toCt = wiresOnly(cutV).filter((w) => w.at2?.item === 'ct' || w.at1?.item === 'ct').filter((w) => w.at1?.port === 'in' || w.at2?.port === 'in');
+    const above = wiresOnly(base).find((w) => w.at2?.item === 'main-breaker')!;
+    const top = Math.min(above.y1, above.y2);
+    const ctWire = toCt[0];
+    if (toCt.length !== 1 || !ctWire || Math.min(ctWire.y1, ctWire.y2) !== top || wiresOnly(cutV).length !== wiresOnly(base).length - 1 - 0 && wiresOnly(cutV).filter((w) => w.orphan).length > 0) {
+      fail('VCBを消したのに、上下の線が、1本の直線につながっていません');
+    } else console.log('  VCBを消す：上下の線が、1本の直線につながる（線は1本減る。斜めの線はできない）');
+    // 選んだ線も一緒に消すときは、つなぎ直さない（利用者が消すと決めた線）
+    const picked = removeItems(base, ['main-breaker', above.id]);
+    if (wiresOnly(picked).some((w) => w.id === above.id)) fail('選んだ線を、一緒に消したのに、残っています');
+    // 線の上に離す：VCT（1台目）を、VCBの上の線の上へ動かす
+    const v = base.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'vct-indoor-1')!;
+    const vp = portsOf(v);
+    const dx = above.x1 - (vp[0]!.x + vp[1]!.x) / 2 + 3;
+    const dy = (above.y1 + above.y2) / 2 - (vp[0]!.y + vp[1]!.y) / 2;
+    const plain = (d: Doc) => moveItem(d, 'vct-indoor-1', dx, dy);
+    const tgt = insertTarget(base, 'vct-indoor-1', dx, dy);
+    if (tgt?.wire !== above.id) fail(`線の上に離したのに、入る線が見つかりません（${tgt?.wire}）`);
+    const ins = nudgeSymbolLabel(moveWithInsert(base, ['vct-indoor-1'], dx, dy, plain), 'vct-indoor-1');
+    const vw = wiresOnly(ins).filter((w) => w.at1?.item === 'vct-indoor-1' || w.at2?.item === 'vct-indoor-1');
+    const issues = inspectDrawing(ins, 'A3', 'landscape').filter((i) => ['floating', 'through', 'skew', 'overlap'].includes(i.kind));
+    const vNow = ins.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'vct-indoor-1')!;
+    const mbNow = ins.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'main-breaker')!;
+    const mbOld = base.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === 'main-breaker')!;
+    const bridged = wiresOnly(ins).some((w) => (w.at1?.item === 'cable-head-site' && w.at2?.item === 'vct-indoor-2') || (w.at2?.item === 'cable-head-site' && w.at1?.item === 'vct-indoor-2'));
+    if (vw.length !== 2) fail(`線に入れたVCTに、線が ${vw.length}本つながっています（2本のはず）`);
+    else if (!(vNow.y < mbNow.y && vNow.y > mbOld.y - 40) || mbNow.y < mbOld.y) fail('VCTが、VCBの上の線の間に入っていません');
+    else if (!bridged) fail('動かす前の場所の、上下の線が、つながっていません');
+    else if (issues.length > 0) fail(`線に入れたあと、図面の点検で問題が出ました（${issues.map((i) => i.message.slice(0, 16)).join(' / ')}）`);
+    else console.log('  VCTを、別の線の上で離す：線が割れて入る（元の場所は、1本につながる。場所が足りなければ、下を動かして空ける）');
+    // くっつけないとき：Alt を押しながら離したとき／線から離れた場所
+    const same = (x: Doc, y: Doc) => JSON.stringify(x) === JSON.stringify(y);
+    if (!same(moveWithInsert(base, ['vct-indoor-1'], dx, dy, plain, true), plain(base))) fail('Altを押しながら離したのに、線に入っています');
+    const farDx = 160;
+    if (!same(moveWithInsert(base, ['vct-indoor-1'], farDx, 0, (d) => moveItem(d, 'vct-indoor-1', farDx, 0)), moveItem(base, 'vct-indoor-1', farDx, 0))) fail('線から離れた場所に離したのに、線に入っています');
+    if (insertTarget(base, 'vct-indoor-1', farDx, 0) !== null) fail('線から離れた場所で、入る線が見つかっています');
+    // 動かす先が、その記号のつながっている線のとき（少しだけ動かす）は、これまでどおり
+    const own = wiresOnly(base).find((w) => w.at1?.item === 'vct-indoor-1' || w.at2?.item === 'vct-indoor-1')!;
+    if (insertTarget(base, 'vct-indoor-1', 0, 4)?.wire === own.id) fail('つながっている自分の線に、入ろうとしています');
   }
   // 複数の記号を消しても、主回路の線は途切れず、行き止まりの線だけが消える
   {

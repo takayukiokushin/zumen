@@ -29,6 +29,7 @@ import type { AreaRect, ArrowDir, CrossSize, GroundSize, LinkShape } from '@zume
 import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
+import { moveWithInsert } from './rewire.ts';
 import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
 
 /** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
@@ -1277,9 +1278,14 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             doc={viewDoc}
             selectedIds={selection}
             onSelect={setSelection}
-            onMoveEnd={(ids, dx, dy) => {
+            onMoveEnd={(ids, dx, dy, noAuto) => {
               if (locked && activeId !== null) editLayer((d) => moveLayerItems(d, activeId, ids, dx, dy));
-              else apply(ids.length === 1 ? moveItem(doc, ids[0]!, dx, dy) : moveItems(doc, ids, dx, dy));
+              // 1つの記号を、別の線の上で離したときは、線を割って入れる（Alt を押しながらのときは、入れない）
+              else {
+                const next = moveWithInsert(doc, ids, dx, dy, (d) => (ids.length === 1 ? moveItem(d, ids[0]!, dx, dy) : moveItems(d, ids, dx, dy)), noAuto);
+                // 線に入れたとき、文字が近くの記号に重なったら、重ならない場所へ動かす（重なっていなければ、動かさない）
+                apply(ids.length === 1 ? nudgeSymbolLabel(next, ids[0]!) : next);
+              }
             }}
             onWireEnd={(id, end, dx, dy) => apply(moveWireEnd(doc, id, end, dx, dy))}
             onResizeEnd={(id, rect) => apply(setItemRect(doc, id, rect))}

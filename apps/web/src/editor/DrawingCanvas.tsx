@@ -4,6 +4,7 @@ import { FONT_FAMILY, shapesToSvg } from '@zumen/symbols';
 import { boldStrokeWidth, AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
 import type { Doc, DocItem, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
+import { insertTarget } from './rewire.ts';
 import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
 import { groundOverlapsSymbols, isHorizontalWire, markPoint, normalizeRect } from './layers.ts';
@@ -16,7 +17,8 @@ interface Props {
   selectedIds: string[];
   onSelect: (ids: string[]) => void;
   /** ドラッグが終わったときに一度だけ呼ぶ（元に戻すの単位をドラッグ1回にするため）。複数選んでいるときは、まとめて動かす */
-  onMoveEnd: (ids: string[], dx: number, dy: number) => void;
+  /** noAuto：Alt キーを押しながら離した（線に割って入れない） */
+  onMoveEnd: (ids: string[], dx: number, dy: number, noAuto?: boolean) => void;
   /** 線の端を動かして伸縮したとき */
   onWireEnd: (id: string, end: 1 | 2, dx: number, dy: number) => void;
   /** 線を引き終えたとき */
@@ -165,6 +167,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   const bandRef = useRef<{ x: number; y: number; cx: number; cy: number; additive: boolean; moved: boolean; base: string[] } | null>(null);
   /** 複数選んでいるうちの1つを、動かさずにクリックして離したとき、その1つだけの選択にする */
   const collapseTo = useRef<string | null>(null);
+  /** Alt（Mac は option）キーを押しているか（押しながら離すと、線に割って入れない） */
+  const altRef = useRef(false);
   /** 線を引いている途中の始点と、いまのカーソル位置 */
   const [wireStart, setWireStart] = useState<{ x: number; y: number } | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
@@ -376,6 +380,20 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     };
   }, []);
 
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { altRef.current = e.altKey; };
+    window.addEventListener('keydown', key);
+    window.addEventListener('keyup', key);
+    return () => {
+      window.removeEventListener('keydown', key);
+      window.removeEventListener('keyup', key);
+    };
+  }, []);
+
+  // 1つの記号を動かしていて、いま離すと、割って入る線（色で光らせる）。Alt を押している間は、無し
+  const insertWire = drag && !drag.end && drag.ids.length === 1 && !altRef.current ? insertTarget(doc, drag.id, drag.dx, drag.dy) : null;
+  const insertWireItem = insertWire ? doc.items.find((i) => i.id === insertWire.wire) : undefined;
+
   // 表示用の図面。動かしている最中も、結線をつないだまま見せる
   const view = resize
     ? setItemRect(doc, resize.id, resize.rect)
@@ -453,6 +471,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    altRef.current = e.altKey;
     // 範囲で選んでいる最中：少し動いたら、枠を出す
     const bd = bandRef.current;
     if (bd) {
@@ -643,7 +662,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
     }
     if (drag && (Math.abs(drag.dx) > 0.01 || Math.abs(drag.dy) > 0.01)) {
       if (drag.end) onWireEnd(drag.id, drag.end, drag.dx, drag.dy);
-      else onMoveEnd(drag.ids, drag.dx, drag.dy);
+      else onMoveEnd(drag.ids, drag.dx, drag.dy, altRef.current);
     } else if (drag && collapseTo.current) {
       onSelect([collapseTo.current]);
     }
@@ -889,6 +908,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
             </g>
           );
         })}
+
+        {/* 離すと、この線を割って、動かしている記号が入る（Alt を押している間は出ない） */}
+        {insertWireItem && insertWireItem.kind === 'wire' && (
+          <line x1={insertWireItem.x1} y1={insertWireItem.y1} x2={insertWireItem.x2} y2={insertWireItem.y2} stroke="#e07000" strokeWidth={3.5} strokeLinecap="round" opacity={0.75} pointerEvents="none" />
+        )}
 
         {/* 赤い枠（範囲を囲む四角）。線の上をつかんで動かす。選ぶと、8つの丸で、大きさを変えられる。中は素通し（中の記号や×印を、そのまま触れる）。
             枠を描くモードのままでも、置いた枠の線・丸をつかめば、動かす・大きさを変えるになる（枠の外・中の何も無い所は、次の枠を描き始める。第13弾 項目34） */}
