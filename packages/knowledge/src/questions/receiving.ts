@@ -77,6 +77,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     defaultValue: 'dgr',
     showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
     ask: 'ai-uncertain',
+    required: true,
   },
   {
     id: 'pasBuiltinVt',
@@ -138,6 +139,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     ],
     defaultValue: 'pole',
     ask: 'ai-uncertain',
+    required: true,
   },
   {
     // VCT（電気設備内）を、主回路のどこに置くか。初期値は、引込ケーブルの次（いまの位置）。電柱上のときは、聞かない
@@ -170,6 +172,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     ],
     defaultValue: '1',
     ask: 'ai-uncertain',
+    required: true,
   },
 
   /* ---------------- 引込点から責任分界点までのケーブル（区分開閉器なし・地上キャビネットなしのとき） ---------------- */
@@ -266,6 +269,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     ],
     ask: 'ai-uncertain',
     help: '「なし」は、電柱の上に受電設備を構成する場合などで、区分開閉器の後をケーブルを介さず、ふつうの電線でつなぐとき（ケーブル端末も描かない）',
+    required: true,
   },
   {
     // 区分開閉器が「なし」のときだけ。電力会社のケーブルなら、財産分界点は、DSの一次側（無ければLBSの一次側）に移る
@@ -291,6 +295,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
       '区分開閉器が無いとき、財産分界点は、引込ケーブルが誰のものかで決まる。' +
       'お客様のケーブルなら、ケーブルの電源側（引込点の下）。電力会社のケーブルなら、ケーブルの負荷側で、DSの一次側（DSが無ければ、LBSの一次側）。' +
       '電力会社のケーブルのときは、「財産・責任分界点」を1本の横線で描くので、「3点一致ですか？」は聞かない',
+      required: true,
   },
   {
     id: 'cableStructure',
@@ -363,6 +368,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
     unit: 'か所',
     defaultValue: 1,
     ask: 'ai-uncertain',
+    required: true,
   },
   {
     // 2か所目以降のエリアだけ。エリアの名前を、自由に入れられる（例：第2変電所、第2電気室、第3キュービクル）
@@ -403,8 +409,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
       { value: 'semi-outdoor', label: '半屋外' },
     ],
     allowFreeInput: true,
-    ask: 'always',
-    required: true,
+    ask: 'always'
   },
   { id: 'areaFloor', group: 'area', label: '階層', type: 'text', placeholder: '1階 / 中2階', ask: 'always' },
   { id: 'areaDetail', group: 'area', label: '場所の補足', type: 'text', placeholder: '駐車場横', ask: 'always' },

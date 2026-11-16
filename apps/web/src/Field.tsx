@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Question, TrendEntry } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
-import { evaluate, limitCountText, MAX_TEXT_LENGTH } from '@zumen/knowledge';
+import { evaluate, isBlankStart, limitCountText, MAX_TEXT_LENGTH } from '@zumen/knowledge';
 import { useT, useTx } from './i18n/useT.ts';
 import { useSettings } from './settings/settings.tsx';
 import { TrendHint } from './TrendHint.tsx';
@@ -100,7 +100,8 @@ export function Field({ question: question, fieldKey, value, onChange, context, 
   const [pickedOther, setPickedOther] = useState(false);
   const set = (v: Value) => onChange(fieldKey, v);
   // まだ答えていないときは、いま効いている値を見せる（例：引込元がキャビネットなら、区分開閉器は既定でUGS）
-  const current = value ?? context?.[question.id] ?? q.defaultValue ?? '';
+  // （白紙で始めた案件は、質問の既定値も見せない。答えるまで、空のまま。第14弾 項目3）
+  const current = value ?? context?.[question.id] ?? (context && isBlankStart(context) ? undefined : q.defaultValue) ?? '';
   // 一覧に無い値がすでに入っているか、利用者が「その他」を選んだときだけ手入力欄を出す
   const free =
     q.allowFreeInput === true &&

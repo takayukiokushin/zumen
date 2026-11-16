@@ -2,7 +2,7 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, NEW_PROJECT_ANSWERS, QUESTION_DEFAULTS, missingRequiredFields, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
+import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
@@ -247,46 +247,39 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   }
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
   ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
-  // 新しい案件の初期設定（第7弾 項目3）：初期値の一覧どおりになる。質問の既定値は変えない（保存済みの案件は変わらない）
+  // 新規作成は、完全に白紙から始める（第14弾 項目3）。初期値（質問の既定値・条件の無い自動入力）を使わない。印が無い案件（以前の案件）は、これまでどおり
   {
-    const eff = withAutoValues({ ...QUESTION_DEFAULTS, ...NEW_PROJECT_ANSWERS });
-    const valueOf = (id: string, unit = 0) => {
-      const key = unit === 0 ? id : `${id}__${unit + 1}`;
-      const v = eff[key] ?? (unit === 0 ? undefined : eff[id] === undefined ? undefined : QUESTION_DEFAULTS[id]) ?? QUESTION_DEFAULTS[id];
-      return v === undefined ? undefined : String(v);
-    };
-    const table: [string, string, string, number?][] = [
-      ['引込元', 'sourceType', 'pole'], ['AS', 'hasAs', 'no'], ['3点一致', 'boundaryPattern', 'coincident'],
-      ['区分開閉器', 'sectionalizer', 'pas'], ['制御装置', 'pasControl', 'dgr'], ['内蔵VT', 'pasBuiltinVt', 'yes'], ['内蔵LA', 'pasBuiltinLa', 'yes'],
-      ['区分開閉器の定格電圧', 'pasRatedVoltage', '7200'], ['区分開閉器の定格電流', 'pasRatedCurrent', '200'],
-      ['VCTの位置', 'vctLocation', 'indoor'], ['VCTの台数', 'vctCount', '1'],
-      ['付設方法', 'cableInstallation', 'buried'], ['ケーブルの構造', 'cableStructure', 'CVT'], ['ケーブルの定格電圧', 'cableVoltage', '6600'], ['断面積', 'cableCrossSection', '38'],
-      ['エリアの数', 'areaCount', '1'], ['形態', 'areaForm', 'cubicle'], ['設置場所', 'areaPlacement', 'outdoor'],
-      ['主遮断装置の形式', 'mainBreakerForm', 'pfs'], ['LBSの定格電圧', 'lbsRatedVoltage', '7200'], ['パワーヒューズ', 'lbsFuseCount', '3'],
-      ['VT', 'hasSiteVt', 'no'], ['CT', 'hasSiteCt', 'no'], ['ZPD', 'hasZpd', 'no'], ['LA', 'hasLa', 'no'],
-      ['変圧器の台数', 'transformerCount', '2'],
-      ['1台目の用途', 'trUsage', '電灯', 0], ['1台目の結線方式', 'trConnection', 'tr-1p', 0], ['1台目の電圧', 'trVoltage', '6600/210-105V', 0], ['1台目の上位PC', 'trHasPc', 'no', 0], ['1台目の上位LBS', 'trHasLbs', 'no', 0],
-      ['2台目の用途', 'trUsage', '動力', 1], ['2台目の結線方式', 'trConnection', 'tr-3p-yd', 1], ['2台目の電圧', 'trVoltage', '6600/210V', 1], ['2台目の上位PC', 'trHasPc', 'no', 1], ['2台目の上位LBS', 'trHasLbs', 'no', 1],
-      ['高圧進相設備', 'hasCapacitor', 'yes'], ['高圧コンデンサの台数', 'capacitorCount', '1'], ['コンデンサ手前のPC', 'capHasPc', 'no'], ['コンデンサ手前のLBS', 'capHasLbs', 'no'], ['コンデンサ手前のVCS', 'capHasVcs', 'no'], ['リアクトル', 'hasReactor', 'no'],
-      ['発電機', 'hasGenerator', 'no'], ['太陽光発電設備', 'hasPv', 'no'], ['蓄電池', 'hasBattery', 'no'],
-    ];
-    for (const [name, id, want, unit] of table) {
-      const got = valueOf(id, unit ?? 0);
-      ok(got === want, `初期設定：${name}（${id}${unit ? `・${unit + 1}台目` : ''}）が「${want}」になっていません（${got}）`);
-    }
-    // 初期設定に書いた答えは、実在する質問の、選べる値だけ
-    for (const [key, v] of Object.entries(NEW_PROJECT_ANSWERS)) {
-      const q = QUESTIONS.find((x) => x.id === key.replace(/__\d+$/, ''));
-      ok(!!q, `初期設定に、存在しない質問があります：${key}`);
-      if (q?.options && !q.allowFreeInput) ok(q.options.some((o) => o.value === String(v)), `初期設定の ${key}＝${String(v)} は、選べる値にありません`);
-    }
+    const blank = effectiveAnswers({ startMode: 'blank' });
+    const legacy = effectiveAnswers({});
+    ok(blank.vctLocation === undefined && blank.hasPv === undefined && blank.sourceType === undefined && blank.transformerCount === undefined && blank.pasRatedVoltage === undefined && blank.cableStructure === undefined, '白紙で始めた案件に、初期値が入っています');
+    ok(legacy.vctLocation === 'pole' && legacy.hasPv === 'no' && legacy.sourceType === 'pole' && String(legacy.transformerCount) === '1' && legacy.hasAuxTr === 'no', '印が無い案件（以前の案件）の初期値が、変わっています');
+    ok(effectiveAnswers({ startMode: 'blank-open' }).vctLocation === undefined, '「全部を開く」にした案件も、初期値を使わないはずです');
+    // 状況に応じた自動入力は、答えたあとに働く：用途を選ぶと、電圧の先頭「6600/」が入る（選ぶ前は空）
+    ok(effectiveAnswers({ startMode: 'blank' }).trVoltage === undefined && effectiveAnswers({ startMode: 'blank', trUsage: '動力' }).trVoltage === '6600/210V', '白紙で始めた案件の変圧器の電圧は、用途を選んだあとに入る（選ぶ前は空）はずです');
+    ok(effectiveAnswers({ trUsage: '動力' }).trVoltage === '6600/210V' && effectiveAnswers({}).trVoltage === '6600/', '以前の案件の変圧器の電圧が、変わっています');
+    // 複製・「全部を開く」：1つずつ開く印だけが外れる（初期値を使わないのは、そのまま）
+    ok(openStartMode({ startMode: 'blank', siteName: 'A' }).startMode === 'blank-open' && clearForDuplicate({ startMode: 'blank', siteName: 'A' }).startMode === 'blank-open' && !isStepStart(openStartMode({ startMode: 'blank' })) && isStepStart({ startMode: 'blank' }) && !isStepStart({}), '1つずつ開く印の扱いが違います');
+    ok(openStartMode({ siteName: 'A' }).startMode === undefined, '印が無い案件に、印が付いています');
+    // 白紙のまま、図面が組み立てられる（何も描かないが、エラーにならない）
+    ok(Array.isArray(buildComposition({ startMode: 'blank' })), '白紙の案件で、図面が組み立てられません');
+    // 必須項目：白紙なら、表のとおり、すべて未入力として並ぶ。印が無い案件は、既定値のある項目は並ばない
+    const need = new Set(missingRequired({ startMode: 'blank' }).map((x) => x.id));
+    for (const id of ['siteName', 'sourceType', 'sectionalizer', 'areaCount', 'areaForm', 'vctLocation', 'vctCount', 'cableInstallation', 'mainBreakerForm', 'transformerCount', 'hasCapacitor', 'hasGenerator', 'hasMotor', 'hasPv', 'hasBattery', 'hasAuxTr']) ok(need.has(id), `白紙の案件で、必須の「${id}」が、未入力として並んでいません`);
+    const needCb = new Set(missingRequired({ startMode: 'blank', mainBreakerForm: 'cb' }).map((x) => x.id));
+    for (const id of ['vtSetCount', 'ctSetCount', 'relayCount']) ok(needCb.has(id), `主遮断装置をCB形にしたとき、必須の「${id}」が、未入力として並んでいません`);
+    const legacyNeed = new Set(missingRequired({}).map((x) => x.id));
+    ok(!legacyNeed.has('areaCount') && !legacyNeed.has('vctCount') && !legacyNeed.has('hasPv') && !legacyNeed.has('hasAuxTr') && !legacyNeed.has('transformerCount'), '以前の案件で、既定値のある項目が、必須の入力漏れとして並んでいます');
+    // 必須の表（第14弾 項目4）：「必須」の印が付いているもの・付いていないもの
+    const req = (id: string) => QUESTIONS.find((x) => x.id === id)?.required === true;
+    for (const id of ['siteName', 'sourceType', 'boundaryPattern', 'sectionalizer', 'pasControl', 'vctLocation', 'vctCount', 'cableInstallation', 'cableOwner', 'areaCount', 'areaForm', 'mainBreakerForm', 'vtSetCount', 'ctSetCount', 'relayCount', 'transformerCount', 'trUsage', 'trConnection', 'hasCapacitor', 'capacitorCount', 'hasAuxTr', 'hasGenerator', 'hasPv', 'hasBattery', 'hasMotor', 'auxTrCount', 'generatorCount', 'generatorUsage', 'generatorCapacity', 'pvGroupCount', 'pcsCapacity', 'pcsCount', 'motorCount', 'motorCapacity', 'batteryUnitCount', 'batteryUnitRating', 'batteryPcsGroupCount', 'batteryPcsKw', 'batteryPcsUnits']) ok(req(id), `「${id}」は、必須のはずです（必須項目の表）`);
+    for (const id of ['areaPlacement', 'customerNo', 'poleName', 'zpd', 'hasZpd', 'hasLa', 'capacitorCapacity', 'reactorCapacity', 'trVoltage', 'batteryTransformer', 'motorPlace']) ok(!req(id), `「${id}」は、必須ではないはずです（必須項目の表）`);
     // 質問の既定値は変えていない：保存済みの案件（答えを持たない質問は既定値）の見え方は、これまでどおり
     const old = withAutoValues({ ...QUESTION_DEFAULTS });
     ok(String(old.transformerCount) === '1' && String(old.hasCapacitor) === 'no' && old.vctLocation === 'pole' && old.mainBreakerForm === undefined, '質問の既定値が変わっています（保存済みの案件の内容が変わってしまいます）');
   }
   // スケッチ読み取りの確認事項：必須で、答えが無いものだけ。入力欄を出せる形（キーつき）で返る
   {
-    const base = withAutoValues({ ...QUESTION_DEFAULTS, ...NEW_PROJECT_ANSWERS });
+    const base = withAutoValues({ ...QUESTION_DEFAULTS, mainBreakerForm: 'pfs', transformerCount: '2', hasCapacitor: 'yes', areaForm: 'cubicle', trUsage: '電灯', trUsage__2: '動力' });
     const miss = missingRequiredFields({ ...base, ...{ transformerCount: '3' } });
     ok(miss.every((m) => m.question.required === true), '必須でない項目が、確認事項に入っています');
     ok(miss.some((m) => m.key === 'siteName'), '事業場名称（必須・未入力）が、確認事項に入っていません');

@@ -72,6 +72,29 @@ export function dropHiddenChoices(answers: Answers): Answers {
  * 区分開閉器の回答がまだ無くて、古い hasPas の回答だけが入っているときは、そこから決める
  * （no→なし、それ以外→PAS）。区分開閉器の回答があれば、そちらを使う。
  */
+/**
+ * 新規作成のとき、完全に白紙から始めた案件の印（第14弾 項目3）。
+ *   'blank'      … 白紙で始めて、「設備を入力して作成」を、上から1つずつ開く（画面の動き）
+ *   'blank-open' … 白紙で始めた案件のうち、すべての項目を開いて入力するもの（スケッチ・音声で作ったとき、複製したとき、「全部を開く」を押したとき）
+ * どちらも、**初期値を使わない**（質問の既定値・条件の無い自動入力）。図面は、答えたことだけで作る。
+ * 印が無い案件（以前の案件・古い形式の案件）は、これまでどおり、初期値を使う。
+ */
+export const START_MODE_KEY = 'startMode';
+export const isBlankStart = (answers: Answers): boolean => answers[START_MODE_KEY] === 'blank' || answers[START_MODE_KEY] === 'blank-open';
+/** 「設備を入力して作成」を、上から1つずつ開く案件か */
+export const isStepStart = (answers: Answers): boolean => answers[START_MODE_KEY] === 'blank';
+/** 白紙で始めた案件を、すべての項目を開く形にする（複製・スケッチ・音声。初期値を使わないのは、そのまま） */
+export function openStartMode(answers: Answers): Answers {
+  return answers[START_MODE_KEY] === 'blank' ? { ...answers, [START_MODE_KEY]: 'blank-open' } : answers;
+}
+/** 画面・図面・確認で使う、実際に効いている回答（質問の既定値と、状況に応じた初期値を足したもの。白紙で始めた案件は、足さない） */
+export function effectiveAnswers(answers: Answers): Answers {
+  const normalized = normalizeAnswers(answers);
+  if (isBlankStart(normalized)) return withAutoValues(normalized);
+  // 以前の案件：「補助変圧器はありますか？」が未回答（かつ、台数でも「あり」と読めなかった）なら、「なし」
+  return withAutoValues({ ...QUESTION_DEFAULTS, ...(normalized.hasAuxTr === undefined ? { hasAuxTr: 'no' } : {}), ...normalized });
+}
+
 export function normalizeAnswers(answers: Answers): Answers {
   let out = answers;
   if (out.sectionalizer === undefined && out.hasPas !== undefined) {
@@ -130,6 +153,7 @@ export function withAutoValues(given: Answers): Answers {
 
 function autoFillView(answers: Answers): Answers {
   let out = answers;
+  const blank = isBlankStart(answers);
   for (const q of QUESTIONS) {
     if (!q.autoValue) continue;
     const group = QUESTION_GROUPS.find((g) => g.id === q.group);
@@ -138,7 +162,8 @@ function autoFillView(answers: Answers): Answers {
       const key = indexedKey(q.id, i);
       if (out[key] !== undefined) continue;
       const view = viewAt(out, i);
-      const rule = q.autoValue.find((r) => evaluate(r.when, view));
+      // 白紙で始めた案件は、条件の無い初期値は使わない。afterAnswered があるものは、その質問に答えたあとだけ
+      const rule = q.autoValue.find((r) => (!blank || r.when !== undefined) && (!blank || !r.afterAnswered || !(view[r.afterAnswered] === undefined || view[r.afterAnswered] === null || view[r.afterAnswered] === '')) && evaluate(r.when, view));
       if (rule) {
         if (out === answers) out = { ...answers };
         out[key] = rule.value;
@@ -177,11 +202,12 @@ export function questionsByGroup(answers: Answers, opts: AskOptions = {}): {
 /** 未回答の必須項目 */
 export function missingRequired(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
   const empty = (v: unknown) => v === undefined || v === null || v === '';
-  const answers = normalizeAnswers(rawAnswers);
+  // 実際に効いている回答（既定値・初期値を足したもの。白紙で始めた案件は、足さない）で、答えが空かを見る
+  const answers = effectiveAnswers(rawAnswers);
   const out = visibleQuestions(answers, opts).filter((q) => q.required && empty(answers[q.id]));
   // 2か所目以降のエリアは、そのエリアの答えで見る（エリアごとの質問と、エリア自体の質問だけ）
-  for (let n = 1; n < areaCountOf(rawAnswers); n++) {
-    const view = normalizeAnswers(areaView(rawAnswers, n));
+  for (let n = 1; n < areaCountOf(answers); n++) {
+    const view = normalizeAnswers(areaView(answers, n));
     for (const q of visibleQuestions(view, opts)) {
       const scoped = q.group === 'area' ? q.id !== 'areaCount' : PER_AREA_QUESTION_IDS.has(q.id);
       if (scoped && q.required && empty(view[q.id])) out.push({ ...q, label: `${n + 1}か所目：${q.label}` });
@@ -205,12 +231,12 @@ export interface MissingField {
 
 export function missingRequiredFields(rawAnswers: Answers, opts: AskOptions = {}): MissingField[] {
   const empty = (v: unknown) => v === undefined || v === null || v === '';
-  const answers = normalizeAnswers(rawAnswers);
+  const answers = effectiveAnswers(rawAnswers);
   const out: MissingField[] = visibleQuestions(answers, opts)
     .filter((q) => q.required && empty(answers[q.id]))
     .map((q) => ({ key: q.id, question: q, label: q.label, context: answers }));
-  for (let n = 1; n < areaCountOf(rawAnswers); n++) {
-    const view = normalizeAnswers(areaView(rawAnswers, n));
+  for (let n = 1; n < areaCountOf(answers); n++) {
+    const view = normalizeAnswers(areaView(answers, n));
     for (const q of visibleQuestions(view, opts)) {
       const scoped = q.group === 'area' ? q.id !== 'areaCount' : PER_AREA_QUESTION_IDS.has(q.id);
       if (scoped && q.required && empty(view[q.id])) out.push({ key: areaKey(q.id, n), question: q, label: `${n + 1}か所目：${q.label}`, areaNo: n + 1, context: view });
@@ -835,7 +861,7 @@ export function viewAt(answers: Answers, index: number): Answers {
     if (v !== undefined) out[id] = v;
     // まだ答えていない質問は、1件目の答えは引き継がず、質問の既定値で見る（画面にも、既定値が出ているため。
     // 既定値が無ければ、未回答）。既定値を見ないと、画面に「200A」「T」「40kA」と出ているのに、2件目以降の図面に出なかった
-    else if (QUESTION_DEFAULTS[id] !== undefined) out[id] = QUESTION_DEFAULTS[id]!;
+    else if (!isBlankStart(answers) && QUESTION_DEFAULTS[id] !== undefined) out[id] = QUESTION_DEFAULTS[id]!;
     else delete out[id];
   }
   return out;
@@ -882,7 +908,7 @@ export function areaView(answers: Answers, area: number): Answers {
     out[key] = value;
   }
   for (const id of PER_AREA_QUESTION_IDS) {
-    if (QUESTION_DEFAULTS[id] !== undefined) out[id] = QUESTION_DEFAULTS[id]!;
+    if (!isBlankStart(answers) && QUESTION_DEFAULTS[id] !== undefined) out[id] = QUESTION_DEFAULTS[id]!;
   }
   for (const id of AREA_GROUP_IDS) {
     const v = answers[indexedKey(id, area)];
@@ -1609,6 +1635,8 @@ function placeVct(items: PlacedItem[], pos: string): PlacedItem[] {
 export function clearForDuplicate(answers: Answers): Answers {
   const clear = new Set(QUESTIONS.filter((q) => q.clearOnDuplicate).map((q) => q.id));
   const out: Answers = {};
+  // 白紙で始めた案件の複製は、すべての項目を開いた形にする（初期値を使わないのは、複製元と同じ図面にするため、そのまま）
+  if (answers[START_MODE_KEY] === 'blank') answers = openStartMode(answers);
   for (const [key, value] of Object.entries(answers)) {
     const id = /^(?:a\d+:)?([A-Za-z0-9]+)(?:__\d+)?$/.exec(key)?.[1];
     if (id && clear.has(id)) continue;

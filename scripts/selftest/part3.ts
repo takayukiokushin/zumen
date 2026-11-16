@@ -186,6 +186,17 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     }
   }
 
+  /* ---------- 7b2c. 白紙で始めた案件（第14弾 項目3） ---------- */
+  say('\n■ 白紙で始めた案件');
+  {
+    const mk = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '白紙の試験', answers: { startMode: 'blank', siteName: '白紙' } }) })).json()) as { id: string };
+    const got = (await (await call(a, `/api/projects/${mk.id}`)).json()) as { answers: Record<string, unknown> };
+    check('白紙で始めた案件の印（startMode）が、そのまま保存される', got.answers.startMode === 'blank', JSON.stringify(got.answers));
+    const dup = (await (await call(a, `/api/projects/${mk.id}/duplicate`, { method: 'POST' })).json()) as { id: string };
+    const dupGot = (await (await call(a, `/api/projects/${dup.id}`)).json()) as { answers: Record<string, unknown> };
+    check('複製すると、すべての項目を開いた形（blank-open）になる（初期値を使わないのは、そのまま）', dupGot.answers.startMode === 'blank-open', JSON.stringify(dupGot.answers));
+  }
+
   /* ---------- 7b3. 並び替え ---------- */
   say('\n■ 並び替え');
   {

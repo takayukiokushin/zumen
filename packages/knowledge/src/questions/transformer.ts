@@ -16,6 +16,7 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     defaultValue: '1',
     autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
+    required: true,
   },
   {
     id: 'trUsage',
@@ -30,6 +31,7 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     ],
     allowFreeInput: true,
     ask: 'ai-uncertain',
+    required: true,
   },
   {
     id: 'trConnection',
@@ -92,7 +94,8 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     autoValue: [
       { when: { all: [RECEIVING_NOT_3300, { key: 'trConnection', in: ['tr-1p', 'tr-vv'] }] }, value: '6600/210-105V' },
       { when: { all: [RECEIVING_NOT_3300, { key: 'trConnection', eq: 'tr-3p-yd' }] }, value: '6600/210V' },
-      { when: RECEIVING_NOT_3300, value: '6600/' },
+      // 白紙で始めた案件は、用途を選んだあとに、先頭の「6600/」が入る
+      { when: RECEIVING_NOT_3300, value: '6600/', afterAnswered: 'trUsage' },
     ],
     keepEmpty: true,
     ask: 'ai-uncertain',
@@ -114,6 +117,7 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     help:
       '高圧側（変圧器と並列に入る側）にコンデンサがあるときだけ「あり」にする。' +
       '低圧側の分電盤などにしかコンデンサが無い場合は「なし」でよい（この図面には描かない）',
+      required: true,
   },
   {
     id: 'capacitorCount',
@@ -126,6 +130,7 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     defaultValue: '1',
     showIf: { key: 'hasCapacitor', eq: 'yes' },
     ask: 'ai-uncertain',
+    required: true,
   },
   // 容量もリアクトルの有無も、コンデンサ1台ごとに違う（4台あって1台だけリアクトル付き、もある）
   {

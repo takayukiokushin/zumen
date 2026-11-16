@@ -45,12 +45,12 @@ const GENERATOR_DEST_CHOICES: Choice[] = [
 /** 質問の定義：特殊設備、補助変圧器、発電機、太陽光 */
 export const EQUIPMENT_QUESTIONS: Question[] = [
   /* ---------------- 特殊設備 ---------------- */
-  { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '図面に描くのは、高圧の発電機だけ（低圧の発電機は描かない）' },
-  { id: 'hasMotor', group: 'special', label: '電動機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '高圧の電動機（モーター）がある場合。台数・始動方式・容量・設置場所を、台ごとに入力する。図面に描くのは、高圧の電動機だけ（低圧の電動機は描かない）' },
-  { id: 'hasPv', group: 'special', label: '太陽光発電設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
-  { id: 'hasBattery', group: 'special', label: '蓄電池はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
+  { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '図面に描くのは、高圧の発電機だけ（低圧の発電機は描かない）', required: true },
+  { id: 'hasMotor', group: 'special', label: '電動機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '高圧の電動機（モーター）がある場合。台数・始動方式・容量・設置場所を、台ごとに入力する。図面に描くのは、高圧の電動機だけ（低圧の電動機は描かない）', required: true },
+  { id: 'hasPv', group: 'special', label: '太陽光発電設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', required: true },
+  { id: 'hasBattery', group: 'special', label: '蓄電池はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', required: true },
   // 補助変圧器：蓄電池の有無に関わらず、ここで「あり／なし」を答える（あり→下の「補助変圧器」の枠が出る。必須は台数だけ。第14弾 項目2）
-  { id: 'hasAuxTr', group: 'special', label: '補助変圧器はありますか？', type: 'select', options: YES_NO, ask: 'ai-uncertain', help: '蓄電所などの補助電源（照明・空調・制御）に使う変圧器。「あり」のとき、台数などを入力する' },
+  { id: 'hasAuxTr', group: 'special', label: '補助変圧器はありますか？', type: 'select', options: YES_NO, ask: 'ai-uncertain', help: '蓄電所などの補助電源（照明・空調・制御）に使う変圧器。「あり」のとき、台数などを入力する', required: true },
 
   /* ---------------- 蓄電池（「あり」のとき、枠が増える。第14弾 項目2） ---------------- */
   {
@@ -96,6 +96,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     defaultValue: '1',
     ask: 'always',
     help: '同じ容量のPCSが何台あっても1種類。50kWが7台と100kWが8台なら2種類。蓄電池のPCSは、太陽光のPCSとは別に入力する',
+    required: true,
   },
   {
     id: 'batteryPcsKw',
@@ -194,6 +195,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     unit: '台',
     defaultValue: '1',
     ask: 'ai-uncertain',
+    required: true,
   },
   {
     id: 'generatorUsage',
@@ -230,6 +232,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     type: 'text',
     placeholder: '500kVA',
     ask: 'always',
+    required: true,
   },
   {
     id: 'generatorRatedVoltage',
@@ -275,6 +278,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     defaultValue: '1',
     autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
+    required: true,
   },
   {
     id: 'motorStartMethod',
@@ -301,6 +305,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     unit: 'kW',
     ask: 'always',
     help: '図面には、始動方式の下に「500kW」のように書く（台数は、記号の数で分かるので、文字には書かない）',
+    required: true,
   },
   {
     id: 'motorRatedVoltage',
@@ -437,6 +442,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     defaultValue: '1',
     ask: 'always',
     help: '同じ容量のPCSが何台あっても1種類。50kWが7台と100kWが8台なら2種類',
+    required: true,
   },
   {
     id: 'pcsCapacity',

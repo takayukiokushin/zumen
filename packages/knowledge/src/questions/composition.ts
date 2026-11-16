@@ -213,6 +213,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
     help: '1組＝「VT＋PF」のひとまとまり。位置が違うVTがあるときは、組を増やす。VTが無いときは「0（なし）」',
+    required: true,
   },
   {
     id: 'vtPosition',
@@ -304,6 +305,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     autoValue: [{ value: '1' }],
     ask: 'ai-uncertain',
     help: '位置が違うCTがあるときは、組を増やす。CTが無いときは「0（なし）」',
+    required: true,
   },
   {
     id: 'ctPosition',
@@ -352,9 +354,11 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     unit: '個',
     // VCBとCTがあるときは、OCRが1個入る。それ以外は0個から
     // （CTが0組のときは、OCRを自動では入れない。CTにつなぐ先が無いため）
-    autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN, { not: { key: 'ctSetCount', in: ['0', 0] } }] }, value: '1' }, { value: '0' }],
+    // （白紙で始めた案件は、CTの組数を答えたあとにだけ、OCR1個が入る）
+    autoValue: [{ when: { all: [{ key: 'intakeVcb', eq: 'yes' }, CT_SHOWN, { not: { key: 'ctSetCount', in: ['0', 0] } }] }, value: '1', afterAnswered: 'ctSetCount' }, { value: '0' }],
     ask: 'ai-uncertain',
     help: 'GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）',
+    required: true,
   },
   {
     id: 'relayType',

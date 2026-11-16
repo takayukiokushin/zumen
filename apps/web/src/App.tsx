@@ -34,12 +34,8 @@ import { useDialogs } from './Dialogs.tsx';
 import { useLang, useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
-import { NEW_PROJECT_ANSWERS, QUESTIONS, normalizeAnswers, withAutoValues } from '@zumen/knowledge';
+import { START_MODE_KEY, effectiveAnswers, isStepStart, openStartMode } from '@zumen/knowledge';
 
-/** 質問定義の既定値。回答そのものとは分けて持ち、「まだ触っていない」が分かるようにする */
-export const DEFAULTS: Answers = Object.fromEntries(
-  QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]),
-);
 
 export function App() {
   const t = useT();
@@ -204,12 +200,15 @@ export function App() {
 
   // 古い回答（PASの設置：hasPas）が残っている案件は、区分開閉器の回答に読み替えてから、既定値を足す
   // （先に既定値を足すと、「PASなし」だった案件がPASありになってしまう）
-  const effective = useMemo<Answers>(() => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(answers) }), [answers]);
+  // （白紙で始めた案件は、既定値・初期値を足さない。第14弾 項目3）
+  const effective = useMemo<Answers>(() => effectiveAnswers(answers), [answers]);
 
   const updateAnswers = useCallback((next: Answers | ((prev: Answers) => Answers)) => {
     setAnswers((prev) => (typeof next === 'function' ? next(prev) : next));
     setDirty(true);
   }, []);
+  /** スケッチ・音声で読み取った答えを入れる。白紙で始めた案件は、そのあと、すべての項目を開いた形になる（1つずつ開くのは、手で入力するときだけ） */
+  const applyFromAi = useCallback((patch: Answers) => updateAnswers((prev) => openStartMode({ ...prev, ...patch })), [updateAnswers]);
 
   /**
    * 図面で直した内容を、入力に書き戻した結果の知らせ（第13弾 項目1）。図面の画面から「設備を入力して作成」へ移ったときに出す。
@@ -218,7 +217,7 @@ export function App() {
   const [wb, setWb] = useState<{ result: WritebackResult; undo: { answers: Answers; drawing: Doc } | null } | null>(null);
   /** 「取り消す」を押した、書き戻しの内容の印。同じ内容は、もう一度は自動で書き戻さない */
   const wbIgnored = useRef('');
-  const toEffective = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const toEffective = (a: Answers): Answers => effectiveAnswers(a);
 
   /** 図面の画面から、「設備を入力して作成」の画面へ移るとき、図面で直した内容を、入力に書き戻す（手で直した図面を優先する） */
   const runWriteback = () => {
@@ -364,8 +363,9 @@ export function App() {
     nav(async () => {
       try {
         await leaveCurrent();
-        // 新しい案件は、初期設定（NEW_PROJECT_ANSWERS）の答えを入れた状態で始める。保存済みの案件は変わらない
-        const initial: Answers = { ...NEW_PROJECT_ANSWERS, ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}) };
+        // 新しい案件は、完全に白紙から始める（初期値は入れない。「設備を入力して作成」は、上から1つずつ開く。第14弾 項目3）。
+        // 参考にしたい設備があるときは、別の案件を複製して作る。保存済みの案件は変わらない
+        const initial: Answers = { [START_MODE_KEY]: 'blank', ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}) };
         const { id, updatedAt } = await api.createProject(name, initial);
         setProjectId(id);
         setProjectName(name || t('project.untitled'));
@@ -721,7 +721,7 @@ export function App() {
           ) : tab === 'voice' ? (
             <Voice
               answers={effective}
-              onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
+              onApply={applyFromAi}
               onGoToHearing={() => setTab('hearing')}
             />
           ) : tab === 'analyze' ? null : (
@@ -740,7 +740,7 @@ export function App() {
                 </button>
               </div>
               <div className={`app${showNav ? '' : ' no-nav'}${showPreview ? '' : ' no-preview'}`}>
-                <HearingForm answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} sketchRead={sketchRead} />
+                <HearingForm key={projectId ?? 'none'} answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} sketchRead={sketchRead} stepwise={isStepStart(answers)} onOpenAll={() => updateAnswers((prev) => openStartMode(prev))} onOpenDrawing={() => setTab('drawing')} />
                 {showPreview && <CompositionPreview answers={effective} />}
               </div>
             </KeepScroll>
@@ -753,7 +753,7 @@ export function App() {
               <Analyze
                 key={projectId}
                 answers={effective}
-                onApply={(patch) => updateAnswers((prev) => ({ ...prev, ...patch }))}
+                onApply={applyFromAi}
                 onAnalyzed={() => setSketchRead(true)}
                 onStatus={setAnalyzeStatus}
                 onGoToHearing={() => setTab('hearing')}

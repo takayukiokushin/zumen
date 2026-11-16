@@ -3,7 +3,7 @@
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
 import { fillLabelLines, findSymbol, initialLabelValues, labelFields, SYMBOLS } from '../../packages/symbols/src/index.ts';
-import { inputNotices, buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, NEW_PROJECT_ANSWERS, withDerived, normalizeAnswers } from '../../packages/knowledge/src/index.ts';
+import { inputNotices, buildComposition, evaluate, missingRequired, QUESTIONS, QUESTION_GROUPS, areaView, areaKey, dropHiddenChoices, resolveDrawingName, viewAt, visibleQuestions, withAutoValues, QUESTION_DEFAULTS, withDerived, normalizeAnswers } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { fail } from './common.ts';
 import { answers } from './part1.ts';
@@ -427,9 +427,9 @@ console.log('\n■ 受電設備エリア：高圧マンション（電柱上構�
   if (shown({ areaForm: 'apartment-pole' }).has('areaPlacement')) fail('高圧マンションなのに、設置場所の質問が出ています');
   else if (!shown({ areaForm: 'cubicle' }).has('areaPlacement') || !shown({}).has('areaPlacement')) fail('高圧マンション以外で、設置場所の質問が出ません');
   else console.log('  設置場所の質問：高圧マンションのときは出ない（電柱上に決まる）。ほかの形態・未入力のときは聞く');
-  // 必須の設置場所が、高圧マンションのときは「未入力」にならない
+  // 設置場所は、必須ではない（第14弾 項目4）。高圧マンションのときも、ほかの形態のときも、未入力でよい
   const miss = (a: Answers) => missingRequired(a).some((q) => q.id === 'areaPlacement');
-  if (miss({ areaForm: 'apartment-pole' }) || !miss({ areaForm: 'cubicle' })) fail('設置場所の「必須」の扱いが違います');
+  if (miss({ areaForm: 'apartment-pole' }) || miss({ areaForm: 'cubicle' })) fail('設置場所は、必須ではないはずです');
   // 図面のラベルと名前
   const label = String(withDerived({ areaForm: 'apartment-pole', areaPlacement: 'outdoor' }).areaLabel);
   const label2 = String(withDerived({ areaForm: 'apartment-pole', areaFloor: '2階' }).areaLabel);
@@ -448,7 +448,6 @@ console.log('\n■ 区分開閉器の定格電圧');
   if (q?.type !== 'select' || !q.dropdown || JSON.stringify(vals) !== JSON.stringify(['3300', '6600', '7200', '22000', '23000', '33000', '34500'])) {
     fail(`区分開閉器の定格電圧が、3300・6600・7200・22000・23000・33000・34500のドロップダウンになっていません（${q?.type}／${vals.join('・')}）`);
   } else console.log('  ドロップダウン（3300V／6600V／7200V／22000V／23000V／33000V／34500V）');
-  if (NEW_PROJECT_ANSWERS.pasRatedVoltage !== '7200') fail('区分開閉器の定格電圧の初期値が、7200Vではありません');
   // 選んだ値が、図面の「PAS 3300V 200A」のように書かれる
   for (const v of ['3300', '6600', '7200', '22000', '34500']) {
     const t = String(withDerived({ sectionalizer: 'pas', pasRatedVoltage: v, pasRatedCurrent: '200' }).pasRatingText);

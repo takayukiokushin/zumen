@@ -8,7 +8,7 @@ import { searchFields, searchTerms } from './search.ts';
 import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
-import { clearForDuplicate, MAX_TEXT_LENGTH } from '@zumen/knowledge';
+import { clearForDuplicate, MAX_TEXT_LENGTH, openStartMode } from '@zumen/knowledge';
 
 /**
  * ファイルを書く。ディスクまで確かに書いてから戻る（停電のあとに、記録だけあって中身が空、にならないように）。
@@ -435,7 +435,7 @@ projects.post('/practice/copy', async (c) => {
   const name = `（練習）${src.name}`;
   db.prepare(
     'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner, sketch_read) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, name, t, t, user.id, src.answers, src.drawing, user.id, src.sketch_read ?? 0);
+  ).run(id, name, t, t, user.id, answersForCopy(src.answers), src.drawing, user.id, src.sketch_read ?? 0);
 
   // 写真も別のファイルとしてコピーする（コピー側を消しても、もとの写真は残る）
   const files = db
@@ -462,6 +462,17 @@ projects.post('/practice/copy', async (c) => {
   takeLock(id, user.id);
   return c.json({ id, name, updatedAt: t }, 201);
 });
+
+/** 練習用にコピーする回答。白紙で始めた案件は、すべての項目を開いた形にする（初期値を使わないのは、そのまま） */
+function answersForCopy(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return JSON.stringify(openStartMode(parsed as never));
+  } catch {
+    // 壊れた回答は、そのまま
+  }
+  return raw;
+}
 
 /**
  * 図面に手で足した文字（メモ）を外す。自動で作った文字（ケーブルの説明など）と、記号・線の手直しは、そのまま残す。
