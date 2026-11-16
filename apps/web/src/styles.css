@@ -24,6 +24,13 @@
   --danger: #b3261e;
   --danger-soft: #fbe9e7;
   --need-soft: #f7e6de;
+  /* エリアの枠の色（第14弾 項目5）。1か所目から順に、オレンジ・水色・ピンク・黄緑・薄い紫（青紫寄り）。6か所目以降は、1か所目に戻って繰り返す。
+     色を変えるときは、ここ（ライト）と、下のダーク2か所だけを直す。-line＝枠・選んだボタンの枠、-fill＝見出し・選んだボタンの塗り */
+  --area1-line: #E8890C; --area1-fill: #FCE3C2;
+  --area2-line: #29A8E0; --area2-fill: #CDEBFA;
+  --area3-line: #E86AA0; --area3-fill: #FAD3E4;
+  --area4-line: #86B817; --area4-fill: #E3F2C1;
+  --area5-line: #7B6BE8; --area5-fill: #DDD8FA;
   --shade: rgba(22, 26, 24, .4);
   --font: "IPAGothic", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
 
@@ -48,12 +55,14 @@
 :root[data-theme="dark"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
   --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #a8b2ae; --rule: #48524f;
   --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
-  --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
+  --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark;
+  --area1-line: #F5A030; --area1-fill: #5A3A10; --area2-line: #4DBCF0; --area2-fill: #12445F; --area3-line: #F58AB8; --area3-fill: #5E2540; --area4-line: #9BD23A; --area4-fill: #3A4F12; --area5-line: #9A8CF5; --area5-fill: #2E2A66; }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
     --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #a8b2ae; --rule: #48524f;
     --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
-    --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark; }
+    --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark;
+  --area1-line: #F5A030; --area1-fill: #5A3A10; --area2-line: #4DBCF0; --area2-fill: #12445F; --area3-line: #F58AB8; --area3-fill: #5E2540; --area4-line: #9BD23A; --area4-fill: #3A4F12; --area5-line: #9A8CF5; --area5-fill: #2E2A66; }
 }
 
 /* ---- 文字を太くする ---- */
@@ -1269,3 +1278,12 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .step-hint .link-btn { background: none; border: 0; color: inherit; font-size: 1.2em; cursor: pointer; }
 .step-later { margin: calc(10px * var(--text-scale)) 0 calc(24px * var(--text-scale)); padding: calc(8px * var(--text-scale)) calc(12px * var(--text-scale)); border: 1px dashed var(--line); color: var(--muted); font-size: calc(12.5px * var(--text-scale)); }
 .step-done { margin: calc(14px * var(--text-scale)) 0; padding: calc(10px * var(--text-scale)) calc(14px * var(--text-scale)); background: var(--ok-soft, var(--accent-soft)); border-left: 4px solid var(--ok); font-size: calc(13.5px * var(--text-scale)); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* エリアの枠の色（第14弾 項目5）：枠の中だけ、アクセントの色を、そのエリアの色に替える（見出しの塗り・選んだボタン・枠が、同じ系統になる） */
+.area-c1 { --accent: var(--area1-line); --accent-soft: var(--area1-fill); }
+.area-c2 { --accent: var(--area2-line); --accent-soft: var(--area2-fill); }
+.area-c3 { --accent: var(--area3-line); --accent-soft: var(--area3-fill); }
+.area-c4 { --accent: var(--area4-line); --accent-soft: var(--area4-fill); }
+.area-c5 { --accent: var(--area5-line); --accent-soft: var(--area5-fill); }
+/* 目次の「n か所目」：左の線は、入力の状況（済み・未入力）のまま。右に、エリアの色の線を足す */
+.nav a.sub-link[class*="area-c"] { box-shadow: inset -4px 0 0 var(--accent); }

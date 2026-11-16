@@ -54,6 +54,10 @@ interface Block {
   need: boolean;
 }
 
+/** エリアの枠の色の番号（1か所目から順に5色。6か所目以降は、1か所目に戻って繰り返す）。色そのものは styles.css の --area1-line など */
+export const AREA_COLOR_COUNT = 5;
+const areaColorClass = (index: number) => `area-c${(index % AREA_COLOR_COUNT) + 1}`;
+
 export function HearingForm({ answers, effective, onChange, showNav = true, sketchRead = false, stepwise = false, onOpenAll, onOpenDrawing }: Props) {
   const t = useT();
   const tx = useTx();
@@ -309,7 +313,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
   /** エリアのブロック（2か所以上のとき）を、受電設備エリアのグループの直後に出す */
   const renderAreaBlocks = () =>
     areaBlocks.filter((ab) => isOpen(`area-${ab.index + 1}`)).map((ab) => (
-      <section className="area-block" id={`area-${ab.index + 1}`} key={`area-${ab.index}`}>
+      <section className={`area-block ${areaColorClass(ab.index)}`} id={`area-${ab.index + 1}`} key={`area-${ab.index}`}>
         <header className="area-head">
           <h3>{t('hearing.areaNth', { n: ab.index + 1 })}</h3>
           <span className={ab.need ? 'need' : ab.answered === ab.total ? 'done' : ''}>
@@ -404,7 +408,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
                   <a
                     key={`area-${ab.index}`}
                     href={`#area-${ab.index + 1}`}
-                    className={`sub-link ${ab.need ? 'need' : ab.answered === ab.total ? 'done' : ''}`}
+                    className={`sub-link ${areaColorClass(ab.index)} ${ab.need ? 'need' : ab.answered === ab.total ? 'done' : ''}`}
                   >
                     <span>{t('hearing.areaNth', { n: ab.index + 1 })}</span>
                     <span className="count">
