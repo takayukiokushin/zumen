@@ -60,13 +60,17 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   {
     id: 'auxtr',
     label: '補助変圧器',
-    description: '補助変圧器盤（MCCB→補助変圧器）を、低圧側に描く。台数が0なら描かない',
+    description: '補助変圧器盤（MCCB→補助変圧器）を、低圧側に描く。「補助変圧器はありますか？」が「あり」のときだけ',
     repeatCountKey: 'auxTrCount',
     repeatUnit: '台',
     perArea: true,
+    showIf: { key: 'hasAuxTr', eq: 'yes' },
   },
   { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
   { id: 'motor', label: '電動機', repeatCountKey: 'motorCount', repeatUnit: '台', showIf: { key: 'hasMotor', eq: 'yes' }, perArea: true },
   { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
+  // 蓄電池：「あり」のとき、枠が増える。PCSは、太陽光とは別の枠（容量ごとのまとまり）
+  { id: 'battery', label: '蓄電池', showIf: { key: 'hasBattery', eq: 'yes' }, perArea: true },
+  { id: 'batteryPcs', label: '蓄電池のPCS', repeatCountKey: 'batteryPcsGroupCount', repeatUnit: '種類', showIf: { key: 'hasBattery', eq: 'yes' }, perArea: true },
   { id: 'title', label: '表題欄' },
 ];

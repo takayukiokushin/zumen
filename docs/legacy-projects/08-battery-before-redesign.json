@@ -1,0 +1,25 @@
+{
+  "name": "蓄電所（以前の入力の形）",
+  "era": "蓄電池・補助変圧器が、いまの「あり／なし」と容量ごとのPCSの入力になる前。蓄電ユニットの規模・PCSの容量の文字・補助変圧器の台数だけで答えている",
+  "answers": {
+    "siteName": "蓄電所（以前の形）",
+    "mainBreakerForm": "cb",
+    "sectionalizer": "pas",
+    "sourceType": "pole",
+    "transformerCount": 2,
+    "trCapacity": "300",
+    "trCapacity__2": "300",
+    "trUsage": "動力",
+    "trUsage__2": "動力",
+    "hasBattery": "yes",
+    "batteryCapacity": "2,000kW",
+    "batteryPcsCapacity": "100kW×5",
+    "batteryTransformer": "2",
+    "auxTrCount": "1",
+    "auxTrFrom": "1",
+    "auxTrUsage": "電灯",
+    "auxTrConnection": "tr-1p-2w",
+    "auxTrCapacity": 20
+  },
+  "drawing": null
+}

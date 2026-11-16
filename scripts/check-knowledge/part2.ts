@@ -200,7 +200,7 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
   if (!always.every((id) => ids.has(id))) fail('「ありますか？」の質問が出なくなっています');
   if (miss.has('generatorCapacity') || miss.has('generatorUsage') || miss.has('pcsCapacity')) fail('なしのときに、発電機・PCSの質問が、必須の入力漏れになっています');
   // 蓄電所：「いいえ」なら、規模や変圧器の質問を出さない
-  const bat = (a: Answers) => shown(a).filter((q) => ['batteryCapacity', 'batteryTransformer'].includes(q.id)).map((q) => q.id);
+  const bat = (a: Answers) => shown(a).filter((q) => ['batteryUnitCount', 'batteryUnitRating', 'batteryTransformer', 'batteryPcsKw'].includes(q.id)).map((q) => q.id);
   if (bat({ hasBattery: 'no' }).length > 0 || bat({ hasBattery: 'yes' }).length === 0) fail('蓄電所の質問の出方が違います');
   else console.log('  「ありますか？」の3つの質問は、いつも出る。蓄電所も、いいえなら規模・変圧器の質問は出ない');
 
@@ -223,8 +223,19 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
   if (lane({ batteryTransformer: 'none' }) !== 'battery-pcs:free>battery:free') fail(`「つながない」のときも、PCSと蓄電池ユニットが並ぶはずです（${lane({ batteryTransformer: 'none' })}）`);
   if (comp({ hasBattery: 'no' }).some((i) => i.role === 'battery-pcs')) fail('蓄電池が無いのに、PCSが描かれています');
   if (pcsOf({})?.label.length !== 0) fail('PCSの容量を答えていないのに、PCSの文字があります');
-  if (pcsOf({ batteryPcsCapacity: '100kW×5' })?.label.join('|') !== '100kW×5') fail(`PCSの容量の文字が違います（${pcsOf({ batteryPcsCapacity: '100kW×5' })?.label.join('|')}）`);
-  if (!shown({ hasBattery: 'yes' }).some((q) => q.id === 'batteryPcsCapacity') || shown({ hasBattery: 'no' }).some((q) => q.id === 'batteryPcsCapacity')) fail('PCSの容量の質問は、蓄電池があるときだけ出るはずです');
+  // PCSの容量：容量ごとに1行（100kW×5台）。以前の案件の「PCSの容量」の文字は、容量ごとの入力が無いときだけ、そのまま出る
+  const kinds = { batteryPcsGroupCount: '2', batteryPcsKw: 100, batteryPcsUnits: '5', batteryPcsKw__2: 50, batteryPcsUnits__2: '2' };
+  if (pcsOf(kinds)?.label.join('|') !== '100kW×5台|50kW×2台') fail(`PCSの容量の文字が違います（${pcsOf(kinds)?.label.join('|')}）`);
+  if (pcsOf({ batteryPcsGroupCount: '1', batteryPcsKw: 100 })?.label.join('|') !== '100kW×1台') fail(`台数を答えていないとき、1台と書くはずです（${pcsOf({ batteryPcsGroupCount: '1', batteryPcsKw: 100 })?.label.join('|')}）`);
+  if (pcsOf({ batteryPcsCapacity: '100kW×5' })?.label.join('|') !== '100kW×5') fail('以前の案件の「PCSの容量」の文字が、そのまま出ていません');
+  if (pcsOf({ batteryPcsCapacity: '100kW×5', ...kinds })?.label.join('|') !== '100kW×5台|50kW×2台') fail('容量ごとの入力があるとき、以前の文字は使わないはずです');
+  if (!shown({ hasBattery: 'yes' }).some((q) => q.id === 'batteryPcsKw') || shown({ hasBattery: 'no' }).some((q) => q.id === 'batteryPcsKw') || QUESTIONS.some((q) => q.id === 'batteryPcsCapacity')) fail('PCSの容量の質問（容量ごと）は、蓄電池があるときだけ出て、「蓄電池のPCSの容量」の質問は無いはずです');
+  // 蓄電ユニットの右の文字：名前／出力・容量／台数。以前の案件の「規模」の文字は、出力・容量として読む。太陽光のPCSとは別
+  const unit = (a: Answers) => comp(a).find((i) => i.role === 'battery')?.label.join('|');
+  if (unit({ batteryUnitRating: '2,000kW', batteryUnitCount: 5 }) !== '蓄電池ユニット|2,000kW|×5台') fail(`蓄電ユニットの文字が違います（${unit({ batteryUnitRating: '2,000kW', batteryUnitCount: 5 })}）`);
+  if (unit({ batteryCapacity: '2,000kW' }) !== '蓄電池ユニット|2,000kW') fail(`以前の案件の「蓄電ユニットの規模」が、出力・容量として読まれていません（${unit({ batteryCapacity: '2,000kW' })}）`);
+  const withPv = comp({ hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '3', batteryPcsGroupCount: '1', batteryPcsKw: 100, batteryPcsUnits: '2' });
+  if (withPv.find((i) => i.role === 'battery-pcs')?.label.join('|') !== '100kW×2台') fail('蓄電池のPCSが、太陽光のPCSと混ざっています');
   else console.log('  蓄電池のPCS：必ず入る（変圧器→PCS→蓄電池ユニット）。容量は、答えたときだけ、PCSの右横に書く');
 }
 

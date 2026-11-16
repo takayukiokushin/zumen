@@ -77,6 +77,17 @@ export function normalizeAnswers(answers: Answers): Answers {
   if (out.sectionalizer === undefined && out.hasPas !== undefined) {
     out = { ...out, sectionalizer: out.hasPas === 'no' ? 'none' : 'pas' };
   }
+  // 補助変圧器：以前は、台数だけで決めていた（蓄電池があれば最初は1台）。「補助変圧器はありますか？」が未回答の古い案件は、
+  // 台数が1以上（台数を答えていないときは、蓄電池があれば1台）なら「あり」として読む。図面から、補助変圧器が消えないようにする
+  if (out.hasAuxTr === undefined) {
+    const n = Number(out.auxTrCount);
+    const old = out.auxTrCount === undefined || out.auxTrCount === '' ? out.hasBattery === 'yes' : Number.isFinite(n) && n >= 1;
+    if (old) out = { ...out, hasAuxTr: 'yes' };
+  }
+  // 蓄電ユニット：以前は「蓄電ユニットの規模」（batteryCapacity）の文字だけだった。いまの「出力・容量」として読む
+  if (out.batteryUnitRating === undefined && out.batteryCapacity !== undefined && out.batteryCapacity !== '') {
+    out = { ...out, batteryUnitRating: out.batteryCapacity };
+  }
   // 以前は「区分」と「名称」の2つの欄だった（polePrefix＋poleName、cabinetPrefix＋cabinetName）。いまは1つの欄なので、つなげて読み替える
   for (const [prefixKey, nameKey] of [['polePrefix', 'poleName'], ['cabinetPrefix', 'cabinetName']] as const) {
     if (out[prefixKey] === undefined) continue;
@@ -363,6 +374,21 @@ export function withDerived(rawAnswers: Answers): Answers {
   ]
     .filter(Boolean)
     .join(' ');
+
+  // 蓄電池：蓄電ユニットの右に書く文字（出力・容量／台数）と、PCSの右に書く文字（容量ごとに1行。第14弾 項目2）
+  d.batteryUnitCountText = answers.batteryUnitCount !== undefined && answers.batteryUnitCount !== '' && Number(answers.batteryUnitCount) >= 1 ? `×${countOf(answers.batteryUnitCount, 1, maxCountOf('batteryUnitCount'))}台` : '';
+  {
+    const kinds = countOf(answers.batteryPcsGroupCount);
+    const lines: string[] = [];
+    for (let i = 0; i < kinds; i++) {
+      const kw = answers[indexedKey('batteryPcsKw', i)];
+      if (kw === undefined || kw === null || kw === '') continue;
+      lines.push(`${kw}kW×${countOf(answers[indexedKey('batteryPcsUnits', i)] ?? 1, 1, maxCountOf('pcsCount'))}台`);
+    }
+    // 以前の案件：「蓄電池のPCSの容量」の文字が残っていて、容量ごとの入力が無いときは、その文字をそのまま書く
+    if (lines.length === 0 && answers.batteryPcsCapacity !== undefined && String(answers.batteryPcsCapacity).trim() !== '') lines.push(String(answers.batteryPcsCapacity).trim());
+    for (let i = 0; i < 10; i++) d[`batteryPcsLine${i + 1}`] = lines[i] ?? '';
+  }
 
   // PCSの注記（例: 100kW×15台、50kW×7台）。同じ容量はまとめて書く
   const groups = countOf(answers.pvGroupCount);

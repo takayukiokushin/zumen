@@ -803,6 +803,9 @@ export const AREA_CHAIN: Placement[] = [
   ...GC_ITEMS,
 ];
 
+/** 蓄電池のPCSの右に書く文字：容量ごとに1行（例：100kW×5台）。容量を答えていなければ、文字は無い */
+const BATTERY_PCS_LABEL: string[] = Array.from({ length: 10 }, (_, i) => `{batteryPcsLine${i + 1}}`);
+
 /**
  * 1か所目のエリアから、2か所目以降のエリアへ送り出す点の開閉器（送り出しの開閉器）。
  * 母線から直接ではなく、開閉器が付いている場合がある。エリアが2か所以上のときだけ入る。
@@ -1108,7 +1111,7 @@ export const EXTRAS: Placement[] = [
     symbolId: 'pcs',
     kind: 'feeder',
     when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', ne: 'none' }] },
-    labelTemplate: ['{batteryPcsCapacity}'],
+    labelTemplate: BATTERY_PCS_LABEL,
     props: { transformer: 'batteryTransformer' },
     laneBase: 300,
     note: '蓄電池ユニットの手前に入るPCS。変圧器の低圧側 → PCS → 蓄電池ユニットの順に、下へつなぐ',
@@ -1118,7 +1121,7 @@ export const EXTRAS: Placement[] = [
     symbolId: 'battery-unit',
     kind: 'feeder',
     when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', ne: 'none' }] },
-    labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
+    labelTemplate: ['蓄電池ユニット', '{batteryUnitRating}', '{batteryUnitCountText}'],
     props: { transformer: 'batteryTransformer' },
     laneBase: 300,
   },
@@ -1127,23 +1130,24 @@ export const EXTRAS: Placement[] = [
     symbolId: 'pcs',
     kind: 'free',
     when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', eq: 'none' }] },
-    labelTemplate: ['{batteryPcsCapacity}'],
+    labelTemplate: BATTERY_PCS_LABEL,
   },
   {
     role: 'battery',
     symbolId: 'battery-unit',
     kind: 'free',
     when: { all: [{ key: 'hasBattery', eq: 'yes' }, { key: 'batteryTransformer', eq: 'none' }] },
-    labelTemplate: ['蓄電池ユニット', '{batteryCapacity}'],
+    labelTemplate: ['蓄電池ユニット', '{batteryUnitRating}', '{batteryUnitCountText}'],
   },
   /*
-   * 補助変圧器（蓄電池の有無に関わらず、台数が1以上のとき）。選んだ変圧器の低圧側から、補助変圧器盤のMCCB → 補助変圧器の順にぶら下げる。
+   * 補助変圧器（蓄電池の有無に関わらず、「補助変圧器はありますか？」が「あり」のとき）。選んだ変圧器の低圧側から、補助変圧器盤のMCCB → 補助変圧器の順にぶら下げる。
    * 台数ごとに1本の列になる。
    */
   {
     role: 'aux-mccb',
     symbolId: 'mccb',
     kind: 'feeder',
+    when: { key: 'hasAuxTr', eq: 'yes' },
     labelTemplate: ['補助変圧器盤', 'MCCB{auxTrMccb}A'],
     props: { transformer: 'auxTrFrom' },
     repeatCountKey: 'auxTrCount',
@@ -1154,6 +1158,7 @@ export const EXTRAS: Placement[] = [
     role: 'aux-tr',
     symbolId: '{auxTrSymbol}',
     kind: 'feeder',
+    when: { key: 'hasAuxTr', eq: 'yes' },
     labelTemplate: ['{auxTrUsageLine}', '{auxTrCapacityLine}', '{auxTrVoltage}'],
     props: { transformer: 'auxTrFrom' },
     repeatCountKey: 'auxTrCount',

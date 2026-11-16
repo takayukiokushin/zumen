@@ -705,10 +705,16 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   ok(Boolean(getSymbolForCheck('trip-coil')), 'トリップコイルの記号がありません');
   ok(getSymbolForCheck('relay-ocgr')?.id === 'relay-gr' && getSymbolForCheck('relay-ocgr') === getSymbolForCheck('relay-gr'), '廃止したOCGRの記号は、GRの記号として読み込まれるはずです（以前の案件を開けるため）');
 
-  // 補助変圧器：蓄電池の有無に関わらず質問する（台数0なら描かない）。選んだ変圧器の低圧側から、MCCB → 補助変圧器
+  // 補助変圧器（第14弾 項目2）：「補助変圧器はありますか？」が「あり」のときだけ、枠が出る。蓄電池の有無とは関わらない。必須は台数だけ（最初は1台）
   const shownAux = (a: Answers) => visibleQuestions(a).some((q) => q.id === 'auxTrCapacity');
-  ok(shownAux({ ...base, auxTrCount: '1' }) && shownAux({ ...base, hasBattery: 'yes' }), '補助変圧器の項目が、蓄電池の有無に関わらず出るはずです');
-  ok(withAutoValues(base).auxTrCount === '0' && withAutoValues({ ...base, hasBattery: 'yes' }).auxTrCount === '1', '補助変圧器の台数の初期値は、蓄電池がなければ0台、あれば1台のはずです');
+  const auxDrawn = (a: Answers) => buildComposition({ ...a, transformerCount: 1 }).some((i) => i.role.startsWith('aux-'));
+  ok(visibleQuestions(base).some((q) => q.id === 'hasAuxTr'), '「補助変圧器はありますか？」が、特殊設備に出ていません');
+  ok(shownAux({ ...base, hasAuxTr: 'yes' }) && shownAux({ ...base, hasAuxTr: 'yes', hasBattery: 'no' }), '「あり」のとき、補助変圧器の入力が出ていません（蓄電池の有無に関わらず）');
+  ok(!shownAux({ ...base, hasAuxTr: 'no' }) && !shownAux({ ...base, hasAuxTr: 'no', hasBattery: 'yes' }), '「なし」のとき、補助変圧器の入力が出ています（蓄電池があっても、出ないはずです）');
+  ok(withAutoValues({ ...base, hasAuxTr: 'yes' }).auxTrCount === '1', '「あり」にしたときの台数の初期値は、1台のはずです');
+  ok(auxDrawn({ ...base, hasAuxTr: 'yes', hasBattery: 'no' }) && !auxDrawn({ ...base, hasAuxTr: 'no', hasBattery: 'yes' }), '補助変圧器の図面への入り方が、あり／なしのとおり（蓄電池の有無と無関係）になっていません');
+  // 以前の案件（「あり／なし」が未回答）：台数が1以上、または、台数が未回答で蓄電池がある → 「あり」として読む（図面から、消えない）
+  ok(auxDrawn({ ...base, hasBattery: 'yes' }) && auxDrawn({ ...base, hasBattery: 'no', auxTrCount: '2' }) && !auxDrawn({ ...base, hasBattery: 'no' }) && !auxDrawn({ ...base, hasBattery: 'yes', auxTrCount: '0' }), '以前の案件の補助変圧器の読み替え（台数が1以上／台数が未回答で蓄電池あり→あり）が違います');
   const aux: Answers = {
     ...base, hasBattery: 'yes', transformerCount: 2, trConnection: 'tr-3p-dy', trConnection__2: 'tr-3p-dy', auxTrCount: '2',
     auxTrFrom: '1', auxTrUsage: '動力', auxTrConnection: 'tr-3p-dy', auxTrCapacity: 150, auxTrVoltage: '550/220V', auxTrMccb: '400',

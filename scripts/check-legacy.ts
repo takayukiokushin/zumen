@@ -27,7 +27,7 @@ const fail = (msg: string) => {
 interface Sample { name: string; era: string; answers: Answers; drawing: Doc | null }
 const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
 console.log('■ 古い形式の案件（docs/legacy-projects/）');
-if (files.length < 7) fail(`見本が足りません（${files.length}件。7件以上あるはずです。見本を消してはいけません）`);
+if (files.length < 8) fail(`見本が足りません（${files.length}件。8件以上あるはずです。見本を消してはいけません）`);
 
 /** 図面の画面を開くときの手順（Editor.tsx の最初の組み立てと同じ） */
 function openLikeEditor(answers: Answers, saved: Doc | null): Doc {
@@ -102,6 +102,14 @@ for (const f of files) {
     for (const l of doc.layers ?? []) {
       if (!l || typeof l.id !== 'string' || !Array.isArray(l.items)) fail(`${tag}：整理しきれないレイヤーが残っています`);
       for (const it of l.items) if (!Number.isFinite((it as { x?: number }).x ?? 0) && 'x' in it) fail(`${tag}：レイヤーの中に、位置が数になっていないものが残っています`);
+    }
+    if (f.startsWith('08-')) {
+      // 蓄電池・補助変圧器の入力を変える前の案件：補助変圧器が図面に残り、蓄電ユニット・PCSの文字が、そのまま出る
+      const unit = comp.find((i) => i.role === 'battery')?.label.join('|');
+      const pcs = comp.find((i) => i.role === 'battery-pcs')?.label.join('|');
+      if (!comp.some((i) => i.role === 'aux-tr')) fail(`${tag}：補助変圧器が、図面から消えています`);
+      if (unit !== '蓄電池ユニット|2,000kW') fail(`${tag}：蓄電ユニットの文字が違います（${unit}）`);
+      if (pcs !== '100kW×5') fail(`${tag}：蓄電池のPCSの文字が違います（${pcs}）`);
     }
     if (f.startsWith('06-')) {
       const keep = doc.layers?.find((l) => l.id === 'outage')?.items.map((i) => i.id).join(',');

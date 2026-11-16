@@ -907,5 +907,16 @@ const data: Record<string, string> = {
   "途中の機器5（VT）": "Appareil en cours de route 5 (TP)",
   "途中の機器6（CT）": "Appareil en cours de route 6 (TC)",
   "途中の機器6（VT）": "Appareil en cours de route 6 (TP)",
+  "補助変圧器盤（MCCB→補助変圧器）を、低圧側に描く。「補助変圧器はありますか？」が「あり」のときだけ": "Dessine le tableau du transformateur auxiliaire (MCCB → transformateur auxiliaire) côté basse tension. Seulement si « Y a-t-il un transformateur auxiliaire ? » est « Oui »",
+  "蓄電池": "Batterie",
+  "蓄電池のPCS": "PCS de la batterie",
+  "補助変圧器はありますか？": "Y a-t-il un transformateur auxiliaire ?",
+  "蓄電所などの補助電源（照明・空調・制御）に使う変圧器。「あり」のとき、台数などを入力する": "Transformateur utilisé pour l’alimentation auxiliaire (éclairage, climatisation, commande) d’un poste de stockage, etc. Si « Oui », saisissez le nombre d’unités, etc.",
+  "蓄電ユニットの台数": "Nombre d’unités de batteries",
+  "図面には、蓄電ユニットの記号の右に「×5台」のように書く": "Sur le plan, c’est écrit à droite du symbole de l’unité de batteries, par ex. « ×5 unités »",
+  "蓄電ユニットの出力・容量": "Puissance / capacité de l’unité de batteries",
+  "蓄電ユニット1台の、出力と容量。図面には、蓄電ユニットの記号の右に、そのまま書く（2行目に、台数）": "Puissance et capacité d’une unité de batteries. Sur le plan, c’est écrit tel quel à droite du symbole de l’unité (le nombre d’unités va sur la 2e ligne)",
+  "同じ容量のPCSが何台あっても1種類。50kWが7台と100kWが8台なら2種類。蓄電池のPCSは、太陽光のPCSとは別に入力する": "Quel que soit le nombre de PCS de même capacité, cela compte pour 1 type. 50 kW × 7 et 100 kW × 8 font 2 types. Saisissez les PCS de la batterie séparément de ceux du solaire",
+  "蓄電所などの補助電源（照明・空調・制御）に使う変圧器の台数。台数以外は、分からなければ空のままでよい": "Nombre de transformateurs utilisés pour l’alimentation auxiliaire (éclairage, climatisation, commande) d’un poste de stockage, etc. Hors le nombre, vous pouvez laisser vide si inconnu",
 };
 export default data;
