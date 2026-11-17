@@ -475,6 +475,7 @@ console.log('\n■ タイトルが2行のときの縮小（印刷・書き出し
       const bottom3 = t3.ty + b.y1 * t3.scale;
       if (top3 < SHEET_MARGIN + 6 + tl3.boxH + 8) fail(`${paper}${orient}：3行のとき、図面が表題の枠に近すぎます（上端 ${top3.toFixed(0)}）`);
       if (bottom3 > sh.h - SHEET_MARGIN - SHEET_PAD) fail(`${paper}${orient}：3行のとき、図面が図枠の下にはみ出しています（${bottom3.toFixed(0)}）`);
+      console.log(`  ${paper}${orient === 'portrait' ? '縦' : '横'}：3行 ${t3.scale.toFixed(3)}（1行のときの ${((t3.scale / o.scale) * 100).toFixed(1)}%）`);
     }
     console.log(`  ${paper}${orient === 'portrait' ? '縦' : '横'}：1行 ${o.scale.toFixed(3)} → 2行 ${t.scale.toFixed(3)}${o.scale - t.scale < 0.0006 ? '（余裕があるので縮まない）' : `（${((1 - t.scale / o.scale) * 100).toFixed(1)}%縮む）`}`);
   }
