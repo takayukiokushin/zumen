@@ -918,5 +918,9 @@ const data: Record<string, string> = {
   "蓄電ユニット1台の、出力と容量。図面には、蓄電ユニットの記号の右に、そのまま書く（2行目に、台数）": "Puissance et capacité d’une unité de batteries. Sur le plan, c’est écrit tel quel à droite du symbole de l’unité (le nombre d’unités va sur la 2e ligne)",
   "同じ容量のPCSが何台あっても1種類。50kWが7台と100kWが8台なら2種類。蓄電池のPCSは、太陽光のPCSとは別に入力する": "Quel que soit le nombre de PCS de même capacité, cela compte pour 1 type. 50 kW × 7 et 100 kW × 8 font 2 types. Saisissez les PCS de la batterie séparément de ceux du solaire",
   "蓄電所などの補助電源（照明・空調・制御）に使う変圧器の台数。台数以外は、分からなければ空のままでよい": "Nombre de transformateurs utilisés pour l’alimentation auxiliaire (éclairage, climatisation, commande) d’un poste de stockage, etc. Hors le nombre, vous pouvez laisser vide si inconnu",
+  "コンデンサの定格電圧": "Tension assignée du condensateur",
+  "現場のとおりに入れる（7020V・6600Vなど、どの値でもよい）。数字だけなら、図面には「7020V」と書く。空欄でもよい": "Saisissez-la telle qu’elle est sur site (7020 V, 6600 V, etc. ; toute valeur convient). Si seul un nombre est saisi, « 7020V » est inscrit sur le plan. Peut rester vide",
+  "リアクトルの定格電圧": "Tension assignée de la réactance",
+  "現場のとおりに入れる（243Vなど、どの値でもよい）。数字だけなら、図面には「243V」と書く。空欄でもよい": "Saisissez-la telle qu’elle est sur site (243 V, etc. ; toute valeur convient). Si seul un nombre est saisi, « 243V » est inscrit sur le plan. Peut rester vide",
 };
 export default data;

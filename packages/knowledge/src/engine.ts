@@ -401,6 +401,12 @@ export function withDerived(rawAnswers: Answers): Answers {
     .filter(Boolean)
     .join(' ');
 
+  // コンデンサ・リアクトルの定格電圧：数字だけなら「V」を付ける（7020 → 7020V）。どんな値でもよい（古いコンデンサは6600V、リアクトルは243Vでないこともある）
+  for (const [from, to] of [['capacitorRatedVoltage', 'capacitorVoltageText'], ['reactorRatedVoltage', 'reactorVoltageText']] as const) {
+    const v = String(answers[from] ?? '').trim();
+    d[to] = /^\d+(\.\d+)?$/.test(v) ? `${v}V` : v;
+  }
+
   // 蓄電池：蓄電ユニットの右に書く文字（出力・容量／台数）と、PCSの右に書く文字（容量ごとに1行。第14弾 項目2）
   d.batteryUnitCountText = answers.batteryUnitCount !== undefined && answers.batteryUnitCount !== '' && Number(answers.batteryUnitCount) >= 1 ? `×${countOf(answers.batteryUnitCount, 1, maxCountOf('batteryUnitCount'))}台` : '';
   {

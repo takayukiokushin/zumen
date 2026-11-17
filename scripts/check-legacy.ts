@@ -27,7 +27,7 @@ const fail = (msg: string) => {
 interface Sample { name: string; era: string; answers: Answers; drawing: Doc | null }
 const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
 console.log('■ 古い形式の案件（docs/legacy-projects/）');
-if (files.length < 8) fail(`見本が足りません（${files.length}件。8件以上あるはずです。見本を消してはいけません）`);
+if (files.length < 9) fail(`見本が足りません（${files.length}件。9件以上あるはずです。見本を消してはいけません）`);
 
 /** 図面の画面を開くときの手順（Editor.tsx の最初の組み立てと同じ） */
 function openLikeEditor(answers: Answers, saved: Doc | null): Doc {
@@ -110,6 +110,13 @@ for (const f of files) {
       if (!comp.some((i) => i.role === 'aux-tr')) fail(`${tag}：補助変圧器が、図面から消えています`);
       if (unit !== '蓄電池ユニット|2,000kW') fail(`${tag}：蓄電ユニットの文字が違います（${unit}）`);
       if (pcs !== '100kW×5') fail(`${tag}：蓄電池のPCSの文字が違います（${pcs}）`);
+    }
+    if (f.startsWith('09-')) {
+      // 定格電圧の欄が無かった時代：電圧が空なので、行を詰めて、2行（SC／容量。容量の文字に含まれる電圧は、そのまま）
+      const sc = comp.filter((i) => i.role.startsWith('capacitor')).map((i) => i.label.join('|'));
+      const sr = comp.find((i) => i.role.startsWith('reactor'))?.label.join('|');
+      if (sc.join(',') !== 'SC|3φ106kvar 7020V,SC|3φ50kvar 6600V') fail(`${tag}：コンデンサの文字が、これまでと違います（${sc.join(',')}）`);
+      if (sr !== 'SR|3φ6.38kvar 243V') fail(`${tag}：リアクトルの文字が、これまでと違います（${sr}）`);
     }
     if (f.startsWith('06-')) {
       const keep = doc.layers?.find((l) => l.id === 'outage')?.items.map((i) => i.id).join(',');

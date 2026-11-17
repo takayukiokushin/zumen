@@ -16,6 +16,7 @@
 | 05-edited-drawing-current-format.json | 手で直した図面。控え・手で直した内容の記録・レイヤー（停電範囲図）が入っている形 |
 | 06-broken-layers.json | レイヤーの中身が壊れている図面（開けて、壊れた部分だけが整理されること） |
 | 08-battery-before-redesign.json | 蓄電池・補助変圧器が、「あり／なし」と容量ごとのPCSの入力になる前（蓄電ユニットの規模・PCSの容量の文字・補助変圧器の台数だけ）。開くと、補助変圧器・蓄電池の文字が、そのまま図面に出る |
+| 09-capacitor-before-voltage-field.json | コンデンサ・リアクトルに、定格電圧の欄が無かった時代（電圧は、容量の文字の中）。開くと、図面の文字（SC／容量の2行）が、これまでと同じ |
 | 07-retired-ocgr-symbol.json | 廃止したOCGRの記号（relay-ocgr）が入っている、手で直した図面。開くと、GRの記号になる（`RETIRED_SYMBOLS`） |
 
 各ファイルは `{ name, era, answers, drawing }` の形です（`drawing` が null のものは、図面を手で直していない案件）。

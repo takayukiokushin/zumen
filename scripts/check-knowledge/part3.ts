@@ -698,6 +698,23 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   ok(Boolean(getSymbolForCheck('trip-coil')), 'トリップコイルの記号がありません');
   ok(getSymbolForCheck('relay-ocgr')?.id === 'relay-gr' && getSymbolForCheck('relay-ocgr') === getSymbolForCheck('relay-gr'), '廃止したOCGRの記号は、GRの記号として読み込まれるはずです（以前の案件を開けるため）');
 
+  // コンデンサ・リアクトルの定格電圧（第14弾 項目7）：SC／SR、定格電圧、容量の3行。空の行は詰める。どんな値でもよい（エラーにしない）
+  {
+    const cap = (a: Answers) => buildComposition({ ...base, hasCapacitor: 'yes', capacitorCount: '1', hasReactor: 'yes', ...a });
+    const lines = (a: Answers, role: string) => cap(a).find((i) => i.role === role)?.label.join('|');
+    ok(lines({ capacitorRatedVoltage: '7020V', capacitorCapacity: '3φ106kvar' }, 'capacitor') === 'SC|7020V|3φ106kvar', 'コンデンサは、SC／定格電圧／容量の3行のはずです');
+    ok(lines({ reactorRatedVoltage: '243V', reactorCapacity: '3φ6.38kvar' }, 'reactor') === 'SR|243V|3φ6.38kvar', 'リアクトルは、SR／定格電圧／容量の3行のはずです');
+    ok(lines({ capacitorCapacity: '3φ106kvar' }, 'capacitor') === 'SC|3φ106kvar' && lines({}, 'capacitor') === 'SC' && lines({ capacitorRatedVoltage: '7020V' }, 'capacitor') === 'SC|7020V', '空の行は、詰めるはずです');
+    ok(lines({ capacitorRatedVoltage: '7020', capacitorCapacity: 'x' }, 'capacitor') === 'SC|7020V|x' && lines({ reactorRatedVoltage: '243', reactorCapacity: 'y' }, 'reactor') === 'SR|243V|y', '数字だけのときは、「V」を付けるはずです');
+    for (const v of ['6600V', '6600', '7020V', '6900', '243V', '250V', '300', '不明', '7,020V']) {
+      ok(lines({ capacitorRatedVoltage: v }, 'capacitor')?.startsWith('SC|') === true && !inputNotices(withAutoValues({ ...base, hasCapacitor: 'yes', capacitorRatedVoltage: v, reactorRatedVoltage: v }), undefined).some((n) => n.group === 'compensation'), `定格電圧「${v}」で、エラー・案内が出ています（どんな値でもよいはずです）`);
+    }
+    ok(!QUESTIONS.find((q) => q.id === 'capacitorRatedVoltage')?.required && !QUESTIONS.find((q) => q.id === 'reactorRatedVoltage')?.required, '定格電圧は、必須ではないはずです');
+    const idx = (id: string) => QUESTIONS.findIndex((q) => q.id === id);
+    ok(idx('capacitorRatedVoltage') < idx('capacitorCapacity') && idx('reactorRatedVoltage') < idx('reactorCapacity'), '入力の順番は、定格電圧 → 容量のはずです');
+    const two = buildComposition({ ...base, hasCapacitor: 'yes', capacitorCount: '2', capacitorRatedVoltage: '7020V', capacitorCapacity: '3φ106kvar', capacitorRatedVoltage__2: '6600V', capacitorCapacity__2: '3φ50kvar' }).filter((i) => i.role === 'capacitor').map((i) => i.label.join('|'));
+    ok(two.join(',') === 'SC|7020V|3φ106kvar,SC|6600V|3φ50kvar', `複数台は、1台ごとに3行のはずです（${two.join(',')}）`);
+  }
   // 補助変圧器（第14弾 項目2）：「補助変圧器はありますか？」が「あり」のときだけ、枠が出る。蓄電池の有無とは関わらない。必須は台数だけ（最初は1台）
   const shownAux = (a: Answers) => visibleQuestions(a).some((q) => q.id === 'auxTrCapacity');
   const auxDrawn = (a: Answers) => buildComposition({ ...a, transformerCount: 1 }).some((i) => i.role.startsWith('aux-'));

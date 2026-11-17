@@ -1044,7 +1044,8 @@ export const EXTRAS: Placement[] = [
     kind: 'parallel',
     row: ROW.reactor,
     when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'hasReactor', eq: 'yes' }] },
-    labelTemplate: ['SR', '{reactorCapacity}'],
+    // 1行目 SR／2行目 定格電圧／3行目 容量（空の行は詰める）
+    labelTemplate: ['SR', '{reactorVoltageText}', '{reactorCapacity}'],
     repeatCountKey: 'capacitorCount',
   },
   {
@@ -1053,7 +1054,8 @@ export const EXTRAS: Placement[] = [
     kind: 'parallel',
     row: ROW.main,
     when: { key: 'hasCapacitor', eq: 'yes' },
-    labelTemplate: ['SC', '{capacitorCapacity}'],
+    // 1行目 SC／2行目 定格電圧／3行目 容量（空の行は詰める）
+    labelTemplate: ['SC', '{capacitorVoltageText}', '{capacitorCapacity}'],
     repeatCountKey: 'capacitorCount',
   },
   /*

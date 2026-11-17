@@ -924,5 +924,9 @@ const data: Record<string, string> = {
   "蓄電ユニット1台の、出力と容量。図面には、蓄電ユニットの記号の右に、そのまま書く（2行目に、台数）": "Output and capacity of one battery unit. On the drawing, it is written as it is to the right of the battery unit symbol (the number of units goes on the 2nd line)",
   "同じ容量のPCSが何台あっても1種類。50kWが7台と100kWが8台なら2種類。蓄電池のPCSは、太陽光のPCSとは別に入力する": "However many PCS of the same capacity there are, it counts as 1 kind. 50 kW × 7 and 100 kW × 8 make 2 kinds. Enter the battery PCS separately from the solar PCS",
   "蓄電所などの補助電源（照明・空調・制御）に使う変圧器の台数。台数以外は、分からなければ空のままでよい": "Number of transformers used for auxiliary power (lighting, air conditioning, control) at a battery station, etc. Other than the number, you can leave it blank if unknown",
+  "コンデンサの定格電圧": "Rated voltage of the capacitor",
+  "現場のとおりに入れる（7020V・6600Vなど、どの値でもよい）。数字だけなら、図面には「7020V」と書く。空欄でもよい": "Enter it as it is on site (7020 V, 6600 V, etc.; any value is fine). If only a number is entered, “7020V” is written on the drawing. You can leave it blank",
+  "リアクトルの定格電圧": "Rated voltage of the reactor",
+  "現場のとおりに入れる（243Vなど、どの値でもよい）。数字だけなら、図面には「243V」と書く。空欄でもよい": "Enter it as it is on site (243 V, etc.; any value is fine). If only a number is entered, “243V” is written on the drawing. You can leave it blank",
 };
 export default data;

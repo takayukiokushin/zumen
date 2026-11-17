@@ -134,11 +134,22 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
   },
   // 容量もリアクトルの有無も、コンデンサ1台ごとに違う（4台あって1台だけリアクトル付き、もある）
   {
+    // 任意。どんな値でも入れてよい（新しいものは7020V、古いものは6600Vのことがある。値の範囲で、エラーにしない）
+    id: 'capacitorRatedVoltage',
+    group: 'compensation',
+    label: 'コンデンサの定格電圧',
+    type: 'text',
+    placeholder: '7020V',
+    showIf: { key: 'hasCapacitor', eq: 'yes' },
+    ask: 'always',
+    help: '現場のとおりに入れる（7020V・6600Vなど、どの値でもよい）。数字だけなら、図面には「7020V」と書く。空欄でもよい',
+  },
+  {
     id: 'capacitorCapacity',
     group: 'compensation',
     label: 'コンデンサの容量',
     type: 'text',
-    placeholder: '3φ106kvar 7020V',
+    placeholder: '3φ106kvar',
     showIf: { key: 'hasCapacitor', eq: 'yes' },
     ask: 'always',
   },
@@ -187,11 +198,22 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
     help: 'リアクトルの有無はコンデンサごとに決まる。台数分それぞれ答える',
   },
   {
+    // 任意。どんな値でも入れてよい（243Vでないものもある。値の範囲で、エラーにしない）
+    id: 'reactorRatedVoltage',
+    group: 'compensation',
+    label: 'リアクトルの定格電圧',
+    type: 'text',
+    placeholder: '243V',
+    showIf: { key: 'hasReactor', eq: 'yes' },
+    ask: 'always',
+    help: '現場のとおりに入れる（243Vなど、どの値でもよい）。数字だけなら、図面には「243V」と書く。空欄でもよい',
+  },
+  {
     id: 'reactorCapacity',
     group: 'compensation',
     label: 'リアクトルの容量',
     type: 'text',
-    placeholder: '3φ6.38kvar 243V',
+    placeholder: '3φ6.38kvar',
     showIf: { key: 'hasReactor', eq: 'yes' },
     ask: 'always',
   },

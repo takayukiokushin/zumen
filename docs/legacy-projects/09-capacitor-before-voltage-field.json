@@ -1,0 +1,21 @@
+{
+  "name": "進相設備（電圧を容量の文字に含めた形）",
+  "era": "コンデンサ・リアクトルに、定格電圧の欄が無かった時代。電圧は、容量の文字の中（「3φ106kvar 7020V」）に入っている",
+  "answers": {
+    "siteName": "進相設備（以前の形）",
+    "mainBreakerForm": "cb",
+    "sectionalizer": "pas",
+    "sourceType": "pole",
+    "transformerCount": 1,
+    "trCapacity": "300",
+    "trUsage": "動力",
+    "hasCapacitor": "yes",
+    "capacitorCount": "2",
+    "capacitorCapacity": "3φ106kvar 7020V",
+    "hasReactor": "yes",
+    "reactorCapacity": "3φ6.38kvar 243V",
+    "capacitorCapacity__2": "3φ50kvar 6600V",
+    "hasReactor__2": "no"
+  },
+  "drawing": null
+}
