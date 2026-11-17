@@ -890,6 +890,32 @@ button.with-icon svg { flex: 0 0 auto; }
   :where(html[data-uw~="700"]) .tool-group, :where(html[data-uw~="700"]) .tool-row { display: contents; }
   :where(html[data-uw~="700"]) .tool-group > .cap { display: none; }
   :where(html[data-uw~="700"]) .editor-bar:not(.more-open) .sec { display: none; }
+
+/* ---- 図面の画面の上の帯：タブレット・スマホ（実効幅900以下）では、低く、そろえる ---- */
+/* グループの見出し（「やり直し」「編集」…）と、レイヤーの一覧の上の説明は出さない（高さがばらばらになり、帯が高くなるため）。
+   ボタンの余白を詰め、全部を、縦に中央でそろえる。ボタンの高さは、指で押せる大きさ（44px）を保つ */
+  :where(html[data-uw~="900"]) .tool-group > .cap, :where(html[data-uw~="900"]) .layer-field-cap { display: none; }
+  :where(html[data-uw~="900"]) .editor-bar { padding: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); gap: calc(6px * var(--text-scale)); }
+  :where(html[data-uw~="900"]) .tools { gap: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); align-items: center; }
+  :where(html[data-uw~="900"]) .tool-row, :where(html[data-uw~="900"]) .tool-row.print-row { align-items: center; gap: calc(6px * var(--text-scale)); }
+  :where(html[data-uw~="900"]) .tools .btn, :where(html[data-uw~="900"]) .tools button { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
+  :where(html[data-uw~="900"]) .tool-group { gap: 0; }
+/* 指で操作する端末（タブレット・スマホ）は、実効幅によらず、同じ規則 */
+@media (pointer: coarse) {
+  .tool-group > .cap, .layer-field-cap { display: none; }
+  .editor-bar { padding: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); gap: calc(6px * var(--text-scale)); }
+  .tools { gap: calc(6px * var(--text-scale)) calc(10px * var(--text-scale)); align-items: center; }
+  .tool-row, .tool-row.print-row { align-items: center; gap: calc(6px * var(--text-scale)); }
+  .tools .btn, .tools button { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
+  .tool-group { gap: 0; }
+}
+/* スマホ（実効幅700以下）：縮小・拡大は、マークだけにして、1行目に「戻す・進める・削除」、2行目に「ほかの操作・記号・縮小・拡大」が収まるようにする */
+  /* スマホは、グループの枠をなくして、ボタンを1つずつ、並べる（広い画面用の規則に負けないよう、強めに指定する） */
+  html[data-uw~="700"] .tool-group, html[data-uw~="700"] .tool-row { display: contents; }
+  html[data-uw~="700"] .tool-group.zoom-group { margin-left: 0; }
+  html[data-uw~="700"] .editor-bar .tools { gap: calc(6px * var(--text-scale)) calc(8px * var(--text-scale)); }
+  :where(html[data-uw~="700"]) .zoom-text { display: none; }
+  :where(html[data-uw~="700"]) .tools button.with-icon { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
   :where(html[data-uw~="700"]) .editor { overflow-y: auto; }
   :where(html[data-uw~="700"]) .editor-body { display: flex; flex-direction: column; flex: 1 0 auto; }
   :where(html[data-uw~="700"]) .canvas-wrap { flex: 1 1 auto; min-height: max(320px, 50vh); padding: calc(10px * var(--text-scale)); }

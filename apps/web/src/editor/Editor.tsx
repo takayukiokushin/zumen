@@ -1040,14 +1040,14 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           <div className="tool-group zoom-group">
             <span className="cap">{t('editor.group.view')}</span>
             <div className="tool-row">
-              <button type="button" className="with-icon" disabled={sheetView} onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
+              <button type="button" className="with-icon" aria-label={t('editor.zoomOut')} disabled={sheetView} onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
                 <ZoomIcon kind="out" />
-                {t('editor.zoomOut')}
+                <span className="zoom-text">{t('editor.zoomOut')}</span>
               </button>
               <span className="zoom">{Math.round(zoom * 100)}%</span>
-              <button type="button" className="with-icon" disabled={sheetView} onClick={() => setZoom((z) => Math.min(3, z + 0.2))}>
+              <button type="button" className="with-icon" aria-label={t('editor.zoomIn')} disabled={sheetView} onClick={() => setZoom((z) => Math.min(3, z + 0.2))}>
                 <ZoomIcon kind="in" />
-                {t('editor.zoomIn')}
+                <span className="zoom-text">{t('editor.zoomIn')}</span>
               </button>
             </div>
           </div>
