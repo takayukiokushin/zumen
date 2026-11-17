@@ -20,6 +20,7 @@ import { useNewVersion } from './session/useNewVersion.ts';
 import { useServerStatus } from './session/useServerStatus.ts';
 import { useWarningText } from './projects/ServerStatusPanel.tsx';
 import { Analyze } from './analyze/Analyze.tsx';
+import type { AiApplied } from './analyze/applied.ts';
 import { Voice } from './voice/Voice.tsx';
 import { JobList } from './projects/JobList.tsx';
 import { TabBar } from './TabBar.tsx';
@@ -207,8 +208,54 @@ export function App() {
     setAnswers((prev) => (typeof next === 'function' ? next(prev) : next));
     setDirty(true);
   }, []);
-  /** スケッチ・音声で読み取った答えを入れる。白紙で始めた案件は、そのあと、すべての項目を開いた形になる（1つずつ開くのは、手で入力するときだけ） */
-  const applyFromAi = useCallback((patch: Answers) => updateAnswers((prev) => openStartMode({ ...prev, ...patch })), [updateAnswers]);
+  /** いまの回答（反映の前の値を、その場で調べるため） */
+  const answersRef = useRef<Answers>(answers);
+  answersRef.current = answers;
+  /**
+   * スケッチ・音声で読み取った答えを入れる。白紙で始めた案件は、そのあと、すべての項目を開いた形になる（1つずつ開くのは、手で入力するときだけ）。
+   * 反映前の値と、書き換えた項目を返す（「反映前に戻す」と、書き換えた項目の知らせに使う。第14弾 項目6）
+   */
+  const applyFromAi = useCallback(
+    (patch: Answers): AiApplied => {
+      const cur = answersRef.current;
+      const before: Answers = {};
+      const overwritten: AiApplied['overwritten'] = [];
+      for (const [key, after] of Object.entries(patch)) {
+        before[key] = cur[key];
+        if (cur[key] !== undefined && cur[key] !== null && cur[key] !== '' && String(cur[key]) !== String(after)) {
+          overwritten.push({ key, before: String(cur[key]), after: String(after) });
+        }
+      }
+      if (cur[START_MODE_KEY] === 'blank') before[START_MODE_KEY] = 'blank';
+      updateAnswers((prev) => openStartMode({ ...prev, ...patch }));
+      return { before, overwritten };
+    },
+    [updateAnswers],
+  );
+  /** 「反映前に戻す」：読み取りが書き換えた項目だけを、反映前の値に戻す（そのあとで手で直した別の項目は、そのまま） */
+  const undoAiApply = useCallback(
+    (applied: AiApplied) =>
+      updateAnswers((prev) => {
+        const next = { ...prev };
+        for (const [key, v] of Object.entries(applied.before)) {
+          if (v === undefined) delete next[key];
+          else next[key] = v;
+        }
+        return next;
+      }),
+    [updateAnswers],
+  );
+  /** 答えを1つ入れる・消す（読み取りの画面で、足りない必須項目に答えるとき） */
+  const setAnswer = useCallback(
+    (key: string, value: Value) =>
+      updateAnswers((prev) => {
+        const next = { ...prev };
+        if (value === undefined || value === '') delete next[key];
+        else next[key] = value;
+        return next;
+      }),
+    [updateAnswers],
+  );
 
   /**
    * 図面で直した内容を、入力に書き戻した結果の知らせ（第13弾 項目1）。図面の画面から「設備を入力して作成」へ移ったときに出す。
@@ -754,6 +801,9 @@ export function App() {
                 key={projectId}
                 answers={effective}
                 onApply={applyFromAi}
+                onUndo={undoAiApply}
+                onSetAnswer={setAnswer}
+                onGoToDrawing={() => setTab('drawing')}
                 onAnalyzed={() => setSketchRead(true)}
                 onStatus={setAnalyzeStatus}
                 onGoToHearing={() => setTab('hearing')}

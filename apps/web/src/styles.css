@@ -1287,3 +1287,10 @@ main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { con
 .area-c5 { --accent: var(--area5-line); --accent-soft: var(--area5-fill); }
 /* 目次の「n か所目」：左の線は、入力の状況（済み・未入力）のまま。右に、エリアの色の線を足す */
 .nav a.sub-link[class*="area-c"] { box-shadow: inset -4px 0 0 var(--accent); }
+
+/* スケッチ読み取りが終わったあと（第14弾 項目6） */
+.ok-note { margin: 0 0 calc(10px * var(--text-scale)); padding: calc(8px * var(--text-scale)) calc(12px * var(--text-scale)); background: var(--ok-soft); border-left: 4px solid var(--ok); font-size: calc(13.5px * var(--text-scale)); }
+.overwrote { margin: 0 0 calc(10px * var(--text-scale)); font-size: calc(12.5px * var(--text-scale)); }
+.overwrote p { margin: 0 0 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.overwrote ul { margin: 4px 0 0; padding-left: 1.4em; color: var(--ink-2); }
+.sketch-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: calc(10px * var(--text-scale)); }

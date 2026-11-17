@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Answers } from '@zumen/knowledge';
+import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
 import { api } from '../session/api.ts';
 import { SketchResult } from './SketchResult.tsx';
+import type { AiApplied } from './applied.ts';
 import { useT } from '../i18n/useT.ts';
 import { tr } from '../i18n/index.ts';
 import { Rich } from '../i18n/Rich.tsx';
 
 interface Props {
   answers: Answers;
-  /** 読み取りに使った写真を案件に残すため */
-  onApply: (patch: Answers) => void;
+  /** 読み取った内容を、案件に反映する（読み取りが終わったら、自動で呼ぶ）。反映前の値と、書き換えた項目を返す */
+  onApply: (patch: Answers) => AiApplied;
+  /** 「反映前に戻す」 */
+  onUndo: (applied: AiApplied) => void;
+  /** 足りない必須項目に答えたとき、その場で反映する */
+  onSetAnswer: (key: string, value: Value) => void;
+  onGoToDrawing: () => void;
   /** 読み取りを実行して、結果が出たときに知らせる（ヒアリング画面の表示を切り替えるため） */
   onAnalyzed?: () => void;
   /** 読み取りの状態を、外（タブの表示）に知らせる。別のタブを見ているあいだも、読み取りは続く */
@@ -41,12 +47,16 @@ function toBase64(file: File): Promise<string> {
  * 読み取り結果はそのまま採用せず、必ずこの画面で人が選んでから反映する
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
-export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing }: Props) {
+export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onStatus, onGoToHearing, onGoToDrawing }: Props) {
   const t = useT();
   const [images, setImages] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  /** 読み取った内容を反映したときの記録（「反映前に戻す」・書き換えた項目の知らせ）。反映前に戻したあとは null */
+  const [applied, setApplied] = useState<AiApplied | null>(null);
+  /** 「反映前に戻す」を押したあとの知らせ */
+  const [undone, setUndone] = useState(false);
   /** 読み取りを実行するたびに変える（確認画面の、チェックの状態を作り直すため） */
   const [runId, setRunId] = useState(0);
   /** 読み取りが使える状態か（サーバーに利用券が置いてあるか）。未確認のあいだは undefined */
@@ -123,7 +133,11 @@ export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing 
         },
         mine.ctl.signal,
       );
-      setResult(json.result as AnalysisResult);
+      const read = json.result as AnalysisResult;
+      setResult(read);
+      // 読み取りが終わったら、読み取った内容を、自動で反映する（確認は、そのあとの画面と、図面のプレビューで行う）
+      setApplied(onApply(read.answers as Answers));
+      setUndone(false);
       ok = true;
       onAnalyzed?.();
       setRunId((n) => n + 1);
@@ -230,15 +244,22 @@ export function Analyze({ answers, onApply, onAnalyzed, onStatus, onGoToHearing 
         {error && <p className="err">{error}</p>}
       </section>
 
-      {result && (
+      {undone && <p className="ok-note" role="status">{t('sketch.undone')}</p>}
+      {result && applied && (
         <SketchResult
           key={runId}
           result={result}
           current={answers}
-          onApply={(patch) => {
-            onApply(patch);
-            onGoToHearing();
+          applied={applied}
+          onSetAnswer={onSetAnswer}
+          onUndo={() => {
+            onUndo(applied);
+            setApplied(null);
+            setResult(null);
+            setUndone(true);
           }}
+          onGoToHearing={onGoToHearing}
+          onGoToDrawing={onGoToDrawing}
         />
       )}
     </div>

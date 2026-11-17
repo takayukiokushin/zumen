@@ -20,7 +20,7 @@ const levelKey = { error: 'revui.level.error', confirm: 'revui.level.confirm', a
 type T = ReturnType<typeof useT>;
 type Tx = ReturnType<typeof useTx>;
 
-const labelOf = (id: string, t: T, tx: Tx) => {
+export const labelOf = (id: string, t: T, tx: Tx) => {
   // 繰り返し（__2）やエリア（a2:）の書き方は、基本の項目名に、書き方の説明を添えて出す
   const m = /^(?:a(\d+):)?(.*?)(?:__(\d+))?$/.exec(id);
   const base = QUESTIONS.find((q) => q.id === (m?.[2] ?? id));
@@ -29,7 +29,7 @@ const labelOf = (id: string, t: T, tx: Tx) => {
   return extra ? `${tx(base.label)}（${extra}）` : tx(base.label);
 };
 
-const displayValue = (id: string, v: unknown, tx: Tx): string => {
+export const displayValue = (id: string, v: unknown, tx: Tx): string => {
   const baseId = id.replace(/^a\d+:/, '').replace(/__\d+$/, '');
   const q = QUESTIONS.find((x) => x.id === baseId);
   const o = q?.options?.find((opt) => opt.value === String(v));
