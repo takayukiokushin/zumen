@@ -67,6 +67,9 @@
 
 /* ---- 文字を太くする ---- */
 :root[data-bold="on"] { --weight: 600; --weight-strong: 800; }
+/* 書体に太い字形がない端末（Android の Chrome など）では、font-weight だけでは太くならないので、
+   文字の輪郭に細い線を足して、どの書体でも太く見せる。図面（svg）の中の文字は、図面自身の太字の決まりに任せる */
+:root[data-bold="on"] body *:not(svg):not(svg *) { -webkit-text-stroke: 0.045em currentColor; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
