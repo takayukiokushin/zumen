@@ -595,6 +595,24 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="900"]) .tabbar .who-name { flex: 1 1 auto; min-width: 0; font-size: calc(10px * var(--text-scale)); line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
   :where(html[data-uw~="900"]) .tabbar .who .role { flex: 0 0 auto; font-size: calc(10px * var(--text-scale)); padding-left: 4px; padding-right: 4px; }
 
+/* スマホ（実効幅700以下）：右側（使い方・設定・利用者の管理・名前・ログアウト）は、どんな倍率でも、必ず1行に並べる。
+   足りないときは、まず名前（と役割）を縮め、そのあと、ほかのボタンの文字を、そのボタンの中で折り返して縮める（行は割らない） */
+  :where(html[data-uw~="700"]) .tabbar > .tabbar-right { flex-wrap: nowrap; align-items: center; }
+  :where(html[data-uw~="700"]) .tabbar-right > button { flex: 0 1 auto; min-width: 0; white-space: normal; line-height: 1.15; overflow-wrap: normal; }
+  :where(html[data-uw~="700"]) .tabbar-right > button.icon-btn { flex: 0 0 auto; }
+  :where(html[data-uw~="700"]) .tabbar-right > .who { flex: 0 6 11em; min-width: 2.2em; }
+  /* 「ログアウト」は、折り返さない（「ログ／アウト」のように割れない）。実効幅300以下では、言語によって長いので、折り返してよい */
+  :where(html[data-uw~="700"]) .tabbar-right > button:last-child { white-space: nowrap; flex: 0 0 auto; }
+  :where(html[data-uw~="300"]) .tabbar-right > button:last-child { white-space: normal; flex: 0 1 auto; }
+  /* さらに狭いとき（実効幅300以下）：右側のボタンの文字と余白を、もう少し詰める（長い言葉の言語で、右にはみ出さないように） */
+  :where(html[data-uw~="300"]) .tabbar-right > button { font-size: calc(10px * var(--ctl-scale)); padding-left: calc(3px * var(--ctl-scale)); padding-right: calc(3px * var(--ctl-scale)); }
+  :where(html[data-uw~="300"]) .tabbar-right > button.icon-btn { font-size: calc(9px * var(--ctl-scale)); padding-left: calc(2px * var(--ctl-scale)); padding-right: calc(2px * var(--ctl-scale)); }
+  :where(html[data-uw~="300"]) .tabbar-right { gap: 1px; }
+  /* 実効幅300以下では、「使い方」「設定」は、マークだけにする（名前は、押したときの説明と、読み上げに残す）。言語によっては、文字が長くて、1行に収まらないため */
+  :where(html[data-uw~="300"]) .tabbar-right > button.icon-btn > span { display: none; }
+  /* 役割の札（「Administrateur」など、長い言葉もある）は、名前と一緒に縮める。長いものは、「…」で省く */
+  :where(html[data-uw~="700"]) .tabbar .who .role { flex: 0 1 auto; min-width: 0; max-width: 6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 
 /* ㉘ タブにしばらくカーソルを置くと出る説明 */
 .tab-wrap { position: relative; display: inline-flex; }

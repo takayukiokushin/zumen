@@ -99,7 +99,7 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
 
       {/* 右側のまとまり。幅が足りないときは、まとまりごと2段目に回る（画面の外に出ない） */}
       <div className="tabbar-right">
-      <button type="button" className="icon-btn" title={t('help.button')} onClick={onHelp}>
+      <button type="button" className="icon-btn" title={t('help.button')} aria-label={t('help.button')} onClick={onHelp}>
         <InfoIcon size={1.6} />
         <span>{t('help.button')}</span>
       </button>
