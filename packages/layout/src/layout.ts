@@ -873,6 +873,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
         let ly = busY;
         const inLane = feeders.filter((f) => (f.lane ?? 0) === lane);
         let prevDashed = false;
+        let prevSym: PlacedSymbol | undefined;
         for (const [i, item] of inLane.entries()) {
           const def = getSymbol(item.symbolId);
           // 電動機のケーブルの、向かい側の端末は、180°回して、頂点をケーブル側（上）に向ける
@@ -884,9 +885,16 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
           const x = laneX(slot) - entry.x;
           // 蓄電池ユニット（PCSの下）は、PCSとの間を、少しだけ広げる。ほかの列の文字（補助変圧器盤の文字など）の下端と、
           // 蓄電池ユニットの上端が、たまたま4以内に近づくと、「結線を整える」が、そこを狭すぎる帯として広げてしまうため
-          const yy = ly + (i === 0 ? 0 : item.role === 'battery' ? GAP + BATTERY_EXTRA_GAP : GAP) - entry.y;
+          let yy = ly + (i === 0 ? 0 : item.role === 'battery' ? GAP + BATTERY_EXTRA_GAP : GAP) - entry.y;
+          // 1つ前の記号の文字（PCSの、太陽光パネルの枚数の一覧など、行数が多いもの）が、この記号の真上の幅まで来ているときは、
+          // 文字の下端より下に置く（文字が、下の記号に重ならないように）
+          if (i > 0 && prevSym && prevSym.label.length > 1) {
+            const pr = labelRect(prevSym.labelAt, prevSym.label);
+            if (pr.x1 > x - 2 && pr.x0 < x + def.box.w + 2) yy = Math.max(yy, pr.y1 + LABEL_CLEAR + 4);
+          }
           if (i > 0) wires.push({ x1: laneX(slot), y1: ly, x2: laneX(slot), y2: yy + entry.y, ...(prevDashed ? { dashed: true } : {}) });
           const sym = add(item, def, x, yy, rot, 'right');
+          prevSym = sym;
           prevDashed = item.dashedAfter === true;
           // 電動機の列と、蓄電池ユニット（PCSの下）は、文字を、記号の右横に書く（電動機：始動方式・容量・ケーブルの注記）
           if (i > 0 && !item.role.startsWith('motor') && item.role !== 'battery') {
