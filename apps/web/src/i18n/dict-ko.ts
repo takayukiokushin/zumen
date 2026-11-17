@@ -99,6 +99,7 @@ export const ko: Dict = {
   'settings.bold': '글자를 굵게',
   'settings.hideHelp': '입력란 아래의 설명문 숨기기',
   'settings.hideHelpNote': '설비 입력 화면의 입력란 아래에 있는 설명문을 숨깁니다. 익숙한 분을 위한 설정입니다. “과거 경향”(이전 안건에서 많았던 답의 표시)도 나오지 않습니다. 숨긴 상태에서도 항목 이름 위에 마우스를 올리면 설명이 나옵니다.',
+  'settings.uiSizePhoneNote': '이 화면(휴대폰)에서는 “화면 전체 크기”를 {max}%까지만 키울 수 있습니다(더 키우면 화면이 맞지 않습니다).',
   'settings.sizeNote':
     '글자만 크게 하려면 「글자 크기」를, 버튼과 여백까지 크게 하려면 「화면 전체 크기」를 바꾸세요.',
   'settings.preview': '보기: 이 크기로 표시됩니다',

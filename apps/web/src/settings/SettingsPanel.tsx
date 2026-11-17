@@ -5,7 +5,7 @@ import { api } from '../session/api.ts';
 import { APP_VERSION, BUILD_DATE } from '../version.ts';
 import { useEscapeToClose } from '../useEscapeToClose.ts';
 import { LangSelect } from './LangSelect.tsx';
-import { SCROLLBAR_SIZES, TEXT_STEPS, UI_STEPS, useSettings } from './settings.tsx';
+import { SCROLLBAR_SIZES, TEXT_STEPS, UI_STEPS, effectiveUiScale, isPhoneSized, uiScaleLimit, useSettings } from './settings.tsx';
 import type { Theme } from './settings.tsx';
 
 /**
@@ -163,8 +163,8 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           />
           <SizeRow
             label={t('settings.uiSize')}
-            steps={UI_STEPS}
-            value={settings.uiScale}
+            steps={UI_STEPS.filter((x) => x <= uiScaleLimit() + 1e-9)}
+            value={effectiveUiScale(settings.uiScale)}
             onChange={(v) => set('uiScale', v)}
           />
           <label className="switch wide block">
@@ -177,6 +177,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </label>
           <p className="hint">{t('settings.hideHelpNote')}</p>
           <p className="hint">{t('settings.sizeNote')}</p>
+          {isPhoneSized() && <p className="hint">{t('settings.uiSizePhoneNote', { max: Math.round(uiScaleLimit() * 100) })}</p>}
           <p className="sample">{t('settings.preview')}</p>
         </section>
           </div>

@@ -99,6 +99,7 @@ export const en: Dict = {
   'settings.bold': 'Bold text',
   'settings.hideHelp': 'Hide the help text under input fields',
   'settings.hideHelpNote': 'Hides the help text under the fields on the equipment input screen. For experienced users. The “past trends” display (the answers that were most common in earlier projects) is also hidden. While hidden, hover over a field name to see the help.',
+  'settings.uiSizePhoneNote': 'On this screen (phone), “Whole screen size” can go up to {max}% (any larger and the screen no longer fits).',
   'settings.sizeNote':
     'Use “Text size” to enlarge only the text, and “Overall size” to enlarge buttons and spacing as well.',
   'settings.preview': 'Sample: text appears at this size',

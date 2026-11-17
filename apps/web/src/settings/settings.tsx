@@ -48,6 +48,26 @@ const stepsFrom = (): number[] => Array.from({ length: Math.round((SIZE_MAX - SI
 export const TEXT_STEPS = stepsFrom();
 export const UI_STEPS = stepsFrom();
 
+/** スマホ（幅が狭い画面）での、「画面全体の大きさ」の上限。これより大きくすると、上のタブなどが並びきらなくなる */
+export const PHONE_UI_MAX = 1.3;
+/**
+ * スマホの大きさの画面か。画面の実際の幅が700px以下、または、指で操作する端末で、短いほうの辺が500px以下（スマホの横向き）。
+ * タブレット（820px以上）は、含めない
+ */
+export function isPhoneSized(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (window.innerWidth <= 700) return true;
+  try {
+    return window.matchMedia('(pointer: coarse)').matches && Math.min(window.innerWidth, window.innerHeight) <= 500;
+  } catch {
+    return false;
+  }
+}
+/** いまの画面での、「画面全体の大きさ」の上限（スマホは130%、それ以外は160%） */
+export const uiScaleLimit = (): number => (isPhoneSized() ? PHONE_UI_MAX : SIZE_MAX);
+/** 保存してある値を、いまの画面の上限に収めた値（保存してある値は、書き換えない） */
+export const effectiveUiScale = (v: number): number => Math.min(v, uiScaleLimit());
+
 /**
  * 前に保存された値（85%・92.5%・125% など、いまの段階に無いもの）は、いちばん近い段階に合わせる。
  * 範囲の外（60%より小さい・160%より大きい）は、端に寄せる。真ん中ちょうどのとき（85%・125%）は、読みやすいよう、大きいほう（90%・130%）。
@@ -131,14 +151,15 @@ function applyWidth(uiScale: number): void {
 /** 設定を実際の画面に効かせる。CSS側はこの印と変数だけを見る */
 function applyToDocument(s: Settings): void {
   const el = document.documentElement;
-  applyWidth(s.uiScale);
+  const ui = effectiveUiScale(s.uiScale);
+  applyWidth(ui);
   el.dataset.theme = s.theme;
   el.dataset.bold = s.bold ? 'on' : 'off';
   el.dataset.sb = s.scrollbar;
   zoomMode ??= detectZoomMode();
   el.dataset.zoom = zoomMode;
   el.style.setProperty('--text-scale', String(s.textScale * BASE_TEXT_SCALE));
-  el.style.setProperty('--ui-scale', String(s.uiScale));
+  el.style.setProperty('--ui-scale', String(ui));
   el.lang = s.lang;
   // 画面の部品の外（通信の失敗の文言など）でも、選んでいる言葉を使えるように
   setCurrentLang(s.lang);
@@ -159,19 +180,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return s;
   });
 
-  // 画面の幅が変わったとき（窓の大きさ・スマホの向き）も、実効幅の印を付け直す
+  // 画面の幅が変わったとき（窓の大きさ・スマホの向き）も、実効幅の印と、スマホの上限を、付け直す
   useEffect(() => {
     let raf = 0;
     const onResize = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => applyWidth(settings.uiScale));
+      raf = requestAnimationFrame(() => applyToDocument(settings));
     };
     window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('resize', onResize);
       cancelAnimationFrame(raf);
     };
-  }, [settings.uiScale]);
+  }, [settings]);
 
   useEffect(() => {
     applyToDocument(settings);
