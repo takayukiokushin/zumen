@@ -262,6 +262,17 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     ok(openStartMode({ siteName: 'A' }).startMode === undefined, '印が無い案件に、印が付いています');
     // 白紙のまま、図面が組み立てられる（何も描かないが、エラーにならない）
     ok(Array.isArray(buildComposition({ startMode: 'blank' })), '白紙の案件で、図面が組み立てられません');
+    // 補助変圧器：蓄電池を「あり」にしても、答えるまで未入力のまま（白紙・全部を開く）。以前の案件（印なし）は、これまでどおり「あり」と読む
+    for (const mode of ['blank', 'blank-open']) {
+      const bt = { startMode: mode, hasBattery: 'yes' };
+      ok(effectiveAnswers(bt).hasAuxTr === undefined && normalizeAnswers(bt).hasAuxTr === undefined, `${mode}：蓄電池を「あり」にしただけで、補助変圧器が「あり」になっています`);
+      ok(missingRequired(bt).some((q) => q.id === 'hasAuxTr'), `${mode}：補助変圧器が、必須の未入力として残っていません`);
+      // 2か所目以降のエリアでも、見え方と数え方が同じ（見えている答えと、数えられる答えが食い違わない）
+      const two = { startMode: mode, areaCount: '2', hasBattery: 'yes', 'a2:hasBattery': 'yes' };
+      ok(areaView(two, 1).hasAuxTr === undefined, `${mode}：2か所目のエリアで、補助変圧器が、答えていないのに「あり」と見えています`);
+      ok(normalizeAnswers({ ...bt, hasAuxTr: 'no' }).hasAuxTr === 'no', `${mode}：答えた「なし」が、読み替えで変わっています`);
+    }
+    ok(normalizeAnswers({ hasBattery: 'yes' }).hasAuxTr === 'yes' && normalizeAnswers({ auxTrCount: '2' }).hasAuxTr === 'yes' && normalizeAnswers({ auxTrCount: '0' }).hasAuxTr === undefined, '以前の案件（印なし）で、補助変圧器の読み替えが働いていません');
     // 必須項目：白紙なら、表のとおり、すべて未入力として並ぶ。印が無い案件は、既定値のある項目は並ばない
     const need = new Set(missingRequired({ startMode: 'blank' }).map((x) => x.id));
     for (const id of ['siteName', 'sourceType', 'sectionalizer', 'areaCount', 'areaForm', 'vctLocation', 'vctCount', 'cableInstallation', 'mainBreakerForm', 'transformerCount', 'hasCapacitor', 'hasGenerator', 'hasMotor', 'hasPv', 'hasBattery', 'hasAuxTr']) ok(need.has(id), `白紙の案件で、必須の「${id}」が、未入力として並んでいません`);

@@ -102,7 +102,9 @@ export function normalizeAnswers(answers: Answers): Answers {
   }
   // 補助変圧器：以前は、台数だけで決めていた（蓄電池があれば最初は1台）。「補助変圧器はありますか？」が未回答の古い案件は、
   // 台数が1以上（台数を答えていないときは、蓄電池があれば1台）なら「あり」として読む。図面から、補助変圧器が消えないようにする
-  if (out.hasAuxTr === undefined) {
+  // （白紙で始めた案件には、この読み替えをしない。答えていないのに「あり」と表示され、2か所目以降のエリアでは「未入力」のまま
+  // 先へ進めなくなるため。補助変圧器は、蓄電池の有無に関わらず、自分で答える）
+  if (out.hasAuxTr === undefined && !isBlankStart(out)) {
     const n = Number(out.auxTrCount);
     const old = out.auxTrCount === undefined || out.auxTrCount === '' ? out.hasBattery === 'yes' : Number.isFinite(n) && n >= 1;
     if (old) out = { ...out, hasAuxTr: 'yes' };
