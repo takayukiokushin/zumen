@@ -261,6 +261,21 @@ button.trend-chip:hover { text-decoration: underline; }
   border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 3px; color: var(--ink);
   font-size: calc(12.5px * var(--text-scale)); line-height: 1.7; }
 .analyze .privacy-note b { display: block; }
+/* スケッチ読み取りの進み具合（4段階の小さな四角） */
+.an-progress { margin: 14px 0 4px; }
+.an-progress-now { margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: calc(14px * var(--text-scale)); color: var(--ink); }
+.an-progress-now b { color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.an-bar { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.an-seg { box-sizing: border-box; min-height: calc(38px * var(--text-scale)); padding: 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 1px solid var(--rule); background: var(--alt); color: var(--muted); border-radius: 2px; text-align: center; line-height: 1.3; }
+.an-seg-no { font-weight: var(--weight-strong); font-size: calc(13px * var(--text-scale)); font-variant-numeric: tabular-nums; }
+.an-seg-label { font-size: calc(11px * var(--text-scale)); }
+.an-seg.done { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.an-seg.now { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--accent-text); animation: an-pulse 1.6s ease-in-out infinite; }
+@keyframes an-pulse { 50% { opacity: .62; } }
+@media (prefers-reduced-motion: reduce) { .an-seg.now { animation: none; } }
+/* 幅がせまいとき（スマホ）は、段階の名前は、上の1行（いまの段階）だけにして、四角には番号だけを出す */
+@media (max-width: 640px) { .an-seg-label { display: none; } .an-seg { min-height: calc(34px * var(--text-scale)); } }
 /* 音声入力から作成 */
 .voice-steps { margin: 0 0 12px; padding-left: 1.4em; }
 .voice-steps li { margin-bottom: 6px; }

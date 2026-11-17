@@ -854,10 +854,20 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     const { createServer } = await import('node:http');
     const { ROOT, sleep, freePort } = await import('./common.ts');
     // 疑似の AI サーバー（Anthropic の messages API のふりをする）
-    type Mode = 'ok' | 'slow' | 'hang' | 'cut' | 'overloaded' | 'maxtokens';
+    type Mode = 'ok' | 'slow' | 'hang' | 'cut' | 'overloaded' | 'maxtokens' | 'staged';
     const fake = { mode: 'ok' as Mode, slowMs: 600, hits: 0, aborted: 0 };
-    const reply = (stop: string) =>
-      JSON.stringify({ id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5', content: [{ type: 'text', text: JSON.stringify({ answers: [], evidence: [], uncertain: [], notes: ['試験'], questions: [] }) }], stop_reason: stop, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 } });
+    // 本物の AI と同じ、少しずつ届く形（SSE）。アプリは、この形で受け取る（段階の表示のため）
+    const sse = (ev: string, data: unknown) => `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`;
+    const answerText = JSON.stringify({ answers: [], evidence: [], uncertain: [], notes: ['試験'], questions: [] });
+    const streamHead = () =>
+      sse('message_start', { type: 'message_start', message: { id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5', content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } } });
+    const streamTextStart = () => sse('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } });
+    const streamTail = (stop: string) =>
+      sse('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: answerText } }) +
+      sse('content_block_stop', { type: 'content_block_stop', index: 0 }) +
+      sse('message_delta', { type: 'message_delta', delta: { stop_reason: stop, stop_sequence: null }, usage: { output_tokens: 5 } }) +
+      sse('message_stop', { type: 'message_stop' });
+    const streamAll = (stop: string) => streamHead() + streamTextStart() + streamTail(stop);
     const sockets = new Set<import('node:net').Socket>();
     const fakeSrv = createServer((req, res) => {
       fake.hits++;
@@ -872,13 +882,27 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
           res.writeHead(code, { 'content-type': 'application/json' });
           res.end(body);
         };
-        if (fake.mode === 'ok') send(200, reply('end_turn'));
-        else if (fake.mode === 'maxtokens') send(200, reply('max_tokens'));
+        const sendStream = (body: string) => {
+          done = true;
+          res.writeHead(200, { 'content-type': 'text/event-stream' });
+          res.end(body);
+        };
+        if (fake.mode === 'ok') sendStream(streamAll('end_turn'));
+        else if (fake.mode === 'maxtokens') sendStream(streamAll('max_tokens'));
         else if (fake.mode === 'overloaded') send(529, JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } }));
-        else if (fake.mode === 'slow') setTimeout(() => send(200, reply('end_turn')), fake.slowMs);
-        else if (fake.mode === 'cut') {
-          res.writeHead(200, { 'content-type': 'application/json', 'content-length': '5000' });
-          res.write('{"id":"msg_1","type":"mess');
+        else if (fake.mode === 'slow') setTimeout(() => sendStream(streamAll('end_turn')), fake.slowMs);
+        else if (fake.mode === 'staged') {
+          // 受け付け → 少し考える → 書き始める → 書き終わる、の順に、時間をあけて返す（画面の段階の表示の試験用）
+          res.writeHead(200, { 'content-type': 'text/event-stream' });
+          res.write(streamHead());
+          setTimeout(() => res.write(streamTextStart()), 900);
+          setTimeout(() => {
+            done = true;
+            res.end(streamTail('end_turn'));
+          }, 1800);
+        } else if (fake.mode === 'cut') {
+          res.writeHead(200, { 'content-type': 'text/event-stream' });
+          res.write('event: message_start\ndata: {"type":"mess');
           setTimeout(() => {
             done = true;
             res.socket?.destroy();
@@ -978,6 +1002,34 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
       reset('slow');
       const slow = await post(c1);
       check('時間内に返ってくる遅い応答は、ふつうに読み取れる', slow.status === 200 && slow.ms >= 500, `${slow.status}・${slow.ms}ms`);
+
+      // 3b. 読み取りの段階（画面の進み具合の表示）：AI の答えの届き方に合わせて、1→2→3 と進み、戻らない。全部で4段階
+      reset('staged');
+      const qs = await ask(c1);
+      const seen: string[] = [];
+      let lastNo = 0;
+      let back = false;
+      let total = 0;
+      let stageEnd: unknown;
+      for (let i = 0; i < 100; i++) {
+        await sleep(100);
+        const r = await fetchRetry(`${ab}/api/analyze/${qs.jobId}`, { headers: { cookie: c1 } });
+        const j = (await J(r)) as { state: string; stage?: string; stageNo?: number; stageTotal?: number; result?: unknown };
+        if (j.state !== 'running') {
+          stageEnd = j.state;
+          break;
+        }
+        if (j.stage && !seen.includes(j.stage)) seen.push(j.stage);
+        if ((j.stageNo ?? 0) < lastNo) back = true;
+        lastNo = j.stageNo ?? lastNo;
+        total = j.stageTotal ?? total;
+      }
+      await fetch(`${ab}/api/analyze/${qs.jobId}`, { method: 'DELETE', headers: { cookie: c1 } });
+      check('読み取り中の様子に、段階（全部で4段階）が付く', total === 4 && seen.length > 0, `${seen.join('→')}・全${total}`);
+      check('段階は、頼んだ直後は「画像を送っている」、AI が受け付けると「見ている」、答えを書き始めると「書いている」と進む', seen[0] === 'sending' || seen[0] === 'thinking', seen.join('→'));
+      check('AI が「見ている」と「書いている」の両方の段階が、順番に見える', seen.includes('thinking') && seen.includes('writing') && seen.indexOf('thinking') < seen.indexOf('writing'), seen.join('→'));
+      check('段階は、戻らない', !back);
+      check('終わると、段階ではなく結果を返す', stageEnd === 'done', String(stageEnd));
 
       // 4. 途中で切れる
       reset('cut');

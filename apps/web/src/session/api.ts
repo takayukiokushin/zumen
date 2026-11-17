@@ -249,10 +249,10 @@ export const api = {
    * 1回ずつの通信は短いので、外から入る設定（Cloudflare）の、約100秒の制限に、引っかからない。
    * signal で中断すると、サーバーの読み取りも、やめてもらう。
    */
-  analyze: async (body: { images: { mediaType: string; data: string }[]; answers: Answers }, signal?: AbortSignal) => {
+  analyze: async (body: { images: { mediaType: string; data: string }[]; answers: Answers }, signal?: AbortSignal, onStage?: (stageNo: number) => void) => {
     // 頼むとき（写真を送る）は、通信が遅くても、時間がかかる。決めた時間では打ち切らず、呼び出した側の「やめる」に任せる
     const { jobId } = await call<{ jobId: string }>('/api/analyze', { method: 'POST', body: JSON.stringify(body), signal: signal ?? new AbortController().signal });
-    return waitForJob(jobId, signal);
+    return waitForJob(jobId, signal, onStage);
   },
   login: (userId: string, password: string) =>
     call<{ user: User }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ userId, password }) }),
@@ -359,7 +359,7 @@ function pause(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /** 読み取りが終わるまで、2〜3秒おきに聞く。やめたら、サーバーの読み取りも、やめてもらう */
-async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result: unknown }> {
+async function waitForJob(jobId: string, signal?: AbortSignal, onStage?: (stageNo: number) => void): Promise<{ result: unknown }> {
   const stop = () => void call(`/api/analyze/${jobId}`, { method: 'DELETE' }).catch(() => undefined);
   let failingSince: number | null = null;
   let first = true;
@@ -367,7 +367,7 @@ async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result
     for (;;) {
       await pause(first ? POLL_FIRST_MS : POLL_MS, signal);
       first = false;
-      let r: { state: 'running' | 'done' | 'error'; error?: string; result?: unknown };
+      let r: { state: 'running' | 'done' | 'error'; error?: string; result?: unknown; stageNo?: number };
       try {
         r = await call(`/api/analyze/${jobId}`);
         failingSince = null;
@@ -379,7 +379,11 @@ async function waitForJob(jobId: string, signal?: AbortSignal): Promise<{ result
         }
         throw e;
       }
-      if (r.state === 'running') continue;
+      if (r.state === 'running') {
+        // 読み取りの段階（1〜4）を、画面に知らせる
+        if (typeof r.stageNo === 'number') onStage?.(r.stageNo);
+        continue;
+      }
       if (r.state === 'error') throw new Error(r.error || describeFailure(502));
       // 受け取れたので、サーバーの記録（読み取った内容）は、もう要らない
       void call(`/api/analyze/${jobId}`, { method: 'DELETE' }).catch(() => undefined);

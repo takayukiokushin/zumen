@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { analyze, validateImages } from './analyze.ts';
+import { ANALYZE_STAGE_NO, ANALYZE_STAGE_TOTAL, analyze, validateImages } from './analyze.ts';
 import { cancelJob, getJob, purgeAnalyzeJobs, runningJobOf, startJob } from './analyze-jobs.ts';
 import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
@@ -135,7 +135,7 @@ app.post('/api/analyze', requireAuth, async (c) => {
   // 結果は、画面が、GET /api/analyze/:id で受け取る
   const answers = body.answers ?? {};
   const images = body.images;
-  const job = startJob(who, (signal) => analyze(images, answers, signal));
+  const job = startJob(who, (signal, setStage) => analyze(images, answers, signal, setStage));
   return c.json({ jobId: job.id }, 202);
 });
 
@@ -148,7 +148,15 @@ app.get('/api/analyze/:id', requireAuth, (c) => {
       404,
     );
   }
-  if (job.state === 'running') return c.json({ state: 'running', elapsedSec: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.state === 'running') {
+    return c.json({
+      state: 'running',
+      elapsedSec: Math.round((Date.now() - job.startedAt) / 1000),
+      stage: job.stage,
+      stageNo: ANALYZE_STAGE_NO[job.stage],
+      stageTotal: ANALYZE_STAGE_TOTAL,
+    });
+  }
   if (job.state === 'error') return c.json({ state: 'error', error: job.error, code: job.code });
   return c.json({ state: 'done', ...job.result });
 });

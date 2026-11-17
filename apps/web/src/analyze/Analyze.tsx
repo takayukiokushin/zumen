@@ -3,6 +3,7 @@ import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
 import { api } from '../session/api.ts';
 import { SketchResult } from './SketchResult.tsx';
+import { AnalyzeProgress } from './Progress.tsx';
 import type { AiApplied } from './applied.ts';
 import { useT } from '../i18n/useT.ts';
 import { tr } from '../i18n/index.ts';
@@ -100,6 +101,8 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
   const abortRef = useRef<{ ctl: AbortController; why: 'user' | 'timeout' | null } | null>(null);
   /** 読み取りを始めてから、何秒たったか */
   const [elapsed, setElapsed] = useState(0);
+  /** いま何段階目か（1〜4）。サーバーが知らせる、AI の実際の様子に合わせる。戻らない */
+  const [stage, setStage] = useState(1);
   useEffect(() => {
     if (!busy) return;
     const started = Date.now();
@@ -117,6 +120,7 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
     asking.current = true;
     setBusy(true);
     setError(null);
+    setStage(1);
     onStatus?.('busy');
     let ok = false;
     const mine = { ctl: new AbortController(), why: null as 'user' | 'timeout' | null };
@@ -132,7 +136,11 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
           answers,
         },
         mine.ctl.signal,
+        (n) => setStage((cur) => Math.max(cur, n)),
       );
+      // 4段階目「内容を整理しています」：答えを受け取ったので、確認の画面に反映する。一瞬で終わるので、見える長さだけ見せる
+      setStage(4);
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 700));
       const read = json.result as AnalysisResult;
       setResult(read);
       // 読み取りが終わったら、読み取った内容を、自動で反映する（確認は、そのあとの画面と、図面のプレビューで行う）
@@ -233,9 +241,7 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
                 <button type="button" className="btn" onClick={cancel}>
                   {t('an.cancel')}
                 </button>
-                <p className="hint" role="status">
-                  {t('an.busyElapsed', { n: elapsed })}
-                </p>
+                <AnalyzeProgress stage={stage} elapsed={elapsed} />
               </>
             )}
           </>

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AnalyzeResponse } from './analyze.ts';
+import type { AnalyzeResponse, AnalyzeStage } from './analyze.ts';
 import { AnalyzeTimeoutError } from './analyze.ts';
 import { describeAnalyzeFailure } from './analyze-errors.ts';
 
@@ -20,6 +20,8 @@ export interface Job {
   id: string;
   userId: string;
   state: 'running' | 'done' | 'error';
+  /** 読み取りの段階（画面の進み具合の表示用）。終わるまで、段階は進む一方で、戻らない */
+  stage: AnalyzeStage;
   startedAt: number;
   finishedAt: number | null;
   result: AnalyzeResponse | null;
@@ -70,12 +72,13 @@ export function purgeAnalyzeJobs(now = Date.now()): number {
 }
 
 /** 読み取りを始める。裏で動かして、すぐ記録を返す */
-export function startJob(userId: string, run: (signal: AbortSignal) => Promise<AnalyzeResponse>): Job {
+export function startJob(userId: string, run: (signal: AbortSignal, setStage: (s: AnalyzeStage) => void) => Promise<AnalyzeResponse>): Job {
   purgeAnalyzeJobs();
   const job: Job = {
     id: randomUUID(),
     userId,
     state: 'running',
+    stage: 'sending',
     startedAt: Date.now(),
     finishedAt: null,
     result: null,
@@ -84,7 +87,12 @@ export function startJob(userId: string, run: (signal: AbortSignal) => Promise<A
     ctl: new AbortController(),
   };
   jobs.set(job.id, job);
-  run(job.ctl.signal).then(
+  const ORDER: AnalyzeStage[] = ['sending', 'thinking', 'writing', 'organizing'];
+  const setStage = (s: AnalyzeStage) => {
+    // 進むときだけ。（AI の答えが、順番どおりに届くとは限らないので、戻らないようにしておく）
+    if (job.state === 'running' && ORDER.indexOf(s) > ORDER.indexOf(job.stage)) job.stage = s;
+  };
+  run(job.ctl.signal, setStage).then(
     (result) => {
       job.state = 'done';
       job.result = result;

@@ -96,12 +96,31 @@ export function validateImages(images: SketchImage[]): void {
 }
 
 /**
+ * 読み取りの段階（画面に出す進み具合）。
+ *   sending    … 画像を送っている（AI に頼んで、答えが届き始めるまで）
+ *   thinking   … AI が図面を見ている（考えている）
+ *   writing    … AI が答えを書いている
+ *   organizing … 答えを受け取り終えて、内容を整理している
+ */
+export type AnalyzeStage = 'sending' | 'thinking' | 'writing' | 'organizing';
+
+/** 段階の番号（1〜4）と、全部の段階の数 */
+export const ANALYZE_STAGE_NO: Record<AnalyzeStage, number> = { sending: 1, thinking: 2, writing: 3, organizing: 4 };
+export const ANALYZE_STAGE_TOTAL = 4;
+
+/**
  * 手書きメモを読み取って、ヒアリング項目を埋める。
  *
  * 出力はJSONスキーマで縛っているので、選択式の項目に勝手な値が入ることはない。
  * 返した結果は、画面で、人が確認してから反映する（反映したあと、「設備を入力して作成」と「図面」で、見直して直せる）。
  */
-export async function analyze(images: SketchImage[], answers: Answers, clientGone?: AbortSignal): Promise<AnalyzeResponse> {
+export async function analyze(
+  images: SketchImage[],
+  answers: Answers,
+  clientGone?: AbortSignal,
+  /** いま何をしているか（画面の進み具合の表示に使う）。実際の AI の答えの届き方から決める */
+  onStage?: (stage: AnalyzeStage) => void,
+): Promise<AnalyzeResponse> {
   validateImages(images);
 
   const content: Anthropic.ContentBlockParam[] = [
@@ -118,7 +137,9 @@ export async function analyze(images: SketchImage[], answers: Answers, clientGon
   const deadline = AbortSignal.timeout(ANALYZE_DEADLINE_MS);
   let response: Anthropic.Message;
   try {
-    response = await client.messages.create(
+    // 答えを少しずつ受け取る（stream）。AI が「見ている（考えている）」のか「答えを書き始めた」のかが、実際の合図で分かるので、
+    // それを、画面の進み具合の表示に使う。できあがる答えは、まとめて受け取る場合（create）と同じ
+    const stream = client.messages.stream(
       {
         model: 'claude-opus-5',
         max_tokens: 16000,
@@ -131,6 +152,12 @@ export async function analyze(images: SketchImage[], answers: Answers, clientGon
       },
       { signal: clientGone ? AbortSignal.any([deadline, clientGone]) : deadline },
     );
+    stream.on('streamEvent', (ev) => {
+      if (ev.type === 'message_start') onStage?.('thinking');
+      else if (ev.type === 'content_block_start' && ev.content_block.type === 'text') onStage?.('writing');
+    });
+    response = await stream.finalMessage();
+    onStage?.('organizing');
   } catch (e) {
     // 時間切れ（1回の待ち時間を超えた・全体の打ち切り）は、「つながらなかった」ではなく、「時間がかかりすぎた」と伝える
     if (e instanceof Anthropic.APIConnectionTimeoutError || (deadline.aborted && !clientGone?.aborted)) throw new AnalyzeTimeoutError();
