@@ -32,11 +32,18 @@ const TITLE_FONT = 14;
 const TITLE_PAD_X = 20;
 /** 枠のいちばん狭い幅。短い名前でも、枠が小さくなりすぎないように */
 const TITLE_MIN_W = 220;
-/** 1行のときの枠の高さ／2行のときの枠の高さ */
+/** 枠の高さ：1行のとき／2行のとき。3行のときは、2行のときに、1行ぶん（TITLE_LINE_GAP）を足す */
 const TITLE_BOX_H1 = 32;
 const TITLE_BOX_H2 = 52;
+const TITLE_LINE_GAP = 20;
 /** 図枠の端から表題の枠までの、最低限の空き（左右） */
 const TITLE_SIDE = 60;
+/** 表題の文字の、いちばん小さい大きさ（作図単位。A4で約2.8mm＝約8ポイント。これより小さくはしない） */
+export const TITLE_MIN_FONT = 10;
+/** 折り返した行の文字の大きさ */
+const TITLE_WRAP_FONT = 12;
+/** 事業場名称は、最大2行まで（図面名称は1行）。表題は、合わせて最大3行 */
+const SITE_MAX_LINES = 2;
 
 export interface TitleLayout {
   /** 書く行（上から順）。size はその行の文字の大きさ */
@@ -46,7 +53,73 @@ export interface TitleLayout {
   boxH: number;
   /** 表題の枠まわりが使う高さ（図枠の上端から、作図範囲の手前まで） */
   titleH: number;
+  /** 2行以上か（3行のときも true） */
   twoLines: boolean;
+  /** 行の数（1〜3） */
+  lineCount: number;
+  /** 長すぎて、文字を省略した（末尾が「…」）か */
+  truncated: boolean;
+}
+
+/** 文字を、幅 room に収まる行に分ける。区切りの文字（空白・読点・かっこ・「・」）の直後で切れるときは、そこで切る */
+function wrapText(text: string, size: number, room: number): string[] {
+  const out: string[] = [];
+  let rest = Array.from(text);
+  while (rest.length > 0) {
+    let n = 0;
+    let w = 0;
+    while (n < rest.length && w + textWidth(rest[n]!, size) <= room) {
+      w += textWidth(rest[n]!, size);
+      n++;
+    }
+    if (n >= rest.length) {
+      out.push(rest.join(''));
+      break;
+    }
+    n = Math.max(1, n);
+    // 行の後ろ4割より後ろに、区切りがあれば、その直後で切る
+    for (let k = n; k > n * 0.6; k--) {
+      if (/[\s　、。，・）)」』】〕]/.test(rest[k - 1]!)) {
+        n = k;
+        break;
+      }
+    }
+    out.push(rest.slice(0, n).join('').trimEnd());
+    rest = rest.slice(n);
+    while (rest.length > 0 && /\s/.test(rest[0]!)) rest.shift();
+  }
+  return out;
+}
+
+/** 最大 maxLines 行に収めて、文字を省略する（最後の行が収まらないときは、末尾を「…」にする） */
+function clampLines(lines: string[], maxLines: number, size: number, room: number): { lines: string[]; truncated: boolean } {
+  if (lines.length <= maxLines) return { lines, truncated: false };
+  const keep = lines.slice(0, maxLines);
+  let last = Array.from(keep[maxLines - 1]!);
+  while (last.length > 0 && textWidth(`${last.join('')}…`, size) > room) last.pop();
+  keep[maxLines - 1] = `${last.join('')}…`;
+  return { lines: keep, truncated: true };
+}
+
+/**
+ * 1つの文（事業場名称・図面名称）を、表題の行にする。
+ * 1行に収まれば基準の大きさ。収まらないときは、最小の大きさまで小さくして1行に。それでも収まらなければ、
+ * 折り返す（最大 maxLines 行。折り返した行は、基準より少し小さい大きさ。それでも収まらなければ、最小の大きさ）。
+ * 最後まで収まらないときは、末尾を「…」にして省略する。
+ */
+function fitPart(text: string, room: number, maxLines: number): { lines: { text: string; size: number }[]; truncated: boolean } {
+  const w = textWidth(text, TITLE_FONT);
+  if (w <= room) return { lines: [{ text, size: TITLE_FONT }], truncated: false };
+  if (textWidth(text, TITLE_MIN_FONT) <= room) return { lines: [{ text, size: (TITLE_FONT * room) / w }], truncated: false };
+  if (maxLines >= 2) {
+    for (const size of [TITLE_WRAP_FONT, TITLE_MIN_FONT]) {
+      const wrapped = wrapText(text, size, room);
+      if (wrapped.length <= maxLines) return { lines: wrapped.map((t) => ({ text: t, size })), truncated: false };
+    }
+  }
+  // 収まらない。最小の大きさで、maxLines 行にして、末尾を省略する
+  const c = clampLines(wrapText(text, TITLE_MIN_FONT, room), maxLines, TITLE_MIN_FONT, room);
+  return { lines: c.lines.map((t) => ({ text: t, size: TITLE_MIN_FONT })), truncated: c.truncated };
 }
 
 /**
@@ -54,8 +127,9 @@ export interface TitleLayout {
  *
  * - 枠の幅は文字量に合わせる（短ければ狭く、長ければ広く）。上限は図枠の幅から左右 60 ずつ引いた幅
  * - 「事業場名称＋図面名称」を1行に書いて上限に収まらないときだけ、2行にする
- *   （上の行は事業場名称、下の行は図面名称）
- * - どんな長さでも枠からはみ出さない。1行がそれでも収まらないときは、その行の文字を小さくして収める
+ *   （上の行は事業場名称、下の行は図面名称）。事業場名称が長いときは、文字を小さくして1行に収める（最小 TITLE_MIN_FONT）
+ * - それでも収まらないほど長い事業場名称は、折り返して2行にする（合わせて3行）。さらに長いときは、末尾を「…」にする
+ * - どんな長さでも枠からはみ出さない。文字が読めないほど小さくなることもない
  */
 export function layoutTitle(title: TitleBlock, sheetW: number, margin: number): TitleLayout {
   const maxBoxW = sheetW - margin * 2 - TITLE_SIDE * 2;
@@ -66,18 +140,17 @@ export function layoutTitle(title: TitleBlock, sheetW: number, margin: number): 
 
   if (textWidth(one, TITLE_FONT) <= room) {
     const boxW = Math.min(maxBoxW, Math.max(TITLE_MIN_W, textWidth(one, TITLE_FONT) + TITLE_PAD_X * 2));
-    return { lines: [{ text: one, size: TITLE_FONT }], boxW, boxH: TITLE_BOX_H1, titleH: TITLE_BOX_H1 + 12, twoLines: false };
+    return { lines: [{ text: one, size: TITLE_FONT }], boxW, boxH: TITLE_BOX_H1, titleH: TITLE_BOX_H1 + 12, twoLines: false, lineCount: 1, truncated: false };
   }
 
-  // 2行。それでも収まらない行は、文字を小さくして枠の中に収める
-  const fit = (text: string) => {
-    const w = textWidth(text, TITLE_FONT);
-    return { text, size: w <= room ? TITLE_FONT : (TITLE_FONT * room) / w };
-  };
-  const lines = [fit(site), fit(name)];
+  // 2行以上（上が事業場名称、下が図面名称）
+  const s = fitPart(site, room, SITE_MAX_LINES);
+  const n = fitPart(name, room, 1);
+  const lines = [...s.lines, ...n.lines].filter((l) => l.text !== '');
   const widest = Math.max(...lines.map((l) => textWidth(l.text, l.size)));
   const boxW = Math.min(maxBoxW, Math.max(TITLE_MIN_W, widest + TITLE_PAD_X * 2));
-  return { lines, boxW, boxH: TITLE_BOX_H2, titleH: TITLE_BOX_H2 + 12, twoLines: true };
+  const boxH = TITLE_BOX_H2 + TITLE_LINE_GAP * Math.max(0, lines.length - 2);
+  return { lines, boxW, boxH, titleH: boxH + 12, twoLines: lines.length > 1, lineCount: lines.length, truncated: s.truncated || n.truncated };
 }
 
 export type PaperSize = 'A4' | 'A3';
@@ -221,7 +294,7 @@ export function renderSvg(drawing: DrawingLayout, title: TitleBlock, opts: Sheet
 
   // 1行のときは枠の中央に、2行のときは上の行・下の行の順に、枠の中央にそろえて書く
   const boxTop = M + 6;
-  const baselines = tl.twoLines ? [boxTop + 22, boxTop + 42] : [boxTop + tl.boxH / 2 + 5];
+  const baselines = tl.twoLines ? tl.lines.map((_, i) => boxTop + 22 + i * TITLE_LINE_GAP) : [boxTop + tl.boxH / 2 + 5];
   const titleText = tl.lines
     .map(
       (l, i) =>

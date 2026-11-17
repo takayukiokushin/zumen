@@ -7,7 +7,7 @@ import { removeItem, removeItems, portsOf, fromLayout, moveItem, docBounds } fro
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildComposition, indexedKey, pcsInputMode, visibleQuestions, withAutoValues, QUESTION_DEFAULTS } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
-import { rotatedBox, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../../packages/layout/src/index.ts';
+import { TITLE_MIN_FONT, rotatedBox, LABEL_FONT, SHEET_MARGIN, SHEET_PAD, findLabelCollisions, layout, layoutTitle, renderSvg, sheetSize, textWidth } from '../../packages/layout/src/index.ts';
 import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { insertTarget, moveWithInsert } from '../../apps/web/src/editor/rewire.ts';
 import { inspectDrawing, nudgeSymbolLabel, tidyDrawing } from '../../apps/web/src/editor/inspect.ts';
@@ -364,7 +364,7 @@ console.log('\n■ 表題の枠（文字量に合わせた幅・長いときだ�
     const W = sheetSize(paper, orient).w;
     const maxBoxW = W - 24 * 2 - 120;
     let prevW = 0;
-    let prevTwo = false;
+    let prevCount = 0;
     for (const n of [1, 4, 8, 12, 16, 20, 24, 30, 40, 70, 150]) {
       const site = unit.repeat(Math.ceil(n / 10)).slice(0, n);
       const t = layoutTitle({ site, name: NAME }, W, 24);
@@ -375,19 +375,29 @@ console.log('\n■ 表題の枠（文字量に合わせた幅・長いときだ�
       }
       if (t.boxW > maxBoxW + 0.01) fail(`${paper}${orient}・${n}字：枠が図枠の幅を超えています（${t.boxW}）`);
       // 2. 枠の幅は、文字量に合わせて広がる（短ければ狭く、長ければ広く）。同じ行数のあいだは逆戻りしない
-      //    （1行から2行に切り替わる所だけは、1行ぶんの長さでなく長いほうの行の長さになるので、狭くなってよい）
-      if (t.twoLines === prevTwo && t.boxW + 0.01 < prevW) fail(`${paper}${orient}・${n}字：文字が増えたのに枠が狭くなりました`);
+      //    （行の数が変わる所は、長いほうの行の長さになるので、狭くなってよい。3行は、折り返しの位置で変わるので、比べない）
+      if (t.lineCount === prevCount && t.lineCount <= 2 && t.boxW + 0.01 < prevW) fail(`${paper}${orient}・${n}字：文字が増えたのに枠が狭くなりました`);
       prevW = t.boxW;
-      prevTwo = t.twoLines;
-      // 3. 1行にして収まるときは1行、収まらないときだけ2行（上が事業場名称・下が図面名称）
+      prevCount = t.lineCount;
+      // 3. 1行にして収まるときは1行、収まらないときだけ複数行（上が事業場名称・下が図面名称）
       const oneW = textWidth(`${site}　${NAME}`, 14);
-      const wantTwo = oneW > room;
-      if (t.twoLines !== wantTwo) fail(`${paper}${orient}・${n}字：${wantTwo ? '2行' : '1行'}になるはずが${t.twoLines ? '2行' : '1行'}です`);
-      if (t.twoLines && (t.lines[0]?.text !== site || t.lines[1]?.text !== NAME)) fail(`${paper}${orient}・${n}字：2行の分け方が違います`);
+      const wantMulti = oneW > room;
+      if (t.twoLines !== wantMulti) fail(`${paper}${orient}・${n}字：${wantMulti ? '2行以上' : '1行'}になるはずが${t.twoLines ? '2行以上' : '1行'}です`);
+      // 4. 文字は、読める大きさより小さくならない（最小 TITLE_MIN_FONT）
+      for (const l of t.lines) if (l.size + 0.001 < TITLE_MIN_FONT && t.twoLines) fail(`${paper}${orient}・${n}字：文字が小さすぎます（${l.size.toFixed(1)}）`);
+      // 5. 行の数は最大3行。最後の行は図面名称。事業場名称は、折り返しても、つなげると元の文字になる（省略したとき以外）
+      if (t.lineCount > 3 || t.lineCount !== t.lines.length) fail(`${paper}${orient}・${n}字：行の数がおかしい（${t.lineCount}）`);
+      if (t.twoLines) {
+        if (t.lines.at(-1)?.text !== NAME) fail(`${paper}${orient}・${n}字：最後の行が図面名称ではありません`);
+        const joined = t.lines.slice(0, -1).map((l) => l.text).join('');
+        if (!t.truncated && joined.replace(/\s/g, '') !== site.replace(/\s/g, '')) fail(`${paper}${orient}・${n}字：折り返した事業場名称が、元の文字と合いません`);
+      }
+      // 6. 枠の高さは、行の数に合う（1行32・2行52・3行72）
+      if (t.boxH !== 32 + (t.lineCount - 1) * 20 + (t.lineCount >= 2 ? 0 : 0)) fail(`${paper}${orient}・${n}字：枠の高さが行の数に合っていません（${t.lineCount}行・${t.boxH}）`);
       checked++;
     }
   }
-  console.log(`  ${checked}通り（用紙4種 × 事業場名称の長さ11段階）で、はみ出し・幅・行数が正しい`);
+  console.log(`  ${checked}通り（用紙4種 × 事業場名称の長さ11段階）で、はみ出し・幅・行数・文字の最小の大きさが正しい`);
   // 短い名前は、枠が小さくなりすぎず、基準より狭い
   const short = layoutTitle({ site: '山田工場', name: NAME }, sheetSize('A4', 'portrait').w, 24);
   const long = layoutTitle({ site: unit.repeat(2), name: NAME }, sheetSize('A4', 'portrait').w, 24);
@@ -397,6 +407,24 @@ console.log('\n■ 表題の枠（文字量に合わせた幅・長いときだ�
   const none = layoutTitle({ site: '', name: NAME }, sheetSize('A4', 'portrait').w, 24);
   if (none.lines.length !== 1 || none.lines[0]?.text !== NAME) fail('事業場名称が空のとき、図面名称だけの1行になっていません');
   else console.log('  事業場名称が空のときは、図面名称だけを1行で書く');
+  // 1行・2行・3行・省略の、それぞれの代表（A4縦）
+  {
+    const W = sheetSize('A4', 'portrait').w;
+    const rep = (n: number, extra = '') => layoutTitle({ site: '株式会社山田製作所第二工場'.repeat(Math.ceil(n / 13)).slice(0, n) + extra, name: NAME }, W, 24);
+    const r1 = rep(8);
+    const r2 = rep(32);
+    const r3 = rep(70);
+    const rx = rep(300);
+    if (r1.lineCount !== 1) fail(`短い名前が1行になりません（${r1.lineCount}）`);
+    if (r2.lineCount !== 2) fail(`少し長い名前が2行（事業場名称・図面名称）になりません（${r2.lineCount}）`);
+    if (r3.lineCount !== 3) fail(`とても長い名前が3行（事業場名称を折り返し）になりません（${r3.lineCount}）`);
+    if (rx.lineCount !== 3 || !rx.truncated || !rx.lines[1]!.text.endsWith('…')) fail(`極端に長い名前が、3行で末尾が「…」になりません（${rx.lineCount}・${rx.truncated}）`);
+    for (const r of [r2, r3, rx]) if (r.lines.some((l) => l.size + 0.001 < TITLE_MIN_FONT)) fail('長い名前で、最小の文字の大きさを下回っています');
+    // 折り返しは、区切りの文字（空白）の直後で切る
+    const sp = layoutTitle({ site: `${'あ'.repeat(30)}　${'い'.repeat(30)}　${'う'.repeat(10)}`, name: NAME }, W, 24);
+    if (sp.lineCount === 3 && !/^あ+$/.test(sp.lines[0]!.text)) fail(`空白のところで切っていません（${sp.lines[0]!.text}）`);
+    console.log(`  行の数：8字→${r1.lineCount}行／32字→${r2.lineCount}行／70字→${r3.lineCount}行／300字→${rx.lineCount}行（末尾を「…」）。文字は最小 ${TITLE_MIN_FONT} 以上`);
+  }
 }
 
 /* ---------- 20. タイトルが2行のとき、図面を少し縮めて用紙に収める ---------- */
@@ -434,6 +462,20 @@ console.log('\n■ タイトルが2行のときの縮小（印刷・書き出し
     const titleBottomAbs = SHEET_MARGIN + 6 + tl2.boxH;
     if (top < titleBottomAbs + 8) fail(`${paper}${orient}：2行のとき、図面が表題の枠に近すぎます（上端 ${top.toFixed(0)}、表題の下端 ${titleBottom}）`);
     if (bottom > sh.h - SHEET_MARGIN - SHEET_PAD) fail(`${paper}${orient}：2行のとき、図面が図枠の下にはみ出しています（${bottom.toFixed(0)}）`);
+    // 3行（とても長い名前。折り返す）のときも、図面が表題の枠の下・図枠の内側に収まり、縮みすぎない
+    {
+      const LONG3 = '株式会社山田製作所第二工場特別高圧受電設備増設工事'.repeat(8);
+      const three = renderSvg(d, { site: LONG3, name: NAME }, { paper, orientation: orient });
+      const t3 = parse(three);
+      const tl3 = layoutTitle({ site: LONG3, name: NAME }, sh.w, 24);
+      if (tl3.lineCount !== 3) fail(`${paper}${orient}：とても長い名前が3行になっていません（${tl3.lineCount}）`);
+      if (t3.scale > t.scale + 0.0006) fail(`${paper}${orient}：3行のほうが、2行より図面が大きくなっています`);
+      if (o.scale - t3.scale > 0.1) fail(`${paper}${orient}：3行のとき縮みすぎです（${o.scale} → ${t3.scale}）`);
+      const top3 = t3.ty + b.y0 * t3.scale;
+      const bottom3 = t3.ty + b.y1 * t3.scale;
+      if (top3 < SHEET_MARGIN + 6 + tl3.boxH + 8) fail(`${paper}${orient}：3行のとき、図面が表題の枠に近すぎます（上端 ${top3.toFixed(0)}）`);
+      if (bottom3 > sh.h - SHEET_MARGIN - SHEET_PAD) fail(`${paper}${orient}：3行のとき、図面が図枠の下にはみ出しています（${bottom3.toFixed(0)}）`);
+    }
     console.log(`  ${paper}${orient === 'portrait' ? '縦' : '横'}：1行 ${o.scale.toFixed(3)} → 2行 ${t.scale.toFixed(3)}${o.scale - t.scale < 0.0006 ? '（余裕があるので縮まない）' : `（${((1 - t.scale / o.scale) * 100).toFixed(1)}%縮む）`}`);
   }
 }
