@@ -11,7 +11,7 @@ import {
   VOICE_VERSION,
   buildReview,
   buildVoiceInstruction,
-  buildVoiceItemList,
+  VOICE_EXAMPLE_ANSWERS,
   parseVoiceResult,
   buildAnalysisSchema,
   parseAnalysisOutput,
@@ -40,16 +40,34 @@ console.log('■ Claude用の指示文');
   // 手入力の項目は、項目の一覧に載せない（名前は、「聞かないで」という説明のために出てくる）
   for (const q of manual) ok(!text.includes(`- ${q.id}：`), `手入力の項目 ${q.id} が、項目の一覧に載っています`);
   ok(text.includes('お客様名称') || text.includes('事業場名称'), '「声に出さないでほしいもの」に、事業場名称などが書かれていません');
-  ok(text.includes('聞かないでください') && text.includes('出力にも入れないでください'), '手入力の項目を、聞かない・出力に入れない、という指示がありません');
+  ok(text.includes('聞かないでください') && text.includes('出力（answers・notes・evidence）にも') && text.includes('聞き流'), '手入力の項目を、聞かない・出力に入れない・聞き流す、という指示がありません');
   ok(!text.includes('アプリの中で入力してください」と'), '手入力の項目について、「アプリで入力してください」と案内する指示が残っています（案内は不要）');
   // 聞き返しは、必ず確認すること（6つ）だけ。1回だけ。最初の一言は無い
   ok(text.includes('必ず確認すること') && text.includes('まとめて1回だけ') && text.includes('もう聞き返さず'), '聞き返しを、1回だけ・必ず確認することだけにする指示がありません');
   for (const id of ['sourceType', 'sectionalizer', 'mainBreakerForm', 'transformerCount', 'areaCount']) {
-    const sec = text.slice(text.indexOf('# 必ず確認すること'), text.indexOf('# 声に出さないでほしいもの'));
+    const sec = text.slice(text.indexOf('# 必ず確認すること'), text.indexOf('# 名称・番号など'));
     ok(sec.includes(`（${id}）`), `「必ず確認すること」に ${id} がありません`);
   }
   ok(!text.includes('現地の設備を教えてください'), '最初の一言の指示が残っています（やめる）');
-  ok(text.includes('細かい項目は、聞かないでください'), '細かい項目（定格など）は聞かない、という指示がありません');
+  ok(text.includes('細かい項目') && text.includes('聞かない'), '細かい項目（定格など）は聞かない、という指示がありません');
+  // 流れ：合図（ここまで）を待たず、聞き返しは1回だけ。答えがなくても、すぐ出す
+  ok(!text.includes('「ここまで」「以上です」「お願いします」などと言われたら'), '「ここまで」と言われるまで出力しない、という古い流れが残っています');
+  ok(text.includes('合図は、待たない') && text.includes('聞き返しは、全体を通して、1回だけ'), '「合図を待たない・聞き返しは1回だけ」の指示がありません');
+  ok(text.includes('答えになっていない返事でも、聞き返さない') && text.includes('空のまま'), '答えが無くても、空のまま、すぐ出す、という指示がありません');
+  // 出力は、ふつうの文字のコードブロック。図・アーティファクトは作らない
+  ok(text.includes('コードブロック') && text.includes('図・表・アーティファクト') && text.includes('作らない'), '出力は、コードブロック（図やアーティファクトは作らない）という指示がありません');
+  // 大事な決まり（流れ・出力の形）は、先頭に近いところにある（長くて途中までしか読まれなくても、抜け落ちない）
+  ok(text.indexOf('# 出力の形') < 3000 && text.indexOf('# 会話の流れ') < 800, '流れ・出力の形が、指示文の先頭から離れています');
+  // 長すぎない（以前は28万文字あり、決まった形で出なくなる原因だった）
+  ok(text.length <= 60000, `指示文が長すぎます（${text.length}文字。6万文字以内にしてください）`);
+  // 見本の文章を、アプリが、そのまま読み取れる
+  {
+    const ex = /```json\n([\s\S]*?)\n```/.exec(text);
+    ok(Boolean(ex), '指示文に、出力の見本（コードブロック）がありません');
+    const p = parseVoiceResult(ex ? ex[0] : '');
+    ok(p.ok && p.rejected.length === 0 && p.warnings.length === 0, `指示文の見本を、アプリが読み取れません（${p.error ?? ''}${p.rejected.map((r) => r.key).join('、')}${p.warnings.join('')}）`);
+    ok(Object.keys(VOICE_EXAMPLE_ANSWERS).every((k) => k in (p.result?.answers ?? {})), '見本の答えが、すべて読み取れていません');
+  }
   // そのほかの項目は、すべて載っている
   const missing = QUESTIONS.filter((q) => !q.manualOnly && !q.noAi && !text.includes(`- ${q.id}：`));
   ok(missing.length === 0, `項目の一覧に載っていない項目があります（${missing.map((q) => q.id).slice(0, 5).join('、')}）`);
@@ -59,22 +77,13 @@ console.log('■ Claude用の指示文');
   ok(text.includes('__2') && text.includes('a2:'), '繰り返し（__2）・エリア（a2:）の書き方が、指示文にありません');
   // 継電器・補助変圧器・VT/CTの組など、新しい項目も入っている
   for (const id of ['relayType', 'relayAt', 'relayTest', 'vtSetCount', 'ctSetCount', 'auxTrCapacity']) ok(text.includes(`- ${id}：`), `${id} が項目の一覧にありません`);
-  // 分けて入れる場合
-  const split = buildVoiceInstruction({ listInline: false });
-  const list = buildVoiceItemList();
-  ok(!split.includes('- relayType：') && list.includes('- relayType：') && list.includes(VOICE_VERSION), '指示文と項目の一覧を、分けて出せません');
-  ok(split.length + list.length < text.length + 2000, '分けたときの文字数が、まとめたときと合いません');
   console.log(`  ${text.length}文字（版 ${VOICE_VERSION}）。手入力の項目は載せず、そのほか ${QUESTIONS.length - manual.length} 項目が載っている`);
 }
 
 // docs に置いてある指示文が、いまのアプリの項目と合っている（質問を増やしたのに、指示文を作り直し忘れていない）
 {
   const read = (name: string) => readFileSync(new URL(`../docs/${name}`, import.meta.url), 'utf8');
-  const stale = [
-    ['claude-voice-instruction.txt', buildVoiceInstruction()],
-    ['claude-voice-instruction-head.txt', buildVoiceInstruction({ listInline: false })],
-    ['claude-voice-item-list.txt', buildVoiceItemList()],
-  ].filter(([name, want]) => read(name!) !== want);
+  const stale = [['claude-voice-instruction.txt', buildVoiceInstruction()]].filter(([name, want]) => read(name!) !== want);
   ok(stale.length === 0, `docs の指示文が古いです（${stale.map(([n]) => n).join('、')}）。pnpm voice を実行してください`);
   if (stale.length === 0) console.log('  docs の指示文は、いまの項目と合っている');
 }
@@ -157,18 +166,97 @@ console.log('\n■ 貼り付けた文章の読み取り');
   const old = parseVoiceResult(claudeSays({ sourceType: 'pole' }, {}, 'v-old'));
   ok(old.ok && old.warnings.some((w) => w.includes('古い')), '版が違うとき、知らせが出ていません');
 
-  // 文章の形が違う：読み取らない
+  // 文章の形が違う：読み取らない（やさしい言葉で、Claudeに何と伝えるかを出す）
   for (const [name, text, want] of [
-    ['空', '', 'JSON'],
-    ['ふつうの文章', 'アプリ用の文章を出します。', 'JSON'],
-    ['形の目印なし', '```json\n{"answers":{"sourceType":"pole"}}\n```', 'format'],
-    ['答えなし', `{"format":"${VOICE_FORMAT}","version":"${VOICE_VERSION}"}`, 'answers'],
-    ['壊れたJSON', `{"format":"${VOICE_FORMAT}",`, 'JSON'],
+    ['空', '', 'アプリ用のデータが含まれていません'],
+    ['聞き返しの文章だけ', 'はい、続けてください。', 'アプリ用のコードブロックで出してください'],
+    ['答えなし', `{"format":"${VOICE_FORMAT}","version":"${VOICE_VERSION}"}`, '"answers"'],
+    ['別のJSON', '```json\n{"name":"田中","age":30}\n```', '"answers"'],
+    ['壊れたJSON', `{"format":"${VOICE_FORMAT}",`, 'アプリ用のデータが含まれていません'],
   ] as const) {
     const r = parseVoiceResult(text);
     ok(!r.ok && Boolean(r.error?.includes(want)), `${name}：読み取れない文章が、そう扱われていません（${r.error}）`);
+    ok(!r.error?.includes('JSON') && !r.error?.includes('{'), `${name}：エラーの文に、専門用語（JSON）が入っています（${r.error}）`);
   }
-  console.log('  形の違う文章（空・ふつうの文章・目印なし・答えなし・壊れたJSON）は、理由を出して、読み取らない');
+  console.log('  形の違う文章（空・聞き返しだけ・答えなし・別のJSON・壊れたJSON）は、「Claudeにこう伝えて」と案内して、読み取らない');
+
+  // 目印（format）が無くても、答えの一覧があれば、読み取る（知らせは出す）
+  const noFormat = parseVoiceResult('```json\n{"answers":{"sourceType":"pole","sectionalizer":"pas"}}\n```');
+  ok(noFormat.ok && noFormat.result?.answers.sourceType === 'pole' && noFormat.warnings.some((w) => w.includes('目印')), '目印（format）が無い文章が、読み取れない・知らせが出ていません');
+  // 別の目印・版が無い
+  const otherFormat = parseVoiceResult('{"format":"something","answers":{"sourceType":"cabinet"}}');
+  ok(otherFormat.ok && otherFormat.result?.answers.sourceType === 'cabinet', '別の目印の文章が、読み取れません');
+  // "answers" の枠が無く、項目IDが並んでいる
+  const flat = parseVoiceResult('```json\n{"format":"zumen-voice","sourceType":"pole","mainBreakerForm":"pfs","trCapacity":150}\n```');
+  ok(flat.ok && flat.result?.answers.mainBreakerForm === 'pfs' && flat.result.answers.trCapacity === 150 && flat.warnings.some((w) => w.includes('answers')), '項目IDが直接並んだ文章が、読み取れません');
+  // [{key,value}] の並び
+  const arr = parseVoiceResult(`${JSON.stringify({ format: VOICE_FORMAT, version: VOICE_VERSION, answers: [{ key: 'sourceType', value: 'pole' }, { id: 'trCapacity', value: 200 }] })}`);
+  ok(arr.ok && arr.result?.answers.sourceType === 'pole' && arr.result.answers.trCapacity === 200, '{key,value} の並びが、読み取れません');
+  // 前に、別のJSONがあっても、アプリ用のものを選ぶ
+  const two = parseVoiceResult('{"memo":"これは別の文書"}\n' + claudeSays({ sourceType: 'cabinet' }) + '\n{"x":1}');
+  ok(two.ok && two.result?.answers.sourceType === 'cabinet' && two.rejected.length === 0, '別のJSONが混ざると、アプリ用のものを選べません');
+  // 少し崩れたJSON：最後の , ・曲がった引用符
+  const loose = parseVoiceResult(`\`\`\`JSON\n{"format":"${VOICE_FORMAT}","version":"${VOICE_VERSION}","answers":{"sourceType":"pole",},"notes":[],}\n\`\`\``);
+  ok(loose.ok && loose.result?.answers.sourceType === 'pole', '最後の , のあるJSONが、読み取れません');
+  const curly = parseVoiceResult('{“format”:“zumen-voice”,“answers”:{“sourceType”:“pole”}}');
+  ok(curly.ok && curly.result?.answers.sourceType === 'pole', '曲がった引用符のJSONが、読み取れません');
+  console.log('  目印なし・別の目印・IDが直接並ぶ・{key,value}の並び・別のJSONが混ざる・崩れたJSON も、読み取れる（知らせは出す）');
+
+  // 音声入力の、値の書き方のずれ：読み替えて取り込み、読み替えたことを知らせる
+  const sloppy = parseVoiceResult(
+    claudeSays({
+      'sourceType（引込元）': 'POLE',
+      ' sectionalizer ': 'ＰＡＳ',
+      mainBreakerForm: 'CB形（主遮断装置＝VCB）',
+      transformerCount: 2,
+      trCapacity: '300kVA',
+      trCapacity__2: '１５０',
+      'a2：trCapacity': '7,200 V'.replace('7,200 V', '75 kVA'),
+      hasZpd: 'あり',
+      hasInrush: true,
+      hasAs: 'なし',
+    }),
+  );
+  const sa = sloppy.result?.answers ?? {};
+  ok(sloppy.ok && sa.sourceType === 'pole' && sa.sectionalizer === 'pas' && sa.mainBreakerForm === 'cb', `選ぶ項目の書き方のずれが、読み取れません（${JSON.stringify(sa)}）`);
+  ok(sa.trCapacity === 300 && sa.trCapacity__2 === 150 && sa['a2:trCapacity'] === 75, `数字の書き方のずれ（単位つき・全角）が、読み取れません（${JSON.stringify(sa)}）`);
+  ok(sa.hasZpd === 'yes' && sa.hasInrush === 'yes' && sa.hasAs === 'no', `あり・なしの書き方のずれが、読み取れません（${JSON.stringify(sa)} ${JSON.stringify(sloppy.rejected)}）`);
+  ok(sloppy.warnings.some((w) => w.includes('読み替えました')), '読み替えたことの知らせが出ていません');
+  ok(!sloppy.warnings.some((w) => w.includes('古い')), 'ずれた値のせいで、「古い指示文」の知らせが出ています');
+  console.log('  書き方のずれ（大文字・全角・単位つき・名前つきのID・あり／なし・true）は、読み替えて取り込み、知らせる');
+
+  // 音声入力の、典型的な話し方（聞き間違いの直しは、Claude の役目）。Claude が出しそうな文章を、アプリが取り込める
+  const speeches: { name: string; says: Record<string, unknown>; need: Record<string, string | number> }[] = [
+    {
+      name: 'PFS形・変圧器1台（「区分解兵器」の聞き間違いを、区分開閉器に直したもの）',
+      says: { sourceType: 'pole', sectionalizer: 'pas', mainBreakerForm: 'pfs', transformerCount: '1', trCapacity: 100, trUsage: '動力' },
+      need: { mainBreakerForm: 'pfs', transformerCount: '1', trCapacity: 100 },
+    },
+    {
+      name: 'CB形・変圧器2台・電灯と動力',
+      says: { sourceType: 'pole', sectionalizer: 'pgs', mainBreakerForm: 'cb', transformerCount: '2', trCapacity: 300, trCapacity__2: 200, trUsage: '電灯', trUsage__2: '動力' },
+      need: { mainBreakerForm: 'cb', transformerCount: '2', trCapacity__2: 200 },
+    },
+    {
+      name: 'キャビネット受電・UGS・変圧器3台',
+      says: { sourceType: 'cabinet', sectionalizer: 'ugs', mainBreakerForm: 'cb', transformerCount: '3', trCapacity: 500, trCapacity__2: 300, trCapacity__3: 100 },
+      need: { sourceType: 'cabinet', sectionalizer: 'ugs', transformerCount: '3', trCapacity__3: 100 },
+    },
+    {
+      name: '聞き返しに答えなかった（ほとんど空）',
+      says: { sourceType: 'pole' },
+      need: { sourceType: 'pole' },
+    },
+  ];
+  for (const sp of speeches) {
+    const p = parseVoiceResult(`ご確認ください。\n\n${claudeSays(sp.says)}\nアプリに貼り付けてください。`);
+    const a2 = p.result?.answers ?? {};
+    ok(p.ok && p.rejected.length === 0 && p.warnings.length === 0, `${sp.name}：取り込めません（${p.error ?? ''}${p.rejected.map((r) => `${r.key}:${r.reason}`).join('、')}${p.warnings.join('')}）`);
+    for (const [k, v] of Object.entries(sp.need)) ok(a2[k] === v, `${sp.name}：${k} が ${String(v)} になっていません（${String(a2[k])}）`);
+    const items = buildComposition({ receivingVoltage: 6600, ...(a2 as Answers) });
+    ok(items.length > 0, `${sp.name}：構成が作れません`);
+  }
+  console.log(`  典型的な話し方 ${speeches.length}通り（PFS／CB・変圧器の台数ちがい・聞き返しに答えなかった場合）を、そのまま取り込めた`);
 }
 
 console.log('\n■ Claude（指示文だけを読んだもの）が実際に出した文章の例');

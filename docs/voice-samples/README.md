@@ -1,5 +1,7 @@
 # 音声入力から作成：試験の例
 
+（この3つの例は、**第14弾 項目8より前の指示文**で作った出力です。流れ・出力の形を直したあとの出力は、Claude のプロジェクトで試して、入れ替えてください。それまでは、「古い形の出力も取り込める」ことの確認として使います。）
+
 Claude のプロジェクトの指示文（`docs/claude-voice-instruction.txt`）だけを読んだ Claude に、話された内容（`sample-N-spoken.txt`。聞き間違いと、お客様名称を話す場面を含む）を渡して、
 返してもらった文章が `sample-N-claude-output.txt` です。
 例3は、話された内容に足りない項目があり、Claude が1回だけ聞き返す場面です（聞き返しは `sample-3-claude-question.txt`、その答えのあとに出た文章が `sample-3-claude-output.txt`）。

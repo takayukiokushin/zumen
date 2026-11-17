@@ -9,12 +9,17 @@ import { DOMAIN_RULES } from './prompt.ts';
  *   1. buildVoiceInstruction … Claude のプロジェクトに入れる「指示文」を、質問の定義から組み立てる
  *   2. parseVoiceResult      … Claude が出した「決まった形の文章（JSON）」を、アプリが読み取る
  *
- * 流れ：技術者が Claude に声で設備を話す → Claude が指示文のとおりに、決まった形の文章を出す →
+ * 流れ：技術者が Claude に声で設備を話す → Claude が、足りないところを1回だけ聞き返す →
+ * 技術者が答える → Claude が、決まった形の文章（コードブロック）を自動で出す →
  * 技術者がアプリの「音声入力から作成」に貼り付ける → この関数が読み取って、確認画面に出す。
  * アプリは AI を呼ばない（APIキーも要らない）。読み取った結果は、必ず人が確認してから反映する。
  *
  * お客様名称・事業場名称などの manualOnly の項目は、指示文に載せず、貼り付けられても取り込まない
  * （アプリの中で、人が手で入力する）。
+ *
+ * 【読み取りは、ゆるく】音声入力の出力は、形が少しずれることがある（目印が無い・値の書き方が違う・全角など）。
+ * 意味が読み取れるものは取り込み、「読み替えたこと」を知らせて、人が確認画面で確かめる。
+ * 読み取れないものだけ、取り込まず、理由を出す。
  */
 
 /** 決まった形の文章の、目印 */
@@ -26,77 +31,83 @@ const voiceQuestions = (): Question[] => QUESTIONS.filter((q) => !q.manualOnly &
 const QUESTION_BY_ID = new Map(QUESTIONS.map((q) => [q.id, q]));
 const GROUP_BY_ID = new Map(QUESTION_GROUPS.map((g) => [g.id, g]));
 
-/** 質問ではないが、条件の中に出てくる、アプリが決める目印の説明 */
-const DERIVED_KEY_TEXT: Record<string, string> = {
-  areaNo: '受電設備エリアの番号',
-  unitNo: '何件目（何台目・何個目）か',
-  pcsMode: 'PCSのつなぎ先の入れ方（アプリが、PCSと変圧器の台数から決める）',
-  intakeDs: '受電側にDSがある',
-  intakeVcb: '受電側にVCBがある',
-  intakeLbs: '受電側にLBSがある',
-  intakeLbsPf: '受電側のLBSがヒューズ付（PF付）',
-  intakeStandard: '受電側がDS＋VCBの標準構成',
-  intakeOptional: '受電側がDS＋VCB以外（VT・CTがあるかを答えてもらう構成）',
-};
+/* ------------------------------------------------------------------ */
+/* 項目の一覧（短い形）                                                  */
+/* ------------------------------------------------------------------ */
 
-const valueText = (key: string, v: unknown): string => {
-  const q = QUESTION_BY_ID.get(key);
-  const opt = q?.options?.find((o) => o.value === String(v));
-  return opt ? `${opt.value}（${opt.label}）` : String(v);
-};
+/**
+ * 項目の一覧は、短く書く。Claude のプロジェクトの「指示」の欄は、長すぎると、
+ * 途中までしか読まれず、出力の形などの大事な決まりが抜け落ちる。
+ * （以前は、長い説明つきで 28万文字あり、それが原因で、決まった形で出てこなかった）
+ * 長い説明（aiHint）は載せない。設備についての大事な決まりは、DOMAIN_RULES に書いてある。
+ */
 
-const keyText = (key: string): string => {
-  const q = QUESTION_BY_ID.get(key);
-  return q ? `${key}（${q.label}）` : (DERIVED_KEY_TEXT[key] ?? key);
-};
+/** 条件を、短い式にする。アプリが決める目印（受電設備エリアの番号など）が入るものは、省く */
+function compactCondition(c: Condition): string | undefined {
+  if ('all' in c) {
+    const parts = c.all.map(compactCondition).filter((x): x is string => x !== undefined);
+    return parts.length ? parts.join(' かつ ') : undefined;
+  }
+  if ('any' in c) {
+    const parts = c.any.map(compactCondition);
+    // 1つでも「アプリが決める目印」が入っていたら、全体を省く（正確に書けないため）
+    return parts.every((x) => x !== undefined) ? `(${parts.join(' または ')})` : undefined;
+  }
+  if ('not' in c) return undefined;
+  if (!QUESTION_BY_ID.has(c.key)) return undefined;
+  if ('eq' in c) return `${c.key}=${String(c.eq)}`;
+  if ('ne' in c) return `${c.key}≠${String(c.ne)}`;
+  if ('in' in c) return `${c.key}=${c.in.map(String).join('/')}`;
+  if ('gt' in c) return `${c.key}>${c.gt}`;
+  if ('lte' in c) return `${c.key}≦${c.lte}`;
+  return `${c.key}に答えあり`;
+}
 
-/** 表示の条件を、日本語の短い文にする（Claude が、どの質問が必要かを判断する手がかり） */
-function describeCondition(c: Condition): string {
-  if ('all' in c) return c.all.map(describeCondition).join('、かつ、');
-  if ('any' in c) return `（${c.any.map(describeCondition).join('、または、')}）`;
-  if ('not' in c) return `次ではないとき：${describeCondition(c.not)}`;
-  if ('eq' in c) return DERIVED_KEY_TEXT[c.key] ? `${DERIVED_KEY_TEXT[c.key]}とき` : `${keyText(c.key)}が ${valueText(c.key, c.eq)} のとき`;
-  if ('ne' in c) return DERIVED_KEY_TEXT[c.key] ? `${DERIVED_KEY_TEXT[c.key]}のではないとき` : `${keyText(c.key)}が ${valueText(c.key, c.ne)} 以外のとき`;
-  if ('in' in c) return `${keyText(c.key)}が ${c.in.map((v) => valueText(c.key, v)).join(' か ')} のとき`;
-  if ('gt' in c) return `${keyText(c.key)}が ${c.gt} より大きいとき`;
-  if ('lte' in c) return `${keyText(c.key)}が ${c.lte} 以下のとき`;
-  return `${keyText(c.key)}に答えがあるとき`;
+/** 数字だけの選択肢（台数・組数など）なら、「数（0〜50）」のようにまとめる */
+function numericRange(q: Question): string | undefined {
+  const o = q.options;
+  if (!o || o.length < 6 || !o.every((x) => /^\d+$/.test(x.value))) return undefined;
+  const nums = o.map((x) => Number(x.value));
+  return `${Math.min(...nums)}〜${Math.max(...nums)}`;
+}
+
+/** 値の書き方（短く） */
+function valueForm(q: Question): string {
+  if (q.type === 'number') return q.unit ? `数字のみ（${q.unit}）` : '数字';
+  if (q.type === 'boolean') return 'yes/no';
+  if (q.type === 'select' && q.options?.length) {
+    const range = numericRange(q);
+    if (range) return `数（${range}）`;
+    if (q.options.length === 2 && q.options.some((o) => o.value === 'yes') && q.options.some((o) => o.value === 'no')) return 'yes/no';
+    const opts = q.options.map((o) => (o.label === o.value ? o.value : `${o.value}=${o.label.replace(/\s+/g, '')}`)).join(' ／ ');
+    return q.allowFreeInput ? `${opts} ／ ほかの値も可` : opts;
+  }
+  return q.unit ? `文字（${q.unit}）` : '文字';
 }
 
 /** 質問1件ぶんの説明（1行） */
 function describeQuestion(q: Question): string {
-  const parts: string[] = [`- ${q.id}：${q.label}`];
-  if (q.type === 'select' && q.options?.length) {
-    const opts = q.options.map((o) => `${o.value}＝${o.label}`).join(' ／ ');
-    parts.push(`選ぶ値は ${opts}${q.allowFreeInput ? '（一覧にない値も書いてよい）' : '（この中から、値の文字そのままで答える）'}`);
-  } else if (q.type === 'number') {
-    parts.push(`数字${q.unit ? `（単位：${q.unit}。単位は書かず、数字だけ）` : ''}`);
-  } else {
-    parts.push(`文字${q.unit ? `（単位：${q.unit}）` : ''}`);
-  }
-  if (q.showIf) parts.push(`聞くのは、${describeCondition(q.showIf)}`);
-  if (q.required) parts.push('必ず答えてもらう');
-  else if (q.defaultValue !== undefined || q.autoValue) parts.push('最初から入っている値があるので、話されなければ聞かなくてよい');
-  if (q.aiHint ?? q.help) parts.push(`※${q.aiHint ?? q.help}`);
-  return parts.join('。');
+  const cond = q.showIf ? compactCondition(q.showIf) : undefined;
+  return `- ${q.id}：${q.label.replace(/[？?]$/, '')}｜${valueForm(q)}${cond ? `｜条件：${cond}` : ''}`;
 }
 
-/** 項目の一覧（指示文の後半。グループごと）。この中身が変わると、指示文の「版」が変わる */
+/** 項目の一覧（指示文の最後。グループごと） */
 function buildQuestionList(): string {
   return QUESTION_GROUPS.map((g) => {
     const qs = voiceQuestions().filter((q) => q.group === g.id);
     if (qs.length === 0) return '';
     const notes: string[] = [];
     if (g.repeatCountKey) {
-      notes.push(
-        `${g.repeatUnit ?? '件'}ごとに繰り返す。件数は ${g.repeatCountKey} に答える。2${g.repeatUnit ?? '件'}目以降は、項目IDの後ろに __2、__3 …を付けて答える（例：${qs.find((q) => q.id !== g.repeatCountKey && !q.shared)?.id ?? g.repeatCountKey}__2）`,
-      );
+      const unit = g.repeatUnit ?? '件';
+      const sample = qs.find((q) => q.id !== g.repeatCountKey && !q.shared)?.id ?? g.repeatCountKey;
+      notes.push(`${unit}ごとに繰り返す。件数は ${g.repeatCountKey}。2${unit}目以降は、項目IDの後ろに __2、__3 …（例：${sample}__2）`);
     }
-    if (g.perArea) {
-      notes.push('受電設備エリアが2か所以上のときは、2か所目以降の答えは、項目IDの前に a2:（3か所目は a3:）を付ける（例：a2:' + qs[0]!.id + '）');
+    if (g.perArea) notes.push(`エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:${qs[0]!.id}）`);
+    if (g.showIf) {
+      const c = compactCondition(g.showIf);
+      if (c) notes.push(`このまとまりを聞くのは ${c}`);
     }
-    if (g.showIf) notes.push(`このまとまり全体を聞くのは、${describeCondition(g.showIf)}`);
-    return `【${g.label}】${g.description ? `${g.description}` : ''}\n${notes.map((n) => `（${n}）`).join('\n')}${notes.length ? '\n' : ''}${qs.map(describeQuestion).join('\n')}`;
+    return `【${g.label}】${notes.length ? `\n（${notes.join('）\n（')}）` : ''}\n${qs.map(describeQuestion).join('\n')}`;
   })
     .filter(Boolean)
     .join('\n\n');
@@ -112,97 +123,114 @@ function digest(text: string): string {
   return h.toString(36);
 }
 
-/**
- * 指示文の「版」。項目の一覧が変わると変わる。
- * 古い指示文で作られた文章をアプリに貼り付けたとき、それに気づくために使う。
- */
-export const VOICE_VERSION: string = `v${digest(buildQuestionList())}`;
-
 /** 手入力にする項目の名前（指示文に書く） */
 const manualLabels = (): string => QUESTIONS.filter((q) => q.manualOnly && !q.noAi).map((q) => q.label).join('・');
 
-/**
- * Claude のプロジェクトに入れる指示文。
- * 質問・構成ルールはデータから組み立てるので、質問が増えたら、この指示文も自動で変わる
- * （変わったときは、アプリの「音声入力から作成」で、新しい指示文をコピーして、プロジェクトに入れ直す）。
- */
-export function buildVoiceInstruction(opts: { listInline?: boolean } = {}): string {
-  const listInline = opts.listInline ?? true;
-  return `# このプロジェクトの目的
+/** 出力の見本（指示文に載せる）。実際の項目ID・値だけで作る（検査で、アプリが読み取れることを確かめる） */
+export const VOICE_EXAMPLE_ANSWERS: Record<string, string | number> = {
+  sourceType: 'pole',
+  sectionalizer: 'pas',
+  mainBreakerForm: 'cb',
+  transformerCount: '2',
+  trCapacity: 300,
+  trCapacity__2: 200,
+};
 
-あなたは、高圧受電設備の「単線結線図」を作る、現場の技術者の補助をします。
+const exampleJson = (version: string): string =>
+  JSON.stringify(
+    {
+      format: VOICE_FORMAT,
+      version,
+      answers: VOICE_EXAMPLE_ANSWERS,
+      uncertain: ['trCapacity__2'],
+      evidence: { trCapacity__2: '「にひゃくキロ」と話された' },
+      notes: [],
+      questions: [],
+    },
+    null,
+    2,
+  );
+
+/** 指示文の本文。版（version）の入る場所だけ、引数で差し替える（版は、この本文から決める） */
+function instructionBody(version: string): string {
+  return `# 役目
+
+あなたは、高圧受電設備の「単線結線図」を作る、現場の技術者の補助です。
 技術者は、現地で、**声（音声入力）**で、設備の内容を話します。
-あなたは、その内容を聞き取って、単線結線図作成アプリに入れるための**「決まった形の文章（JSON）」**にまとめます。
-
-技術者は、あなたが出した文章を、アプリの「音声入力から作成」の画面に貼り付けます。
+あなたは、聞き取った内容を、単線結線図作成アプリに入れるための**「決まった形の文章（JSON）」**にまとめて、**コードブロックで出します**。
 アプリが読み取って、確認画面を出し、技術者が確認してから、図面が作られます。
-あなたの役目は、**聞き取った内容を、正しく書き取ること**です。図面を作ること、正しいかどうかを最終的に決めることは、人がします。
+あなたの役目は、**聞き取った内容を、正しく書き取ること**です。図面を作ること、正しいかどうかを決めることは、人がします。
 
-# 会話の進め方
+# 会話の流れ（この順番を必ず守る）
 
-声で話す相手なので、**短く、やさしい言葉**で話してください。技術者は、設備のことを、**つらつらと、続けて話します**。
+技術者は、設備のことを、**つらつらと、続けて**話します。話の途中では、割り込みません。
+音声入力なので、句読点が無かったり、専門用語が聞き間違えられたりします（下の「聞き間違いの直し方」）。意味から判断して、聞き取ってください。
 
-1. 話の途中では、質問したり、割り込んだりしないでください。返事は、「はい、続けてください。」だけにします。
-2. 「ここまで」「以上です」「お願いします」などと言われたら、話が終わった合図です。聞き取った内容を、**やさしい文で3〜6行にして、短く読み返します。**
-3. そのあと、下の「必ず確認すること」のうち、**話されていなかったものだけ**を、**まとめて1回だけ**、聞き返します（最大4個。短い文で、番号をつけて）。
-   確認することが1つも無ければ、聞き返さずに、すぐ、アプリ用の文章を出します。
-4. 技術者が答えたら、**もう聞き返さず**、すぐ、アプリ用の文章を出します（次の「出力の形」）。直したいところがあると言われたら、直して、もう一度出します。
-5. **細かい項目は、聞かないでください。** 定格（電圧・電流・ヒューズなど）、ケーブルの太さ・長さ、変圧器の結線方式・電圧、設置場所の細かい内容などは、話されなければ、答えに入れず、空のままにします。
-   「次の項目が分かっていません」と、一覧で伝えることも、しないでください。足りない項目は、技術者が、あとでアプリで入力します。
-6. **話されていないことを、推測で埋めないでください。** 聞き取ったが自信がないものは、答えに入れたうえで、uncertain に入れます。
+1. 技術者が設備の内容を話したら、**その返事の中で**、次の2つをします。
+   - 聞き取った内容を、やさしい文で**2〜5行**にして、読み返す（聞き間違いは、正しい用語に直して言う）。
+   - 下の「必ず確認すること」のうち、**話されていないものがあれば**、番号をつけて、**まとめて1回だけ**聞く（最大6個、短い文で）。
+     **1つも無ければ、聞かずに、すぐ手順3に進む。**
+2. 技術者が答えたら、**もう聞き返さず**、手順3に進む。
+   「分かりません」「そのままでいい」「出して」など、答えになっていない返事でも、聞き返さない。答えが無かった項目は、**空のまま**（answers に入れない）にする。
+   答えのかわりに、設備の話の続きが来たときも、それも合わせて、手順3に進む。
+3. アプリ用の文章（次の「出力の形」）を、**すぐ出す**。「ここまで」「以上です」などの合図は、待たない。
+4. 技術者が「直したい」と言ったら、直して、もう一度、同じ形で出す（これは聞き返しではない）。
 
-# 必ず確認すること（話されなかったときだけ、聞き返す）
+**聞き返しは、全体を通して、1回だけです。** 細かい項目（定格・ケーブルの太さや長さ・変圧器の結線方式や電圧など）は、聞かない。
+話されなかったものは、空のままにして、「分かっていない項目の一覧」も伝えない（足りない項目は、技術者が、あとでアプリで入力します）。
+**話されていないことを、推測で埋めない。** 聞き取ったが自信がないものは、答えに入れたうえで、uncertain に入れる。
 
-図面の構成が決まらなくなる項目だけです。**話されていれば、聞き返しません。**
+# 出力の形（いちばん大事）
+
+アプリ用の文章は、**チャットの本文に、ふつうの文字のコードブロック（\`\`\`json で始まるもの）を1つだけ**出します。
+- **図・表・アーティファクト（別画面の文書）・ファイル・画像は、作らない。** 結線図を描くことも、しない。
+- コードブロックの中は、**JSONだけ**。コードブロックの前後には、「アプリの『音声入力から作成』に貼り付けてください」と、一言だけ添える。
+- **話された内容が少なくても、必ず、この形で出す**（answers が少なくてもよい）。
+- **"format" と "version" は、下の見本のとおり、一字も変えずに書く。**
+
+見本（書き方の見本です。中身は、話された内容に置き換える）：
+
+\`\`\`json
+${exampleJson(version)}
+\`\`\`
+
+- "answers" には、**聞き取れた項目だけ**を入れます。値の書き方：
+  - 選ぶ項目は、「項目の一覧」にある「値」の文字そのまま（例：mainBreakerForm なら cb か pfs）。
+  - 数字の項目は、数字だけ（単位は書かない。例：容量 300）。
+  - 文字の項目は、話された文字。
+- **「項目の一覧」にあるID・値だけ**を使う。ないIDや、選べない値は、アプリが受け付けません。
+- "uncertain" に、自信がない項目のIDを入れる。**その項目だけ**、"evidence" に、話された言葉を短く書く。自信がある項目には、書かない。
+- "notes" は、設備についての特記事項があるときだけ（なければ空の []）。
+- "questions" は、**空の [] にする。** どうしても人に確認してほしい大事なことがあるときだけ、1〜3個（"questionId"・"ask"・"why" を書く）。
+- 繰り返す項目（変圧器など）と、2か所目以降のエリア（a2: …）の書き方は、「項目の一覧」に書いてあります。
+
+# 必ず確認すること（話されなかったときだけ、1回だけ聞く）
+
+図面の構成が決まらなくなる項目だけです。**話されていれば、聞きません。**
 
 1. **引込元**は、電柱か、地上キャビネットか（sourceType）
 2. **区分開閉器**は、PAS・PGS・UGS・なしのどれか（sectionalizer）
 3. **主遮断装置の形式**は、CB形（VCB）か、PFS形（LBS）か（mainBreakerForm）。
-   変圧器の容量が分かっているときは、容量から推定して（合計300kVA以下ならPFS形、301kVA以上ならCB形）、「CB形で合っていますか」のように、確認します。推定したものは、uncertain に入れます。
+   変圧器の容量が分かっているときは、容量から推定して（合計300kVA以下ならPFS形、301kVA以上ならCB形）、「CB形で合っていますか」のように、確認する。推定したものは、uncertain に入れる。
 4. **変圧器の台数**（transformerCount）
-5. **受電設備エリアの数**（areaCount）。「1か所目」「別の電気室」など、2か所以上の手がかりがあるのに、数がはっきりしないときだけ聞きます。手がかりが無ければ、1か所として、聞きません。
-6. **聞き取りに自信が持てない、重要な数字**（変圧器の容量・台数）。聞き返して、確かめます。
+5. **受電設備エリアの数**（areaCount）。「1か所目」「別の電気室」など、2か所以上の手がかりがあるのに、数がはっきりしないときだけ聞く。手がかりが無ければ、1か所として、聞かない。
+6. **聞き取りに自信が持てない、重要な数字**（変圧器の容量・台数）。
 
-# 声に出さないでほしいもの（アプリで、手で入力します）
+# 名称・番号など（聞かない・記録しない）
 
 **${manualLabels()}**は、情報漏えいを防ぐため、アプリの中で、人が手で入力します。
-- これらは、**聞かないでください。**
-- もし話されても、**記録せず、出力にも入れないでください。** 読み返しにも、特記事項（notes）にも、書かないでください。何も言わず、**聞き流してください。**
+- **聞かないでください。**
+- もし話されても、**記録せず、出力（answers・notes・evidence）にも、読み返しにも入れず、何も言わずに、聞き流してください。**
 - 電力会社の**電柱番号・キャビネット番号**（poleName・cabinetName）は、話してよい項目です。
 
 # 聞き間違いの直し方
 
 音声入力は、専門用語を聞き間違えます。話の流れから、正しい用語に直してください。直したものは、読み返しの中で、正しい用語で言います。
-例：「ブイシーティー」→ VCT／「ブイシービー」→ VCB／「ディーエス」→ DS／「パス」→ PAS／「ジーアール」→ GR／「ディージーアール」→ DGR／「ゼットピーディー」→ ZPD／
-「オーシーアール」→ OCR／「ユーブイアール」→ UVR／「オーブイアール」→ OVR／「ななせんにひゃく」→ 7200／「ろくせんろっぴゃく」→ 6600
-
-# 出力の形
-
-アプリ用の文章は、**次の形のJSONを、コードブロック（\`\`\`json で始まるもの）1つだけ**で出します。
-コードブロックの中は、JSONだけにしてください。コードブロックの前後に、「アプリの『音声入力から作成』に貼り付けてください」と、一言だけ添えます。
-
-\`\`\`json
-{
-  "format": "${VOICE_FORMAT}",
-  "version": "${VOICE_VERSION}",
-  "answers": { "項目ID": 値, "項目ID": 値 },
-  "uncertain": ["自信がない項目のID"],
-  "evidence": { "自信がない項目のID": "話された言葉（短く）" },
-  "notes": ["特記事項があれば"],
-  "questions": []
-}
-\`\`\`
-
-- "format" と "version" は、**この指示文に書いてあるとおり、一字も変えずに**書きます。
-- "answers" には、**聞き取れた項目だけ**を入れます。値の書き方：
-  - 選ぶ項目は、一覧の「値」の文字そのまま（例：mainBreakerForm なら cb か pfs）。
-  - 数字の項目は、数字だけ（単位は書かない。例：容量 300）。
-  - 文字の項目は、話された文字。
-- 一覧にない項目ID、選べない値は、アプリが受け付けません。**一覧のIDと値だけ**を使ってください。
-- "uncertain" に入れた項目（自信がないもの）だけ、"evidence" に、**話された言葉**を短く書きます（人が確認しやすくするため）。自信がある項目には、書きません。
-- "notes" は、設備についての特記事項があるときだけ書きます（なければ空の []）。お客様名称などには、触れません。
-- "questions" は、**空の [] にします。** どうしても人に確認してほしい、大事なことがあるときだけ、1〜3個まで入れてよい（"questionId"・"ask"・"why" を書く）。
-- 繰り返す項目（変圧器など）と、2か所目以降のエリアの書き方は、下の「項目の一覧」に書いてあります。
+例：「区分解兵器」「くぶんかいへいき」→ 区分開閉器／「パス」→ PAS／「ピージーエス」→ PGS／「ユージーエス」→ UGS／
+「ブイシービー」「シービー」→ VCB／「エルビーエス」→ LBS／「ピーエフエス」→ PFS／「ディーエス」→ DS／
+「ブイティー」→ VT／「シーティー」→ CT／「ブイシーティー」→ VCT／「ジーアール」→ GR／「ディージーアール」→ DGR／
+「ゼットピーディー」→ ZPD／「ゼットシーティー」→ ZCT／「オーシーアール」→ OCR／「ユーブイアール」→ UVR／「オーブイアール」→ OVR／
+「ピーシーエス」→ PCS／「ケーブイエー」→ kVA／「ななせんにひゃく」→ 7200／「ろくせんろっぴゃく」→ 6600
 
 # 設備について、気をつけること
 
@@ -215,25 +243,27 @@ export function buildVoiceInstruction(opts: { listInline?: boolean } = {}): stri
 
 ${DOMAIN_RULES}
 
-# 項目の一覧
+# 項目の一覧（版：${version}）
 
-${
-  listInline
-    ? buildQuestionList()
-    : 'この指示文とは別に、プロジェクトの知識（添付ファイル）に、「項目の一覧」を入れてあります。**必ず、そのファイルの項目ID・値・書き方に従ってください。**'
-}
-`;
-}
-
-/** 「項目の一覧」だけを、別のファイルにするとき用（プロジェクトの知識に入れる） */
-export function buildVoiceItemList(): string {
-  return `# 項目の一覧（版：${VOICE_VERSION}）
-
-単線結線図作成アプリの、項目の一覧です。アプリ用の文章（JSON）の "answers" には、ここにある項目IDと値だけを使います。
-手で入力する項目（${manualLabels()}）は、載せていません。
+項目の書き方：\`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき\`。「条件」が無い項目は、いつでも答えてよい項目です。
 
 ${buildQuestionList()}
 `;
+}
+
+/**
+ * 指示文の「版」。指示文のどこかが変わると、変わる（項目が増えたとき、決まりを直したとき）。
+ * 古い指示文で作られた文章をアプリに貼り付けたとき、それに気づくために使う。
+ */
+export const VOICE_VERSION: string = `v${digest(instructionBody(''))}`;
+
+/**
+ * Claude のプロジェクトに入れる指示文（1つの文章）。
+ * 質問・構成ルールはデータから組み立てるので、質問が増えたら、この指示文も自動で変わる
+ * （変わったときは、アプリの「音声入力から作成」で、新しい指示文をコピーして、プロジェクトに入れ直す）。
+ */
+export function buildVoiceInstruction(): string {
+  return instructionBody(VOICE_VERSION);
 }
 
 /* ------------------------------------------------------------------ */
@@ -260,20 +290,22 @@ export interface VoiceParse {
   warnings: string[];
 }
 
-/** 貼り付けられた文章から、JSONの部分を取り出す。コードブロック・前後の文章があってもよい */
-function extractJson(text: string): unknown | undefined {
-  const candidates: string[] = [];
-  // コードブロック（複数あれば、あとのものを優先）
-  for (const m of text.matchAll(/```(?:json|JSON)?\s*([\s\S]*?)```/g)) candidates.push(m[1]!.trim());
-  candidates.reverse();
-  // コードブロックが無いとき：最初の { から、対応する } まで
-  const start = text.indexOf('{');
-  if (start >= 0) {
+/** 文章の中から、JSONとして読める「{ … }」を、すべて取り出す（コードブロックの中・外のどちらも） */
+function jsonCandidates(text: string): string[] {
+  const out: string[] = [];
+  // コードブロック（```json … ```）
+  for (const m of text.matchAll(/```[A-Za-z]*\s*([\s\S]*?)```/g)) out.push(m[1]!.trim());
+  // コードブロックの外：{ から、対応する } まで（複数あれば、すべて）
+  let i = 0;
+  while (i < text.length) {
+    const start = text.indexOf('{', i);
+    if (start < 0) break;
     let depth = 0;
     let inStr = false;
     let esc = false;
-    for (let i = start; i < text.length; i++) {
-      const ch = text[i]!;
+    let end = -1;
+    for (let j = start; j < text.length; j++) {
+      const ch = text[j]!;
       if (inStr) {
         if (esc) esc = false;
         else if (ch === '\\') esc = true;
@@ -283,20 +315,50 @@ function extractJson(text: string): unknown | undefined {
       if (ch === '"') inStr = true;
       else if (ch === '{') depth++;
       else if (ch === '}' && --depth === 0) {
-        candidates.push(text.slice(start, i + 1));
+        end = j;
         break;
       }
     }
+    if (end < 0) break;
+    out.push(text.slice(start, end + 1));
+    i = end + 1;
   }
-  for (const c of candidates) {
+  return out;
+}
+
+/** JSONを読む。少し崩れていても、直せるものは直す（最後の , ・曲がった引用符） */
+function parseLoose(s: string): Record<string, unknown> | undefined {
+  const tries = [s, s.replace(/[“”]/g, '"').replace(/,\s*([}\]])/g, '$1')];
+  for (const t of tries) {
     try {
-      const v: unknown = JSON.parse(c);
-      if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+      const v: unknown = JSON.parse(t);
+      if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>;
     } catch {
-      // 次の候補へ
+      // 次へ
     }
   }
   return undefined;
+}
+
+/** 貼り付けられた文章から、アプリ用のJSONを取り出す。いくつかあれば、アプリ用らしいもの（あとのものを優先）を選ぶ */
+function extractJson(text: string): Record<string, unknown> | undefined {
+  const objs = jsonCandidates(text)
+    .map(parseLoose)
+    .filter((x): x is Record<string, unknown> => x !== undefined);
+  if (objs.length === 0) return undefined;
+  const score = (o: Record<string, unknown>): number =>
+    (o.format === VOICE_FORMAT ? 4 : 0) + (o.answers && typeof o.answers === 'object' ? 2 : 0) + (Object.keys(o).some((k) => QUESTION_BY_ID.has(splitKey(normalizeKey(k)).id)) ? 1 : 0);
+  // 点数が高いもの。同点なら、あとのもの（会話の全部を貼ったとき、最新のもの）
+  let best = objs[objs.length - 1]!;
+  let bestScore = score(best);
+  for (let i = objs.length - 2; i >= 0; i--) {
+    const sc = score(objs[i]!);
+    if (sc > bestScore) {
+      best = objs[i]!;
+      bestScore = sc;
+    }
+  }
+  return best;
 }
 
 interface KeyParts {
@@ -325,6 +387,13 @@ export function splitKey(key: string): KeyParts {
   return { area, id: rest, unit };
 }
 
+/** 項目IDの、書きぶれを直す（全角・前後の空白・「項目ID（名前）」のような名前つき） */
+function normalizeKey(key: string): string {
+  const k = key.normalize('NFKC').trim();
+  const m = /^[A-Za-z0-9_:]+/.exec(k);
+  return m ? m[0] : k;
+}
+
 /** 項目IDの書き方が、アプリの決まりに合っているか。合っていなければ理由を返す */
 export function checkKey(key: string): { q?: Question; reason?: string } {
   const { area, id, unit } = splitKey(key);
@@ -337,27 +406,76 @@ export function checkKey(key: string): { q?: Question; reason?: string } {
     const group = GROUP_BY_ID.get(q.group);
     // 繰り返しの2件目以降（__2）。エリアそのものの質問（areaForm__2 など）も同じ書き方
     const repeatable = PER_UNIT_QUESTION_IDS.has(id) || (group?.repeatCountKey !== undefined && !q.shared && id !== group.repeatCountKey);
-    if (unit < 2 || unit > 50 || !repeatable) return { reason: '繰り返す項目ではないので、__2 のような件の番号は付けられません' };
+    if (unit < 2 || unit > 50 || !repeatable) return { reason: '繰り返す項目ではないので、__2 のような番号（2件目以降を表す印）は付けられません' };
   }
   return { q };
 }
 
-/** 値が、項目の形に合っているか。合えば、アプリに入れる形に直して返す */
-export function checkValue(q: Question, v: unknown): { value?: string | number; reason?: string } {
+const YES_WORDS = ['yes', 'y', 'true', 'はい', 'あり', '有', '有り', '○', '〇'];
+const NO_WORDS = ['no', 'n', 'false', 'いいえ', 'なし', '無', '無し', '×'];
+
+/** 値が、項目の形に合っているか。合えば、アプリに入れる形に直して返す。読み替えたときは、reread に、何を何として読んだかを入れる */
+export function checkValue(q: Question, v: unknown): { value?: string | number; reason?: string; reread?: { from: string; to: string } } {
   if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) return { reason: '値が空です' };
+  if (typeof v === 'boolean') v = v ? 'yes' : 'no';
   if (typeof v === 'object') return { reason: '値が文字や数字ではありません' };
   if (q.type === 'number') {
-    const n = typeof v === 'number' ? v : Number(String(v).replace(/[,，]/g, '').trim());
-    if (!Number.isFinite(n)) return { reason: `数字ではありません（「${String(v)}」）` };
-    return { value: n };
+    if (typeof v === 'number') return Number.isFinite(v) ? { value: v } : { reason: `数字ではありません（「${String(v)}」）` };
+    // 全角の数字・カンマ・単位つき（「300kVA」「7,200 V」）も、数字だけにして読む
+    const s = String(v).normalize('NFKC').replace(/[,，]/g, '').trim();
+    const plain = Number(s);
+    if (s !== '' && Number.isFinite(plain)) return { value: plain };
+    const m = /^(-?\d+(?:\.\d+)?)\s*([^\d\s.][^\d]{0,5})$/.exec(s);
+    if (m) return { value: Number(m[1]), reread: { from: String(v), to: m[1]! } };
+    return { reason: `数字ではありません（「${String(v)}」）` };
   }
-  const text = String(v).trim();
+  const raw = String(v).trim();
+  const text = raw.normalize('NFKC').trim();
   if (q.type === 'select' && q.options?.length && !q.allowFreeInput) {
-    if (!q.options.some((o) => o.value === text)) {
-      return { reason: `選べない値「${text}」です（選べるのは：${q.options.map((o) => `${o.value}＝${o.label}`).join('、')}）` };
+    const opts = q.options;
+    if (opts.some((o) => o.value === raw)) return { value: raw };
+    // 大文字・小文字・全角のちがい（PAS と pas）。意味が同じなので、知らせない
+    const ci = opts.find((o) => o.value.toLowerCase() === text.toLowerCase());
+    if (ci) return { value: ci.value };
+    // 画面に出ている名前（「CB形（主遮断装置＝VCB）」など）で書かれたとき
+    const byLabel = opts.filter((o) => o.label.normalize('NFKC').replace(/\s+/g, '') === text.replace(/\s+/g, ''));
+    if (byLabel.length === 1) return { value: byLabel[0]!.value, reread: { from: raw, to: byLabel[0]!.value } };
+    // あり・なし（yes/no の項目）
+    if (opts.some((o) => o.value === 'yes') && opts.some((o) => o.value === 'no')) {
+      const t = text.toLowerCase();
+      if (YES_WORDS.includes(t)) return { value: 'yes' };
+      if (NO_WORDS.includes(t)) return { value: 'no' };
     }
+    // 名前の一部（「VCB」→「CB形（主遮断装置＝VCB）」）。1つに決まるときだけ
+    if (text.length >= 2) {
+      const part = opts.filter((o) => o.label.normalize('NFKC').toLowerCase().includes(text.toLowerCase()));
+      if (part.length === 1) return { value: part[0]!.value, reread: { from: raw, to: part[0]!.value } };
+    }
+    return { reason: `選べない値「${text}」です（選べるのは：${opts.map((o) => `${o.value}＝${o.label}`).join('、')}）` };
+  }
+  if (q.type === 'boolean') {
+    const t = text.toLowerCase();
+    if (YES_WORDS.includes(t)) return { value: 'yes' };
+    if (NO_WORDS.includes(t)) return { value: 'no' };
+    return { reason: `はい・いいえで答える項目です（「${text}」）` };
   }
   return { value: text };
+}
+
+/** "answers" の中身を、「項目ID → 値」の形にそろえる。{key,value} の並びで書かれていても読む */
+function answersOf(v: unknown): Record<string, unknown> | undefined {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>;
+  if (Array.isArray(v)) {
+    const out: Record<string, unknown> = {};
+    for (const x of v) {
+      if (!x || typeof x !== 'object') continue;
+      const r = x as Record<string, unknown>;
+      const k = r.key ?? r.id ?? r.questionId;
+      if (typeof k === 'string' && 'value' in r) out[k] = r.value;
+    }
+    return out;
+  }
+  return undefined;
 }
 
 /**
@@ -365,32 +483,58 @@ export function checkValue(q: Question, v: unknown): { value?: string | number; 
  *
  * 文章の形が違うときは ok:false。項目ごとの間違い（一覧にない項目・選べない値など）は、
  * その項目だけを取り込まず、理由つきで rejected に入れる（ほかの項目は取り込む）。
+ * 目印（format）が無い・値の書き方がずれている、などは、意味が読み取れるかぎり取り込み、warnings で知らせる。
  * 手入力にする項目（お客様名称など）は、取り込まずに、警告を出す。
  */
 export function parseVoiceResult(text: string): VoiceParse {
   const rejected: VoiceRejected[] = [];
   const warnings: string[] = [];
-  const raw = extractJson(text);
-  if (raw === undefined) {
-    return { ok: false, error: '文章の中に、アプリ用のJSON（{ で始まる部分）が見つかりませんでした。Claude が出したコードブロックを、そのまま貼り付けてください。', rejected, warnings };
+  const obj = extractJson(text);
+  if (obj === undefined) {
+    return {
+      ok: false,
+      error: 'Claudeの出力に、アプリ用のデータが含まれていません。Claudeに「アプリ用のコードブロックで出してください」と伝えてください。',
+      rejected,
+      warnings,
+    };
   }
-  const obj = raw as Record<string, unknown>;
+
+  // 答えの一覧：answers があればそれ。無いときは、最上位に、項目IDがそのまま並んでいる場合も読む
+  let answersIn = answersOf(obj.answers);
+  let noAnswersKey = false;
+  if (!answersIn) {
+    const top: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) if (QUESTION_BY_ID.has(splitKey(normalizeKey(k)).id)) top[k] = v;
+    if (Object.keys(top).length === 0) {
+      return {
+        ok: false,
+        error: 'Claudeの出力に、アプリ用のデータの形（"answers"）が見つかりませんでした。Claudeに「アプリ用のコードブロックを、指示文の見本の形で出してください」と伝えてください。',
+        rejected,
+        warnings,
+      };
+    }
+    answersIn = top;
+    noAnswersKey = true;
+  }
+
   if (obj.format !== VOICE_FORMAT) {
-    return { ok: false, error: `この文章は、「音声入力から作成」用の形ではありません（"format": "${VOICE_FORMAT}" がありません）。Claude のプロジェクトの指示文が、正しく入っているか確認してください。`, rejected, warnings };
-  }
-  if (!obj.answers || typeof obj.answers !== 'object' || Array.isArray(obj.answers)) {
-    return { ok: false, error: '文章の中に、"answers"（答えの一覧）がありません。', rejected, warnings };
-  }
-  if (obj.version !== VOICE_VERSION) {
     warnings.push(
-      `この文章は、古い（または別の）指示文で作られた可能性があります（文章の版：${String(obj.version ?? 'なし')}／いまのアプリの版：${VOICE_VERSION}）。` +
-        '読み取れない項目が出たときは、アプリの「Claude用の指示文をコピー」で、新しい指示文を、Claude のプロジェクトに入れ直してください。',
+      'この文章には、アプリ用の目印（"format"）がありませんが、答えの一覧が読み取れたので、取り込みました。' +
+        'Claude のプロジェクトの指示文が、古い、または、途中までしか入っていない可能性があります。' +
+        '確認画面で内容をよく確かめ、続くようなら、「Claude用の指示文をコピー」で、新しい指示文を、プロジェクトの「指示」の欄に入れ直してください。',
+    );
+  } else if (obj.version !== VOICE_VERSION) {
+    warnings.push(
+      `この文章は、古い（または別の）指示文で作られた可能性があります（文章の版：${String(obj.version ?? 'なし')}／いまの指示文の版：${VOICE_VERSION}）。` +
+        'Claude のプロジェクトの「指示」の欄を、アプリの「Claude用の指示文をコピー」で取った、新しい文章に入れ替えてください。',
     );
   }
+  if (noAnswersKey) warnings.push('"answers" の枠が無く、項目IDが直接並んでいたので、それを答えとして読みました。確認画面で、内容を確かめてください。');
 
   const answers: AnalysisResult['answers'] = {};
   const manualHit: string[] = [];
-  for (const [key, value] of Object.entries(obj.answers as Record<string, unknown>)) {
+  for (const [rawKey, value] of Object.entries(answersIn)) {
+    const key = normalizeKey(rawKey);
     const { id } = splitKey(key);
     const asked = QUESTION_BY_ID.get(id);
     if (asked?.manualOnly) {
@@ -399,14 +543,15 @@ export function parseVoiceResult(text: string): VoiceParse {
     }
     const k = checkKey(key);
     if (!k.q) {
-      rejected.push({ key, reason: k.reason! });
+      rejected.push({ key: rawKey, reason: k.reason! });
       continue;
     }
     const v = checkValue(k.q, value);
     if (v.value === undefined) {
-      rejected.push({ key, reason: v.reason! });
+      rejected.push({ key: rawKey, reason: v.reason! });
       continue;
     }
+    if (v.reread) warnings.push(`項目「${k.q.label.replace(/[？?]$/, '')}」の「${v.reread.from}」を、「${v.reread.to}」として読み替えました。確認画面で、確かめてください。`);
     answers[key] = v.value;
   }
   if (manualHit.length > 0) {
@@ -416,7 +561,10 @@ export function parseVoiceResult(text: string): VoiceParse {
   const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
   const evidenceIn = obj.evidence && typeof obj.evidence === 'object' && !Array.isArray(obj.evidence) ? (obj.evidence as Record<string, unknown>) : {};
   const evidence: Record<string, string> = {};
-  for (const [k, v] of Object.entries(evidenceIn)) if (k in answers && typeof v === 'string') evidence[k] = v;
+  for (const [k, v] of Object.entries(evidenceIn)) {
+    const nk = normalizeKey(k);
+    if (nk in answers && typeof v === 'string') evidence[nk] = v;
+  }
 
   const questions: AnalysisResult['questions'] = [];
   if (Array.isArray(obj.questions)) {
@@ -434,7 +582,7 @@ export function parseVoiceResult(text: string): VoiceParse {
 
   const result: AnalysisResult = {
     answers,
-    uncertain: strings(obj.uncertain).filter((k) => k in answers),
+    uncertain: strings(obj.uncertain).map(normalizeKey).filter((k) => k in answers),
     evidence,
     notes: strings(obj.notes),
     questions,
