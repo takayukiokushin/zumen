@@ -561,7 +561,8 @@ export function withDerived(rawAnswers: Answers): Answers {
     d[`${prefix}LbsRatingLine`] = [answers[`${prefix}LbsVoltage`] ? `${answers[`${prefix}LbsVoltage`]}V` : '', answers[`${prefix}LbsRating`] ? String(answers[`${prefix}LbsRating`]) : ''].filter(Boolean).join(' ');
     d[`${prefix}PfLine`] = pfLine(
       answers[`${prefix}PfG`],
-      answers[`${prefix}PfLoad`],
+      // 変圧器の手前は、PFの負荷側が必ず変圧器（T）、コンデンサの手前はコンデンサ（C）。答え（以前の案件で別の記号が入っているもの）があれば、それを使う
+      answers[`${prefix}PfLoad`] || (prefix === 'tr' ? 'T' : 'C'),
       answers[`${prefix}PfLoadAmp`],
       answers[`${prefix}PfKa`],
     );

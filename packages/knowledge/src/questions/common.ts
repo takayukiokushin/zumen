@@ -194,13 +194,16 @@ export function breakerRatings(
       id: P('PfLoad'), group, label: 'PFの負荷側につなぐもの', type: 'select',
       // 3つのボタンを並べると、1行に収まらず、縦に伸びる。ふだんは標準のまま使うので、プルダウンにする
       options: PF_LOAD_KIND, defaultValue: defaultLoad, dropdown: true,
-      showIf: hasLbs, ask: 'always',
-      help: `${cap}につなぐので、ふつうは「${defaultLoad}」`,
+      // 変圧器・コンデンサの手前のLBSは、PFの負荷側が決まっている（変圧器ならT、コンデンサならC）ので、聞かない
+      // （用途ごとの定格電流の名前に「（T）」「（C）」と書く）。以前の案件で、ほかの記号が入っているときだけ、確かめて直せるように出す
+      showIf: { all: [hasLbs, { key: P('PfLoad'), answered: true }, { key: P('PfLoad'), ne: defaultLoad }] },
+      ask: 'always',
+      help: `${cap}の手前なので、${defaultLoad}のはず。以前の案件で、${defaultLoad}以外が入っているときだけ、ここに出る`,
     },
     {
-      id: P('PfLoadAmp'), group, label: 'パワーヒューズの用途ごとの定格電流', type: 'select',
+      id: P('PfLoadAmp'), group, label: `パワーヒューズの用途ごとの定格電流（${defaultLoad}）`, type: 'select',
       options: LOAD_AMPS, allowFreeInput: true, showIf: hasLbs, ask: 'always',
-      help: '図面には「T30A」のように、上で選んだ記号に続けて書く',
+      help: `図面には「${defaultLoad}30A」のように、先頭に${defaultLoad}を付けて書く（${defaultLoad}は${cap}）`,
     },
     {
       id: P('PfKa'), group, label: 'PFの許容できる短絡電流', type: 'select',

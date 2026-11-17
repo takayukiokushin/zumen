@@ -365,7 +365,8 @@ console.log('\n■ 変圧器ごとのPC・LBS（1台目は無し、2台目だけ
     trHasPc__3: 'yes', trHasLbs__3: 'no', trPcRating__3: '50A', trPcFuse__3: '12.5A',
   };
   const ids = (n: number) => visibleQuestions(viewAt(a2, n), {}).filter((q) => q.group === 'transformer').map((q) => q.id);
-  const lbsIds = ['trLbsRating', 'trPfG', 'trPfLoad', 'trPfLoadAmp', 'trPfKa'];
+  // （PFの負荷側につなぐもの trPfLoad は、変圧器の手前では必ずTなので、聞かない）
+  const lbsIds = ['trLbsRating', 'trPfG', 'trPfLoadAmp', 'trPfKa'];
   const pcIds = ['trPcRating', 'trPcFuse'];
   const u1 = ids(0), u2 = ids(1), u3 = ids(2);
   if (lbsIds.some((id) => u1.includes(id)) || pcIds.some((id) => u1.includes(id))) fail('1台目は「なし」なのに、PC・LBSの定格の欄が出ています');

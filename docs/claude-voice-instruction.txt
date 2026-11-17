@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vvehrq4",
+  "version": "v18d6p9s",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：vvehrq4）
+# 項目の一覧（版：v18d6p9s）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -445,8 +445,8 @@
 - trLbsVoltage：LBS本体の定格電圧｜7200=7200V ／ 6600=6600V ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 - trLbsRating：LBS本体の定格電流｜100A ／ 200A ／ 300A ／ 400A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 - trPfG：パワーヒューズ（PF）の定格電流（G）｜5A ／ 7.5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
-- trPfLoad：PFの負荷側につなぐもの｜T=T（変圧器） ／ C=C（コンデンサ） ／ M=M（モーター）｜条件：transformerCount>0 かつ trHasLbs=yes
-- trPfLoadAmp：パワーヒューズの用途ごとの定格電流｜5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 75A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
+- trPfLoad：PFの負荷側につなぐもの｜T=T（変圧器） ／ C=C（コンデンサ） ／ M=M（モーター）｜条件：transformerCount>0 かつ trHasLbs=yes かつ trPfLoadに答えあり かつ trPfLoad≠T
+- trPfLoadAmp：パワーヒューズの用途ごとの定格電流（T）｜5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 75A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 - trPfKa：PFの許容できる短絡電流｜12.5kA ／ 20kA ／ 31.5kA ／ 40kA ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 
 【高圧進相設備】
@@ -467,8 +467,8 @@
 - capLbsVoltage：LBS本体の定格電圧｜7200=7200V ／ 6600=6600V ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 - capLbsRating：LBS本体の定格電流｜100A ／ 200A ／ 300A ／ 400A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 - capPfG：パワーヒューズ（PF）の定格電流（G）｜5A ／ 7.5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
-- capPfLoad：PFの負荷側につなぐもの｜T=T（変圧器） ／ C=C（コンデンサ） ／ M=M（モーター）｜条件：hasCapacitor=yes かつ capHasLbs=yes
-- capPfLoadAmp：パワーヒューズの用途ごとの定格電流｜5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 75A ／ 100A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
+- capPfLoad：PFの負荷側につなぐもの｜T=T（変圧器） ／ C=C（コンデンサ） ／ M=M（モーター）｜条件：hasCapacitor=yes かつ capHasLbs=yes かつ capPfLoadに答えあり かつ capPfLoad≠C
+- capPfLoadAmp：パワーヒューズの用途ごとの定格電流（C）｜5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 75A ／ 100A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 - capPfKa：PFの許容できる短絡電流｜12.5kA ／ 20kA ／ 31.5kA ／ 40kA ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 
 【特殊設備】

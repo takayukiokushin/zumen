@@ -2,7 +2,7 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, rowsContext, allInputRows, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
+import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, rowsContext, allInputRows, withDerived, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
@@ -303,6 +303,22 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       ok(buildComposition(cab).every((i) => i.label.every((t) => !/PAS/.test(t))), `${mode}：引込元がキャビネットで未回答のとき、図面にPASと出ています`);
     }
     ok(effectiveAnswers({ sourceType: 'cabinet' }).sectionalizer === 'ugs' && effectiveAnswers({ sourceType: 'cabinet', sectionalizer: 'pas' }).sectionalizer === 'ugs', '以前の案件（印なし）で、キャビネットのときのUGSの読み替えが働いていません');
+    // 変圧器の手前のLBS：PFの負荷側は必ず変圧器（T）なので、聞かない。図面には、先頭に T を付ける。以前の案件で、T以外が入っているときだけ出す
+    {
+      const ids = (a: Answers) => new Set(visibleQuestions(a).map((q) => q.id));
+      const base = { startMode: 'blank', transformerCount: '1', trHasLbs: 'yes', hasCapacitor: 'yes', capHasLbs: 'yes' };
+      ok(!ids(base).has('trPfLoad') && ids(base).has('trPfLoadAmp') && ids(base).has('trPfG'), '変圧器の手前のLBSで、「PFの負荷側につなぐもの」が聞かれています（Tのはず）');
+      ok(!ids({ ...base, trPfLoad: 'T' }).has('trPfLoad') && ids({ ...base, trPfLoad: 'C' }).has('trPfLoad'), '以前の案件でT以外が入っているときだけ、「PFの負荷側につなぐもの」を出すはずです');
+      ok(!ids(base).has('capPfLoad') && ids({ ...base, capPfLoad: 'T' }).has('capPfLoad') && !ids({ ...base, capPfLoad: 'C' }).has('capPfLoad'), 'コンデンサの手前のLBSで、「PFの負荷側につなぐもの」が聞かれています（Cのはず。C以外が入っているときだけ出す）');
+      ok(QUESTIONS.find((q) => q.id === 'capPfLoadAmp')?.label === 'パワーヒューズの用途ごとの定格電流（C）', 'コンデンサの「パワーヒューズの用途ごとの定格電流」に、「（C）」が付いていません');
+      const capLine = (a: Answers) => String(withDerived(effectiveAnswers(a)).capPfLine);
+      ok(capLine({ ...base, capPfG: '50A', capPfLoadAmp: '30A' }) === 'G50A C30A', `白紙の案件で、コンデンサのPFの文字に C が付いていません（${capLine({ ...base, capPfG: '50A', capPfLoadAmp: '30A' })}）`);
+      ok(QUESTIONS.find((q) => q.id === 'trPfLoadAmp')?.label === 'パワーヒューズの用途ごとの定格電流（T）', '変圧器の「パワーヒューズの用途ごとの定格電流」に、「（T）」が付いていません');
+      const line = (a: Answers) => String(withDerived(effectiveAnswers(a)).trPfLine);
+      ok(line({ ...base, trPfG: '50A', trPfLoadAmp: '30A', trPfKa: '40kA' }) === 'G50A T30A 40kA', `白紙の案件で、PFの文字に T が付いていません（${line({ ...base, trPfG: '50A', trPfLoadAmp: '30A', trPfKa: '40kA' })}）`);
+      ok(line({ transformerCount: '1', trHasLbs: 'yes', trPfG: '50A', trPfLoadAmp: '30A' }) === 'G50A T30A 40kA', '以前の案件（印なし）で、PFの文字が変わっています');
+      ok(line({ ...base, trPfLoad: 'C', trPfG: '50A', trPfLoadAmp: '30A' }) === 'G50A C30A', '以前の案件のT以外の答えが、図面に使われていません');
+    }
     // 名前の頭の部分（中電柱：・キャビネット番号：）は、白紙で始めた案件でも、最初から入っている（続けて入力できる）。ほかの初期値は入らない
     for (const mode of ['blank', 'blank-open']) {
       const e = effectiveAnswers({ startMode: mode });
@@ -670,10 +686,10 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
   // 項目名：LBSの手前・後ろのパワーヒューズの項目
   const lab = (id: string) => QUESTIONS.find((q) => q.id === id)?.label;
   if (lab('trPfG') !== 'パワーヒューズ（PF）の定格電流（G）') fail(`変圧器のPFの項目名が違います（${lab('trPfG')}）`);
-  if (lab('trPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流') fail(`変圧器のPFの用途ごとの項目名が違います（${lab('trPfLoadAmp')}）`);
-  // 変圧器の手前も、コンデンサの手前も、すべてのLBSで同じ項目名
+  if (lab('trPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流（T）') fail(`変圧器のPFの用途ごとの項目名が違います（${lab('trPfLoadAmp')}）`);
+  // コンデンサの手前（用途ごとの定格電流には、「（C）」を付ける）
   if (lab('capPfG') !== 'パワーヒューズ（PF）の定格電流（G）') fail(`コンデンサのPFの項目名が違います（${lab('capPfG')}）`);
-  if (lab('capPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流') fail(`コンデンサのPFの用途ごとの項目名が違います（${lab('capPfLoadAmp')}）`);
+  if (lab('capPfLoadAmp') !== 'パワーヒューズの用途ごとの定格電流（C）') fail(`コンデンサのPFの用途ごとの項目名が違います（${lab('capPfLoadAmp')}）`);
   console.log('  項目名：パワーヒューズ（PF）の定格電流（G）／パワーヒューズの用途ごとの定格電流');
 }
 
