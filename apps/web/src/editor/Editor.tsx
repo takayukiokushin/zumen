@@ -1275,7 +1275,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             />
           ) : (
           <>
-          {activeId === null && viewDoc.items.length === 0 && <p className="canvas-blank-note">{t('editor.blankNote')}</p>}
+          {activeId === null && viewDoc.items.length === 0 && <p className="canvas-blank-note"><span className="wide-only">{t('editor.blankNote')}</span><span className="narrow-only">{t('editor.blankNoteNarrow')}</span></p>}
           <DrawingCanvas
             doc={viewDoc}
             selectedIds={selection}
