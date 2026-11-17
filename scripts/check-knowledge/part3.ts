@@ -806,6 +806,14 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
     ok(!QUESTIONS.find((q) => q.id === 'capacitorRatedVoltage')?.required && !QUESTIONS.find((q) => q.id === 'reactorRatedVoltage')?.required, '定格電圧は、必須ではないはずです');
     const idx = (id: string) => QUESTIONS.findIndex((q) => q.id === id);
     ok(idx('capacitorRatedVoltage') < idx('capacitorCapacity') && idx('reactorRatedVoltage') < idx('reactorCapacity'), '入力の順番は、定格電圧 → 容量のはずです');
+    // 定格電圧の入力例は2つ並ぶ（第15弾 項目3）。見本なので、実際の値としては入らず、図面にも出ない。容量の見本は、そのまま
+    {
+      const ph = (id: string) => QUESTIONS.find((x) => x.id === id)?.placeholder;
+      ok(ph('capacitorRatedVoltage') === '7020V , 6600V' && ph('reactorRatedVoltage') === '243V , 229V', `定格電圧の入力例が違います（${ph('capacitorRatedVoltage')} / ${ph('reactorRatedVoltage')}）`);
+      ok(ph('capacitorCapacity') === '3φ106kvar' && ph('reactorCapacity') === '3φ6.38kvar', '容量の入力例は、変えないはずです');
+      const empty = { ...base, hasCapacitor: 'yes', capacitorCount: '1', hasReactor: 'yes' };
+      ok(effectiveAnswers(empty).capacitorRatedVoltage === undefined && lines(empty, 'capacitor') === 'SC' && lines(empty, 'reactor') === 'SR', '入力例が、実際の値として入っている・図面に出ています');
+    }
     const two = buildComposition({ ...base, hasCapacitor: 'yes', capacitorCount: '2', capacitorRatedVoltage: '7020V', capacitorCapacity: '3φ106kvar', capacitorRatedVoltage__2: '6600V', capacitorCapacity__2: '3φ50kvar' }).filter((i) => i.role === 'capacitor').map((i) => i.label.join('|'));
     ok(two.join(',') === 'SC|7020V|3φ106kvar,SC|6600V|3φ50kvar', `複数台は、1台ごとに3行のはずです（${two.join(',')}）`);
   }
