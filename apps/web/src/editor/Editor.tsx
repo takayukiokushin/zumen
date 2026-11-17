@@ -952,7 +952,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
 
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
-            <div className="tool-row">
+            <div className="tool-row print-row">
               {/* レイヤーを切り替えられると分かるように、一覧の上に、説明の文字を置く（第13弾 項目28） */}
               <div className="layer-field">
                 <span className="layer-field-cap">{t('editor.layerChange')}</span>
