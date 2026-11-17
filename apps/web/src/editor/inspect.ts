@@ -4,7 +4,7 @@ import type { Key } from '../i18n/index.ts';
 import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, clampTextSize, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
-import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf } from './doc.ts';
+import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf, refreshFans } from './doc.ts';
 
 /**
  * 図面全体を見まわして、おかしなところを直す。
@@ -1237,6 +1237,56 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
   return issues;
 }
 
+/** 「結線」で結んだ機器の上端が、このくらいまでのずれなら、同じ高さにそろえる */
+const FAN_ALIGN = 12;
+
+/**
+ * 「結線」の整頓：
+ *  ・結んだ機器の上端の高さが、少しだけ（FAN_ALIGN 以内）ずれているものを、真ん中（中央値）の高さにそろえる
+ *    （大きくずれているものは、わざとその高さに置いたと見て、動かさない）
+ *  ・母線の高さを、元の記号の下端と、いちばん上の機器の上端の、ちょうど真ん中に戻す
+ * 縦線・母線は、そのたびに引き直されるので、斜めにはならない。
+ */
+export function tidyFans(doc: Doc): { doc: Doc; fixed: number } {
+  let cur = doc;
+  let fixed = 0;
+  const ids = [...new Set(cur.items.flatMap((i) => (i.kind === 'wire' && i.fan ? [i.fan.id] : [])))];
+  for (const fid of ids) {
+    const tops = (d: Doc) =>
+      d.items
+        .filter((i): i is DocWire => i.kind === 'wire' && i.fan?.id === fid && i.fan.role === 'drop' && !!i.at2)
+        .map((w) => ({ id: w.at2!.item, y: (() => { const sy = d.items.find((x) => x.id === w.at2!.item); return sy && sy.kind === 'symbol' ? (portsOf(sy).find((p) => p.id === w.at2!.port)?.y ?? NaN) : NaN; })() }))
+        .filter((t) => Number.isFinite(t.y));
+    const t0 = tops(cur);
+    if (t0.length >= 2) {
+      const sorted = t0.map((t) => t.y).sort((a, b) => a - b);
+      const med = sorted[Math.floor((sorted.length - 1) / 2)]!;
+      for (const t of t0) {
+        const dy = med - t.y;
+        if (Math.abs(dy) >= 0.5 && Math.abs(dy) <= FAN_ALIGN) {
+          cur = moveItem(cur, t.id, 0, dy);
+          fixed++;
+        }
+      }
+    }
+    // 母線の高さ：真ん中に戻す
+    const trunk = cur.items.find((i): i is DocWire => i.kind === 'wire' && i.fan?.id === fid && i.fan.role === 'trunk');
+    const bus = cur.items.find((i): i is DocWire => i.kind === 'wire' && i.fan?.id === fid && i.fan.role === 'bus');
+    const src = trunk?.at1 ? cur.items.find((x) => x.id === trunk.at1!.item) : undefined;
+    const sp = src && src.kind === 'symbol' ? portsOf(src).find((p) => p.id === trunk!.at1!.port) : undefined;
+    const t1 = tops(cur);
+    if (bus && sp && t1.length > 0) {
+      const mid = Math.round((sp.y + Math.min(...t1.map((t) => t.y))) / 2);
+      if (Math.abs(bus.y1 - mid) >= 1 && mid >= sp.y + 12 && mid <= Math.min(...t1.map((t) => t.y)) - 12) {
+        cur = { ...cur, items: cur.items.map((i) => (i.id === bus.id ? { ...bus, y1: mid, y2: mid } : i)) };
+        cur = refreshFans(cur);
+        fixed++;
+      }
+    }
+  }
+  return { doc: cur, fixed };
+}
+
 /**
  * 図面を整える。直したうえで、残った問題を返す。
  * 元に戻せるよう、呼ぶ側で履歴に積むこと。
@@ -1306,6 +1356,11 @@ export function tidyDrawing(
   const sk = straightenWires(next);
   next = sk.doc;
   fixed.skew += sk.fixed;
+
+  // 「結線」で結んだ機器の、上端の高さが少しずれているものをそろえ、母線の高さを、真ん中に戻す
+  const fn = tidyFans(next);
+  next = fn.doc;
+  fixed.gap += fn.fixed;
 
   const d = spreadLabels(next);
   next = d.doc;

@@ -13,6 +13,7 @@ import { buildComposition } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
 import { addFan, addSymbol, fanSourcePort, fanTargetPort, fromLayout, moveItem, refreshFans, removeItem, removeItems, tidyDoc } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
+import { tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
 let failed = 0;
 const fail = (msg: string) => {
@@ -112,6 +113,31 @@ ok(near(wa.find((w) => w.fan!.role === 'bus')!.y1, bus.y1), '足したとき、�
 ok(near(Math.min(...wa.filter((w) => w.fan!.role === 'bus').map((w) => Math.min(w.x1, w.x2))), fanTargetPort(sym(added.doc, t4.id))!.x), '足した機器まで、母線が伸びていません');
 ok(addFan(added.doc, SRC, [t4.id]).added === 0, 'すでに結んだ機器を、もう一度結ぼうとすると、増えるはずがありません');
 console.log('  あとから機器を足して結ぶと、同じ母線の高さで合流する（同じ機器を重ねて結んでも増えない）');
+
+// 5. 「結線を整える」：きれいな結線は、そのまま。少しずれた機器の高さをそろえ、偏った母線を真ん中に戻す。斜めにはならない
+const geom = (d: Doc, fid: string) => JSON.stringify(wires(d, fid).map((w) => [w.fan!.role, Math.round(w.x1), Math.round(w.y1), Math.round(w.x2), Math.round(w.y2)]).sort());
+const t1 = tidyDrawing(d1);
+ok(geom(t1.doc, r.fanId!) === geom(d1, r.fanId!), '「結線を整える」で、きれいな結線が変わりました');
+ok(pos(t1.doc) === pos(d1), '「結線を整える」で、きれいな結線の記号が動きました');
+// 機器の1台を、少し（8）上へずらす／母線を、元の記号の近くへ寄せる
+let skew = moveItem(d1, T2, 0, -8);
+const bs = wires(skew, r.fanId!).find((w) => w.fan!.role === 'bus')!;
+skew = { ...skew, items: skew.items.map((i) => (i.id === bs.id ? { ...bs, y1: sp.y + 14, y2: sp.y + 14 } : i)) };
+const ts = tidyDrawing(skew);
+const topsAfter = kids.map((k) => fanTargetPort(sym(ts.doc, k))!.y);
+const topsBefore = kids.map((k) => fanTargetPort(sym(d1, k))!.y);
+// 同じ種類の2台（T2・T3）は、同じ高さ。ずれていたT2が、元の高さに戻る（種類が違って、元から高さが違うものは、動かさない）
+ok(near(fanTargetPort(sym(ts.doc, T2))!.y, fanTargetPort(sym(ts.doc, T3))!.y), `少しずれた機器の高さが、そろっていません（${topsAfter.map(Math.round).join('，')}）`);
+ok(near(topsAfter[3]! - topsAfter[0]!, topsBefore[3]! - topsBefore[0]!), 'ずれていない機器の、お互いの高さが変わりました');
+const busAfter = wires(ts.doc, r.fanId!).find((w) => w.fan!.role === 'bus')!;
+ok(near(busAfter.y1, (sp.y + Math.min(...topsAfter)) / 2, 1.1), `偏った母線が、真ん中に戻っていません（${busAfter.y1}）`);
+ok(wires(ts.doc, r.fanId!).every((w) => near(w.x1, w.x2) || near(w.y1, w.y2)), '結線の線に、斜めの線があります');
+ok(ts.issues.every((i) => i.kind !== 'floating' && i.kind !== 'stray'), '「結線を整える」のあとに、つながっていない線・余分な線が残りました');
+// 大きくずれた機器（わざと置いた高さ）は、動かさない
+const big = moveItem(d1, T3, 0, 60);
+const tb = tidyDrawing(big);
+ok(near(fanTargetPort(sym(tb.doc, T3))!.y, fanTargetPort(sym(big, T3))!.y), '大きくずれた機器まで、動かしました');
+console.log('  「結線を整える」：きれいな結線はそのまま。少しずれた機器の高さをそろえ、偏った母線を真ん中に戻す。大きくずれたものは動かさない。斜めにならない');
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
