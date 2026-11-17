@@ -294,6 +294,15 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       const rowKeys = new Set(allInputRows(rowsContext(eff)).map((r) => r.key));
       ok(missingRequiredFields({ ...three, areaCount: '3' }).every((x) => rowKeys.has(x.key)), '必須として数えた項目が、入力画面に出る行の中にありません（答えられません）');
     }
+    // 引込元が地上キャビネットでも、白紙で始めた案件では、区分開閉器（UGS／なし）を自動で選ばない（選ぶまで進めない）。以前の案件は、これまでどおりUGS
+    for (const mode of ['blank', 'blank-open']) {
+      const cab = { startMode: mode, sourceType: 'cabinet' };
+      ok(effectiveAnswers(cab).sectionalizer === undefined && missingRequired(cab).some((q) => q.id === 'sectionalizer'), `${mode}：引込元がキャビネットのとき、区分開閉器が自動で選ばれています（選ぶまで未入力のはず）`);
+      ok(effectiveAnswers({ ...cab, sectionalizer: 'pas' }).sectionalizer === undefined, `${mode}：キャビネットなのに残っているPASを、UGSに自動で読み替えています`);
+      ok(!missingRequired({ ...cab, sectionalizer: 'none' }).some((q) => q.id === 'sectionalizer') && effectiveAnswers({ ...cab, sectionalizer: 'ugs' }).sectionalizer === 'ugs', `${mode}：選んだ区分開閉器が、答えとして数えられていません`);
+      ok(buildComposition(cab).every((i) => i.label.every((t) => !/PAS/.test(t))), `${mode}：引込元がキャビネットで未回答のとき、図面にPASと出ています`);
+    }
+    ok(effectiveAnswers({ sourceType: 'cabinet' }).sectionalizer === 'ugs' && effectiveAnswers({ sourceType: 'cabinet', sectionalizer: 'pas' }).sectionalizer === 'ugs', '以前の案件（印なし）で、キャビネットのときのUGSの読み替えが働いていません');
     // 名前の頭の部分（中電柱：・キャビネット番号：）は、白紙で始めた案件でも、最初から入っている（続けて入力できる）。ほかの初期値は入らない
     for (const mode of ['blank', 'blank-open']) {
       const e = effectiveAnswers({ startMode: mode });

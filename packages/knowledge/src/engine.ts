@@ -126,7 +126,14 @@ export function normalizeAnswers(answers: Answers): Answers {
   out = { ...out, ...intakeFlags(out), pcsMode: pcsInputMode(out) };
   const cabinet = out.sourceType === 'cabinet';
   // 引込元が地上キャビネットのときは、PAS・PGS（電柱上）は無い。未回答（または古い回答）のときはUGSにする
-  if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas' || out.sectionalizer === 'pgs')) {
+  // （白紙で始めた案件は、自動で決めない。区分開閉器の有無（UGS か なし）を、自分で選ぶまで、未回答のまま。
+  // 自動で選ばれると、間違ったまま進んでしまうおそれがあるため。電柱上のPAS・PGSが残っていたら、選び直してもらう）
+  if (cabinet && isBlankStart(out)) {
+    if (out.sectionalizer === 'pas' || out.sectionalizer === 'pgs') {
+      const { sectionalizer: _drop, ...rest } = out;
+      out = rest;
+    }
+  } else if (cabinet && (out.sectionalizer === undefined || out.sectionalizer === 'pas' || out.sectionalizer === 'pgs')) {
     out = { ...out, sectionalizer: 'ugs' };
   }
   return out;
@@ -307,7 +314,8 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.sourceLabel = /^(中電柱|キャビネット番号)\s*[：:]?$/.test(sourceText) ? '' : sourceText;
 
   // 区分開閉器（PAS／UGS／PGS／なし）。まだ答えていないときは、これまでどおりPAS（引込元がキャビネットならUGS）
-  const sectionalizer = String(answers.sectionalizer ?? 'pas');
+  // （白紙で始めた案件で、引込元がキャビネットのまま未回答のときは、図面だけ、UGSとして描く。必須の未入力として残るので、答えるまで次へは進めない）
+  const sectionalizer = String(answers.sectionalizer ?? (answers.sourceType === 'cabinet' ? 'ugs' : 'pas'));
   // 内部の条件式は、これまでの「PASがあるか」の形（hasPas）のまま使えるようにしておく
   d.hasPas = sectionalizer === 'none' ? 'no' : 'yes';
   // 図面に書く名前。PGSはキャビネット内の区分開閉器で、PASとは書かない
