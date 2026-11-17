@@ -182,7 +182,7 @@ export const AREAS_QUESTIONS: Question[] = [
       all: [{ key: 'areaNo', gt: 1 }, { any: [{ key: 'linkGroundRelay', eq: 'gr' }, { all: [{ key: 'linkGroundRelay', eq: 'dgr' }, { key: 'linkSenderZpd', eq: 'yes' }] }] }, { key: 'linkGroundStage', gt: 0 }],
     },
     ask: 'always',
-    help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
+    help: 'ほとんどのケースは、高圧ケーブル（答えなければ、高圧ケーブルとして描く）。母線を選ぶと、送り出しの開閉器の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
   },
   ...[2, 3, 4].flatMap((k): Question[] => stageQuestions(k)),
   ...partQuestions(),

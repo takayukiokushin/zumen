@@ -3,7 +3,7 @@ import { PCS_INPUT_MAX, countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
 import { LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 import { evaluate, fillTemplate } from './condition.ts';
-import { QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
+import { BLANK_DEFAULTS, QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
 import { AREA_CHAIN, CHAIN_BY_FORM, CT_SHOWN, DOWNSTREAM, EXTRAS, FEEDERS, MAIN_GROUND_ON, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
@@ -90,7 +90,8 @@ export function openStartMode(answers: Answers): Answers {
 /** 画面・図面・確認で使う、実際に効いている回答（質問の既定値と、状況に応じた初期値を足したもの。白紙で始めた案件は、足さない） */
 export function effectiveAnswers(answers: Answers): Answers {
   const normalized = normalizeAnswers(answers);
-  if (isBlankStart(normalized)) return withAutoValues(normalized);
+  // 白紙で始めた案件は、初期値を足さない（ただし、名前の頭の部分「中電柱：」などは、続けて入力できるよう、入れておく）
+  if (isBlankStart(normalized)) return withAutoValues({ ...BLANK_DEFAULTS, ...normalized });
   // 以前の案件：「補助変圧器はありますか？」が未回答（かつ、台数でも「あり」と読めなかった）なら、「なし」
   return withAutoValues({ ...QUESTION_DEFAULTS, ...(normalized.hasAuxTr === undefined ? { hasAuxTr: 'no' } : {}), ...normalized });
 }

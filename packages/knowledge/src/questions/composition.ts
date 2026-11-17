@@ -423,7 +423,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     autoValue: [{ value: 'yes' }],
     showIf: { key: 'relayAt', in: [...CT_AT_VALUES, ...VT_AT_VALUES] },
     ask: 'always',
-    help: 'あり・なしの両方がある。最初は「あり」。VTにつく継電器（UVR・OVR）の試験端子は、VTごとに1つだけ（VT→試験端子→UVR・OVR）。どれか1つでも「あり」なら、その1つが入る',
+    help: 'あり・なしの両方がある。答えなければ「あり」として描く。VTにつく継電器（UVR・OVR）の試験端子は、VTごとに1つだけ（VT→試験端子→UVR・OVR）。どれか1つでも「あり」なら、その1つが入る',
   },
   {
     id: 'hasZpd',
@@ -508,7 +508,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     dropdown: true,
     showIf: { all: [{ any: [{ key: 'mainGroundRelay', eq: 'gr' }, { all: [{ key: 'mainGroundRelay', eq: 'dgr' }, { key: 'hasZpd', eq: 'yes' }] }] }, { any: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'intakeLbs', eq: 'yes' }] }] },
     ask: 'always',
-    help: 'ほとんどのケースは、高圧ケーブル（初期値）。母線を選ぶと、主遮断装置の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
+    help: 'ほとんどのケースは、高圧ケーブル（答えなければ、高圧ケーブルとして描く）。母線を選ぶと、主遮断装置の一次側（手前）または二次側（すぐ後ろ）に、ZCTを描く',
   },
   {
     id: 'hasLa',

@@ -50,11 +50,12 @@ export const SITE_QUESTIONS: Question[] = [
     label: '引込元の名称',
     type: 'text',
     clearOnDuplicate: true,
-    // 「中電柱：」を最初から入れておき、その後ろに電柱の名称を入力する
+    // 「中電柱：」を最初から入れておき、その後ろに電柱の名称を、続けて入力する（白紙で始めた案件でも入れる）
     defaultValue: '中電柱：',
+    blankDefault: true,
     showIf: { key: 'sourceType', ne: 'cabinet' },
     ask: 'always',
-    help: '電柱番号を入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。',
+    help: '「中電柱：」が最初から入っている。その後ろに、電柱番号を、続けて入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。',
   },
   {
     id: 'hasAs',
@@ -77,11 +78,12 @@ export const SITE_QUESTIONS: Question[] = [
     label: 'キャビネット名称',
     type: 'text',
     clearOnDuplicate: true,
-    // 「キャビネット番号：」を最初から入れておき、その後ろにキャビネットの名称を入力する
+    // 「キャビネット番号：」を最初から入れておき、その後ろにキャビネットの名称を入力する（白紙で始めた案件でも入れる）
     defaultValue: 'キャビネット番号：',
+    blankDefault: true,
     showIf: { key: 'sourceType', eq: 'cabinet' },
     ask: 'always',
-    help: '「キャビネット番号：」が最初から入っている。その後ろに、キャビネットの名称を入力する',
+    help: '「キャビネット番号：」が最初から入っている。その後ろに、続けて、キャビネットの名称を入力する',
   },
 
   /* ---------------- 責任分界点 ---------------- */

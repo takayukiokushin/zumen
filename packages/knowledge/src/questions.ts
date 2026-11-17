@@ -45,6 +45,11 @@ for (const q of QUESTIONS) {
   if (WIDE_FIELDS.includes(q.id) && q.size === undefined) q.size = 'l';
 }
 
+/** 白紙で始めた案件でも入れておく既定値（名前の頭の部分「中電柱：」など。blankDefault の付いた質問） */
+export const BLANK_DEFAULTS: Record<string, Value> = Object.fromEntries(
+  QUESTIONS.filter((q) => q.blankDefault && q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]),
+);
+
 /** 質問定義の既定値（エリアごとの入力でも、まだ触っていない質問に使う） */
 export const QUESTION_DEFAULTS: Record<string, Value> = Object.fromEntries(
   QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]),

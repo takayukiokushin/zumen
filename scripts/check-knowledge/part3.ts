@@ -272,6 +272,14 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       ok(areaView(two, 1).hasAuxTr === undefined, `${mode}：2か所目のエリアで、補助変圧器が、答えていないのに「あり」と見えています`);
       ok(normalizeAnswers({ ...bt, hasAuxTr: 'no' }).hasAuxTr === 'no', `${mode}：答えた「なし」が、読み替えで変わっています`);
     }
+    // 名前の頭の部分（中電柱：・キャビネット番号：）は、白紙で始めた案件でも、最初から入っている（続けて入力できる）。ほかの初期値は入らない
+    for (const mode of ['blank', 'blank-open']) {
+      const e = effectiveAnswers({ startMode: mode });
+      ok(e.poleName === '中電柱：' && e.cabinetName === 'キャビネット番号：' && e.ugsCabinetName === 'キャビネット番号：', `${mode}：名前の頭の部分が、最初から入っていません`);
+      ok(e.hasAs === undefined && e.sectionalizer === undefined, `${mode}：名前の頭の部分のほかに、初期値が入っています`);
+      ok(effectiveAnswers({ startMode: mode, poleName: '中電柱：猪子山（分）81' }).poleName === '中電柱：猪子山（分）81', `${mode}：入力した引込元の名称が、初期値で上書きされています`);
+      ok(buildComposition({ startMode: mode, sourceType: 'pole' }).every((i) => !i.label.some((t) => /^中電柱/.test(t))), `${mode}：「中電柱：」だけの文字が、図面に出ています`);
+    }
     ok(normalizeAnswers({ hasBattery: 'yes' }).hasAuxTr === 'yes' && normalizeAnswers({ auxTrCount: '2' }).hasAuxTr === 'yes' && normalizeAnswers({ auxTrCount: '0' }).hasAuxTr === undefined, '以前の案件（印なし）で、補助変圧器の読み替えが働いていません');
     // 必須項目：白紙なら、表のとおり、すべて未入力として並ぶ。印が無い案件は、既定値のある項目は並ばない
     const need = new Set(missingRequired({ startMode: 'blank' }).map((x) => x.id));
@@ -769,7 +777,7 @@ console.log('\n■ 説明文の整理');
 {
   const q = (id: string) => QUESTIONS.find((x) => x.id === id);
   const expectText: [string, string][] = [
-    ['poleName', '電柱番号を入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。'],
+    ['poleName', '「中電柱：」が最初から入っている。その後ろに、電柱番号を、続けて入力する。（例：猪子山（分）81）。（分）（幹）（支）（連絡）などの区分は、電柱の記載をそのまま反映する。'],
     ['sectionalizer', 'PAS・PGS＝電柱上に設置する区分開閉器。UGS＝キャビネット内に設置する区分開閉器。図面には、選んだ名前（PAS・PGS・UGS）を書く。引込元が地上キャビネットのときは、UGS（またはなし）。'],
     ['cableInstallation', '「なし」は、電柱の上に受電設備を構成する場合などで、区分開閉器の後をケーブルを介さず、ふつうの電線でつなぐとき（ケーブル端末も描かない）'],
     ['relayCount', 'GR・DGRは、ここには入れない（「ZPD・LA・接地」の地絡継電器の質問で答える）'],

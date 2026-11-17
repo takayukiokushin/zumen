@@ -30,9 +30,10 @@ export const RECEIVING_QUESTIONS: Question[] = [
     type: 'text',
     // 「キャビネット番号：」を最初から入れておき、その後ろにキャビネットの名称を入力する（引込元のキャビネットとは別）
     defaultValue: 'キャビネット番号：',
+    blankDefault: true,
     showIf: { key: 'sectionalizer', eq: 'ugs' },
     ask: 'always',
-    help: 'UGSが入っているキャビネットの名称。「キャビネット番号：」が最初から入っている。その後ろに名称を入力する。図面では、UGSの右横の、定格の欄のすぐ上に書く',
+    help: 'UGSが入っているキャビネットの名称。「キャビネット番号：」が最初から入っている。その後ろに、続けて名称を入力する。図面では、UGSの右横の、定格の欄のすぐ上に書く',
   },
   {
     id: 'groundCabinet',

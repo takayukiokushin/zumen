@@ -50,6 +50,11 @@ export interface Question {
   size?: 'xs' | 's' | 'm' | 'l';
   unit?: string;
   defaultValue?: Value;
+  /**
+   * 白紙で始めた案件でも、既定値（defaultValue）を入れておく項目（第14弾 項目3では、初期値を入れないが、
+   * 名前の頭の部分「中電柱：」「キャビネット番号：」は、続けて入力できるよう、最初から入れておく）。
+   */
+  blankDefault?: boolean;
   /** 画面に出す説明文 */
   help?: string;
   /**
