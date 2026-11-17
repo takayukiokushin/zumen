@@ -587,6 +587,12 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="400"]) .tabbar-right > button.icon-btn { padding-left: calc(3px * var(--ctl-scale)); padding-right: calc(3px * var(--ctl-scale)); font-size: calc(10px * var(--ctl-scale)); }
   :where(html[data-uw~="400"]) .tabbar .who { font-size: calc(11px * var(--text-scale)); }
 
+/* タブレット・スマホ（実効幅900以下）：ログイン中の名前（会社名など）と役割は、場所を取らせない。
+   足りないときは、まっさきに縮める：名前は、小さな文字で、2行まで（それ以上は、切る）。ほかのボタンは、縮めない */
+  :where(html[data-uw~="900"]) .tabbar-right > .who { flex: 0 1 11em; min-width: 3.5em; max-width: 11em; gap: 4px; white-space: normal; }
+  :where(html[data-uw~="900"]) .tabbar .who-name { flex: 1 1 auto; min-width: 0; font-size: calc(10px * var(--text-scale)); line-height: 1.15; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+  :where(html[data-uw~="900"]) .tabbar .who .role { flex: 0 0 auto; font-size: calc(10px * var(--text-scale)); padding-left: 4px; padding-right: 4px; }
+
 
 /* ㉘ タブにしばらくカーソルを置くと出る説明 */
 .tab-wrap { position: relative; display: inline-flex; }
