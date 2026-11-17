@@ -92,7 +92,7 @@ export const en: Dict = {
   'settings.scrollbar.normal': 'Standard',
   'settings.scrollbar.thick': 'Thick',
   'settings.scrollbar.xthick': 'Extra thick',
-  'settings.scrollbarNote': 'Width of the vertical scrollbar. Applies on computers with a mouse (phones and tablets keep their default width).',
+  'settings.scrollbarNote': 'Width of the vertical scrollbar. The bar is always visible on computers and on touch devices (phones and tablets), where it is drawn thinner than on computers. Safari on iPhone and iPad does not allow changing the width.',
   'settings.lang': 'Select language',
   'settings.langNote': 'Text printed on the drawing (the drawing preview and printed/PDF output) stays in Japanese.',
   'settings.langRef': '<b>Languages other than Japanese are reference translations.</b> They have not been reviewed by a professional translator. For anything safety-related (drawings, rules, questions), please check the Japanese screen.',

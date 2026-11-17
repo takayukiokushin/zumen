@@ -93,7 +93,7 @@ export const ja = {
   'settings.scrollbar.normal': '標準',
   'settings.scrollbar.thick': '太め',
   'settings.scrollbar.xthick': '極太',
-  'settings.scrollbarNote': '画面の右端などにある、上下に動かす棒の太さです。マウスのあるパソコンで効きます（スマホ・タブレットは、端末の標準の太さのままです）。',
+  'settings.scrollbarNote': '画面の右端などにある、上下に動かす棒の太さです。パソコンでも、タッチ端末（スマホ・タブレット）でも、いつも見える棒になります（タッチ端末では、細め・標準・太め・極太が、パソコンより細い棒になります。iPhone・iPad の Safari は、棒の太さを変えられません）。',
   'settings.lang': '言語を選択',
   'settings.langNote': '図面に印刷される文字（図面のプレビューと、印刷・PDF）は、日本語のままです。',
   'settings.langRef': '<b>日本語以外の言葉は、参考訳です。</b>専門の翻訳者の確認を受けていません。安全に関わる内容（図面・規則・質問）は、日本語の画面で確かめてください。',

@@ -92,7 +92,7 @@ export const fr: Dict = {
   'settings.scrollbar.normal': 'Standard',
   'settings.scrollbar.thick': 'Épaisse',
   'settings.scrollbar.xthick': 'Très épaisse',
-  'settings.scrollbarNote': "Largeur de la barre de défilement verticale. S’applique sur ordinateur avec souris (les téléphones et tablettes gardent leur largeur par défaut).",
+  'settings.scrollbarNote': "Largeur de la barre de défilement verticale. La barre reste toujours visible sur ordinateur et sur appareil tactile (téléphones et tablettes), où elle est plus fine que sur ordinateur. Safari sur iPhone et iPad ne permet pas de changer la largeur.",
   'settings.lang': 'Choisir la langue',
   'settings.langNote': 'Les textes imprimés sur le schéma (aperçu du schéma, impression et PDF) restent en japonais.',
   'settings.langRef': '<b>Les langues autres que le japonais sont des traductions indicatives.</b> Elles n’ont pas été relues par un traducteur professionnel. Pour tout ce qui touche à la sécurité (plans, règles, questions), vérifiez l’écran en japonais.',

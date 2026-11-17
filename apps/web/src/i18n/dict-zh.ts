@@ -92,7 +92,7 @@ export const zh: Dict = {
   'settings.scrollbar.normal': '标准',
   'settings.scrollbar.thick': '粗',
   'settings.scrollbar.xthick': '特粗',
-  'settings.scrollbarNote': '上下滚动条的粗细。在带鼠标的电脑上生效（手机和平板保持设备默认粗细）。',
+  'settings.scrollbarNote': '上下滚动条的粗细。在电脑和触控设备（手机、平板）上，滚动条会一直显示（触控设备上比电脑上更细）。iPhone 和 iPad 的 Safari 无法改变粗细。',
   'settings.lang': '选择语言',
   'settings.langNote': '图纸上印刷的文字（图纸预览以及打印/PDF）保持日文。',
   'settings.langRef': '<b>日语以外的语言均为参考译文。</b>尚未经过专业译员审核。涉及安全的内容（图纸、规则、问题），请以日语界面为准。',
