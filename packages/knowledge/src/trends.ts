@@ -1,5 +1,6 @@
 import type { Answers } from './condition.ts';
-import { QUESTIONS } from './questions.ts';
+import { isBlankStart } from './engine.ts';
+import { QUESTIONS, startsWithYesOnly } from './questions.ts';
 import type { Question } from './questions/types.ts';
 
 /**
@@ -54,8 +55,13 @@ export function tallyTrends(list: readonly Answers[], context?: string): Record<
     const valid = new Set((q.options ?? []).map((o) => o.value));
     const counts = new Map<string, number>();
     let total = 0;
+    // 最初は「あり」だけを出す質問（第15弾 項目1）は、白紙で始めた案件では、「なし」を保存しない（何も選ばない＝なし）。
+    // 答えが無い案件を「なし」として数えないと、「あり 100%」のように偏るので、白紙で始めた案件の、答えの無いものは「なし」として数える。
+    // （以前の案件は、答えが無いものは、標準の答えを使っていて、答えの有無で意味を決められないので、これまでどおり、数えない）
+    const unansweredIsNo = startsWithYesOnly(q);
     for (const a of rows) {
-      const v = a[q.id];
+      let v = a[q.id];
+      if ((v === undefined || v === null || v === '') && unansweredIsNo && isBlankStart(a)) v = 'no';
       if (v === undefined || v === null || v === '') continue;
       const s = String(v);
       // 一覧にない値（昔の選択肢・手で書き換えた値）は、数えない

@@ -15,7 +15,7 @@ export function TrendHint({ questionId, entry, onAdopt }: { questionId: string; 
   if (!q) return null;
   const scope = entry.scope === 'context' ? t('trend.scopeContext', { n: entry.total }) : t('trend.scopeAll', { n: entry.total });
   return (
-    <p className="trend" title={t('trend.refTitle')}>
+    <p className="trend" title={`${t('trend.refTitle')}（${scope}）`}>
       <span className="trend-title">{t('trend.title')}</span>
       {entry.top.map((e) => {
         const opt = q.options?.find((o) => o.value === e.value);

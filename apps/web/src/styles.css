@@ -1025,6 +1025,14 @@ main.form .fields { align-items: stretch; }
 main.form .field > label:first-child { flex: 1 1 auto; align-items: last baseline; }
 main.form .field .help { margin: 0; min-height: var(--help-h); }
 main.form .fields:has(> .field > .help) > .field:not(:has(> .help))::after { content: ""; display: block; height: var(--help-h); }
+/* 「過去の傾向」の表示も、同じ行の中で、入力欄・ボタンの高さがずれないように、1行の高さに決める。
+   傾向のある欄は、いつも1行（入りきらない文字は「…」で省く。割合の件数の説明「（同じ受電の形の案件 ○件）」は、マウスを載せると出る）。
+   傾向のない欄にも、同じ高さの余白を空ける。傾向を隠す設定のときは、傾向そのものが出ないので、何も起きない */
+main.form { --trend-h: calc(22px * var(--text-scale)); }
+main.form .field .trend { flex-wrap: nowrap; height: var(--trend-h); overflow: hidden; box-sizing: border-box; }
+main.form .field .trend-scope { display: none; }
+main.form .field .trend-chip { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bottom: calc(var(--trend-h) + 2px + 3px * var(--text-scale)); }
 
 /* スマホ（幅700以下）：1段目の4つのタブは、文字が2行・3行に折れるものがあっても、同じ高さ・同じ位置にそろえる（項目7） */
 /* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */

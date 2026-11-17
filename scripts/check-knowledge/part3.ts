@@ -1023,6 +1023,15 @@ console.log('\n■ 過去の案件の傾向');
   ok(t.hasPv?.total === 12 && t.hasPv.top[0]?.value === 'yes' && t.hasPv.top[0].count === 9 && t.hasPv.top[1]?.value === 'no', `傾向の数え方が違います（${JSON.stringify(t.hasPv)}）`);
   // 受電の形が同じ案件で足りるときは、その案件で数える。足りないときは、全案件で数える
   const mixed = [...mk(10, () => 'yes', { sourceType: 'pole' }), ...mk(10, () => 'no', { sourceType: 'cabinet' })];
+  // 最初は「あり」だけを出す質問（第15弾 項目1）：白紙で始めた案件の、答えの無いものは「なし」として数える（以前の案件の、答えの無いものは、数えない）
+  {
+    const blank = (n: number, yes: number): Answers[] => Array.from({ length: n }, (_, i) => ({ startMode: i % 2 ? 'blank' : 'blank-open', ...(i < yes ? { hasZpd: 'yes' } : {}) }));
+    const z = tallyTrends(blank(20, 5)).hasZpd;
+    ok(z?.total === 20 && z.top[0]?.value === 'no' && z.top[0].count === 15 && z.top[1]?.value === 'yes' && z.top[1].count === 5, `白紙の案件の、答えの無い「あり／なし」を、「なし」として数えていません（${JSON.stringify(z)}）`);
+    const old = tallyTrends([...blank(12, 3), ...Array.from({ length: 30 }, () => ({}) as Answers)]).hasZpd;
+    ok(old?.total === 12, `以前の案件の、答えの無いものを、数えています（${old?.total}）`);
+    ok(tallyTrends(blank(20, 20)).hasCapacitor === undefined && tallyTrends(Array.from({ length: 20 }, () => ({ startMode: 'blank' }) as Answers)).hasCapacitor === undefined, '必須の質問（高圧コンデンサの有無）の、答えの無い案件を、数えています');
+  }
   ok(tallyTrends(mixed, 'pole').hasPv?.scope === 'context' && tallyTrends(mixed, 'pole').hasPv?.top[0]?.value === 'yes', '同じ受電の形の案件で数えていません');
   ok(tallyTrends(mixed, 'ground').hasPv?.scope === 'all', '同じ受電の形が足りないとき、全案件で数えていません');
   // 一覧にない値・空の答えは数えない
