@@ -194,7 +194,7 @@ export const ko: Dict = {
   'project.autoSaveLeave': '지금 편집 중인 내용은 자동으로 저장됩니다. 계속하시겠습니까?',
   'project.gone': '“{name}”은(는) 삭제되어 저장할 수 없습니다. 이 화면의 내용은 남아 있지만 저장할 수 없습니다. 다른 안건을 열거나 새로 만들 때는 확인 없이 이동할 수 있습니다. 삭제한 안건은 도면 목록 아래의 “삭제한 안건”에서 되돌릴 수 있습니다.',
   'project.saveFailedTitle': '저장하지 못했습니다',
-  'project.saveFailedLeave': '편집 중인 내용을 저장하지 못했습니다(통신이 끊어졌을 때 등). 저장하지 않고 다른 안건으로 이동하시겠습니까? 이동하면 편집 중인 내용은 사라집니다.',
+  'project.saveFailedLeave': '편집 중인 내용을 저장하지 못했습니다(통신 이상 등). 저장하지 않고 다른 안건으로 이동할 수도 있습니다. 이동하면 편집 중인 내용은 사라집니다.',
   'project.saveFailedGo': '저장하지 않고 이동',
   'project.saveFailedStay': '머무르기',
   'project.discardTitle': '저장하지 않고 이동',

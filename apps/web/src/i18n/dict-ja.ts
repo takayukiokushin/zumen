@@ -196,7 +196,7 @@ export const ja = {
   'project.autoSaveLeave': '現在編集中の内容は、自動で保存されます。よろしいですか？',
   'project.gone': '「{name}」は、削除されたため、保存できません。この画面の内容は残りますが、保存はできません。別の案件を開く・新しく作るときは、確認なしで移れます。消した案件は、図面一覧の下の「消した案件」から戻せます。',
   'project.saveFailedTitle': '保存できませんでした',
-  'project.saveFailedLeave': '編集中の内容を保存できませんでした（通信が切れているなど）。保存せずに、別の案件へ移りますか？ 移ると、編集中の内容は消えます。',
+  'project.saveFailedLeave': '編集中の内容を保存できませんでした（通信の異常など）。保存せずに、別の案件へ移ることもできます？ 移ると、編集中の内容は消えます。',
   'project.saveFailedGo': '保存せずに移る',
   'project.saveFailedStay': 'とどまる',
   'project.discardTitle': '保存せずに移る',
