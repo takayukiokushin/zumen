@@ -629,7 +629,7 @@ const data: Record<string, string> = {
   "地表面": "Niveau du sol",
   "外箱": "Coffret",
   "送り先名称（回路名称）": "Nom de destination (nom du circuit)",
-  "第2変電所 / ○○出先": "第2変電所 / ○○出先",
+  "第2変電所 / ○○出先": "第2変電所 / ○○出先 (2e poste / antenne ○○)",
   "必要なときだけ入力する（任意）。図面では、送り出し側（電源側）のケーブル端末の近くに書く。太さ・長さは、これまでどおり、受け側に書く": "À saisir seulement si nécessaire (facultatif). Sur le schéma, il est inscrit près de l’extrémité du câble côté départ (source). La section et la longueur restent inscrites côté réception, comme avant.",
   "1台目のPCSをつなぐ変圧器": "Transformateur du PCS n°1",
   "1台目のPCSの下の、PVの容量": "Capacité du PV sous le PCS n°1",

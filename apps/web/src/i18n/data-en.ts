@@ -635,7 +635,7 @@ const data: Record<string, string> = {
   "地表面": "Ground level",
   "外箱": "Enclosure",
   "送り先名称（回路名称）": "Destination name (circuit name)",
-  "第2変電所 / ○○出先": "第2変電所 / ○○出先",
+  "第2変電所 / ○○出先": "第2変電所 / ○○出先 (= 2nd substation / ○○ branch office)",
   "必要なときだけ入力する（任意）。図面では、送り出し側（電源側）のケーブル端末の近くに書く。太さ・長さは、これまでどおり、受け側に書く": "Enter only when needed (optional). On the drawing, it is written near the cable end on the sending (source) side. Cable size and length are written on the receiving side, as before.",
   "1台目のPCSをつなぐ変圧器": "Transformer for PCS #1",
   "1台目のPCSの下の、PVの容量": "PV capacity under PCS #1",
