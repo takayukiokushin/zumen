@@ -576,6 +576,11 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]) .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
   :where(html[data-uw~="700"]) .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* きわめて狭い画面（実効幅300以下。スマホで、画面全体を160%にしたときなど）：4つのタブを、2つずつ2段に並べる。
+   1段に4つ並べると、1つの幅が50px足らずになり、日本語は1文字ずつ縦に並び、英語・フランス語は、右にはみ出す */
+  :where(html[data-uw~="300"]) .tabbar > button, :where(html[data-uw~="300"]) .tabbar > .tab-wrap { flex: 1 1 calc(50% - var(--gap, 10px)); }
+  :where(html[data-uw~="300"]) .tabbar > button, :where(html[data-uw~="300"]) .tabbar .tab-wrap button { padding-top: calc(6px * var(--text-scale)); padding-bottom: calc(6px * var(--text-scale)); overflow-wrap: anywhere; }
+
 /* さらに狭い画面（幅400以下。小さめのスマホ）：文字と余白を、もう少し詰める */
 /* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 400px 以下のとき（html の data-uw に 400 が入る） */
   :where(html[data-uw~="400"]) .tabbar-right > button { padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }
@@ -804,6 +809,18 @@ button.with-icon svg { flex: 0 0 auto; }
   /* とても狭いとき（幅400以下）：文字を、もう少し小さくする */
   :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-dup .btn { font-size: calc(11.5px * var(--ctl-scale)); padding-left: calc(4px * var(--ctl-scale)); padding-right: calc(4px * var(--ctl-scale)); }
   :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-act .btn, :where(html[data-uw~="400"]) .joblist .jobs tr.has-del .c-del .btn { padding-left: calc(8px * var(--ctl-scale)); padding-right: calc(8px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
+/* きわめて狭い画面（実効幅300以下）：図面一覧の1件ぶんのカードは、「開く」と「消す」を横に2つ、
+   「複製して新規作成」を、その下の段に、幅いっぱいに並べる
+   （3つを横に並べると、真ん中の「複製して新規作成」が、幅25px・高さ370pxほどに潰れる） */
+  :where(html[data-uw~="300"]) .joblist .jobs tr.has-del { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :where(html[data-uw~="300"]) .joblist .jobs tr.has-del .c-name, :where(html[data-uw~="300"]) .joblist .jobs tr.has-del .c-info { grid-column: 1 / -1; }
+  :where(html[data-uw~="300"]) .joblist .jobs tr.has-del .c-act { grid-column: 1; order: 3; justify-self: stretch; }
+  :where(html[data-uw~="300"]) .joblist .jobs tr.has-del .c-del { grid-column: 2; order: 4; justify-self: stretch; }
+  :where(html[data-uw~="300"]) .joblist .jobs tr.has-del .c-dup { grid-column: 1 / -1; order: 5; justify-self: stretch; }
+  :where(html[data-uw~="300"]) .joblist .jobs tr.has-del .c-dup .btn { width: 100%; white-space: normal; }
+  /* 消した案件の「戻す」ボタンなど、ほかのカードのボタンも、カードの幅を超えない */
+  :where(html[data-uw~="300"]) .joblist .jobs .c-act .btn { min-width: 0; width: 100%; }
+
 
 
 /* 受電設備エリアが2か所以上のとき：エリアごとの大きなまとまり */

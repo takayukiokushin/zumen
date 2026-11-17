@@ -114,7 +114,7 @@ let zoomMode: 'standard' | 'legacy' | null = null;
  * CSS の @media は、倍率を考えない画面の幅で決まってしまうので、ここで計算して、html の data-uw に、
  * 「その幅以下の区切り」を全部入れる（例：実効幅 650 なら "700 900"）。CSS は html[data-uw~="700"] で見る。
  */
-export const WIDTH_STEPS = [400, 640, 700, 900] as const;
+export const WIDTH_STEPS = [300, 400, 640, 700, 900] as const;
 
 /** いまの実効幅（px） */
 export function usableWidth(uiScale: number): number {
