@@ -293,6 +293,14 @@ button.trend-chip:hover { text-decoration: underline; }
 .voice .rejected code { font-size: calc(12px * var(--text-scale)); }
 .voice-actions { display: flex; flex-wrap: wrap; gap: var(--gap, 10px); margin-bottom: 10px; }
 .ok-note-inline { margin: 0 0 10px; font-size: calc(12.5px * var(--text-scale)); color: var(--ok); }
+/* 「Claudeのプロジェクトを用意する」：見出しの左に矢印（閉じているときは▶、開いているときは▼） */
+.voice-setup > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; margin: 0; padding: 2px 0; color: var(--ink); font-size: inherit; }
+.voice-setup > summary::-webkit-details-marker { display: none; }
+.voice-setup > summary::before { content: "▶"; flex: none; font-size: calc(15px * var(--text-scale)); color: var(--accent-text); transition: transform .12s; }
+.voice-setup[open] > summary::before { transform: rotate(90deg); }
+.voice-setup > summary h2 { margin: 0; }
+.voice-setup[open] > summary { margin-bottom: 8px; }
+.voice-setup > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .analyze details summary { cursor: pointer; margin: 6px 0 8px; font-size: calc(12.5px * var(--text-scale)); color: var(--ink-2); }
 
 .drop { display: grid; place-items: center; gap: 6px; padding: 28px; border: 2px dashed var(--rule);

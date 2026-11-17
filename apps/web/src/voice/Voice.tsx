@@ -137,7 +137,11 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
       )}
 
       <section className="panel">
-        <h2>{t('voice.setupTitle')}</h2>
+        {/* 一度やれば済む準備なので、最初は閉じておく（開くと、3つの手順・バージョン・コピーのボタンが出る） */}
+        <details className="voice-setup">
+          <summary>
+            <h2>{t('voice.setupTitle')}</h2>
+          </summary>
         <ol className="hint voice-steps">
           <li>{t('voice.p1')}</li>
           <li>
@@ -157,6 +161,7 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
         <details>
           <summary>{t('voice.seeInstruction', { n: full.length.toLocaleString() })}</summary>
           <textarea className="voice-paste" readOnly rows={14} value={full} onFocus={(e) => e.currentTarget.select()} />
+        </details>
         </details>
       </section>
     </div>
