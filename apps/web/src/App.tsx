@@ -117,6 +117,8 @@ export function App() {
   const { status: serverStatus } = useServerStatus(user?.role === 'admin');
   const warnText = useWarningText();
   const [statusBannerClosed, setStatusBannerClosed] = useState(false);
+  /** サーバーの状態の注意の帯を出すか。閉じられる帯（これと、初めての方への「使い方」の案内）は、一度に1本だけ出す。これが先で、閉じると、次の帯が出る（スマホで文字を大きくしたとき、帯が重なって、図面一覧が見えなくなるため） */
+  const statusBannerShown = !!serverStatus && serverStatus.warnings.length > 0 && !statusBannerClosed;
   const docVersion = useRef(0);
   useEffect(() => {
     docVersion.current++;
@@ -595,7 +597,7 @@ export function App() {
         readOnly={readOnly}
       />
 
-      {firstHint && (
+      {firstHint && !statusBannerShown && (
         <p className="bar-lock">
           {t('help.firstTime')}
           <button
@@ -643,7 +645,7 @@ export function App() {
         </p>
       )}
 
-      {serverStatus && serverStatus.warnings.length > 0 && !statusBannerClosed && (
+      {statusBannerShown && serverStatus && (
         <p className="bar-warn status-banner" role="alert">
           <b>{t('status.banner.title')}</b>
           {serverStatus.warnings.map(warnText).join(' ')}
