@@ -108,6 +108,18 @@ for (const q of QUESTIONS) {
   }
 }
 for (const v of Object.values(CATEGORY_LABEL)) add(v);
+// 入力画面に出る注意文（packages/knowledge/src/engine.ts の inputNotices が、実行中に作る文）。
+// 質問の定義には無いので、ソースの `text: '…'` を読んで、使われている言葉として数える（訳が無いものは、ここで見つかる）
+{
+  const src = readFileSync(new URL('../packages/knowledge/src/engine.ts', import.meta.url), 'utf8');
+  for (const m of src.matchAll(/\b(?:text:|const text =)\s*(['`])((?:(?!\1)[^\\\n]|\\.)*)\1/g)) {
+    const raw = m[2]!;
+    if (!jp.test(raw)) continue;
+    // 「${what}」には、電動機・発電機が入る（低圧の電動機・発電機の注意）
+    if (raw.includes('${what}')) for (const what of ['電動機', '発電機']) add(raw.replaceAll('${what}', what));
+    else if (!raw.includes('${')) add(raw);
+  }
+}
 for (const d of SYMBOLS) add(d.abbr);
 for (const d of SYMBOLS) {
   add(d.nameJa);
@@ -128,7 +140,7 @@ for (const lang of LANGS) {
   const stale = Object.keys(d).filter((s) => !need.has(s) && !s.includes('@'));
   if (missing.length > 0) fail(`${lang}：訳が無い文が ${missing.length}件あります（例：${missing.slice(0, 3).join(' / ')}）`);
   if (wrong.length > 0) fail(`${lang}：文字の誤りが ${wrong.length}件あります（例：${wrong[0]} → ${d[wrong[0]!]}）`);
-  console.log(`  ${lang}：訳なし ${missing.length} / 文字の誤り ${wrong.length} / 使われていない訳 ${stale.length}`);
+  console.log(`  ${lang}：訳なし ${missing.length} / 文字の誤り ${wrong.length} / 使われていない訳 ${stale.length}${stale.length > 0 ? `（例：${stale.slice(0, 2).map((x) => x.slice(0, 30)).join(' / ')}）` : ''}`);
 }
 
 /* 「はい／いいえ」と「あり／なし」の使い分け（第13弾 項目52）：
