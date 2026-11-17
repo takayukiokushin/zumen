@@ -198,7 +198,7 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
         </p>
 
         <label
-          className={`drop${dragOver ? ' over' : ''}`}
+          className={`drop${dragOver ? ' over' : ''}${images.length > 0 ? ' compact' : ''}`}
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);

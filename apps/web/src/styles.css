@@ -297,6 +297,12 @@ button.trend-chip:hover { text-decoration: underline; }
 
 .drop { display: grid; place-items: center; gap: 6px; padding: 28px; border: 2px dashed var(--rule);
   border-radius: 3px; cursor: pointer; color: var(--muted); font-size: calc(13px * var(--text-scale)); background: var(--paper); }
+/* パソコン・タブレット：写真を置く場所を、大きく（ドラッグしやすい）。画面が低いときは、画面の高さの45%まで（ボタンが画面の外に出ないように） */
+.drop { min-height: min(calc(300px * var(--text-scale)), 45vh); text-align: center; }
+/* スマホ（幅が狭い画面）：ドラッグより、押して選ぶことが多いので、控えめに */
+:where(html[data-uw~="700"]) .drop { min-height: min(calc(150px * var(--text-scale)), 30vh); }
+/* 写真・PDFを選んだあとは、もとの高さに戻す（読み取りのボタンが、画面の外に出ないように） */
+.drop.compact, :where(html[data-uw~="700"]) .drop.compact { min-height: 0; }
 .drop:hover, .drop.over { border-color: var(--accent); color: var(--ink-2); }
 .drop.over { background: var(--accent-soft); }
 .drop input { display: none; }
