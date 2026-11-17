@@ -195,6 +195,13 @@ export const fr: Dict = {
   'project.unsavedGo': 'Continuer sans enregistrer',
   'project.autoSaveLeave': 'Ce que vous modifiez en ce moment sera enregistré automatiquement. Continuer ?',
   'project.gone': '« {name} » a été supprimé : il ne peut plus être enregistré. Le contenu de cet écran reste affiché, mais ne peut pas être enregistré. Vous pouvez ouvrir un autre projet ou en créer un nouveau sans confirmation. Un projet supprimé peut être restauré depuis « Projets supprimés », sous la liste des plans.',
+  'project.saveFailedTitle': 'Enregistrement impossible',
+  'project.saveFailedLeave': 'Le contenu en cours de modification n’a pas pu être enregistré (par exemple, la connexion est coupée). Passer à un autre projet sans enregistrer ? Le contenu en cours sera perdu.',
+  'project.saveFailedGo': 'Passer sans enregistrer',
+  'project.saveFailedStay': 'Rester ici',
+  'project.discardTitle': 'Passer sans enregistrer',
+  'project.discardConfirm': 'Le contenu en cours de modification ne pourra pas être enregistré. Confirmer ?',
+  'project.discardYes': 'Oui, passer',
   'project.autoSaveTitle': 'Ouvrir une autre affaire',
 
   'role.admin': 'Administrateur',

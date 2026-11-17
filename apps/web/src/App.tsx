@@ -120,6 +120,8 @@ export function App() {
    */
   const [goneName, setGoneName] = useState<string | null>(null);
   const goneRef = useRef(false);
+  /** 直前の保存が失敗した理由（保存の確認で、「保存せずに移る」を出すかを決める）。通信が切れたなど＝other、競合・他の人が編集中＝それぞれの案内がある */
+  const saveFailRef = useRef<'other' | 'stale' | 'locked' | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
   const [drawing, setDrawing] = useState<Doc | null>(null);
   /**
@@ -374,7 +376,25 @@ export function App() {
     if (!(await ask({ title: t('project.autoSaveTitle'), message: [t('project.autoSaveLeave')] }))) return false;
     const saved = await save();
     // 保存しようとして、案件が消されていると分かったとき（別の端末・別の人が消していた）は、保存できないが、移れるようにする
-    return saved || goneRef.current;
+    if (saved || goneRef.current) return true;
+    // 通信が切れたなどで、保存できなかったとき：通信が戻るまで、この画面から離れられなくなるので、「保存せずに移る」を選べるようにする。
+    // 移ると、編集中の内容は消えるので、もう一度、確かめる（競合・他の人が編集中のときは、それぞれの案内があるので、出さない）
+    if (saveFailRef.current === 'other') {
+      const go = await ask({
+        title: t('project.saveFailedTitle'),
+        message: [t('project.saveFailedLeave')],
+        confirmLabel: t('project.saveFailedGo'),
+        cancelLabel: t('project.saveFailedStay'),
+      });
+      if (!go) return false;
+      return ask({
+        title: t('project.discardTitle'),
+        message: [t('project.discardConfirm')],
+        confirmLabel: t('project.discardYes'),
+        cancelLabel: t('project.saveFailedStay'),
+      });
+    }
+    return false;
   };
 
   /**
@@ -498,6 +518,7 @@ export function App() {
   /** 保存する。保存できたら true（別の端末で更新されていた・通信できなかったなどのときは false） */
   const save = async (force = false): Promise<boolean> => {
     if (!projectId) return false;
+    saveFailRef.current = null;
     setSaving(true);
     setError(null);
     const patch = {
@@ -535,6 +556,7 @@ export function App() {
         markGone();
         return false;
       }
+      saveFailRef.current = e instanceof StaleError ? 'stale' : e instanceof LockedError ? 'locked' : 'other';
       if (e instanceof StaleError) {
         // 画面の内容はそのまま残し、上書きするか読み込み直すかを選んでもらう
         setStale({ updatedAt: e.updatedAt, by: e.updatedByName ?? (e.updatedByRemoved ? t('project.userRemoved') : null) });

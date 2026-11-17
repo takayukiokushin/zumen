@@ -194,6 +194,13 @@ export const en: Dict = {
   'project.unsavedGo': 'Leave without saving',
   'project.autoSaveLeave': 'What you are editing now will be saved automatically. Continue?',
   'project.gone': '“{name}” has been deleted, so it cannot be saved. The contents of this screen remain, but they cannot be saved. You can open another project or create a new one without a confirmation. A deleted project can be restored from “Deleted projects” below the drawing list.',
+  'project.saveFailedTitle': 'Could not save',
+  'project.saveFailedLeave': 'The content being edited could not be saved (for example, the connection was lost). Move to another project without saving? If you move, the content being edited will be lost.',
+  'project.saveFailedGo': 'Move without saving',
+  'project.saveFailedStay': 'Stay here',
+  'project.discardTitle': 'Move without saving',
+  'project.discardConfirm': 'The content being edited cannot be saved. Are you sure?',
+  'project.discardYes': 'Yes, move',
   'project.autoSaveTitle': 'Open another job',
 
   'role.admin': 'Admin',
