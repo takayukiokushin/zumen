@@ -612,9 +612,11 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]) .tabbar-right > button:last-child { white-space: nowrap; flex: 0 0 auto; }
   :where(html[data-uw~="300"]) .tabbar-right > button:last-child { white-space: normal; flex: 0 1 auto; }
   /* さらに狭いとき（実効幅300以下）：右側のボタンの文字と余白を、もう少し詰める（長い言葉の言語で、右にはみ出さないように） */
-  :where(html[data-uw~="300"]) .tabbar-right > button { font-size: calc(10px * var(--ctl-scale)); padding-left: calc(3px * var(--ctl-scale)); padding-right: calc(3px * var(--ctl-scale)); }
+  :where(html[data-uw~="300"]) .tabbar-right > button { font-size: calc(9px * var(--ctl-scale)); padding-left: calc(2px * var(--ctl-scale)); padding-right: calc(2px * var(--ctl-scale)); }
   :where(html[data-uw~="300"]) .tabbar-right > button.icon-btn { font-size: calc(9px * var(--ctl-scale)); padding-left: calc(2px * var(--ctl-scale)); padding-right: calc(2px * var(--ctl-scale)); }
   :where(html[data-uw~="300"]) .tabbar-right { gap: 1px; }
+  /* いちばん狭いとき（実効幅300以下）、長い単語（フランス語の「utilisateurs」など）は、必要なら単語の途中で折り返して、横にはみ出させない */
+  :where(html[data-uw~="300"]) .tabbar-right > button { overflow-wrap: anywhere; }
   /* 実効幅300以下では、「使い方」「設定」は、マークだけにする（名前は、押したときの説明と、読み上げに残す）。言語によっては、文字が長くて、1行に収まらないため */
   :where(html[data-uw~="300"]) .tabbar-right > button.icon-btn > span { display: none; }
   /* 役割の札（「Administrateur」など、長い言葉もある）は、名前と一緒に縮める。長いものは、「…」で省く */
@@ -1436,3 +1438,13 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 .canvas.view-only * { pointer-events: none; }
 .edit-badge { display: inline-flex; align-items: center; padding: calc(4px * var(--ctl-scale, 1)) calc(12px * var(--ctl-scale, 1)); border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--accent); color: var(--ink); font-weight: var(--weight-strong); white-space: nowrap; }
 .tools .edit-start { font-weight: var(--weight-strong); }
+
+/* ------------------------------------------------------------------ */
+/* 指で押す端末（スマホ・タブレット）：押す部品は、縦も横も44px以上（実機の見直し・全体デバッグ 4）  */
+/*   ボタン・選ぶ欄・入力欄の、最低の大きさ。文字の入る欄（textarea）や、チェック・ラジオ・スライダー・ファイルは、対象外（別に決めてある） */
+/* ------------------------------------------------------------------ */
+@media (pointer: coarse) {
+  /* :not(#_) は、ほかの規則（クラス名での指定）に負けないよう、優先度を上げるためのもの */
+  button:not(#_), select:not(#_), input:not(#_):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]) { min-height: 44px; }
+  button:not(#_), select:not(#_) { min-width: 44px; }
+}
