@@ -429,7 +429,6 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
           )}
         </div>
 
-        {stepwise && <p className="step-intro">{t('hearing.stepIntro')}</p>}
         {stepwise && lockedHint && (
           <p className="step-hint" role="status">
             {t('hearing.stepLocked', { name: lockedHint })}

@@ -370,7 +370,6 @@ export const fr: Dict = {
   'hearing.nth': 'n° {n} ({unit})',
   'hearing.needInput': 'Saisie manquante',
   'hearing.areaNth': 'Zone n° {n}',
-  'hearing.stepIntro': 'Les éléments s’ouvrent un par un, de haut en bas. Lorsque vous remplissez les éléments marqués « Obligatoire », le suivant s’ouvre.',
   'hearing.stepOpenAll': 'Tout ouvrir',
   'hearing.stepOpenAllNote': 'Arrêter l’ouverture un par un et ouvrir tous les éléments (ils restent ouverts ensuite).',
   'hearing.stepLater': 'À remplir ensuite : {list}',

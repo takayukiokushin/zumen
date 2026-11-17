@@ -368,7 +368,6 @@ export const ko: Dict = {
   'hearing.nth': '{n}{unit}째',
   'hearing.needInput': '미입력 있음',
   'hearing.areaNth': '{n}번째 구역',
-  'hearing.stepIntro': '지금은 위에서부터 한 항목씩 열리는 표시입니다. ‘필수’ 표시가 있는 항목을 입력하면 다음 항목이 열립니다.',
   'hearing.stepOpenAll': '모든 항목 열기',
   'hearing.stepOpenAllNote': '한 항목씩 열리는 표시를 그만두고 모든 항목을 엽니다(그 뒤에도 열린 채로 있습니다).',
   'hearing.stepLater': '이어서 입력할 항목: {list}',

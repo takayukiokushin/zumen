@@ -366,7 +366,6 @@ export const zh: Dict = {
   'hearing.nth': '第{n}{unit}',
   'hearing.needInput': '有未填项',
   'hearing.areaNth': '第{n}处区域',
-  'hearing.stepIntro': '现在是从上到下、逐项展开的显示。填写带有“必填”标记的项目后，下一项会展开。',
   'hearing.stepOpenAll': '展开全部项目',
   'hearing.stepOpenAllNote': '停止逐项展开，展开全部项目（之后也保持展开）。',
   'hearing.stepLater': '接下来要填写：{list}',

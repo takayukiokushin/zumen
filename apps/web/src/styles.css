@@ -1298,7 +1298,6 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 /* 上から1つずつ開く表示（第14弾 項目3） */
 .nav a.locked { color: var(--muted); border-left-color: transparent; cursor: pointer; }
 .nav a.locked .count { font-size: calc(10px * var(--text-scale)); }
-.step-intro { margin: 0 0 calc(10px * var(--text-scale)); padding: calc(7px * var(--text-scale)) calc(12px * var(--text-scale)); background: var(--accent-soft); border-left: 3px solid var(--accent); font-size: calc(12.5px * var(--text-scale)); }
 .step-hint { margin: 0 0 calc(10px * var(--text-scale)); padding: calc(7px * var(--text-scale)) calc(12px * var(--text-scale)); background: var(--need-soft); border-left: 3px solid var(--need); color: var(--need); font-size: calc(12.5px * var(--text-scale)); display: flex; gap: 8px; justify-content: space-between; align-items: baseline; }
 .step-hint .link-btn { background: none; border: 0; color: inherit; font-size: 1.2em; cursor: pointer; }
 .step-later { margin: calc(10px * var(--text-scale)) 0 calc(24px * var(--text-scale)); padding: calc(8px * var(--text-scale)) calc(12px * var(--text-scale)); border: 1px dashed var(--line); color: var(--muted); font-size: calc(12.5px * var(--text-scale)); }

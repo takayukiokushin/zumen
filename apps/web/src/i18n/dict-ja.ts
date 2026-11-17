@@ -370,7 +370,6 @@ export const ja = {
   'hearing.nth': '{n}{unit}目',
   'hearing.needInput': '未入力あり',
   'hearing.areaNth': '{n}か所目のエリア',
-  'hearing.stepIntro': 'いまは、上から順に、1つずつ開く表示です。「必須」の印の項目を入力すると、次の項目が開きます。',
   'hearing.stepOpenAll': '全部の項目を開く',
   'hearing.stepOpenAllNote': '1つずつ開く表示をやめて、すべての項目を開きます（そのあとも、開いたままになります）。',
   'hearing.stepLater': 'このあとの入力：{list}',

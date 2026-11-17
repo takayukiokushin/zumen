@@ -369,7 +369,6 @@ export const en: Dict = {
   'hearing.nth': '{unit} #{n}',
   'hearing.needInput': 'Not yet filled in',
   'hearing.areaNth': 'Area {n}',
-  'hearing.stepIntro': 'You are now in a mode that opens items one at a time, from the top. When you fill in the items marked “Required”, the next item opens.',
   'hearing.stepOpenAll': 'Open all items',
   'hearing.stepOpenAllNote': 'Stop opening one at a time and open all items (they stay open afterwards).',
   'hearing.stepLater': 'Next to fill in: {list}',
