@@ -20,7 +20,8 @@ scripts/        検証（check-knowledge / check-drawing / selftest）
 ```sh
 pnpm typecheck   # 型を見る
 pnpm check       # ナレッジベースと作図の検証（図面の見本との比較・仕様書の数値の照合・大きな図面の速さの確認・白紙で最後まで入力できるかの確認を含む）
-pnpm fuzz        # でたらめな入力・操作の大量テストを、10倍の回数で行う（ふだんの pnpm check にも、短い版が入っている）
+pnpm fuzz        # でたらめな入力・操作の大量テストを、10倍の回数で行う（ふだんの pnpm check にも、短い版が入っている）。図面の組み合わせ（複数エリア×特殊設備）の検査と、画面の検査（機器×大きさ×言語×明るさ。ブラウザの道具が無い端末では飛ばす）も、ここで大きく行う
+pnpm screens     # 画面の検査（ふつうの版・約2分。先に pnpm build）。はみ出し・押す部品44px・文字切れ・画面のエラーを調べる
 pnpm golden      # 図面の見本を保存し直す（意図して図面を変えたときだけ。docs/golden/）
 pnpm selftest    # サーバーまで通した自己診断（442件）
 pnpm build       # 画面を組み立てる

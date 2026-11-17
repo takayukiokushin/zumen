@@ -609,8 +609,13 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]) .tabbar-right > button.icon-btn { flex: 0 0 auto; }
   :where(html[data-uw~="700"]) .tabbar-right > .who { flex: 0 6 11em; min-width: 2.2em; }
   /* 「ログアウト」は、折り返さない（「ログ／アウト」のように割れない）。実効幅300以下では、言語によって長いので、折り返してよい */
-  :where(html[data-uw~="700"]) .tabbar-right > button:last-child { white-space: nowrap; flex: 0 0 auto; }
+  /* ログアウト：日本語は「ログ／アウト」と割れないよう、1語のまま。単語のあいだに空白のある言語（フランス語の「Se déconnecter」など）は、足りないとき、空白で折り返す */
+  :where(html[data-uw~="700"]) .tabbar-right > button:last-child { white-space: normal; word-break: keep-all; flex: 0 1 auto; }
   :where(html[data-uw~="300"]) .tabbar-right > button:last-child { white-space: normal; flex: 0 1 auto; }
+  /* 実効幅640以下で、言葉が長い言語（フランス語など）は、足りないとき、アイコンの下の言葉を折り返し、タブの長い単語は、途中で折り返して、横にはみ出させない */
+  :where(html[data-uw~="640"]) .tabbar-right > button.icon-btn { white-space: normal; word-break: keep-all; flex: 0 1 auto; }
+  :where(html[data-uw~="640"]) .tabbar-right > button { overflow-wrap: anywhere; }
+  :where(html[data-uw~="640"]) .tabbar > button, :where(html[data-uw~="640"]) .tabbar .tab-wrap button { overflow-wrap: anywhere; }
   /* さらに狭いとき（実効幅300以下）：右側のボタンの文字と余白を、もう少し詰める（長い言葉の言語で、右にはみ出さないように） */
   :where(html[data-uw~="300"]) .tabbar-right > button { font-size: calc(9px * var(--ctl-scale)); padding-left: calc(2px * var(--ctl-scale)); padding-right: calc(2px * var(--ctl-scale)); }
   :where(html[data-uw~="300"]) .tabbar-right > button.icon-btn { font-size: calc(9px * var(--ctl-scale)); padding-left: calc(2px * var(--ctl-scale)); padding-right: calc(2px * var(--ctl-scale)); }
