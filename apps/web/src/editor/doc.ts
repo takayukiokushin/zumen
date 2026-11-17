@@ -227,6 +227,68 @@ export function freshId(prefix: string, taken?: Set<string>): string {
   return id;
 }
 
+/** この図面の中で、まだ使われていない id（読み込んだ図面の id と、ぶつからない） */
+export const freshIdIn = (doc: Doc, prefix: string): string => freshId(prefix, new Set(doc.items.map((i) => i.id)));
+
+/**
+ * 図面の中で、同じ id が2つ以上の要素に付いているとき、あとのほうを、新しい id に付け替える。
+ * （以前は、画面を読み込み直すと、id の番号が最初から数え直されて、保存してある図面の id と重なることがあった）
+ * つなぎ先（線の端）が付け替えた記号を指していたかは、位置で見分ける（記号の接続点に近いほうへ付ける）。
+ * 重なりが無ければ、そのまま返す。
+ */
+export function dedupeIds(doc: Doc): Doc {
+  const first = new Map<string, DocItem>();
+  const dups: DocItem[] = [];
+  for (const it of doc.items) {
+    if (first.has(it.id)) dups.push(it);
+    else first.set(it.id, it);
+  }
+  if (dups.length === 0) return doc;
+  const taken = new Set(doc.items.map((i) => i.id));
+  const renamed = new Map<DocItem, string>();
+  for (const it of dups) {
+    const id = freshId(it.kind === 'symbol' ? 'sym' : it.kind, taken);
+    taken.add(id);
+    renamed.set(it, id);
+  }
+  const items = doc.items.map((it) => (renamed.has(it) ? ({ ...it, id: renamed.get(it)! } as DocItem) : it));
+  // 線の端が、付け替えた記号を指しているか（元の id の2つの記号のうち、端に近い接続点のほう）
+  const symsById = new Map<string, DocSymbol[]>();
+  for (const it of items) if (it.kind === 'symbol') symsById.set(it.id, [it]);
+  for (const [orig, newId] of [...renamed].map(([o, n]) => [o, n] as const)) {
+    if (orig.kind !== 'symbol') continue;
+    const a = first.get(orig.id) as DocSymbol;
+    const b = items.find((i) => i.id === newId) as DocSymbol;
+    symsById.set(orig.id, [a, b]);
+  }
+  const fix = (an: Anchor | undefined, x: number, y: number): Anchor | undefined => {
+    if (!an) return an;
+    const cands = symsById.get(an.item);
+    if (!cands || cands.length < 2) return an;
+    let best = cands[0]!;
+    let bd = Infinity;
+    for (const c of cands) {
+      const p = portsOf(c).find((q) => q.id === an.port);
+      if (!p) continue;
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < bd) {
+        bd = d;
+        best = c;
+      }
+    }
+    return { item: best.id, port: an.port };
+  };
+  return {
+    ...doc,
+    items: items.map((it) => {
+      if (it.kind !== 'wire' || (!it.at1 && !it.at2)) return it;
+      const at1 = fix(it.at1, it.x1, it.y1);
+      const at2 = fix(it.at2, it.x2, it.y2);
+      return at1 === it.at1 && at2 === it.at2 ? it : { ...it, at1, at2 };
+    }),
+  };
+}
+
 export interface Doc {
   items: DocItem[];
   /**
@@ -652,7 +714,7 @@ export function addFan(doc: Doc, sourceId: string, childIds: string[]): { doc: D
   const sp = src ? fanSourcePort(src) : null;
   if (!src || !sp) return { doc, added: 0, fanId: null };
   const existing = fanIdOf(doc, sourceId);
-  const fanId = existing ?? `fan-${nextId('g')}`;
+  const fanId = existing ?? `fan-${freshId('g', new Set(doc.items.flatMap((i) => (i.kind === 'wire' && i.fan ? [i.fan.id.replace(/^fan-/, '')] : []))))}`;
   const have = new Set(
     doc.items.flatMap((it) => (it.kind === 'wire' && it.fan?.id === fanId && it.fan.role === 'drop' ? [it.fan.item ?? ''] : [])),
   );
@@ -662,12 +724,12 @@ export function addFan(doc: Doc, sourceId: string, childIds: string[]): { doc: D
     const cp = c ? fanTargetPort(c) : null;
     if (!c || !cp || cid === sourceId || have.has(cid)) continue;
     have.add(cid);
-    add.push({ kind: 'wire', id: nextId('wire'), x1: cp.x, y1: cp.y, x2: cp.x, y2: cp.y, at2: { item: cid, port: cp.id }, fan: { id: fanId, role: 'drop', item: cid, port: cp.id } });
+    add.push({ kind: 'wire', id: freshIdIn(doc, 'wire'), x1: cp.x, y1: cp.y, x2: cp.x, y2: cp.y, at2: { item: cid, port: cp.id }, fan: { id: fanId, role: 'drop', item: cid, port: cp.id } });
   }
   if (add.length === 0) return { doc, added: 0, fanId: existing };
   const hasTrunk = doc.items.some((it) => it.kind === 'wire' && it.fan?.id === fanId && it.fan.role === 'trunk');
   if (!hasTrunk) {
-    add.unshift({ kind: 'wire', id: nextId('wire'), x1: sp.x, y1: sp.y, x2: sp.x, y2: sp.y, at1: { item: sourceId, port: sp.id }, fan: { id: fanId, role: 'trunk', item: sourceId, port: sp.id } });
+    add.unshift({ kind: 'wire', id: freshIdIn(doc, 'wire'), x1: sp.x, y1: sp.y, x2: sp.x, y2: sp.y, at1: { item: sourceId, port: sp.id }, fan: { id: fanId, role: 'trunk', item: sourceId, port: sp.id } });
   }
   return { doc: refreshFans({ ...doc, items: [...doc.items, ...add] }), added: add.filter((w) => w.fan?.role === 'drop').length, fanId };
 }
@@ -725,7 +787,7 @@ export function refreshFans(doc: Doc): Doc {
       patch.set(trunk.id, { ...trunk, x1: sp.x, y1: sp.y, x2: sp.x, y2: busY, at1: { item: srcCand.item, port: srcCand.port }, at2: undefined, fan: { id: fid, role: 'trunk', item: srcCand.item, port: srcCand.port } });
     }
     if (x1 - x0 > 0.5) {
-      const b: DocWire = { kind: 'wire', id: bus?.id ?? nextId('wire'), x1: x0, y1: busY, x2: x1, y2: busY, at1: undefined, at2: undefined, fan: { id: fid, role: 'bus' }, ...(trunk?.dashed ? { dashed: true } : {}) };
+      const b: DocWire = { kind: 'wire', id: bus?.id ?? freshIdIn(doc, 'wire'), x1: x0, y1: busY, x2: x1, y2: busY, at1: undefined, at2: undefined, fan: { id: fid, role: 'bus' }, ...(trunk?.dashed ? { dashed: true } : {}) };
       if (bus) patch.set(bus.id, b);
       else extra.push(b);
     } else if (bus) drop.add(bus.id);
@@ -1031,7 +1093,7 @@ export const addWire = (
         return [a.x, a.y, e.x, e.y] as [number, number, number, number];
       })()
     : straighten(a.x, a.y, snap(x2), snap(y2));
-  const id = nextId('wire');
+  const id = freshIdIn(doc, 'wire');
   return {
     doc: tidyDoc({ ...doc, items: [...doc.items, { kind: 'wire', id, x1: ax, y1: ay, x2: bx, y2: by, ...(opts.dashed ? { dashed: true } : {}) }] }),
     id,
@@ -1185,7 +1247,7 @@ const labelFromFields = (def: SymbolDef): Pick<DocSymbol, 'label' | 'values'> =>
 
 export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { doc: Doc; id: string } => {
   const def = getSymbol(symbolId);
-  const id = nextId('sym');
+  const id = freshIdIn(doc, 'sym');
   const item: DocSymbol = {
     kind: 'symbol',
     id,
@@ -1203,7 +1265,7 @@ export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { d
 };
 
 export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Doc; id: string } => {
-  const id = nextId('text');
+  const id = freshIdIn(doc, 'text');
   return { doc: { ...doc, items: [...doc.items, { kind: 'text', id, x, y, lines: text.split('\n'), anchor: 'start' }] }, id };
 };
 

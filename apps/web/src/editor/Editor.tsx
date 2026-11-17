@@ -30,7 +30,7 @@ import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { moveWithInsert } from './rewire.ts';
-import { addFan, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
+import { addFan, dedupeIds, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
 
 /** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
 const AREA_KIND_LABEL = { outage: 'area.kind.outage', live: 'area.kind.live', applied: 'area.kind.applied' } as const;
@@ -95,11 +95,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     // 手で直したものは、手で直した内容を残したまま、回答が変わっていれば、作り直す（下の useEffect）
     if (!initialDoc || initialDoc.edited !== true) {
       // 印刷の向きとレイヤー（停電範囲図など）は、元の図面を作り直しても、引き継ぐ
-      return { past: [], present: initialDoc ? carryOver(generated, initialDoc) : generated, future: [] };
+      return { past: [], present: initialDoc ? dedupeIds(carryOver(generated, initialDoc)) : generated, future: [] };
     }
     // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく。
     // 自動で作った図面の控えが無い古い図面は、いまの回答から作った図面を控えにする（回答が同じなら、ほぼ同じ図面）
-    const tidy = tidyDoc(initialDoc);
+    const tidy = tidyDoc(dedupeIds(initialDoc));
     return { past: [], present: tidy.base ? tidy : { ...tidy, base: generated.base }, future: [] };
   });
   /** 選んでいる要素（複数のこともある） */
@@ -237,7 +237,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const apply = useCallback(
     (next: Doc) => {
       // 手で直した印を付ける。どの回答から作った図面かは、そのまま持ち越す。結線の線は、いまの記号の位置に合わせて引き直す
-      const stamped: Doc = { ...refreshFans(next), edited: true, basis: doc.basis };
+      const stamped: Doc = { ...refreshFans(dedupeIds(next)), edited: true, basis: doc.basis };
       setHistory((h) => commit(h, stamped));
       onDocChange?.(stamped);
     },
@@ -253,7 +253,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
    */
   const applyAuto = useCallback(
     (next: Doc) => {
-      const stamped: Doc = { ...next, edited: doc.edited, basis: doc.basis };
+      const stamped: Doc = { ...dedupeIds(next), edited: doc.edited, basis: doc.basis };
       setHistory((h) => commit(h, stamped));
       onDocChange?.(stamped);
     },
