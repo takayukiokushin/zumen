@@ -5,7 +5,7 @@ import { LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LIN
 import { evaluate, fillTemplate } from './condition.ts';
 import { BLANK_DEFAULTS, QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
-import { AREA_CHAIN, CHAIN_BY_FORM, CT_SHOWN, DOWNSTREAM, EXTRAS, FEEDERS, MAIN_GROUND_ON, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
+import { AREA_CHAIN, BLANK_AREA_GATES, BLANK_CHAIN_GATE, BLANK_GATES, CHAIN_BY_FORM, CT_SHOWN, DOWNSTREAM, EXTRAS, FEEDERS, MAIN_GROUND_ON, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
 import type { Placement } from './composition.ts';
 
 /* ------------------------------------------------------------------ */
@@ -1015,13 +1015,31 @@ function intakeFlags(answers: Answers): Record<string, string> {
  * 受電設備エリアが2か所以上のときは、1か所目の機器のあとに、2か所目以降の機器が続く
  * （2か所目以降は、役割に「a2:」などが付き、area に何か所目かが入る）。
  */
+const isAnswered = (v: unknown): boolean => v !== undefined && v !== null && v !== '';
+/** 白紙で始めた案件：答えが入っていない段の部品を、材料の表から外す */
+function gateBlank(chain: Placement[], answers: Answers, gates: Record<string, string[]>): Placement[] {
+  return chain.filter((p) => (gates[p.role] ?? []).every((k) => isAnswered(answers[k])));
+}
+/** 親（枠・付ける先）が描かれていない部品は、描かない */
+function dropOrphans(items: PlacedItem[]): PlacedItem[] {
+  let cur = items;
+  for (;;) {
+    const ids = new Set(cur.map((i) => i.role));
+    const next = cur.filter((i) => (!i.parent || ids.has(i.parent)) && (!i.attachTo || ids.has(i.attachTo)));
+    if (next.length === cur.length) return cur;
+    cur = next;
+  }
+}
+
 export function buildComposition(givenAnswers: Answers): PlacedItem[] {
   // 状況に応じた初期値（継電器の個数など）を、画面と同じように足してから組み立てる。答えた値はそのまま優先される
   const rawAnswers = withAutoValues(normalizeAnswers(givenAnswers));
   const form = String(withDerived(rawAnswers).mainBreakerForm ?? 'pfs');
+  // 白紙で始めた案件は、まだ答えていない段を描かない（図面は、答えた分だけ出る）
+  const blank = isBlankStart(givenAnswers);
   const first = composeChain(rawAnswers, [
-    ...UPSTREAM,
-    ...(pickOwn(CHAIN_BY_FORM, form) ?? []),
+    ...(blank ? gateBlank(UPSTREAM, rawAnswers, BLANK_GATES) : UPSTREAM),
+    ...(blank && !isAnswered(rawAnswers[BLANK_CHAIN_GATE]) ? [] : (pickOwn(CHAIN_BY_FORM, form) ?? [])),
     ...DOWNSTREAM,
     ...TRANSFORMER,
     ...EXTRAS,
@@ -1031,7 +1049,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
   for (let n = 1; n < areaCountOf(rawAnswers); n++) {
     const view = areaView(rawAnswers, n);
     const prefix = `a${n + 1}:`;
-    const items = composeChain(view, [...AREA_CHAIN, ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
+    const items = composeChain(view, [...(blank ? gateBlank(AREA_CHAIN, view, BLANK_AREA_GATES) : AREA_CHAIN), ...TRANSFORMER, ...EXTRAS, ...FEEDERS]);
     const asPlaced = (r: string) => `${prefix}${r}`;
     // 送り出しの段（1〜4段）ごとの、線（ケーブル／電線）の様子。最後の段のケーブルが、送り先のエリアにつながる
     const viewD = withDerived(view);
@@ -1088,7 +1106,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
       });
     }
   }
-  return out;
+  return blank ? dropOrphans(out) : out;
 }
 
 /** 機器の並びの定義（chain）から、回答に合う機器の一覧を作る */

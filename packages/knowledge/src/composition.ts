@@ -1169,6 +1169,31 @@ export const EXTRAS: Placement[] = [
   },
 ];
 
+/**
+ * 白紙で始めた案件の図面：まだ答えていない段は、描かない（図面は、答えた分だけ出る。第16弾 項目2）。
+ * 役割（role）ごとに、「この回答が入ってから描く」項目を決めておく。以前の案件・複製・スケッチ・音声で作った案件は、これまでどおり。
+ * 1つ目のエリアは、この表のとおり。2つ目以降のエリアは、BLANK_AREA_GATES。
+ * 主遮断装置のまわり（CHAIN_BY_FORM の中身）は、「主遮断装置の形式」を答えるまで、描かない。
+ */
+export const BLANK_GATES: Record<string, string[]> = {
+  'source-pole': ['sourceType'],
+  'incoming-point': ['sourceType'],
+  pas: ['sectionalizer'],
+  'customer-pole': ['sectionalizer'],
+  'pas-zct': ['sectionalizer'],
+  'pas-vt': ['sectionalizer'],
+  'pas-la': ['sectionalizer'],
+  'pas-zpd': ['sectionalizer'],
+  'pas-relay': ['sectionalizer'],
+  'cable-head-source': ['cableInstallation'],
+  'cable-head-site': ['cableInstallation'],
+  'area-frame': ['areaCount'],
+};
+export const BLANK_AREA_GATES: Record<string, string[]> = {
+  'area-frame': ['areaForm'],
+};
+export const BLANK_CHAIN_GATE = 'mainBreakerForm';
+
 export const CHAIN_BY_FORM: Record<string, Placement[]> = {
   pfs: PFS_CHAIN,
   cb: CB_CHAIN,

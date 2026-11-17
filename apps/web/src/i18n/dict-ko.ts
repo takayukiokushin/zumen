@@ -574,6 +574,7 @@ export const ko: Dict = {
   'editor.issueCount': '{label} {n}건',
   'editor.tidyDone': '수정했습니다: {list}',
   'editor.tidyNone': '수정할 곳이 없었습니다',
+  'editor.blankNote': '아직 부품이 없습니다. 오른쪽의 “기호 추가·교체”에서 하나씩 추가하거나, “설비를 입력해 만들기”에서 입력하세요.',
   'editor.sheetTitle': '도면 테두리를 포함해 인쇄했을 때의 모습으로 확인합니다',
   'editor.sheetOpen': '인쇄 미리보기',
   'layer.label': '도면 종류',

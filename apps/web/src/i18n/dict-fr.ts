@@ -576,6 +576,7 @@ export const fr: Dict = {
   'editor.issueCount': '{label} : {n}',
   'editor.tidyDone': 'Corrigé : {list}',
   'editor.tidyNone': 'Rien à corriger',
+  'editor.blankNote': 'Il n’y a pas encore de pièces. Ajoutez-les une à une avec « Ajouter ou remplacer un symbole » à droite, ou saisissez-les dans « Saisir les équipements ».',
   'editor.sheetTitle': 'Vérifiez l’aspect à l’impression, cadre du dessin compris',
   'editor.sheetOpen': 'Aperçu avant impression',
   'layer.label': 'Type de schéma',

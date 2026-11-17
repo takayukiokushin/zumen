@@ -1266,7 +1266,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       )}
 
       <div className="editor-body" style={sideVars(sideW) as React.CSSProperties}>
-        <div className="canvas-wrap" ref={canvasWrapRef}>
+        <div className={`canvas-wrap${!sheetView && activeId === null && viewDoc.items.length === 0 ? ' is-blank' : ''}`} ref={canvasWrapRef}>
           {sheetView ? (
             <div
               className="sheet-view"
@@ -1274,6 +1274,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               dangerouslySetInnerHTML={{ __html: sheetSvg }}
             />
           ) : (
+          <>
+          {activeId === null && viewDoc.items.length === 0 && <p className="canvas-blank-note">{t('editor.blankNote')}</p>}
           <DrawingCanvas
             doc={viewDoc}
             selectedIds={selection}
@@ -1344,6 +1346,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             onZoom={setZoom}
             issues={issues ?? []}
           />
+          </>
           )}
         </div>
 

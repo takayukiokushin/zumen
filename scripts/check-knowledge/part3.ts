@@ -263,6 +263,19 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     ok(openStartMode({ siteName: 'A' }).startMode === undefined, '印が無い案件に、印が付いています');
     // 白紙のまま、図面が組み立てられる（何も描かないが、エラーにならない）
     ok(Array.isArray(buildComposition({ startMode: 'blank' })), '白紙の案件で、図面が組み立てられません');
+    // 白紙で始めた案件の図面は、答えた分だけ描く（第16弾 項目2）。何も答えていなければ、部品は1つも無い
+    for (const mode of ['blank', 'blank-open']) {
+      const roles = (a: Answers) => buildComposition({ startMode: mode, ...a }).map((i) => i.role);
+      ok(roles({}).length === 0, `白紙（${mode}）の案件に、答えていない部品が描かれています：${roles({}).join('、')}`);
+      ok(roles({ sourceType: 'pole' }).join() === 'source-pole,incoming-point', `引込元だけ答えたとき、電柱と引込点だけのはずです：${roles({ sourceType: 'pole' }).join('、')}`);
+      const upto = roles({ sourceType: 'pole', sectionalizer: 'pas' });
+      ok(upto.includes('pas') && upto.includes('customer-pole') && !upto.includes('area-frame') && !upto.includes('main-breaker'), '区分開閉器まで答えたとき、受電設備の枠・主遮断装置は、まだ無いはずです');
+      // 親（付ける先）が描かれていない部品は、描かない
+      ok(!roles({ pasControl: 'gr' }).includes('pas-relay'), '区分開閉器を答える前に、PASの中の部品が描かれています');
+      ok(roles({ sourceType: 'pole', sectionalizer: 'pas', cableInstallation: 'buried', areaCount: '1', mainBreakerForm: 'pfs' }).includes('main-breaker'), '全部答えたのに、主遮断装置が描かれません');
+    }
+    // 以前の案件・印が無い案件は、これまでどおり（答えていなくても、初期値で描く）
+    ok(buildComposition({}).some((i) => i.role === 'pas') && buildComposition({}).some((i) => i.role === 'main-breaker'), '印が無い案件の図面が、変わっています');
     // 補助変圧器：蓄電池を「あり」にしても、答えるまで未入力のまま（白紙・全部を開く）。以前の案件（印なし）は、これまでどおり「あり」と読む
     for (const mode of ['blank', 'blank-open']) {
       const bt = { startMode: mode, hasBattery: 'yes' };

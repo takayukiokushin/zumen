@@ -575,6 +575,7 @@ export const en: Dict = {
   'editor.issueCount': '{label} {n}',
   'editor.tidyDone': 'Fixed: {list}',
   'editor.tidyNone': 'There was nothing to fix',
+  'editor.blankNote': 'There are no parts yet. Add them one at a time from “Add or replace a symbol” on the right, or enter them in “Enter equipment”.',
   'editor.sheetTitle': 'Check it as it will look when printed, with the drawing frame',
   'editor.sheetOpen': 'Print preview',
   'layer.label': 'Drawing type',

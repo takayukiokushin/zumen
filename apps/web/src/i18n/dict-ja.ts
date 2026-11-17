@@ -576,6 +576,7 @@ export const ja = {
   'editor.issueCount': '{label} {n}件',
   'editor.tidyDone': '直しました：{list}',
   'editor.tidyNone': '直すところはありませんでした',
+  'editor.blankNote': 'まだ部品がありません。右の「記号を追加・差し替え」から1つずつ追加するか、「設備を入力して作成」で入力してください。',
   'editor.sheetTitle': '図枠つきの、印刷したときの見た目で確かめます',
   'editor.sheetOpen': '印刷プレビュー',
   'layer.label': '図面の種類',
