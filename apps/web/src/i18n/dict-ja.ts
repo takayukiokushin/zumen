@@ -194,6 +194,7 @@ export const ja = {
   'project.unsavedTitle': '保存していない変更',
   'project.unsavedGo': '別の案件へ進む',
   'project.autoSaveLeave': '現在編集中の内容は、自動で保存されます。よろしいですか？',
+  'project.gone': '「{name}」は、削除されたため、保存できません。この画面の内容は残りますが、保存はできません。別の案件を開く・新しく作るときは、確認なしで移れます。消した案件は、図面一覧の下の「消した案件」から戻せます。',
   'project.autoSaveTitle': '別の案件を開く',
 
   'role.admin': '管理用',

@@ -194,6 +194,7 @@ export const fr: Dict = {
   'project.unsavedTitle': 'Modifications non enregistrées',
   'project.unsavedGo': 'Continuer sans enregistrer',
   'project.autoSaveLeave': 'Ce que vous modifiez en ce moment sera enregistré automatiquement. Continuer ?',
+  'project.gone': '« {name} » a été supprimé : il ne peut plus être enregistré. Le contenu de cet écran reste affiché, mais ne peut pas être enregistré. Vous pouvez ouvrir un autre projet ou en créer un nouveau sans confirmation. Un projet supprimé peut être restauré depuis « Projets supprimés », sous la liste des plans.',
   'project.autoSaveTitle': 'Ouvrir une autre affaire',
 
   'role.admin': 'Administrateur',

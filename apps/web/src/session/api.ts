@@ -44,6 +44,14 @@ export interface ServerStatus {
   warnings: { code: StatusWarningCode; n?: number }[];
 }
 
+/** 案件が見つからない（すでに消された・見られない）ときのエラー。保存や編集中の印の確認で出たら、その案件は、もう保存できない */
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NotFoundError';
+  }
+}
+
 /** 誰かが編集中であることの印 */
 export interface Lock {
   userId: string;
@@ -237,6 +245,7 @@ async function call<T>(path: string, init?: RequestInit, retried = false): Promi
     if (path === '/api/auth/login') throw new LoginError(message, remaining, lockMinutes, lockedSec);
     // 中継までは届いたが、先のサーバーが答えない場合も、つながらないのと同じ扱いにする
     if (!error && isGateway(res.status)) throw new ConnectionError(message);
+    if (res.status === 404 && error) throw new NotFoundError(message);
     throw new Error(message);
   }
   return json as T;

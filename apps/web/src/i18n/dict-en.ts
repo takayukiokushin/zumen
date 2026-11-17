@@ -193,6 +193,7 @@ export const en: Dict = {
   'project.unsavedTitle': 'Unsaved changes',
   'project.unsavedGo': 'Leave without saving',
   'project.autoSaveLeave': 'What you are editing now will be saved automatically. Continue?',
+  'project.gone': '“{name}” has been deleted, so it cannot be saved. The contents of this screen remain, but they cannot be saved. You can open another project or create a new one without a confirmation. A deleted project can be restored from “Deleted projects” below the drawing list.',
   'project.autoSaveTitle': 'Open another job',
 
   'role.admin': 'Admin',

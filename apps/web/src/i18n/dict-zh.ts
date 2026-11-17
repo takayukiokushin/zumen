@@ -190,6 +190,7 @@ export const zh: Dict = {
   'project.unsavedTitle': '有未保存的更改',
   'project.unsavedGo': '不保存并离开',
   'project.autoSaveLeave': '当前正在编辑的内容将自动保存。确定继续吗？',
+  'project.gone': '“{name}”已被删除，无法保存。此界面的内容仍会保留，但无法保存。打开其他项目或新建项目时，无需确认即可切换。已删除的项目可在图纸列表下方的“已删除的项目”中恢复。',
   'project.autoSaveTitle': '打开其他项目',
 
   'role.admin': '管理员',

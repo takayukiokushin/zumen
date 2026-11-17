@@ -26,6 +26,8 @@ interface Props {
    * 別の案件を開く・新しく作る前に呼ぶ。false なら取りやめる。
    */
   canLeave: () => Promise<boolean>;
+  /** 案件を消したあとに呼ぶ（いま開いている案件を消したとき、編集中の状態を解除するため） */
+  onRemoved?: (id: string) => void;
 }
 
 /** 1回に出す件数の選択肢。選んだ件数は、このブラウザに覚えさせる */
@@ -88,7 +90,7 @@ function Highlight({ text, needle }: { text: string; needle: string }) {
   return <>{out}</>;
 }
 
-export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Props) {
+export function JobList({ meId, role, currentId, onOpen, onNew, canLeave, onRemoved }: Props) {
   const t = useT();
   const { ask, input, pick } = useDialogs();
   const lang = useLang();
@@ -206,6 +208,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave }: Prop
       try {
         setError(null);
         await api.deleteProject(p.id);
+        onRemoved?.(p.id);
         setNotice({ id: p.id, name: p.name, text: `${t('project.quote', { name: p.name })}${t('project.deletedNote')}`, undo: true });
         await reload();
       } catch (e) {

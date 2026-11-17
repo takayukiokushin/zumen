@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, ConnectionError, LockedError, setReauthHandler, StaleError } from './session/api.ts';
+import { api, ConnectionError, LockedError, NotFoundError, setReauthHandler, StaleError } from './session/api.ts';
 import { saveRetry } from './session/messages.ts';
 import { sameContent } from './session/saveRecovery.ts';
 import { makeOnce } from './session/once.ts';
@@ -105,7 +105,21 @@ export function App() {
   const [projectId, setProjectId] = useState<string | null>(null);
   // 別の案件を開いたら、読み取りの状態の印は、消す
   useEffect(() => setAnalyzeStatus('idle'), [projectId]);
+  // 別の案件を開いたら、「消された案件」の印は、消す
+  useEffect(() => {
+    goneRef.current = false;
+    setGoneName(null);
+  }, [projectId]);
   const [projectName, setProjectName] = useState('');
+  const projectNameRef = useRef('');
+  projectNameRef.current = projectName;
+  /**
+   * 開いている案件が、すでに消されていることが分かったときの印（消した名前）。
+   * 消された案件は、もう保存できない。保存の確認を出して、保存に失敗して、移れなくなる、ということが無いように、
+   * この印があるあいだは、確認なしで、別の案件を開く・新しく作れる（第16弾 項目1）
+   */
+  const [goneName, setGoneName] = useState<string | null>(null);
+  const goneRef = useRef(false);
   const [answers, setAnswers] = useState<Answers>({});
   const [drawing, setDrawing] = useState<Doc | null>(null);
   /**
@@ -170,6 +184,8 @@ export function App() {
       api.takeLock(projectId).catch((e) => {
         // 誰かに編集を引き継がれた場合はここで気づく
         if (e instanceof LockedError) setLockedBy(e.lock);
+        // 別の端末・別の人が、この案件を消した
+        else if (e instanceof NotFoundError) markGone();
       });
     };
     const timer = setInterval(beat, 60_000);
@@ -310,6 +326,37 @@ export function App() {
     setWb(null);
   };
 
+  /** 編集中の案件を、閉じた状態にする（案件が消されたとき。編集中の状態を、きちんと解除して、別の案件を開く・新しく作れるようにする） */
+  const clearEditing = () => {
+    goneRef.current = false;
+    setGoneName(null);
+    setProjectId(null);
+    setProjectName('');
+    setAnswers({});
+    setDrawing(null);
+    setSketchRead(false);
+    setDirty(false);
+    setDraftAt(null);
+    setSavedAt(null);
+    setBaseUpdatedAt(null);
+    setStale(null);
+    setLockedBy(null);
+    setWarning(null);
+    setError(null);
+    setWb(null);
+    setShowList(true);
+  };
+
+  /** 開いている案件が、別の端末・別の人に消されていた（保存や、編集中の印の確認で、見つからなかった）。もう保存できないので、確認なしで移れるようにする */
+  const markGone = () => {
+    goneRef.current = true;
+    setGoneName(projectNameRef.current || t('project.untitled'));
+    setDirty(false);
+    setDraftAt(null);
+    setStale(null);
+    setError(null);
+  };
+
   /**
    * 保存していない変更があるとき、別の案件へ移ってよいかを確かめる。
    * 「実行」なら、いまの内容を保存してから、移る（保存できなかったときは、移らずに今の案件に留まる）。
@@ -317,13 +364,17 @@ export function App() {
    * 移ってよい（または、失うものが無い）なら true。
    */
   const confirmLeave = async (): Promise<boolean> => {
+    // 開いている案件が、すでに消されていると分かっているときは、保存するものが無い。確認も出さず、そのまま移る
+    if (goneRef.current) return true;
     if (!dirty) return true;
     // 他の人が編集中で、保存できない状態のときは、自動で保存できないので、変更が消えることを伝える
     if (readOnly) {
       return ask({ title: t('project.unsavedTitle'), message: [`「${projectName}」${t('project.unsavedLeave')}`], confirmLabel: t('project.unsavedGo') });
     }
     if (!(await ask({ title: t('project.autoSaveTitle'), message: [t('project.autoSaveLeave')] }))) return false;
-    return save();
+    const saved = await save();
+    // 保存しようとして、案件が消されていると分かったとき（別の端末・別の人が消していた）は、保存できないが、移れるようにする
+    return saved || goneRef.current;
   };
 
   /**
@@ -479,6 +530,11 @@ export function App() {
       setWarning(String(effective.siteName ?? '').trim() === '' ? t('project.siteRequired') : null);
       return true;
     } catch (e) {
+      if (e instanceof NotFoundError) {
+        // 案件が、すでに消されている。保存先が無いので、保存はできない（移れなくならないよう、印を付ける）
+        markGone();
+        return false;
+      }
       if (e instanceof StaleError) {
         // 画面の内容はそのまま残し、上書きするか読み込み直すかを選んでもらう
         setStale({ updatedAt: e.updatedAt, by: e.updatedByName ?? (e.updatedByRemoved ? t('project.userRemoved') : null) });
@@ -668,6 +724,12 @@ export function App() {
         </p>
       )}
 
+      {goneName !== null && projectId && !listing && (
+        <p className="bar-warn" role="alert">
+          {t('project.gone', { name: goneName })}
+        </p>
+      )}
+
       {error && <p className="bar-error">{error}</p>}
       {warning && !error && !listing && (
         <p className="bar-warn" role="status">
@@ -765,6 +827,10 @@ export function App() {
               }}
               onNew={(name, useAsSite) => void newProject(name, useAsSite)}
               canLeave={confirmLeave}
+              onRemoved={(id) => {
+                // いま開いている案件を消したときは、編集中の状態を解除する（保存の確認が出て、移れなくなるのを防ぐ）
+                if (id === projectId) clearEditing();
+              }}
             />
           ) : tab === 'drawing' ? (
             <Editor
