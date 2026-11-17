@@ -29,6 +29,8 @@ export const ko: Dict = {
   'nav.settings': '화면 설정',
   'nav.settings.label': '설정',
   'nav.users': '사용자 관리',
+  'nav.menuHide': '▲ 사용법·설정 등 숨기기',
+  'nav.menuShow': '▼ 사용법·설정 등 보이기',
   'nav.logout': '로그아웃',
   'nav.logout.confirm': '로그아웃합니다. 괜찮으십니까?',
   'nav.logout.confirmUnsaved': '저장하지 않은 변경이 있습니다. 로그아웃하면 그 변경이 사라집니다. 그래도 로그아웃하시겠습니까?',

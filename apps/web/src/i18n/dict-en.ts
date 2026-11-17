@@ -29,6 +29,8 @@ export const en: Dict = {
   'nav.settings': 'Display settings',
   'nav.settings.label': 'Settings',
   'nav.users': 'Manage users',
+  'nav.menuHide': '▲ Hide help, settings, etc.',
+  'nav.menuShow': '▼ Show help, settings, etc.',
   'nav.logout': 'Sign out',
   'nav.logout.confirm': 'Sign out. Are you sure?',
   'nav.logout.confirmUnsaved': 'You have unsaved changes. Signing out will discard them. Sign out anyway?',

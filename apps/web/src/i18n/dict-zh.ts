@@ -29,6 +29,8 @@ export const zh: Dict = {
   'nav.settings': '显示设置',
   'nav.settings.label': '设置',
   'nav.users': '用户管理',
+  'nav.menuHide': '▲ 隐藏使用说明、设置等',
+  'nav.menuShow': '▼ 显示使用说明、设置等',
   'nav.logout': '退出登录',
   'nav.logout.confirm': '即将退出登录，确定吗？',
   'nav.logout.confirmUnsaved': '有尚未保存的更改。退出登录后这些更改将丢失。仍要退出登录吗？',

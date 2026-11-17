@@ -30,6 +30,8 @@ export const ja = {
   'nav.settings': '表示の設定',
   'nav.settings.label': '設定',
   'nav.users': '利用者の管理',
+  'nav.menuHide': '▲ 使い方・設定などを隠す',
+  'nav.menuShow': '▼ 使い方・設定などを出す',
   'nav.logout': 'ログアウト',
   'nav.logout.confirm': 'ログアウトします。よろしいですか。',
   'nav.logout.confirmUnsaved': '保存していない変更があります。ログアウトすると、その変更は消えます。ログアウトしますか。',

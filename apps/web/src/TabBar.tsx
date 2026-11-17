@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { User } from './session/api.ts';
 import { useDialogs } from './Dialogs.tsx';
 import { useT } from './i18n/useT.ts';
@@ -62,9 +63,29 @@ interface Props {
   analyzeStatus?: 'idle' | 'busy' | 'done';
 }
 
+const OPEN_KEY = 'zumen.phoneBarOpen';
+/** スマホで、「使い方〜ログアウト」の行を出しているか（最後の状態を、この端末に覚える。標準は、出す） */
+function loadOpen(): boolean {
+  try {
+    return localStorage.getItem(OPEN_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
 export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers, onLogout, dirty = false, analyzeStatus = 'idle' }: Props) {
   const t = useT();
   const { ask } = useDialogs();
+  const [rightOpen, setRightOpen] = useState(loadOpen);
+  const toggleRight = () =>
+    setRightOpen((v) => {
+      try {
+        localStorage.setItem(OPEN_KEY, v ? 'off' : 'on');
+      } catch {
+        // 覚えられなくても、使える
+      }
+      return !v;
+    });
   /** タブの名前。改行の位置があるものは、前半と、後半（狭い画面では、後半を、2行目に出す）に分ける */
   const labelOf = (id: Tab, label: Key, suffix = ''): React.ReactNode => {
     const sp = SPLIT[id];
@@ -97,8 +118,13 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
         ),
       )}
 
+      {/* スマホだけ：「使い方〜ログアウト」の行を、隠す・出す（めったに押さないので、操作する場所を広げられる） */}
+      <button type="button" className="tabbar-toggle" aria-expanded={rightOpen} onClick={toggleRight}>
+        {rightOpen ? t('nav.menuHide') : t('nav.menuShow')}
+      </button>
+
       {/* 右側のまとまり。幅が足りないときは、まとまりごと2段目に回る（画面の外に出ない） */}
-      <div className="tabbar-right">
+      <div className="tabbar-right" data-open={rightOpen ? 'true' : 'false'}>
       <button type="button" className="icon-btn" title={t('help.button')} aria-label={t('help.button')} onClick={onHelp}>
         <InfoIcon size={1.6} />
         <span>{t('help.button')}</span>

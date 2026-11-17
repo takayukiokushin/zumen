@@ -563,10 +563,14 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   line-height: 1.15; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
 .tabbar > * { flex: 0 0 auto; }
 
+/* スマホだけ：右側（使い方〜ログアウト）の行を隠す・出すボタン。パソコン・タブレットでは出さない */
+.tabbar > .tabbar-toggle { display: none; }
 /* 狭い画面（スマートフォン）：4つのタブは1段目に等分、右側は2段目 */
 /* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 700px 以下のとき（html の data-uw に 700 が入る） */
   :where(html[data-uw~="700"]) .tabbar > button, :where(html[data-uw~="700"]) .tabbar > .tab-wrap { flex: 1 1 0; min-width: 0; }
   :where(html[data-uw~="700"]) .tabbar .tab-wrap button { width: 100%; }
+  :where(html[data-uw~="700"]) .tabbar > .tabbar-toggle { display: block; flex: 1 1 100%; padding: calc(7px * var(--text-scale)) 4px; font-size: calc(11px * var(--text-scale)); color: var(--ink-2); background: transparent; border: 0; border-top: 1px solid var(--rule-soft); border-radius: 0; text-align: center; min-height: 0; }
+  :where(html[data-uw~="700"]) .tabbar-right[data-open="false"] { display: none; }
   /* タブの名前は、2行にするとき、決まった位置（例：「スケッチ」／「読み取り」）で改行する */
   :where(html[data-uw~="700"]) .tabbar .tab-l2 { display: block; }
   :where(html[data-uw~="700"]) .tabbar > button, :where(html[data-uw~="700"]) .tabbar .tab-wrap button { min-width: 0; padding-left: 4px; padding-right: 4px; white-space: normal; line-height: 1.3; }

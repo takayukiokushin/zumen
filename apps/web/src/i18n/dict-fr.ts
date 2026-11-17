@@ -29,6 +29,8 @@ export const fr: Dict = {
   'nav.settings': 'Affichage',
   'nav.settings.label': 'Réglages',
   'nav.users': 'Gérer les utilisateurs',
+  'nav.menuHide': '▲ Masquer l’aide, les réglages…',
+  'nav.menuShow': '▼ Afficher l’aide, les réglages…',
   'nav.logout': 'Se déconnecter',
   'nav.logout.confirm': 'Vous allez être déconnecté. Continuer ?',
   'nav.logout.confirmUnsaved': 'Des modifications ne sont pas enregistrées. Vous les perdrez en vous déconnectant. Se déconnecter quand même ?',
