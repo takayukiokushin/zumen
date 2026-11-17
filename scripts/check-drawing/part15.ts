@@ -102,3 +102,23 @@ console.log('\n■ 複数エリア：エリアをつなぐケーブルが、ケ�
   if (bad.length > 0) fail(`ケーブルの端末を線が突き抜ける組み合わせが ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
   console.log(`  エリア3か所・4か所で、分岐の位置の全部の組み合わせ（${checked}通り）：端末を突き抜ける線は ${bad.length}件`);
 }
+
+console.log('\n■ 複数エリア：ケーブルの線どうしが、記号のない所で交わらない（3か所）');
+{
+  // 上の位置から近いエリアへ、下の位置から遠いエリアへ出す組み合わせは、遠いケーブルを、間のエリアの下を通して、手前のすきまから上げる
+  const TAPS = ['ds-source', 'ds-vcb', 'vcb-load', 'bus', 'tr-secondary'];
+  let checked = 0;
+  const bad: string[] = [];
+  for (const form of ['pfs', 'cb']) {
+    for (const t2 of TAPS) {
+      for (const t3 of TAPS) {
+        const a: Answers = { ...answersSpread, areaCount: '3', mainBreakerForm: form, 'a2:linkTap': t2, 'a3:linkTap': t3 };
+        const crossings = layout(buildComposition(a), a).cableCrossings ?? 0;
+        checked++;
+        if (crossings > 0) bad.push(`${form}・${t2}／${t3}（${crossings}か所）`);
+      }
+    }
+  }
+  if (bad.length > 0) fail(`ケーブルの線が交わる組み合わせが ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
+  console.log(`  エリア3か所で、分岐の位置の全部の組み合わせ（${checked}通り）：ケーブルの線が交わる所は ${bad.length}件`);
+}
