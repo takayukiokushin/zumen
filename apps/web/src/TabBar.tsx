@@ -15,7 +15,7 @@ function Tab({
   pressed,
   onClick,
 }: {
-  label: string;
+  label: React.ReactNode;
   help: string;
   pressed: boolean;
   onClick: () => void;
@@ -39,6 +39,13 @@ const TABS: [Tab, Key, Key][] = [
   ['drawing', 'tab.drawing', 'tab.drawing.help'],
 ];
 
+/** 幅が狭くて、タブの名前を2行にするとき、改行する位置（前半・後半）。無いタブ（図面）は、改行しない */
+const SPLIT: Partial<Record<Tab, [Key, Key]>> = {
+  analyze: ['tab.analyze.l1', 'tab.analyze.l2'],
+  voice: ['tab.voice.l1', 'tab.voice.l2'],
+  hearing: ['tab.hearing.l1', 'tab.hearing.l2'],
+};
+
 interface Props {
   user: User;
   tab: Tab;
@@ -58,20 +65,34 @@ interface Props {
 export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers, onLogout, dirty = false, analyzeStatus = 'idle' }: Props) {
   const t = useT();
   const { ask } = useDialogs();
+  /** タブの名前。改行の位置があるものは、前半と、後半（狭い画面では、後半を、2行目に出す）に分ける */
+  const labelOf = (id: Tab, label: Key, suffix = ''): React.ReactNode => {
+    const sp = SPLIT[id];
+    if (!sp) return `${t(label)}${suffix}`;
+    return (
+      <>
+        {t(sp[0])}
+        <span className="tab-l2">
+          {t(sp[1])}
+          {suffix}
+        </span>
+      </>
+    );
+  };
   return (
     <div className="tabbar">
       {TABS.map(([id, label, help]) =>
         enabled ? (
           <Tab
             key={id}
-            label={id === 'analyze' && tab !== 'analyze' && analyzeStatus !== 'idle' ? `${t(label)}${t(analyzeStatus === 'busy' ? 'tab.analyze.busy' : 'tab.analyze.done')}` : t(label)}
+            label={labelOf(id, label, id === 'analyze' && tab !== 'analyze' && analyzeStatus !== 'idle' ? t(analyzeStatus === 'busy' ? 'tab.analyze.busy' : 'tab.analyze.done') : '')}
             help={t(help)}
             pressed={tab === id}
             onClick={() => onTab(id)}
           />
         ) : (
           <button key={id} type="button" disabled>
-            {t(label)}
+            {labelOf(id, label)}
           </button>
         ),
       )}

@@ -268,5 +268,18 @@ console.log('\n■ 画面の部品に、訳せない日本語が直接書かれ�
   console.log(`  直接書かれた日本語：${n}件`);
 }
 
+// タブの名前の、改行の位置（前半＋後半）が、タブの名前そのものと一致する（どの言語も）
+{
+  for (const lang of LANGS) {
+    const d = dictionaryOf(lang) as Record<string, string>;
+    for (const k of ['analyze', 'voice', 'hearing']) {
+      const joined = `${d[`tab.${k}.l1`] ?? ''}${d[`tab.${k}.l2`] ?? ''}`; // 前半の最後の空白も含めて、つなぐ（1行のときの見た目）
+      const whole = d[`tab.${k}`] ?? '';
+      if (joined !== whole) fail(`${lang}：タブ「${whole}」の改行の位置（${d[`tab.${k}.l1`]}／${d[`tab.${k}.l2`]}）が、名前と合っていません`);
+    }
+  }
+  console.log('  タブの名前の改行の位置：5か国語とも、名前と一致');
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
