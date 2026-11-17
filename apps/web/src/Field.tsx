@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Question, TrendEntry } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
-import { evaluate, isBlankStart, limitCountText, MAX_TEXT_LENGTH } from '@zumen/knowledge';
+import { evaluate, isBlankStart, limitCountText, MAX_TEXT_LENGTH, startsWithYesOnly } from '@zumen/knowledge';
 import { useT, useTx } from './i18n/useT.ts';
 import { useSettings } from './settings/settings.tsx';
 import { TrendHint } from './TrendHint.tsx';
@@ -98,6 +98,9 @@ export function Field({ question: question, fieldKey, value, onChange, context, 
   const { settings } = useSettings();
   const hideHelp = settings.hideHelp;
   const [pickedOther, setPickedOther] = useState(false);
+  // 「あり／なし」の質問（必須でないもの）は、まだ答えていないときは、「あり」（はい）のボタンだけを出す。何も選ばない＝なし。
+  // 「あり」を押すと、取り消せるように、「なし」も出る（第15弾 項目1）。以前の案件で、「なし」を選んである質問は、両方出す
+  const yesOnly = startsWithYesOnly(q) && value === undefined && context?.[question.id] !== 'yes';
   const set = (v: Value) => onChange(fieldKey, v);
   // まだ答えていないときは、いま効いている値を見せる（例：引込元がキャビネットなら、区分開閉器は既定でUGS）
   // （白紙で始めた案件は、質問の既定値も見せない。答えるまで、空のまま。第14弾 項目3）
@@ -115,7 +118,17 @@ export function Field({ question: question, fieldKey, value, onChange, context, 
         {q.unit && <span className="unit">（{tx(q.unit)}）</span>}
       </label>
 
-      {q.type === 'select' && asButtons(q, tx) ? (
+      {yesOnly ? (
+        <div className="radio-row" id={fieldKey}>
+          {q.options
+            ?.filter((o) => o.value === 'yes')
+            .map((o) => (
+              <button key={o.value} type="button" aria-pressed={false} onClick={() => set(o.value)}>
+                {tx(o.label, o.i18nContext)}
+              </button>
+            ))}
+        </div>
+      ) : q.type === 'select' && asButtons(q, tx) ? (
         <div className="radio-row" id={fieldKey}>
           {q.options?.map((o) => (
             <button

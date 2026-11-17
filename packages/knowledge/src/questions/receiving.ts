@@ -37,6 +37,7 @@ export const RECEIVING_QUESTIONS: Question[] = [
   },
   {
     id: 'groundCabinet',
+    bothChoices: true,
     group: 'pas',
     label: '地上キャビネットはありますか？',
     type: 'select',

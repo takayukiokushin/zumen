@@ -45,6 +45,32 @@ for (const q of QUESTIONS) {
   if (WIDE_FIELDS.includes(q.id) && q.size === undefined) q.size = 'l';
 }
 
+/** 「あり／なし」「はい／いいえ」で答える質問か（選択肢が yes と no の2つだけ） */
+export const isYesNoQuestion = (q: Question): boolean =>
+  q.type === 'select' && q.options?.length === 2 && q.options.some((o) => o.value === 'yes') && q.options.some((o) => o.value === 'no');
+
+/**
+ * 最初は「あり」（はい）だけを出す質問か（第15弾 項目1）。必須でなく、最初から両方出す印（bothChoices）も無い、あり／なしの質問。
+ * 何も選ばないときは「なし」として扱う。「あり」を押すと、「なし」も出る。
+ */
+export const startsWithYesOnly = (q: Question): boolean => isYesNoQuestion(q) && !q.required && !q.bothChoices;
+
+/**
+ * 白紙で始めた案件に、スケッチ・音声の読み取りを反映するとき、「ない」（no）の答えは、何も選ばない状態にする（第15弾 項目1）。
+ * 最初は「あり」だけを出す質問の「なし」が対象（「何も選ばない＝なし」なので、同じ意味）。
+ * 返す値は、反映のしかた：patch に入れるキーのうち、答えを入れずに外すもの
+ */
+export function keysToUnset(patch: Record<string, Value>): string[] {
+  return Object.entries(patch)
+    .filter(([key, v]) => {
+      if (v !== 'no') return false;
+      const id = key.replace(/^a\d+:/, '').replace(/__\d+$/, '');
+      const q = QUESTIONS.find((x) => x.id === id);
+      return q !== undefined && startsWithYesOnly(q);
+    })
+    .map(([key]) => key);
+}
+
 /** 白紙で始めた案件でも入れておく既定値（名前の頭の部分「中電柱：」など。blankDefault の付いた質問） */
 export const BLANK_DEFAULTS: Record<string, Value> = Object.fromEntries(
   QUESTIONS.filter((q) => q.blankDefault && q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]),

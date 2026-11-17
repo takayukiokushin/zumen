@@ -2,9 +2,10 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, rowsContext, allInputRows, withDerived, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
+import { QUESTION_GROUPS, inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, rowsContext, allInputRows, withDerived, isYesNoQuestion, startsWithYesOnly, keysToUnset, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
+import * as COMPOSITION_DATA from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
 import { findSymbol as getSymbolForCheck } from '../../packages/symbols/src/index.ts';
 import { buildReview, buildSystemPrompt } from '../../packages/ai/src/index.ts';
@@ -324,6 +325,26 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       const label = (name: string) => withDerived(effectiveAnswers({ startMode: 'blank', sourceType: 'pole', poleName: name })).sourceLabel;
       ok(label('九電柱：') === '' && label('東北電柱:') === '' && label('中電柱：') === '' && label('キャビネット番号：') === '', '頭の部分だけのとき、図面に文字が出ています');
       ok(label('九電柱：福岡（分）12') === '九電柱：福岡（分）12' && label('中電柱：猪子山（分）81') === '中電柱：猪子山（分）81', '名称が入っているとき、図面に、そのまま出ていません');
+    }
+    // 「あり／なし」の質問：最初は「あり」だけ出す（第15弾 項目1）。必須・「なし」が意味を持つもの・何も選ばないと「あり」になるものは、最初から両方出す
+    {
+      const yn = QUESTIONS.filter(isYesNoQuestion);
+      const both = yn.filter((q) => q.required || q.bothChoices).map((q) => q.id);
+      const yesOnly = yn.filter(startsWithYesOnly);
+      ok(yn.length >= 35 && yesOnly.length >= 20, `あり／なしの質問の数が、想定と違います（全部 ${yn.length}・最初は「あり」だけ ${yesOnly.length}）`);
+      for (const id of ['groundCabinet', 'hasSiteCt', 'hasSiteVt', 'linkCable', 'link2Cable', 'link3Cable', 'link4Cable', 'relayTest', 'hasCapacitor']) ok(both.includes(id), `${id}：最初から両方のボタンを出すはずです`);
+      for (const id of ['hasZpd', 'hasLa', 'pasBuiltinVt', 'pasBuiltinLa', 'trHasLbs', 'trHasPc', 'hasOvgr']) ok(yesOnly.some((q) => q.id === id), `${id}：最初は「あり」だけのはずです`);
+      // 「なし」と答えること自体が意味を持つ質問（条件に eq:'no'・ne:'no' で出てくるもの）は、必ず、最初から両方出す。
+      // （「あり」だけだと、「なし」を選べず、続きの質問・描き方に進めなくなる。新しい質問を足したときの、うっかり防止）
+      const data = JSON.stringify([QUESTIONS.map((q) => [q.showIf, q.options?.map((o) => o.showIf)]), QUESTION_GROUPS.map((g) => g.showIf), Object.values(COMPOSITION_DATA)]);
+      const noMatters = new Set([...data.matchAll(/"key":"([A-Za-z0-9_]+)","(?:eq|ne)":"no"/g)].map((m) => m[1]!));
+      for (const id of noMatters) {
+        const q = QUESTIONS.find((x) => x.id === id);
+        if (q && isYesNoQuestion(q)) ok(q.required === true || q.bothChoices === true, `${id}：「なし」の答えが、条件に使われています。最初から両方のボタンを出す印（bothChoices）を付けてください`);
+      }
+      // スケッチ・音声の「ない」は、何も選ばない状態にする（白紙の案件）。「ある」・必須・両方出す質問の「ない」は、そのまま
+      const unset = keysToUnset({ hasZpd: 'no', hasLa: 'yes', groundCabinet: 'no', hasCapacitor: 'no', 'a2:hasZpd': 'no', trHasLbs__2: 'no', trCapacity: 100 });
+      ok(unset.join() === 'hasZpd,a2:hasZpd,trHasLbs__2', `「ない」を何も選ばない状態にする対象が違います（${unset.join()}）`);
     }
     // 名前の頭の部分（中電柱：・キャビネット番号：）は、白紙で始めた案件でも、最初から入っている（続けて入力できる）。ほかの初期値は入らない
     for (const mode of ['blank', 'blank-open']) {

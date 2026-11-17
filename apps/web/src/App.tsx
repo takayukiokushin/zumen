@@ -35,7 +35,7 @@ import { useDialogs } from './Dialogs.tsx';
 import { useLang, useT } from './i18n/useT.ts';
 import type { Doc } from './editor/doc.ts';
 import type { Answers, Value } from '@zumen/knowledge';
-import { START_MODE_KEY, effectiveAnswers, isStepStart, openStartMode } from '@zumen/knowledge';
+import { START_MODE_KEY, effectiveAnswers, isBlankStart, isStepStart, keysToUnset, openStartMode } from '@zumen/knowledge';
 
 
 export function App() {
@@ -229,7 +229,14 @@ export function App() {
         }
       }
       if (cur[START_MODE_KEY] === 'blank') before[START_MODE_KEY] = 'blank';
-      updateAnswers((prev) => openStartMode({ ...prev, ...patch }));
+      // 白紙で始めた案件では、「ない」と読み取った項目は、何も選ばれていない状態にする（何も選ばない＝なし）。
+      // 以前の案件（初期値を使う案件）では、「なし」を入れる（外すと、初期値の「あり」に戻る質問があるため）
+      const unset = isBlankStart(cur) ? new Set(keysToUnset(patch)) : new Set<string>();
+      updateAnswers((prev) => {
+        const next = openStartMode({ ...prev, ...patch });
+        for (const key of unset) delete next[key];
+        return next;
+      });
       return { before, overwritten };
     },
     [updateAnswers],

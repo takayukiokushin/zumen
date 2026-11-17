@@ -182,6 +182,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
   },
   {
     id: 'hasSiteVt',
+    bothChoices: true,
     group: 'receiving', section: 'VT（計器用変圧器）',
     label: '受電設備内にVTはありますか？',
     type: 'select',
@@ -191,6 +192,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
   },
   {
     id: 'hasSiteCt',
+    bothChoices: true,
     group: 'receiving', section: 'CT（変流器）',
     label: '受電設備内にCTはありますか？',
     type: 'select',
@@ -413,6 +415,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
   },
   {
     id: 'relayTest',
+    bothChoices: true,
     group: 'relay',
     label: '継電器の手前に、試験端子（テストターミナル）はありますか？',
     type: 'select',

@@ -99,6 +99,7 @@ export const AREAS_QUESTIONS: Question[] = [
   },
   {
     id: 'linkCable',
+    bothChoices: true,
     group: 'link',
     label: 'この送り先へは、ケーブルでつなぎますか？',
     type: 'select',
@@ -210,7 +211,7 @@ function stageQuestions(k: number): Question[] {
       help: 'LBSのときだけ聞く。LBSには、パワーヒューズ（PF）が付く。図面には「PF 30A」のように書く。分からなければ、空欄にする',
     },
     {
-      id: `${p}Cable`, noTrend: true, group: 'link', section: sec,
+      id: `${p}Cable`, bothChoices: true, noTrend: true, group: 'link', section: sec,
       label: 'この送り先へは、ケーブルでつなぎますか？', type: 'select', options: YES_NO_Q, defaultValue: 'yes', showIf: when, ask: 'always',
       help: `${k}段目の線を、ケーブル（高圧ケーブル）でつなぐかどうか。「いいえ」のときは、電線（端末のない、ふつうの線）`,
     },
