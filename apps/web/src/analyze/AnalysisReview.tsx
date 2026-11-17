@@ -6,6 +6,7 @@ import { useT, useTx } from '../i18n/useT.ts';
 import { translateReviewText } from '../session/serverMessages.ts';
 import { TrendHint } from '../TrendHint.tsx';
 import { useTrends } from '../trends.ts';
+import { useSettings } from '../settings/settings.tsx';
 
 /**
  * AIの読み取り結果を、人が確認して、採用するものだけを反映する画面。
@@ -54,6 +55,8 @@ export function AnalysisReview({
 }) {
   const t = useT();
   const tx = useTx();
+  // 過去の傾向は、慣れていない人向けの手がかり。設定で説明文を隠しているときは、出さない
+  const { settings } = useSettings();
   const notesTitle = notesLabel ?? t('revui.notes');
   /** 確認してほしいことの「読み取った値」。あり・なしの2択の質問の「なし」は、英語では「No」（複数の選択肢の中の「なし」は「None」）にする */
   const reviewValue = (r: ReviewItem): string => {
@@ -131,7 +134,7 @@ export function AnalysisReview({
                     </td>
                     <td>
                       {displayValue(id, v, tx)}
-                      {result.uncertain.includes(id) && trends[baseQuestionId(id)] && <TrendHint questionId={baseQuestionId(id)} entry={trends[baseQuestionId(id)]!} />}
+                      {!settings.hideHelp && result.uncertain.includes(id) && trends[baseQuestionId(id)] && <TrendHint questionId={baseQuestionId(id)} entry={trends[baseQuestionId(id)]!} />}
                     </td>
                     <td className="ev">{result.evidence[id] ?? ''}</td>
                   </tr>

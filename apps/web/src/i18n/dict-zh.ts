@@ -98,7 +98,7 @@ export const zh: Dict = {
   'settings.sizeUp': '放大10%',
   'settings.bold': '文字加粗',
   'settings.hideHelp': '隐藏输入栏下方的说明文字',
-  'settings.hideHelpNote': '隐藏设备输入界面中输入栏下方的说明文字。适合熟练的用户。隐藏时，将鼠标放在项目名称上即可看到说明。',
+  'settings.hideHelpNote': '隐藏设备输入界面中输入栏下方的说明文字。适合熟练的用户。“过往倾向”（以往项目中较多的回答）的显示也会隐藏。隐藏时，将鼠标放在项目名称上即可看到说明。',
   'settings.sizeNote': '只想放大文字时请调整“文字大小”；想连按钮和间距一起放大时请调整“整体大小”。',
   'settings.preview': '示例：文字将以此大小显示',
   'settings.reset': '恢复初始设置',

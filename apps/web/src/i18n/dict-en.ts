@@ -98,7 +98,7 @@ export const en: Dict = {
   'settings.sizeUp': 'Increase by 10%',
   'settings.bold': 'Bold text',
   'settings.hideHelp': 'Hide the help text under input fields',
-  'settings.hideHelpNote': 'Hides the help text under the fields on the equipment input screen. For experienced users. While hidden, hover over a field name to see the help.',
+  'settings.hideHelpNote': 'Hides the help text under the fields on the equipment input screen. For experienced users. The “past trends” display (the answers that were most common in earlier projects) is also hidden. While hidden, hover over a field name to see the help.',
   'settings.sizeNote':
     'Use “Text size” to enlarge only the text, and “Overall size” to enlarge buttons and spacing as well.',
   'settings.preview': 'Sample: text appears at this size',

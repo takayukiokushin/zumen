@@ -208,7 +208,8 @@ export function Field({ question: question, fieldKey, value, onChange, context, 
 
       {q.help && !hideHelp && <p className="help" title={tx(q.help)}>{tx(q.help)}</p>}
       {/* 過去の傾向：まだ答えていないときだけ。押すと、その答えになる（自動では入れない） */}
-      {trend && value === undefined && q.type === 'select' && <TrendHint questionId={q.id} entry={trend} onAdopt={(v) => set(v)} />}
+      {/* 過去の傾向は、慣れていない人向けの手がかり。設定で説明文を隠しているときは、出さない */}
+      {trend && !hideHelp && value === undefined && q.type === 'select' && <TrendHint questionId={q.id} entry={trend} onAdopt={(v) => set(v)} />}
     </div>
   );
 }

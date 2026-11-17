@@ -98,7 +98,7 @@ export const fr: Dict = {
   'settings.sizeUp': 'Augmenter de 10 %',
   'settings.bold': 'Texte en gras',
   'settings.hideHelp': 'Masquer les textes d’aide sous les champs',
-  'settings.hideHelpNote': 'Masque les textes d’aide sous les champs de l’écran de saisie des équipements. Pour les utilisateurs expérimentés. Quand ils sont masqués, survolez le nom d’un champ pour voir l’aide.',
+  'settings.hideHelpNote': 'Masque les textes d’aide sous les champs de l’écran de saisie des équipements. Pour les utilisateurs expérimentés. L’affichage des « tendances passées » (réponses les plus fréquentes dans les projets précédents) est aussi masqué. Quand ils sont masqués, survolez le nom d’un champ pour voir l’aide.',
   'settings.sizeNote':
     'Utilisez « Taille du texte » pour agrandir seulement le texte, et « Taille générale » pour agrandir aussi les boutons et les marges.',
   'settings.preview': 'Exemple : le texte s’affiche à cette taille',
