@@ -36,3 +36,27 @@ console.log('\n■ 蓄電池のPCSの文字が長いとき、下の記号と重�
   }
   console.log('  PCSの文字の組 3・6・10組 × エリア1〜3：文字が下の記号に重ならない');
 }
+
+console.log('\n■ 複数エリアで、ほかのエリアの枠の線を、「文字が近すぎる」と数えない');
+{
+  // 枠（キュービクルなど）は、そのエリアの幅だけ。枠の無いエリア（屋内開放など）の文字は、となりのエリアの枠の線と、高さが近くても、問題ではない
+  let checked = 0;
+  for (const areas of ['2', '3', '4']) {
+    for (const form of ['room-open', 'cubicle', 'apartment-pole']) {
+      for (const mb of ['pfs', 'cb']) {
+        const a: Answers = { ...answersSpread, areaCount: areas, areaForm: form, mainBreakerForm: mb };
+        const near = findLabelCollisions(layout(buildComposition(a), a)).filter((m) => m.includes('枠の線'));
+        checked++;
+        if (near.length > 0) fail(`エリア${areas}か所（${form}・${mb}）で、枠の線に近すぎる文字が${near.length}件あります（${near.slice(0, 2).join(' / ')}）`);
+      }
+    }
+  }
+  // 1か所目が枠のあるキュービクル、2か所目が枠の無い柱上（集合住宅）：2か所目の文字が、1か所目の枠の線と、同じ高さの近くに来る
+  for (const mb of ['pfs', 'cb']) {
+    const a: Answers = { ...answersSpread, areaCount: '2', areaForm: 'room-cubicle', areaForm__2: 'apartment-pole', mainBreakerForm: mb };
+    const near = findLabelCollisions(layout(buildComposition(a), a)).filter((m) => m.includes('枠の線'));
+    checked++;
+    if (near.length > 0) fail(`枠のあるエリアと枠の無いエリア（${mb}）で、枠の線に近すぎる文字が${near.length}件あります（${near.slice(0, 2).join(' / ')}）`);
+  }
+  console.log(`  エリア2〜4か所 × 屋内開放・キュービクル・集合住宅（柱上）× PFS・CB の${checked}通り：枠の線に近すぎる文字は0件`);
+}

@@ -1106,7 +1106,8 @@ export function findLabelCollisions(
     for (const w of d.wires) if (segmentHitsRect(w, r)) out.push(`${name} が線に近すぎます`);
     for (const b of boxes) if (b.id !== s.id && rectsOverlap(r, b.rect)) out.push(`${name} が記号（${b.abbr}）に近すぎます`);
     for (const f of d.frames) {
-      if (segmentHitsRect({ x1: -1e5, y1: f.y, x2: 1e5, y2: f.y }, r)) out.push(`${name} が枠の線に近すぎます`);
+      // 枠の線は、その枠の幅だけ（ほかのエリアの枠の線は、横へ続いていない）
+      if (segmentHitsRect({ x1: f.x, y1: f.y, x2: f.x + f.w, y2: f.y }, r)) out.push(`${name} が枠の線に近すぎます`);
     }
     for (const o of labeled.slice(i + 1)) {
       if (rectsOverlap(r, grow(labelRect(o.labelAt, o.label), 0))) out.push(`${name} が文字「${o.label[0]}」に近すぎます`);
