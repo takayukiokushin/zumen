@@ -311,7 +311,8 @@ export function withDerived(rawAnswers: Answers): Answers {
 
   // 引込元の文字。「中電柱：」「キャビネット番号：」だけで名称がまだ無いときは、書かない
   const sourceText = String(answers.sourceType === 'cabinet' ? (answers.cabinetName ?? '') : (answers.poleName ?? '')).trim();
-  d.sourceLabel = /^(中電柱|キャビネット番号)\s*[：:]?$/.test(sourceText) ? '' : sourceText;
+  // （電力会社の呼び名は、会社の設定で変えられる。「○○柱：」のように、最後が「：」で、名称が無いものは、すべて、書かない）
+  d.sourceLabel = /^(中電柱|キャビネット番号)\s*[：:]?$/.test(sourceText) || /^[^：:]{1,20}[：:]\s*$/.test(sourceText) ? '' : sourceText;
 
   // 区分開閉器（PAS／UGS／PGS／なし）。まだ答えていないときは、これまでどおりPAS（引込元がキャビネットならUGS）
   // （白紙で始めた案件で、引込元がキャビネットのまま未回答のときは、図面だけ、UGSとして描く。必須の未入力として残るので、答えるまで次へは進めない）

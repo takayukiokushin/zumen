@@ -14,6 +14,7 @@ import type { Role, User } from './auth.ts';
 import { checkPassword } from './password-policy.ts';
 import { removeUser } from './user-removal.ts';
 import { serverStatus } from './status.ts';
+import { companySettings, setPolePrefix } from './company.ts';
 
 /**
  * 利用者の管理。管理用のアカウントだけが使える。
@@ -30,6 +31,16 @@ const ID_PATTERN = /^[A-Za-z0-9._@-]{2,64}$/;
 admin.get('/status', (c) => c.json(serverStatus()));
 
 admin.get('/users', (c) => c.json({ users: listUsers() }));
+
+/** 会社の設定を変える（電柱の名称の頭の部分）。空にすると、既定（「中電柱：」）に戻る。読むのは、ふつうの利用者も GET /api/company でできる */
+admin.put('/company', async (c) => {
+  try {
+    setPolePrefix(text((await readBody(c)).polePrefix), c.get('user').id);
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : '保存できませんでした。' }, 400);
+  }
+  return c.json(companySettings());
+});
 
 admin.post('/users', async (c) => {
   const body = await readBody(c);

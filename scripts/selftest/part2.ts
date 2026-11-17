@@ -464,6 +464,30 @@ export async function part2(c: Awaited<ReturnType<typeof part1>>) {
     check('サーバーの状態：控えが取れているので、控えについての注意は出ない', !st2.warnings.some((w) => w.code.startsWith('backup-') && w.code !== 'backup-disk-low'), JSON.stringify(st2.warnings));
     check('サーバーの状態に、保存先の場所・パスワード・案件の中身は入らない', !raw.includes(backupDir) && !raw.toLowerCase().includes('password') && !raw.includes('answers'));
   }
+  // 会社の設定（電柱の名称の頭の部分）：読むのは全員、変えるのは管理用だけ
+  {
+    const get = async (who: typeof a) => (await (await call(who, '/api/company')).json()) as { polePrefix: string; defaultPolePrefix: string };
+    const put = (who: typeof a, polePrefix: unknown) => call(who, '/api/admin/company', { method: 'PUT', body: JSON.stringify({ polePrefix }) });
+    const first = await get(a);
+    check('会社の設定：何も設定していないとき、電柱の名称の頭の部分は「中電柱：」', first.polePrefix === '中電柱：' && first.defaultPolePrefix === '中電柱：', JSON.stringify(first));
+    check('会社の設定：標準のアカウントは、読める（変えられない）', (await call(a, '/api/company')).ok && (await put(a, '九電柱：')).status === 403);
+    check('会社の設定：練習用のアカウントは、変えられない', (await put(renshu, '九電柱：')).status === 403);
+    check('会社の設定：ログインしていない人は、読めない', (await fetch(`${base}/api/company`)).status === 401);
+    const saved = await put(kanri, '  九電柱：  ');
+    check('会社の設定：管理用は、頭の部分を変えられる（前後の空白は取る）', saved.ok && (await get(a)).polePrefix === '九電柱：');
+    check('会社の設定：長すぎる（21文字）・改行を含むものは、保存できない', (await put(kanri, 'あ'.repeat(21))).status === 400 && (await put(kanri, '九電\n柱：')).status === 400 && (await get(a)).polePrefix === '九電柱：');
+    check('会社の設定：文字でない値は、保存できない（空として扱い、既定に戻る）', (await put(kanri, 123)).ok && (await get(a)).polePrefix === '中電柱：');
+    // 複製した案件に、設定した頭の部分が入る（元の電柱名称は、これまでどおり空になる）
+    await put(kanri, '九電柱：');
+    const src = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: '頭の部分の確認', answers: { startMode: 'blank', poleName: '中電柱：元の電柱', mainBreakerForm: 'cb' } }) })).json()) as { id: string };
+    const dup = (await (await call(a, `/api/projects/${src.id}/duplicate`, { method: 'POST' })).json()) as { id: string };
+    const dd = (await (await call(a, `/api/projects/${dup.id}`)).json()) as { answers: Record<string, unknown> };
+    check('会社の設定：複製した案件の「引込元の名称」に、設定した頭の部分が入る（元の電柱の名前は引き継がない）', dd.answers.poleName === '九電柱：' && dd.answers.mainBreakerForm === 'cb', JSON.stringify(dd.answers));
+    await call(a, `/api/projects/${dup.id}`, { method: 'DELETE' });
+    await call(a, `/api/projects/${src.id}`, { method: 'DELETE' });
+    // 既定に戻して、続きの検査に影響しないようにする
+    check('会社の設定：空にして保存すると、既定（「中電柱：」）に戻る', (await put(kanri, '')).ok && (await get(a)).polePrefix === '中電柱：');
+  }
   const made = await call(kanri, '/api/admin/users', {
     method: 'POST',
     body: JSON.stringify({ id: 'tsuika', name: '追加した人', password: 'Mizu-Kawa-7391', role: 'member' }),

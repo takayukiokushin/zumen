@@ -13,6 +13,13 @@ export const ROLE_LABEL: Record<Role, string> = {
   sandbox: '練習用',
 };
 
+export interface CompanySettings {
+  /** いまの、電柱の名称の頭の部分（設定していなければ、既定） */
+  polePrefix: string;
+  /** 既定（設定を空にしたときに戻る値） */
+  defaultPolePrefix: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -319,6 +326,9 @@ export const api = {
   /* ---- 利用者の管理（管理用のアカウントのみ） ---- */
   serverStatus: () => call<ServerStatus>('/api/admin/status'),
   listUsers: () => call<{ users: User[] }>('/api/admin/users'),
+  /** 会社の設定（電柱の名称の頭の部分）。読むのは全員、変えるのは管理用のアカウントだけ */
+  company: () => call<CompanySettings>('/api/company'),
+  setCompany: (polePrefix: string) => call<CompanySettings>('/api/admin/company', { method: 'PUT', body: JSON.stringify({ polePrefix }) }),
   addUser: (u: { id: string; name: string; password: string; role: Role }) =>
     call<{ ok: true }>('/api/admin/users', { method: 'POST', body: JSON.stringify(u) }),
   setUserPassword: (id: string, password: string) =>

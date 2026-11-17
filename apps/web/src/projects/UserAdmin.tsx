@@ -11,6 +11,63 @@ import { ServerStatusPanel } from './ServerStatusPanel.tsx';
  * ターミナルを使わずに、追加・削除・パスワードの再設定ができる。
  */
 
+/**
+ * 会社の設定。いまは、電柱の名称の頭の部分（電力会社の呼び名。既定は「中電柱：」）だけ。
+ * 新しい案件・複製した案件の「引込元の名称」の最初に入る。すでにある案件は変わらない。空にして保存すると、既定に戻る。
+ */
+function CompanySettingsPanel() {
+  const t = useT();
+  const [saved, setSaved] = useState<string | null>(null);
+  const [defaultPrefix, setDefaultPrefix] = useState('');
+  const [value, setValue] = useState('');
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api
+      .company()
+      .then((c) => {
+        setSaved(c.polePrefix);
+        setDefaultPrefix(c.defaultPolePrefix);
+        setValue(c.polePrefix);
+      })
+      .catch(() => undefined);
+  }, []);
+  const save = async (next: string) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const c = await api.setCompany(next);
+      setSaved(c.polePrefix);
+      setValue(c.polePrefix);
+      setMsg({ ok: true, text: t('company.saved', { v: c.polePrefix }) });
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : t('err.generic') });
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (saved === null) return null;
+  return (
+    <section className="company-settings">
+      <h3>{t('company.title')}</h3>
+      <div className="field">
+        <label htmlFor="company-pole">{t('company.pole')}</label>
+        <input id="company-pole" type="text" maxLength={20} value={value} placeholder={defaultPrefix} onChange={(e) => setValue(e.target.value)} />
+        <p className="help">{t('company.poleHelp', { d: defaultPrefix })}</p>
+      </div>
+      <div className="voice-actions">
+        <button type="button" className="primary" disabled={busy || value.trim() === saved} onClick={() => void save(value)}>
+          {t('company.save')}
+        </button>
+        <button type="button" className="btn" disabled={busy || saved === defaultPrefix} onClick={() => void save('')}>
+          {t('company.reset', { d: defaultPrefix })}
+        </button>
+      </div>
+      {msg && <p className={msg.ok ? 'ok-note-inline' : 'err'}>{msg.text}</p>}
+    </section>
+  );
+}
+
 export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
   const t = useT();
   const { ask, input } = useDialogs();
@@ -98,6 +155,8 @@ export function UserAdmin({ me, onClose }: { me: User; onClose: () => void }) {
         {done && <p className="ok-note">{done}</p>}
 
         <ServerStatusPanel />
+
+        <CompanySettingsPanel />
 
         <section>
           <h3>{t('users.current')}</h3>

@@ -414,7 +414,10 @@ export function App() {
         await leaveCurrent();
         // 新しい案件は、完全に白紙から始める（初期値は入れない。「設備を入力して作成」は、上から1つずつ開く。第14弾 項目3）。
         // 参考にしたい設備があるときは、別の案件を複製して作る。保存済みの案件は変わらない
-        const initial: Answers = { [START_MODE_KEY]: 'blank', ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}) };
+        // 引込元の名称の頭の部分（会社の設定。「中電柱：」以外に変えてあるときだけ、案件に入れる）。直前に、サーバーから読み直す
+        const company = await api.company().catch(() => null);
+        const polePrefix = company && company.polePrefix !== company.defaultPolePrefix ? company.polePrefix : '';
+        const initial: Answers = { [START_MODE_KEY]: 'blank', ...(useAsSite && name.trim() ? { siteName: name.trim() } : {}), ...(polePrefix ? { poleName: polePrefix } : {}) };
         const { id, updatedAt } = await api.createProject(name, initial);
         setProjectId(id);
         setProjectName(name || t('project.untitled'));

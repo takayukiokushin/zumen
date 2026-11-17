@@ -16,6 +16,7 @@ import type { User } from './auth.ts';
 import { projects, purgeExpiredTrash, purgeOldDrafts, purgeStrayFiles } from './projects.ts';
 import { trends } from './trends.ts';
 import { admin } from './admin.ts';
+import { companySettings } from './company.ts';
 import { listUsers } from './auth.ts';
 import type { Answers } from '@zumen/knowledge';
 import { SERVER_VERSION } from './version.ts';
@@ -46,6 +47,10 @@ app.get('/api/health', (c) =>
     webBuild: currentWebBuild(),
   }),
 );
+
+/* ---------------- 会社の設定（読むだけ。変えるのは管理用のアカウント：PUT /api/admin/company） ---------------- */
+
+app.get('/api/company', requireAuth, (c) => c.json(companySettings()));
 
 /* ---------------- ログイン ---------------- */
 

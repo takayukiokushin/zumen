@@ -74,6 +74,14 @@ db.exec(`
     saved_at        TEXT NOT NULL
   );
 
+  -- 会社の設定（管理用のアカウントが変える。いまは、電柱の名称の頭の部分だけ）
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    updated_by TEXT
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_projects_updated ON projects(updated_at);
   CREATE INDEX IF NOT EXISTS idx_files_project ON project_files(project_id);

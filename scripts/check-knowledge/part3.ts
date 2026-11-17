@@ -319,6 +319,12 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       ok(line({ transformerCount: '1', trHasLbs: 'yes', trPfG: '50A', trPfLoadAmp: '30A' }) === 'G50A T30A 40kA', '以前の案件（印なし）で、PFの文字が変わっています');
       ok(line({ ...base, trPfLoad: 'C', trPfG: '50A', trPfLoadAmp: '30A' }) === 'G50A C30A', '以前の案件のT以外の答えが、図面に使われていません');
     }
+    // 電力会社の呼び名を変えたとき（会社の設定）：頭の部分（「九電柱：」など）だけで名称が無いときは、図面に文字を出さない。名称があれば、そのまま出す
+    {
+      const label = (name: string) => withDerived(effectiveAnswers({ startMode: 'blank', sourceType: 'pole', poleName: name })).sourceLabel;
+      ok(label('九電柱：') === '' && label('東北電柱:') === '' && label('中電柱：') === '' && label('キャビネット番号：') === '', '頭の部分だけのとき、図面に文字が出ています');
+      ok(label('九電柱：福岡（分）12') === '九電柱：福岡（分）12' && label('中電柱：猪子山（分）81') === '中電柱：猪子山（分）81', '名称が入っているとき、図面に、そのまま出ていません');
+    }
     // 名前の頭の部分（中電柱：・キャビネット番号：）は、白紙で始めた案件でも、最初から入っている（続けて入力できる）。ほかの初期値は入らない
     for (const mode of ['blank', 'blank-open']) {
       const e = effectiveAnswers({ startMode: mode });

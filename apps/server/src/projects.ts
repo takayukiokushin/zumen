@@ -9,6 +9,7 @@ import { newId, requireAuth } from './auth.ts';
 import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
 import { clearForDuplicate, MAX_TEXT_LENGTH, openStartMode } from '@zumen/knowledge';
+import { customPolePrefix } from './company.ts';
 
 /**
  * ファイルを書く。ディスクまで確かに書いてから戻る（停電のあとに、記録だけあって中身が空、にならないように）。
@@ -463,6 +464,15 @@ projects.post('/practice/copy', async (c) => {
   return c.json({ id, name, updatedAt: t }, 201);
 });
 
+/**
+ * 複製した案件の「引込元の名称」に、会社の設定の頭の部分（「中電柱：」以外に変えてあるとき）を入れる。
+ * 複製のときは、引込元の名称を空にする決まり（その場所の名前を引き継がない）なので、頭の部分だけを、入れ直す
+ */
+function withCompanyPolePrefix(answers: Record<string, unknown>): Record<string, unknown> {
+  const prefix = customPolePrefix();
+  return prefix && answers.poleName === undefined ? { ...answers, poleName: prefix } : answers;
+}
+
 /** 練習用にコピーする回答。白紙で始めた案件は、すべての項目を開いた形にする（初期値を使わないのは、そのまま） */
 function answersForCopy(raw: string): string {
   try {
@@ -526,7 +536,7 @@ projects.post('/:id/duplicate', async (c) => {
   inTransaction(() => {
     db.prepare(
       'INSERT INTO projects (id, name, created_at, updated_at, updated_by, answers, drawing, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run(id, name, t, t, user.id, JSON.stringify(clearForDuplicate(answers as never)), keepOnlyLayers(withoutHandwrittenMemos(src.drawing), layerIds), user.id);
+    ).run(id, name, t, t, user.id, JSON.stringify(withCompanyPolePrefix(clearForDuplicate(answers as never))), keepOnlyLayers(withoutHandwrittenMemos(src.drawing), layerIds), user.id);
     refreshSearch(id);
   });
   takeLock(id, user.id);
