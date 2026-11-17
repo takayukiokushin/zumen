@@ -719,10 +719,19 @@ export function addFan(doc: Doc, sourceId: string, childIds: string[]): { doc: D
     doc.items.flatMap((it) => (it.kind === 'wire' && it.fan?.id === fanId && it.fan.role === 'drop' ? [it.fan.item ?? ''] : [])),
   );
   const add: DocWire[] = [];
+  // すでに、元の記号の出口と、その機器の入口が、1本の線で直接つながっているときは、新しい線を作らない（線が二重に重なるため）
+  const joined = (cid: string, cpId: string) =>
+    doc.items.some(
+      (w) =>
+        w.kind === 'wire' &&
+        !w.fan &&
+        ((w.at1?.item === sourceId && w.at1.port === sp.id && w.at2?.item === cid && w.at2.port === cpId) ||
+          (w.at2?.item === sourceId && w.at2.port === sp.id && w.at1?.item === cid && w.at1.port === cpId)),
+    );
   for (const cid of childIds) {
     const c = doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === cid);
     const cp = c ? fanTargetPort(c) : null;
-    if (!c || !cp || cid === sourceId || have.has(cid)) continue;
+    if (!c || !cp || cid === sourceId || have.has(cid) || joined(cid, cp.id)) continue;
     have.add(cid);
     add.push({ kind: 'wire', id: freshIdIn(doc, 'wire'), x1: cp.x, y1: cp.y, x2: cp.x, y2: cp.y, at2: { item: cid, port: cp.id }, fan: { id: fanId, role: 'drop', item: cid, port: cp.id } });
   }

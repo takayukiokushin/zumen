@@ -11,7 +11,7 @@
  */
 import { buildComposition } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
-import { addFan, addSymbol, fanSourcePort, fanTargetPort, fromLayout, moveItem, refreshFans, removeItem, removeItems, tidyDoc } from '../apps/web/src/editor/doc.ts';
+import { addFan, addSymbol, portsOf, fanSourcePort, fanTargetPort, fromLayout, moveItem, refreshFans, removeItem, removeItems, tidyDoc } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { tidyDrawing } from '../apps/web/src/editor/inspect.ts';
 
@@ -138,6 +138,27 @@ const big = moveItem(d1, T3, 0, 60);
 const tb = tidyDrawing(big);
 ok(near(fanTargetPort(sym(tb.doc, T3))!.y, fanTargetPort(sym(big, T3))!.y), '大きくずれた機器まで、動かしました');
 console.log('  「結線を整える」：きれいな結線はそのまま。少しずれた機器の高さをそろえ、偏った母線を真ん中に戻す。大きくずれたものは動かさない。斜めにならない');
+
+// 6. すでに線でつながっている記号は、結線しても、線が二重にならない（全体デバッグ 問題2）
+{
+  const a = { sourceType: 'pole', mainBreakerForm: 'pfs', hasCapacitor: 'yes' } as Record<string, string>;
+  const gen = fromLayout(layout(buildComposition(a), a)); // 線つきの図面
+  const wiresIn = (d: Doc) => d.items.filter((i): i is DocWire => i.kind === 'wire');
+  const direct = wiresIn(gen).find((w) => w.at1 && w.at2 && w.at1.item !== w.at2.item && !w.fan)!;
+  const r1 = addFan(gen, direct.at1!.item, [direct.at2!.item]);
+  ok(r1.added === 0 && wiresIn(r1.doc).length === wiresIn(gen).length, `すでに線でつながっている2つを結線して、線が増えました（${wiresIn(gen).length}→${wiresIn(r1.doc).length}）`);
+  ok(r1.doc === gen, 'すでにつながっているときは、図面そのものを変えないはずです');
+  // つながっていない機器だけ、結線する：つながっている機器には、線を足さない
+  const added1 = addSymbol(gen, 'vcb', 400, 400);
+  const gen2 = added1.doc;
+  const other = gen2.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === added1.id);
+  ok(!!other, 'つながっていない記号が、試験用の図面にありません');
+  if (other) {
+    const r2 = addFan(gen2, direct.at1!.item, [direct.at2!.item, other.id]);
+    ok(r2.added === 1 && wires(r2.doc).filter((w) => w.fan!.role === 'drop').length === 1, `2つのうち、つながっていない1つだけ、結線されるはずです（added ${r2.added}／${other.id}）`);
+  }
+  console.log('  すでに線でつながっている記号は、結線しても、線を足さない（「新しくつなぐ機器がありません」と知らせる）');
+}
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
