@@ -140,6 +140,29 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
+/** 外側で、縦（横）に動かせる、いちばん近い入れ物を探す。なければ、ページ全体 */
+function outerScroller(el: HTMLElement, axis: 'x' | 'y'): HTMLElement {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const cs = getComputedStyle(p);
+    const mode = axis === 'y' ? cs.overflowY : cs.overflowX;
+    const room = axis === 'y' ? p.scrollHeight - p.clientHeight : p.scrollWidth - p.clientWidth;
+    if ((mode === 'auto' || mode === 'scroll') && room > 1) return p;
+  }
+  return (document.scrollingElement as HTMLElement) ?? document.documentElement;
+}
+
+/** 図面の枠を dx, dy だけ動かし、枠が端で動かせなかった分を、外側の画面に回す */
+function scrollWithOuter(sc: HTMLElement, dx: number, dy: number) {
+  const l0 = sc.scrollLeft;
+  const t0 = sc.scrollTop;
+  sc.scrollLeft += dx;
+  sc.scrollTop += dy;
+  const restX = dx - (sc.scrollLeft - l0);
+  const restY = dy - (sc.scrollTop - t0);
+  if (Math.abs(restY) >= 0.5) outerScroller(sc, 'y').scrollTop += restY;
+  if (Math.abs(restX) >= 0.5) outerScroller(sc, 'x').scrollLeft += restX;
+}
+
 export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
@@ -329,8 +352,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
       if (p && p.id === e.pointerId) {
         if (!p.moved && Math.hypot(cur.x - p.x, cur.y - p.y) > 6) p.moved = true;
         if (p.moved) {
-          sc.scrollLeft -= cur.x - prev.x;
-          sc.scrollTop -= cur.y - prev.y;
+          // 図面の枠で動かせる分は枠を動かし、動かせない分（スマホで、枠より外の下側が見切れているときなど）は、外側の画面を動かす
+          scrollWithOuter(sc, prev.x - cur.x, prev.y - cur.y);
         }
       }
     };
