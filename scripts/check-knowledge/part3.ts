@@ -267,7 +267,8 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     for (const mode of ['blank', 'blank-open']) {
       const bt = { startMode: mode, hasBattery: 'yes' };
       ok(effectiveAnswers(bt).hasAuxTr === undefined && normalizeAnswers(bt).hasAuxTr === undefined, `${mode}：蓄電池を「あり」にしただけで、補助変圧器が「あり」になっています`);
-      ok(missingRequired(bt).some((q) => q.id === 'hasAuxTr'), `${mode}：補助変圧器が、必須の未入力として残っていません`);
+      // （特殊設備の5つのあり／なしは、必須ではない。何も選ばない＝なし。第15弾 項目2）
+      ok(!missingRequired(bt).some((q) => q.id === 'hasAuxTr'), `${mode}：補助変圧器のあり／なしが、必須の未入力として並んでいます（必須ではないはずです）`);
       // 2か所目以降のエリアでも、見え方と数え方が同じ（見えている答えと、数えられる答えが食い違わない）
       const two = { startMode: mode, areaCount: '2', hasBattery: 'yes', 'a2:hasBattery': 'yes' };
       ok(areaView(two, 1).hasAuxTr === undefined, `${mode}：2か所目のエリアで、補助変圧器が、答えていないのに「あり」と見えています`);
@@ -357,15 +358,15 @@ console.log('\n■ ZPD・LAをつなぐ位置');
     ok(normalizeAnswers({ hasBattery: 'yes' }).hasAuxTr === 'yes' && normalizeAnswers({ auxTrCount: '2' }).hasAuxTr === 'yes' && normalizeAnswers({ auxTrCount: '0' }).hasAuxTr === undefined, '以前の案件（印なし）で、補助変圧器の読み替えが働いていません');
     // 必須項目：白紙なら、表のとおり、すべて未入力として並ぶ。印が無い案件は、既定値のある項目は並ばない
     const need = new Set(missingRequired({ startMode: 'blank' }).map((x) => x.id));
-    for (const id of ['siteName', 'sourceType', 'sectionalizer', 'areaCount', 'areaForm', 'vctLocation', 'vctCount', 'cableInstallation', 'mainBreakerForm', 'transformerCount', 'hasCapacitor', 'hasGenerator', 'hasMotor', 'hasPv', 'hasBattery', 'hasAuxTr']) ok(need.has(id), `白紙の案件で、必須の「${id}」が、未入力として並んでいません`);
+    for (const id of ['siteName', 'sourceType', 'sectionalizer', 'areaCount', 'areaForm', 'vctLocation', 'vctCount', 'cableInstallation', 'mainBreakerForm', 'transformerCount', 'hasCapacitor']) ok(need.has(id), `白紙の案件で、必須の「${id}」が、未入力として並んでいません`);
     const needCb = new Set(missingRequired({ startMode: 'blank', mainBreakerForm: 'cb' }).map((x) => x.id));
     for (const id of ['vtSetCount', 'ctSetCount', 'relayCount']) ok(needCb.has(id), `主遮断装置をCB形にしたとき、必須の「${id}」が、未入力として並んでいません`);
     const legacyNeed = new Set(missingRequired({}).map((x) => x.id));
     ok(!legacyNeed.has('areaCount') && !legacyNeed.has('vctCount') && !legacyNeed.has('hasPv') && !legacyNeed.has('hasAuxTr') && !legacyNeed.has('transformerCount'), '以前の案件で、既定値のある項目が、必須の入力漏れとして並んでいます');
     // 必須の表（第14弾 項目4）：「必須」の印が付いているもの・付いていないもの
     const req = (id: string) => QUESTIONS.find((x) => x.id === id)?.required === true;
-    for (const id of ['siteName', 'sourceType', 'boundaryPattern', 'sectionalizer', 'pasControl', 'vctLocation', 'vctCount', 'cableInstallation', 'cableOwner', 'areaCount', 'areaForm', 'mainBreakerForm', 'vtSetCount', 'ctSetCount', 'relayCount', 'transformerCount', 'trUsage', 'trConnection', 'hasCapacitor', 'capacitorCount', 'hasAuxTr', 'hasGenerator', 'hasPv', 'hasBattery', 'hasMotor', 'auxTrCount', 'generatorCount', 'generatorUsage', 'generatorCapacity', 'pvGroupCount', 'pcsCapacity', 'pcsCount', 'motorCount', 'motorCapacity', 'batteryUnitCount', 'batteryUnitRating', 'batteryPcsGroupCount', 'batteryPcsKw', 'batteryPcsUnits']) ok(req(id), `「${id}」は、必須のはずです（必須項目の表）`);
-    for (const id of ['areaPlacement', 'customerNo', 'poleName', 'zpd', 'hasZpd', 'hasLa', 'capacitorCapacity', 'reactorCapacity', 'trVoltage', 'batteryTransformer', 'motorPlace']) ok(!req(id), `「${id}」は、必須ではないはずです（必須項目の表）`);
+    for (const id of ['siteName', 'sourceType', 'boundaryPattern', 'sectionalizer', 'pasControl', 'vctLocation', 'vctCount', 'cableInstallation', 'cableOwner', 'areaCount', 'areaForm', 'mainBreakerForm', 'vtSetCount', 'ctSetCount', 'relayCount', 'transformerCount', 'trUsage', 'trConnection', 'hasCapacitor', 'capacitorCount', 'auxTrCount', 'generatorCount', 'generatorUsage', 'generatorCapacity', 'pvGroupCount', 'pcsCapacity', 'pcsCount', 'motorCount', 'motorCapacity', 'batteryUnitCount', 'batteryUnitRating', 'batteryPcsGroupCount', 'batteryPcsKw', 'batteryPcsUnits']) ok(req(id), `「${id}」は、必須のはずです（必須項目の表）`);
+    for (const id of ['areaPlacement', 'customerNo', 'poleName', 'zpd', 'hasZpd', 'hasLa', 'capacitorCapacity', 'reactorCapacity', 'trVoltage', 'batteryTransformer', 'motorPlace', 'hasGenerator', 'hasPv', 'hasBattery', 'hasAuxTr', 'hasMotor']) ok(!req(id), `「${id}」は、必須ではないはずです（必須項目の表）`);
     // 質問の既定値は変えていない：保存済みの案件（答えを持たない質問は既定値）の見え方は、これまでどおり
     const old = withAutoValues({ ...QUESTION_DEFAULTS });
     ok(String(old.transformerCount) === '1' && String(old.hasCapacitor) === 'no' && old.vctLocation === 'pole' && old.mainBreakerForm === undefined, '質問の既定値が変わっています（保存済みの案件の内容が変わってしまいます）');

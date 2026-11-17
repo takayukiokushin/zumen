@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v18d6p9s",
+  "version": "vozrfzo",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v18d6p9s）
+# 項目の一覧（版：vozrfzo）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -474,22 +474,10 @@
 【特殊設備】
 （エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:hasGenerator））
 - hasGenerator：発電機はありますか｜yes/no
-- hasMotor：電動機はありますか｜yes/no
 - hasPv：太陽光発電設備はありますか｜yes/no
 - hasBattery：蓄電池はありますか｜yes/no
 - hasAuxTr：補助変圧器はありますか｜yes/no
-
-【補助変圧器】
-（台ごとに繰り返す。件数は auxTrCount。2台目以降は、項目IDの後ろに __2、__3 …（例：auxTrFrom__2））
-（エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:auxTrCount））
-（このまとまりを聞くのは hasAuxTr=yes）
-- auxTrCount：補助変圧器の台数｜1 ／ 2 ／ 3 ／ 4 ／ ほかの値も可
-- auxTrFrom：どの変圧器の低圧側につなぎますか｜数（1〜8）
-- auxTrUsage：用途｜動力 ／ 電灯 ／ 電灯・動力=電灯および動力 ／ ほかの値も可
-- auxTrConnection：結線方式｜tr-1p=単相（単相三線式） ／ tr-1p-2w=単相（単相2線式） ／ tr-3p-dy=三相Δ-Y結線 ／ tr-3p-yd=三相Y-Δ結線 ／ tr-3p-dd=三相Δ-Δ結線 ／ tr-3p-yy=三相Y-Y結線 ／ tr-vv=V結線（単相変圧器2台）
-- auxTrCapacity：容量｜数字のみ（kVA）
-- auxTrVoltage：定格電圧（一次/二次）｜文字
-- auxTrMccb：補助変圧器盤のMCCBの定格｜文字（A）
+- hasMotor：電動機はありますか｜yes/no
 
 【発電機】
 （台ごとに繰り返す。件数は generatorCount。2台目以降は、項目IDの後ろに __2、__3 …（例：generatorUsage__2））
@@ -502,28 +490,6 @@
 - generatorRatedVoltage：定格電圧｜200=200V ／ 400=400V ／ 3300=3300V ／ 6600=6600V ／ ほかの値も可
 - generatorPlace：設置場所｜文字
 - generatorTransformer：この発電機の接続先は｜none=つながない（単独で置く） ／ bus=高圧母線から接続する ／ 1=1台目の二次側 ／ 2=2台目の二次側 ／ 3=3台目の二次側 ／ 4=4台目の二次側 ／ 5=5台目の二次側 ／ 6=6台目の二次側 ／ 7=7台目の二次側 ／ 8=8台目の二次側
-
-【電動機】
-（台ごとに繰り返す。件数は motorCount。2台目以降は、項目IDの後ろに __2、__3 …（例：motorStartMethod__2））
-（エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:motorCount））
-（このまとまりを聞くのは hasMotor=yes）
-- motorCount：電動機の台数｜数（1〜50）
-- motorStartMethod：始動方式｜直入れ始動 ／ リアクトル始動 ／ コンドルファ始動 ／ インバータ始動 ／ スターデルタ始動
-- motorCapacity：電動機の容量｜数字のみ（kW）
-- motorRatedVoltage：定格電圧｜200=200V ／ 400=400V ／ 3300=3300V ／ 6600=6600V ／ ほかの値も可
-- motorPlace：設置場所｜文字
-- motorSource：接続元は｜secondary=変圧器の二次側から接続する ／ bus=母線（高圧母線）から分岐して接続する
-- motorSourceTr：何台目の変圧器の二次側ですか｜数（1〜100）｜条件：motorSource=secondary かつ transformerCount>1
-- motorCable：途中にケーブルはありますか｜yes/no｜条件：motorSource=bus/secondary
-- motorCableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：motorSource=bus/secondary かつ motorCable=yes
-- motorCableStructure：ケーブルの構造は｜CVT ／ CV｜条件：motorSource=bus/secondary かつ motorCable=yes
-- motorCableVoltage：定格電圧は｜600=600V ／ 3300=3300V ／ 6600=6600V ／ 22000=22000V ／ 33000=33000V ／ ほかの値も可｜条件：motorSource=bus/secondary かつ motorCable=yes
-- motorCableCrossSection：断面積は｜数（14〜150）｜条件：motorSource=bus/secondary かつ motorCable=yes
-- motorCableLength：長さは｜数字のみ（m）｜条件：motorSource=bus/secondary かつ motorCable=yes
-- motorCableLengthApprox：長さに「約」を付ける｜yes/no｜条件：motorSource=bus/secondary かつ motorCable=yes かつ motorCableLength>0
-- motorSwitch：途中に開閉器はありますか｜none=なし（母線から直接） ／ ds=DS ／ vcb=VCB ／ ds-vcb=DS＋VCB ／ lbs-plain=LBS（PFなし） ／ lbs=LBS（PF付） ／ none=なし ／ mccb=MCCB（配線用遮断器）｜条件：motorSource=bus/secondary
-- motorSwitch2：2段目の開閉器はありますか｜none=なし ／ vcs=VCS（真空電磁接触器）｜条件：motorSource=bus
-- motorFuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：motorSwitch=lbs
 
 【太陽光発電設備（PCS）】
 （種類ごとに繰り返す。件数は pvGroupCount。2種類目以降は、項目IDの後ろに __2、__3 …（例：pcsCapacity__2））
@@ -563,3 +529,37 @@
 - batteryPcsGroupCount：PCSは何種類の容量がありますか｜数（1〜10）
 - batteryPcsKw：PCS 1台の容量｜数字のみ（kW）
 - batteryPcsUnits：この容量のPCSは何台ありますか｜数（1〜50）
+
+【補助変圧器】
+（台ごとに繰り返す。件数は auxTrCount。2台目以降は、項目IDの後ろに __2、__3 …（例：auxTrFrom__2））
+（エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:auxTrCount））
+（このまとまりを聞くのは hasAuxTr=yes）
+- auxTrCount：補助変圧器の台数｜1 ／ 2 ／ 3 ／ 4 ／ ほかの値も可
+- auxTrFrom：どの変圧器の低圧側につなぎますか｜数（1〜8）
+- auxTrUsage：用途｜動力 ／ 電灯 ／ 電灯・動力=電灯および動力 ／ ほかの値も可
+- auxTrConnection：結線方式｜tr-1p=単相（単相三線式） ／ tr-1p-2w=単相（単相2線式） ／ tr-3p-dy=三相Δ-Y結線 ／ tr-3p-yd=三相Y-Δ結線 ／ tr-3p-dd=三相Δ-Δ結線 ／ tr-3p-yy=三相Y-Y結線 ／ tr-vv=V結線（単相変圧器2台）
+- auxTrCapacity：容量｜数字のみ（kVA）
+- auxTrVoltage：定格電圧（一次/二次）｜文字
+- auxTrMccb：補助変圧器盤のMCCBの定格｜文字（A）
+
+【電動機】
+（台ごとに繰り返す。件数は motorCount。2台目以降は、項目IDの後ろに __2、__3 …（例：motorStartMethod__2））
+（エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:motorCount））
+（このまとまりを聞くのは hasMotor=yes）
+- motorCount：電動機の台数｜数（1〜50）
+- motorStartMethod：始動方式｜直入れ始動 ／ リアクトル始動 ／ コンドルファ始動 ／ インバータ始動 ／ スターデルタ始動
+- motorCapacity：電動機の容量｜数字のみ（kW）
+- motorRatedVoltage：定格電圧｜200=200V ／ 400=400V ／ 3300=3300V ／ 6600=6600V ／ ほかの値も可
+- motorPlace：設置場所｜文字
+- motorSource：接続元は｜secondary=変圧器の二次側から接続する ／ bus=母線（高圧母線）から分岐して接続する
+- motorSourceTr：何台目の変圧器の二次側ですか｜数（1〜100）｜条件：motorSource=secondary かつ transformerCount>1
+- motorCable：途中にケーブルはありますか｜yes/no｜条件：motorSource=bus/secondary
+- motorCableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：motorSource=bus/secondary かつ motorCable=yes
+- motorCableStructure：ケーブルの構造は｜CVT ／ CV｜条件：motorSource=bus/secondary かつ motorCable=yes
+- motorCableVoltage：定格電圧は｜600=600V ／ 3300=3300V ／ 6600=6600V ／ 22000=22000V ／ 33000=33000V ／ ほかの値も可｜条件：motorSource=bus/secondary かつ motorCable=yes
+- motorCableCrossSection：断面積は｜数（14〜150）｜条件：motorSource=bus/secondary かつ motorCable=yes
+- motorCableLength：長さは｜数字のみ（m）｜条件：motorSource=bus/secondary かつ motorCable=yes
+- motorCableLengthApprox：長さに「約」を付ける｜yes/no｜条件：motorSource=bus/secondary かつ motorCable=yes かつ motorCableLength>0
+- motorSwitch：途中に開閉器はありますか｜none=なし（母線から直接） ／ ds=DS ／ vcb=VCB ／ ds-vcb=DS＋VCB ／ lbs-plain=LBS（PFなし） ／ lbs=LBS（PF付） ／ none=なし ／ mccb=MCCB（配線用遮断器）｜条件：motorSource=bus/secondary
+- motorSwitch2：2段目の開閉器はありますか｜none=なし ／ vcs=VCS（真空電磁接触器）｜条件：motorSource=bus
+- motorFuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：motorSwitch=lbs

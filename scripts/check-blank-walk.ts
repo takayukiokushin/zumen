@@ -77,6 +77,8 @@ let finished = 0;
 for (let n = 0; n < WALKS; n++) {
   const rnd = rng(n * 7919 + 17);
   let answers: Answers = { startMode: 'blank' };
+  // 特殊設備の5つのあり／なしは、必須ではない（何も選ばない＝なし）。ときどき「あり」を先に押して、中身の必須も、行き止まり無く入力できることを確かめる
+  for (const id of ['hasGenerator', 'hasPv', 'hasBattery', 'hasAuxTr', 'hasMotor']) if (rnd() < 0.4) answers = { ...answers, [id]: 'yes' };
   let done = false;
   for (let step = 0; step < MAX_STEPS; step++) {
     const missing = missingRequiredFields(answers);

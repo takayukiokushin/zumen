@@ -57,8 +57,16 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     perArea: true,
   },
   { id: 'special', label: '特殊設備', perArea: true },
+  // 特殊設備の、細かい入力の枠（あり／なしの並びと同じ順：発電機・太陽光・蓄電池・補助変圧器・電動機）。
+  // 順番に1つずつ開く表示では、特殊設備の段と一緒に開く（「あり」を押した直後に出る。stepWith）
+  { id: 'generator', stepWith: 'special', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
+  { id: 'pv', stepWith: 'special', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
+  // 蓄電池：「あり」のとき、枠が増える。PCSは、太陽光とは別の枠（容量ごとのまとまり）
+  { id: 'battery', stepWith: 'special', label: '蓄電池', showIf: { key: 'hasBattery', eq: 'yes' }, perArea: true },
+  { id: 'batteryPcs', stepWith: 'special', label: '蓄電池のPCS', repeatCountKey: 'batteryPcsGroupCount', repeatUnit: '種類', showIf: { key: 'hasBattery', eq: 'yes' }, perArea: true },
   {
     id: 'auxtr',
+    stepWith: 'special',
     label: '補助変圧器',
     description: '補助変圧器盤（MCCB→補助変圧器）を、低圧側に描く。「補助変圧器はありますか？」が「あり」のときだけ',
     repeatCountKey: 'auxTrCount',
@@ -66,11 +74,6 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     perArea: true,
     showIf: { key: 'hasAuxTr', eq: 'yes' },
   },
-  { id: 'generator', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },
-  { id: 'motor', label: '電動機', repeatCountKey: 'motorCount', repeatUnit: '台', showIf: { key: 'hasMotor', eq: 'yes' }, perArea: true },
-  { id: 'pv', label: '太陽光発電設備（PCS）', repeatCountKey: 'pvGroupCount', repeatUnit: '種類', showIf: { key: 'hasPv', eq: 'yes' }, perArea: true },
-  // 蓄電池：「あり」のとき、枠が増える。PCSは、太陽光とは別の枠（容量ごとのまとまり）
-  { id: 'battery', label: '蓄電池', showIf: { key: 'hasBattery', eq: 'yes' }, perArea: true },
-  { id: 'batteryPcs', label: '蓄電池のPCS', repeatCountKey: 'batteryPcsGroupCount', repeatUnit: '種類', showIf: { key: 'hasBattery', eq: 'yes' }, perArea: true },
+  { id: 'motor', stepWith: 'special', label: '電動機', repeatCountKey: 'motorCount', repeatUnit: '台', showIf: { key: 'hasMotor', eq: 'yes' }, perArea: true },
   { id: 'title', label: '表題欄' },
 ];

@@ -171,12 +171,23 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
    * 段の中の必須項目（「必須」の印のもの）がすべて入ると、次の段が開く。必須が1つも無い段は、すぐ次へ進む。
    */
   const steps: { id: string; need: boolean; label: string }[] = [];
+  /** ほかのグループの段と一緒に開くグループ（stepWith）の、グループの段の id → 先頭の段の id */
+  const stepAlias = new Map<string, string>();
+  /** グループの段を足す。stepWith のあるグループ（特殊設備の細かい入力の枠）は、先頭の段にまとめ、必須が残っているかも、先頭の段で見る */
+  const pushGroupStep = (g: Section, suffix: string) => {
+    const id = `g-${g.group.id}${suffix}`;
+    const lead = g.group.stepWith ? steps.find((x) => x.id === `g-${g.group.stepWith}${suffix}`) : undefined;
+    if (lead) {
+      lead.need = lead.need || g.need;
+      stepAlias.set(id, lead.id);
+    } else steps.push({ id, need: g.need, label: g.group.label });
+  };
   for (const sec of sections) {
-    steps.push({ id: `g-${sec.group.id}`, need: sec.need, label: sec.group.label });
+    pushGroupStep(sec, '');
     if (sec.group.id === 'area') {
       for (const ab of areaBlocks) {
         steps.push({ id: `area-${ab.index + 1}`, need: ab.areaNeed, label: t('hearing.areaNth', { n: ab.index + 1 }) });
-        for (const g of ab.groups) steps.push({ id: `g-${g.group.id}-a${ab.index + 1}`, need: g.need, label: g.group.label });
+        for (const g of ab.groups) pushGroupStep(g, `-a${ab.index + 1}`);
         if (ab.dests.length > 0) steps.push({ id: `send-${ab.index + 1}`, need: ab.sendNeed, label: 'hearing.sendTitle' });
       }
     }
@@ -187,7 +198,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
   /** 一度開いた段は、この画面を開いているあいだは、閉じない（前の段の答えを変えても、入力中のものが消えないように） */
   const opened = useRef(new Set<string>());
   if (stepwise) for (let i = 0; i <= lastOpen; i++) opened.current.add(steps[i]!.id);
-  const isOpen = (id: string) => !stepwise || opened.current.has(id);
+  const isOpen = (id: string) => !stepwise || opened.current.has(stepAlias.get(id) ?? id);
   const stepName = (x: { label: string }) => (x.label === 'hearing.sendTitle' ? t('hearing.sendTitle') : tx(x.label));
   /** まだ開いていない段を押したときの知らせ */
   const [lockedHint, setLockedHint] = useState<string | null>(null);
