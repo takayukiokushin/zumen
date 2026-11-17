@@ -35,9 +35,11 @@ interface Props {
   onAdd: () => void;
   onRename: (id: string) => void;
   onRemove: (id: string) => void;
+  /** 見るだけの状態：レイヤーの追加・名前の変更・削除は、出さない（選んで見ることだけ） */
+  readOnly?: boolean;
 }
 
-export function LayerMenu({ infos, review, activeId, full, onSelect, onAdd, onRename, onRemove }: Props) {
+export function LayerMenu({ infos, review, activeId, full, onSelect, onAdd, onRename, onRemove, readOnly = false }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -92,7 +94,7 @@ export function LayerMenu({ infos, review, activeId, full, onSelect, onAdd, onRe
                   {layerLabel(t, i)}
                   {review?.has(i.id) && <span className="layer-review-badge">{t('layer.review.badge')}</span>}
                 </button>
-                {!i.fixed && (
+                {!i.fixed && !readOnly && (
                   <>
                     <button
                       type="button"
@@ -119,6 +121,7 @@ export function LayerMenu({ infos, review, activeId, full, onSelect, onAdd, onRe
               </div>
             ))}
           </div>
+          {!readOnly && (
           <div className="layer-add-row">
             <button
               type="button"
@@ -134,6 +137,7 @@ export function LayerMenu({ infos, review, activeId, full, onSelect, onAdd, onRe
             </button>
             {full && <span className="layer-full-note">{t('layer.full', { n: MAX_CUSTOM_LAYERS })}</span>}
           </div>
+          )}
         </LayerPanel>
       )}
     </div>

@@ -86,6 +86,8 @@ interface Props {
    * 触れるのは、activeIds に入っているもの（そのレイヤーに置いたもの）だけ
    */
   locked?: boolean;
+  /** 見るだけの状態（指で操作する端末で、「編集を開始する」を押す前）。記号に触れても動かない・選べない。なぞって画面を動かすこと、2本指の拡大縮小は、できる */
+  viewOnly?: boolean;
   activeIds?: ReadonlySet<string>;
   /** 線を引くとき、点線で引くか（引いている最中の見本の線も、同じ種類で出す） */
   wireDashed?: boolean;
@@ -163,7 +165,7 @@ function scrollWithOuter(sc: HTMLElement, dx: number, dy: number) {
   if (Math.abs(restX) >= 0.5) outerScroller(sc, 'x').scrollLeft += restX;
 }
 
-export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, viewOnly = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -294,8 +296,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
    * 指の操作は、図面の外側の枠（動かせる領域）全体で受ける。
    * 図面の外に指が置かれても、2本指の操作ができるように。また、記号などの処理より先に受ける（捕まえて止めることがある）
    */
-  const latest = useRef({ zoom, mode, onSelect, onZoom });
-  latest.current = { zoom, mode, onSelect, onZoom };
+  const latest = useRef({ zoom, mode, onSelect, onZoom, viewOnly });
+  latest.current = { zoom, mode, onSelect, onZoom, viewOnly };
 
   useLayoutEffect(() => {
     const sc = svgRef.current?.parentElement;
@@ -317,7 +319,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
         stop(e);
       } else if (n > 2 || ignored.current.has(e.pointerId)) {
         stop(e);
-      } else if (latest.current.mode === 'select' && !(e.target as Element).closest?.('g.item, .grip, .grip-edge')) {
+      } else if (latest.current.viewOnly || (latest.current.mode === 'select' && !(e.target as Element).closest?.('g.item, .grip, .grip-edge'))) {
         // 1本指で、記号でないところ：なぞれば画面が動く。ちょんと触れただけなら、離したときに選択を外す
         pan.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
       }
@@ -365,7 +367,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
       const p = pan.current;
       if (p && p.id === e.pointerId) {
         pan.current = null;
-        if (!p.moved && latest.current.mode === 'select') latest.current.onSelect([]);
+        if (!p.moved && !latest.current.viewOnly && latest.current.mode === 'select') latest.current.onSelect([]);
       }
       if (ignored.current.delete(e.pointerId)) stop(e);
       if (wasPinching) {
@@ -729,6 +731,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
 
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
+    if (viewOnly) return;
     if (mode === 'cross' || mode === 'fan') return;
     // 印加点の矢印：1回目は印加点のクリック（点のほうで受ける）。そのあと、図面のどこかをクリックすると、そこが尾の位置（2回目）
     if (mode === 'arrow') {
@@ -805,7 +808,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
   return (
     <svg
       ref={svgRef}
-      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}${mode === 'area' ? ' area-mode' : ''}${mode === 'dot' ? ' dot-mode' : ''}${mode === 'arrow' ? ' arrow-mode' : ''}${mode === 'link' ? ' link-mode' : ''}${mode === 'fan' ? ' fan-mode' : ''}`}
+      className={`canvas${locked ? ' locked' : ''}${viewOnly ? ' view-only' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}${mode === 'area' ? ' area-mode' : ''}${mode === 'dot' ? ' dot-mode' : ''}${mode === 'arrow' ? ' arrow-mode' : ''}${mode === 'link' ? ' link-mode' : ''}${mode === 'fan' ? ' fan-mode' : ''}`}
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
       onPointerDown={onCanvasDown}

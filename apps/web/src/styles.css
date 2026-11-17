@@ -916,6 +916,7 @@ button.with-icon svg { flex: 0 0 auto; }
   /* スマホは、グループの枠をなくして、ボタンを1つずつ、並べる（広い画面用の規則に負けないよう、強めに指定する） */
   html[data-uw~="700"] .tool-group, html[data-uw~="700"] .tool-row { display: contents; }
   html[data-uw~="700"] .tool-group.zoom-group { margin-left: 0; }
+  html[data-uw~="700"] .tools .zoom { min-width: 0; }
   html[data-uw~="700"] .editor-bar .tools { gap: calc(6px * var(--text-scale)) calc(8px * var(--text-scale)); }
   :where(html[data-uw~="700"]) .zoom-text { display: none; }
   :where(html[data-uw~="700"]) .tools button.with-icon { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
@@ -1426,3 +1427,12 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 .fan-badge circle { fill: var(--accent); stroke: #fff; stroke-width: 1.5; }
 .fan-badge text { fill: #fff; font-size: 12px; font-weight: 700; font-family: inherit; }
 .canvas.fan-mode { cursor: pointer; }
+
+/* ------------------------------------------------------------------ */
+/* 指で操作する端末の「編集を開始する」（押すまでは、見るだけ）          */
+/* ------------------------------------------------------------------ */
+/* 見るだけのあいだは、図面の中の記号・線・文字は、指に反応しない（指は、図面の枠にだけ届き、なぞって画面を動かす・2本指で拡大縮小する） */
+.canvas.view-only *, .canvas.view-only { cursor: default; }
+.canvas.view-only * { pointer-events: none; }
+.edit-badge { display: inline-flex; align-items: center; padding: calc(4px * var(--ctl-scale, 1)) calc(12px * var(--ctl-scale, 1)); border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--accent); color: var(--ink); font-weight: var(--weight-strong); white-space: nowrap; }
+.tools .edit-start { font-weight: var(--weight-strong); }

@@ -77,6 +77,21 @@ interface EditorProps {
   heavy: HeavyApi;
 }
 
+/** 指で操作する端末（スマホ・タブレット）か。マウスのあるパソコンは false */
+function useTouchDevice(): boolean {
+  const query = () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(pointer: coarse)') : null);
+  const [touch, setTouch] = useState(() => query()?.matches ?? false);
+  useEffect(() => {
+    const m = query();
+    if (!m) return;
+    const on = () => setTouch(m.matches);
+    on();
+    m.addEventListener?.('change', on);
+    return () => m.removeEventListener?.('change', on);
+  }, []);
+  return touch;
+}
+
 export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps) {
   const t = useT();
   const tx = useTx();
@@ -131,6 +146,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   /** 用紙のまま（図枠つき）で見るか。印刷の見た目をそのまま確かめられる */
   const [sheetView, setSheetView] = useState(false);
   /**
+   * 指で操作する端末（スマホ・タブレット）では、図面タブを開いた直後は「見るだけ」。
+   * 「編集を開始する」を押すと編集でき、「編集を完了する」で見るだけに戻る（パソコンは、いつも編集できる）
+   */
+  const touchDevice = useTouchDevice();
+  const [editing, setEditing] = useState(false);
+  const viewOnly = touchDevice && !editing;
+  /**
    * いま見ている・編集しているレイヤー。null は単線結線図。
    * 図面を開くたびに、必ず単線結線図から始まる（誤って、別のレイヤーを編集しないように）。保存はしない
    */
@@ -166,7 +188,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   /** レイヤーを選んでいるあいだは、元の図面を動かせない（そのレイヤーに置いたものだけを、変えられる） */
   const locked = activeId !== null;
   /** 元の図面を編集できない状態（印刷プレビュー中、または、レイヤーを選んでいるとき） */
-  const frozen = sheetView || locked;
+  const frozen = sheetView || locked || viewOnly;
   /**
    * 画面と印刷に出す図面。レイヤーを選んでいるときは、元の図面に、そのレイヤーに置いた文字を重ねる
    * （元の図面と同じ描き方・同じ大きさの計算で扱うため、図面の文字の形にして渡す）。
@@ -288,7 +310,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const reviewShown = useRef(new Set<string>());
   const selectLayer = (id: string | null) => {
     // 元の図面が変わっていて、まだ確認していないレイヤーを開くとき：一度だけ、知らせる（帯は、「確認した」を押すまで残る）
-    if (id !== null && layerNeedsReview(docRef.current, id)) {
+    if (id !== null && !viewOnly && layerNeedsReview(docRef.current, id)) {
       const key = `${id}:${layerOf(docRef.current, id)?.seen ?? ''}`;
       if (!reviewShown.current.has(key)) {
         reviewShown.current.add(key);
@@ -608,7 +630,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // 印刷プレビュー中と、レイヤーを選んでいるあいだは、元の図面を編集できない（Delete や 元に戻す のキーも効かせない）
-      if (sheetView) return;
+      if (sheetView || viewOnly) return;
       const el = e.target as HTMLElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return;
       if (locked && activeId !== null) {
@@ -702,7 +724,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, fanPicks, layerDocItems, layerCrosses, layerGrounds, layerAreas, layerDots, layerArrows]);
+  }, [doc, selection, apply, sheetView, viewOnly, locked, activeId, layerHist, mode, fanPicks, layerDocItems, layerCrosses, layerGrounds, layerAreas, layerDots, layerArrows]);
 
   /** 結線で、記号をクリックしたとき：1つ目は元の記号、2つ目からは下の機器。もう一度クリックすると、選びから外す */
   const onFanPick = (id: string) => {
@@ -741,6 +763,37 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       <div className={`editor-bar${moreOpen ? ' more-open' : ''}`}>
         <div className="tools">
           {/* ボタンは、用途ごとに、見出し付きのグループにまとめる。スマホでは、見出しを消し、「sec」の付いたものを「ほかの操作」の中にしまう */}
+          {/* 指で操作する端末：「編集を開始する」を押すまでは、見るだけ（押すと、編集のボタンが出る） */}
+          {touchDevice && (
+            <div className="tool-group edit-mode-group">
+              <div className="tool-row">
+                {viewOnly ? (
+                  <button type="button" className="btn primary edit-start" title={t('editor.editStartHelp')} onClick={() => setEditing(true)}>
+                    {t('editor.editStart')}
+                  </button>
+                ) : (
+                  <>
+                    <span className="edit-badge" role="status">{t('editor.editing')}</span>
+                    <button
+                      type="button"
+                      className="btn edit-done"
+                      onClick={() => {
+                        setEditing(false);
+                        setSelection([]);
+                        setMode('select');
+                        setFanPicks([]);
+                      }}
+                    >
+                      {t('editor.editDone')}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!viewOnly && (
+          <>
           <div className="tool-group">
             <span className="cap">{t('editor.group.history')}</span>
             <div className="tool-row">
@@ -835,8 +888,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             </div>
           </div>
 
+          </>
+          )}
+
           {/* レイヤーに置く赤い印の道具。停電範囲図・絶縁耐力試験範囲図・追加したレイヤーを選んでいるときだけ出す（単線結線図では出さない。第13弾 項目27） */}
-          {locked && (
+          {locked && !viewOnly && (
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.marks')}</span>
             <div className="tool-row">
@@ -962,10 +1018,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           <button type="button" className="tools-toggle" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
             {moreOpen ? t('editor.moreClose') : t('editor.more')}
           </button>
+          {!viewOnly && (
           <button type="button" className="tools-toggle" aria-expanded={sideOpen} onClick={() => setSideOpen((v) => !v)}>
             {t('editor.sideOpen')}
           </button>
+          )}
 
+          {!viewOnly && (
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.tidy')}</span>
             <div className="tool-row">
@@ -1001,6 +1060,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               </button>
             </div>
           </div>
+          )}
 
           <div className="tool-group sec">
             <span className="cap">{t('editor.group.print')}</span>
@@ -1017,6 +1077,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 onAdd={() => void addLayerFlow()}
                 onRename={(id) => void renameLayerFlow(id)}
                 onRemove={(id) => void removeLayerFlow(id)}
+                readOnly={viewOnly}
               />
               </div>
               <button
@@ -1064,7 +1125,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         </p>
       )}
 
-      {locked && layerNeedsReview(doc, activeId!) && (
+      {locked && !viewOnly && layerNeedsReview(doc, activeId!) && (
         <p className="layer-note review" role="alert">
           <b>{t('layer.review.title')}</b>
           <span className="hint">{t('layer.review.banner')}</span>
@@ -1303,7 +1364,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       )}
 
       {/* 図面に書く文字（メモ）を選んでいるあいだ、図面の上に出す、文字の設定の窓。動かせる（第13弾 項目38） */}
-      {selected && selected.kind === 'text' && !sheetView && (
+      {selected && selected.kind === 'text' && !sheetView && !viewOnly && (
         <TextWindow
           key={locked ? 'layer-text' : 'base-text'}
           lines={selected.lines}
@@ -1342,7 +1403,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             />
           ) : (
           <>
-          {activeId === null && viewDoc.items.length === 0 && <p className="canvas-blank-note"><span className="wide-only">{t('editor.blankNote')}</span><span className="narrow-only">{t('editor.blankNoteNarrow')}</span></p>}
+          {activeId === null && viewDoc.items.length === 0 && (viewOnly ? <p className="canvas-blank-note"><span>{t('editor.blankNoteView')}</span></p> : <p className="canvas-blank-note"><span className="wide-only">{t('editor.blankNote')}</span><span className="narrow-only">{t('editor.blankNoteNarrow')}</span></p>)}
           <DrawingCanvas
             doc={viewDoc}
             selectedIds={selection}
@@ -1409,6 +1470,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               if (activeId !== null) editLayer((d) => moveLayerCrosses(d, activeId, [id], dx, dy));
             }}
             locked={locked}
+            viewOnly={viewOnly}
             activeIds={activeIds}
             wireDashed={wireDashed}
             zoom={zoom}
@@ -1420,7 +1482,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         </div>
 
         <SideResizer width={sideW} onChange={setSideW} />
-        <aside className={`side${sideOpen ? ' open' : ''}`} inert={sheetView}>
+        <aside className={`side${sideOpen && !viewOnly ? ' open' : ''}`} inert={sheetView || viewOnly}>
           <button type="button" className="btn side-close" onClick={() => setSideOpen(false)}>
             {t('common.close')}
           </button>
