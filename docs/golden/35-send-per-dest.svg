@@ -73,20 +73,21 @@
     <line x1="1538.4" y1="651" x2="1538.4" y2="750" stroke-width="1" />
     <line x1="1368.4" y1="762" x2="1368.4" y2="783" stroke-width="1" />
     <line x1="1368.4" y1="783" x2="1368.4" y2="799" stroke-width="1" />
-    <line x1="0" y1="759" x2="262.20000000000005" y2="759" stroke-width="1" />
-    <line x1="262.20000000000005" y1="759" x2="262.20000000000005" y2="775" stroke-width="1" />
-    <line x1="262.20000000000005" y1="847" x2="262.20000000000005" y2="863" stroke-width="1" />
-    <line x1="262.20000000000005" y1="935" x2="262.20000000000005" y2="951" stroke-width="1" />
-    <line x1="262.20000000000005" y1="975" x2="368.20000000000005" y2="975" stroke-width="1" stroke-dasharray="5 4" />
-    <line x1="368.20000000000005" y1="975" x2="368.20000000000005" y2="364" stroke-width="1" stroke-dasharray="5 4" />
-    <line x1="368.20000000000005" y1="364" x2="794.2" y2="364" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="0" y1="759" x2="398.20000000000005" y2="759" stroke-width="1" />
+    <line x1="398.20000000000005" y1="759" x2="398.20000000000005" y2="775" stroke-width="1" />
+    <line x1="398.20000000000005" y1="847" x2="398.20000000000005" y2="863" stroke-width="1" />
+    <line x1="398.20000000000005" y1="935" x2="398.20000000000005" y2="951" stroke-width="1" />
+    <line x1="398.20000000000005" y1="975" x2="504.20000000000005" y2="975" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="504.20000000000005" y1="975" x2="504.20000000000005" y2="364" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="504.20000000000005" y1="364" x2="794.2" y2="364" stroke-width="1" stroke-dasharray="5 4" />
     <line x1="794.2" y1="364" x2="794.2" y2="404" stroke-width="1" stroke-dasharray="5 4" />
-    <line x1="0" y1="1007" x2="398.20000000000005" y2="1007" stroke-width="1" />
-    <line x1="398.20000000000005" y1="1007" x2="398.20000000000005" y2="1023" stroke-width="1" />
-    <line x1="398.20000000000005" y1="1095" x2="398.20000000000005" y2="1111" stroke-width="1" />
-    <line x1="398.20000000000005" y1="1135" x2="504.20000000000005" y2="1135" stroke-width="1" stroke-dasharray="5 4" />
-    <line x1="504.20000000000005" y1="1135" x2="504.20000000000005" y2="314.5" stroke-width="1" stroke-dasharray="5 4" />
-    <line x1="504.20000000000005" y1="314.5" x2="1368.4" y2="314.5" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="0" y1="1007" x2="262.20000000000005" y2="1007" stroke-width="1" />
+    <line x1="262.20000000000005" y1="1007" x2="262.20000000000005" y2="1023" stroke-width="1" />
+    <line x1="262.20000000000005" y1="1095" x2="262.20000000000005" y2="1111" stroke-width="1" />
+    <line x1="262.20000000000005" y1="1135" x2="262.20000000000005" y2="1135" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="262.20000000000005" y1="1135" x2="528.2" y2="1135" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="528.2" y1="1135" x2="528.2" y2="314.5" stroke-width="1" stroke-dasharray="5 4" />
+    <line x1="528.2" y1="314.5" x2="1368.4" y2="314.5" stroke-width="1" stroke-dasharray="5 4" />
     <line x1="1368.4" y1="314.5" x2="1368.4" y2="404" stroke-width="1" stroke-dasharray="5 4" />
     <text x="786.2" y="333" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="786.2" dy="0">埋ケ</tspan><tspan x="786.2" dy="12.5">CVT</tspan><tspan x="786.2" dy="12.5">6600V 30m</tspan></text>
     <text x="1360.4" y="283.5" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1360.4" dy="0">埋ケ</tspan><tspan x="1360.4" dy="12.5">CVT</tspan><tspan x="1360.4" dy="12.5">6600V 40m</tspan></text>
@@ -402,27 +403,27 @@
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
     </g>
     <text x="1402.4" y="809" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1402.4" dy="0">Tr</tspan><tspan x="1402.4" dy="12.5">3φ100kVA</tspan></text>
-    <g transform="translate(238.2 775)">
+    <g transform="translate(374.2 775)">
       <line x1="24" y1="0" x2="24" y2="15" stroke-width="1" />
       <line x1="16" y1="15" x2="32" y2="15" stroke-width="1" />
       <line x1="24" y1="53" x2="44" y2="20" stroke-width="1" />
       <line x1="24" y1="53" x2="24" y2="72" stroke-width="1" />
     </g>
-    <text x="296.2" y="785" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="296.2" dy="0">DS</tspan></text>
-    <g transform="translate(238.2 863)">
+    <text x="432.2" y="785" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="432.2" dy="0">DS</tspan></text>
+    <g transform="translate(374.2 863)">
       <line x1="24" y1="0" x2="24" y2="15" stroke-width="1" />
       <line x1="19.5" y1="10.5" x2="28.5" y2="19.5" stroke-width="1" />
       <line x1="28.5" y1="10.5" x2="19.5" y2="19.5" stroke-width="1" />
       <line x1="24" y1="53" x2="44" y2="20" stroke-width="1" />
       <line x1="24" y1="53" x2="24" y2="72" stroke-width="1" />
     </g>
-    <text x="296.2" y="873" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="296.2" dy="0">VCB</tspan></text>
-    <g transform="translate(250.2 951)">
+    <text x="432.2" y="873" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="432.2" dy="0">VCB</tspan></text>
+    <g transform="translate(386.2 951)">
       <line x1="12" y1="0" x2="12" y2="3.6" stroke-width="1" />
       <polygon points="3.6,3.6 20.4,3.6 12,18" fill="none" stroke-width="1" />
       <line x1="12" y1="18" x2="12" y2="24" stroke-width="1" />
     </g>
-    <g transform="translate(374.2 1023)">
+    <g transform="translate(238.2 1023)">
       <line x1="24" y1="0" x2="24" y2="11.5" stroke-width="1" />
       <line x1="15" y1="11.5" x2="33" y2="11.5" stroke-width="1" />
       <circle cx="24" cy="15.5" r="4" fill="none" stroke-width="1" />
@@ -430,8 +431,8 @@
       <polygon points="26.843,51.719 18.643,27.119 9.157,30.281 17.357,54.881" fill="none" stroke-width="1" />
       <line x1="24" y1="59" x2="24" y2="72" stroke-width="1" />
     </g>
-    <text x="432.2" y="1033" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="432.2" dy="0">LBS</tspan><tspan x="432.2" dy="12.5">PF 30A</tspan></text>
-    <g transform="translate(386.2 1111)">
+    <text x="296.2" y="1033" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="296.2" dy="0">LBS</tspan><tspan x="296.2" dy="12.5">PF 30A</tspan></text>
+    <g transform="translate(250.2 1111)">
       <line x1="12" y1="0" x2="12" y2="3.6" stroke-width="1" />
       <polygon points="3.6,3.6 20.4,3.6 12,18" fill="none" stroke-width="1" />
       <line x1="12" y1="18" x2="12" y2="24" stroke-width="1" />

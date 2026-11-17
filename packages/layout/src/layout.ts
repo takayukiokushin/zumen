@@ -1378,7 +1378,15 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     let y: number | undefined;
     if (link.tap === 'ds-source' && dsTop !== undefined) y = dsTop - TAP_OFFSET;
     else if (link.tap === 'ds-vcb' && breakerTop !== undefined) y = t.breakerEntry !== undefined ? t.breakerEntry - 5 : breakerTop + TAP_OFFSET;
-    else if (link.tap === 'vcb-load' && breakerBottom !== undefined) y = breakerBottom + TAP_OFFSET;
+    else if (link.tap === 'vcb-load' && breakerBottom !== undefined) {
+      // VCBのすぐ下が高圧母線で、間に記号が無い（直線でつながっている）ときは、母線と同じ場所。母線の横線の途中から出す
+      const sameAsBus = t.bus !== undefined && !src.result.symbols.some((s) => {
+        const rb = rotatedBox(getSymbol(s.symbolId).box, s.rotate);
+        const cy = s.y + rb.dy + rb.h / 2;
+        return s.x + rb.dx <= 0.5 && s.x + rb.dx + rb.w >= -0.5 && cy > breakerBottom && cy < t.bus!.y;
+      });
+      if (!sameAsBus) y = breakerBottom + TAP_OFFSET;
+    }
     // 変圧器の二次側：選んだ変圧器（台数より大きい番号は最後の台）の、下の出口から出す。三巻線変圧器（出口が決まっていない）は、高圧母線から出す
     let trTap: { x: number; y: number; lv: boolean } | undefined;
     if (link.tap === 'tr-secondary' && t.trOut && t.trOut.length > 0) {
@@ -1392,29 +1400,32 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const sx = trTap ? trTap.x : y !== undefined ? 0 : t.bus ? t.bus.x : 0;
     linkInfos.push({ n: part.n, from: link.from, sx, sy, stages: link.stages && link.stages.length > 0 ? link.stages : [{ cable: link.cable !== false, dashed: link.dashed, label: part.link?.label ?? [] }], feedFrom: trTap && !trTap.lv ? trTap.y + dys[link.from]! : undefined, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
   }
+  // 同じエリアから出る線のうち、主回路の同じ縦線から、ごく近い高さ（8以内）で出るものは、間に記号が無い、同じ場所なので、同じ高さにそろえる
+  // （2本の横線が、数ピクセルの間隔で並んで、太い1本に見えないように）
+  for (const f of new Set(linkInfos.map((l) => l.from))) {
+    const mine = linkInfos.filter((l) => l.from === f && l.feedFrom === undefined).sort((a, b) => a.sy - b.sy);
+    let head: LinkInfo | undefined;
+    for (const l of mine) {
+      if (head && l.sx === head.sx && l.sy - head.sy < 8) l.sy = head.sy;
+      else head = l;
+    }
+  }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
-  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 同じ位置から出るケーブルの線の中での順番（0＝いちばん近いエリアへ）と、本数 */ gi: number; gn: number };
+  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 上から出る線ほど小さい番号（記号のIDの末尾に使う。並びの順を変えても、IDが変わらないように） */ oid: number; /** 同じエリアから出るケーブルの線の、左から数えた順番と、本数（同じ高さからは、近いエリアへの線が先） */ gi: number; gn: number };
   const trunks: Trunk[] = [];
   for (const li of linkInfos) {
     // ケーブルでつなぐ線は、1本ずつ、別の幹にする（ケーブルは、線ごとに別の物なので、端末も、線の数だけ描く）。
     // ふつうの線でつなぐ線は、同じ位置から出るものを、1つの幹にまとめる
     let tr = li.cable || li.stages.length > 1 ? undefined : trunks.find((x) => x.from === li.from && !x.cable && Math.abs(x.sy - li.sy) < 0.5);
     if (!tr) {
-      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, gi: 0, gn: 1 };
+      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, oid: 0, gi: 0, gn: 1 };
       trunks.push(tr);
     }
     tr.links.push(li);
   }
-  // 同じ位置から出るケーブルの線：近いエリアへの線から順に 0, 1, …
-  for (const tr of trunks) {
-    if (!tr.cable) continue;
-    const same = trunks.filter((x) => x.cable && x.from === tr.from && Math.abs(x.sy - tr.sy) < 0.5);
-    tr.gi = same.indexOf(tr);
-    tr.gn = same.length;
-  }
-  // 同じエリアから出る幹は、上から出る線ほど、左に置く（線が交わらないように）
+  // 上から出る線ほど小さい番号（記号のIDの末尾に使う）
   for (const f of new Set(trunks.map((x) => x.from))) {
-    trunks.filter((x) => x.from === f).sort((a, b) => a.sy - b.sy).forEach((x, i) => { x.index = i; });
+    trunks.filter((x) => x.from === f).sort((a, b) => a.sy - b.sy).forEach((x, i) => { x.oid = i; x.index = i; });
   }
 
   /**
@@ -1486,6 +1497,19 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   const stackedTrunk = (tr: Trunk): boolean => sendoutsOfDest(destOf(tr)).length > 0 || partsOfDest(destOf(tr)).length > 0 || relaysOfDest(destOf(tr)).length > 0 || tr.cable || tr.links[0]!.stages.slice(0, -1).some((x) => x.cable);
   /** 送り出しの縦の並びを作る幹が、1本でもあるエリアか */
   const stackedArea = (area: number): boolean => trunks.some((x) => x.from === area && stackedTrunk(x));
+  /**
+   * 同じエリアから出る線の、左から右への並び（縦の並びの位置と、ケーブルの縦線の位置）。
+   * 低い所から出る線ほど、左に置く（横線が、右の並びの上を通るので、並びを横切らない）。同じ高さからは、近いエリアへの線ほど、左。
+   * 左の線ほど、縦の長さを長くして、右の線の並びの下を通り、縦線は、いちばん右の並びのさらに右（左の線ほど外側）を上がる
+   * （どの線も、並び・端末を突き抜けず、できるだけ曲がらない。下へ、横へ、上へ、右へ、の順）。
+   */
+  for (const f of new Set(trunks.map((x) => x.from))) {
+    if (!stackedArea(f)) continue;
+    const mine = trunks.filter((x) => x.from === f).sort((a, b) => b.sy - a.sy || a.links[0]!.n - b.links[0]!.n);
+    mine.forEach((x, i) => { x.index = i; });
+    const cables = mine.filter((x) => x.cable);
+    cables.forEach((x, i) => { x.gi = i; x.gn = cables.length; });
+  }
 
   /** 送り出しの開閉器の縦の並び（DS・VCB・ZCT・端末）の、すきまの左の端からの位置と、右へ伸びる幅（DGR・TCがあると広い） */
   const stackW = (area: number) => {
@@ -1509,7 +1533,9 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     if (mine.length === 0) return AREA_GAP;
     if (stackedArea(p - 1)) {
       const w = stackW(p - 1);
-      return Math.max(AREA_GAP, STACK_LEFT + mine.length * (w + STACK_STEP) + TRUNK_STEP * mine.length + 40);
+      // ケーブルの縦線は、いちばん右の並びのさらに右を、1本ずつ GROUP_STEP ずつずらして上がる。本数が多いときも、次のエリアに食い込まない広さ
+      const risers = STACK_LEFT + (mine.length - 1) * (w + STACK_STEP) + w + TRUNK_STEP + Math.max(0, mine.filter((x) => x.cable).length - 1) * GROUP_STEP + 24;
+      return Math.max(AREA_GAP, STACK_LEFT + mine.length * (w + STACK_STEP) + TRUNK_STEP * mine.length + 40, risers);
     }
     // ケーブルの端末（横向き）が、すきまの中に入る広さ
     const run = getSymbol('cable-head').box.h + HEAD_MARGIN + SENDOUT_GAP + 12;
@@ -1576,7 +1602,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       // 同じ位置から出るケーブルの線が2本以上：近いエリアへの線ほど、外側（右）を通る。
       // 遠いエリアへの線は、横の線が高い所を通るので、内側にしておくと、近い線の縦線と交わらない
       if (tr.cable && tr.gn > 1) {
-        const last = trunks.find((x) => x.cable && x.from === tr.from && Math.abs(x.sy - tr.sy) < 0.5 && x.gi === tr.gn - 1)!;
+        const last = trunks.find((x) => x.cable && x.from === tr.from && x.gi === tr.gn - 1)!;
         return stackX(last) + stackW(tr.from) + TRUNK_STEP + (tr.gn - 1 - tr.gi) * GROUP_STEP;
       }
       return stackX(tr) + stackW(tr.from) + TRUNK_STEP;
@@ -1586,15 +1612,24 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     return base + TRUNK_STEP * tr.index;
   };
 
-  for (const tr of trunks) {
+  /** 描いた幹の並び（記号・文字・線）の、いちばん下の端。左の幹ほど深く（長く）するために使う */
+  const bottomOf = new Map<Trunk, number>();
+  const DROP_MARGIN = 14;
+  /** 描く順：同じエリアの中では、右の幹から（左の幹の、縦の長さを、右の幹の下端に合わせて決めるため） */
+  const trunkOrder = [...trunks].sort((x, y) => x.from - y.from || y.index - x.index);
+  for (const tr of trunkOrder) {
     const from = moved[tr.from]!;
+    const s0 = symbols.length;
+    const w0 = wires.length;
+    const t0 = texts.length;
     // 分岐する位置のx：高圧母線のときは母線の右端、それ以外は主回路の縦線
     const sx = tr.links[0]!.sx + from.dx;
-    const sy = tr.sy;
+    const sy0 = tr.sy;
+    const sy = sy0;
     const feedFrom = tr.links[0]!.feedFrom;
     if (feedFrom !== undefined) {
-      wires.push({ x1: sx, y1: feedFrom, x2: sx, y2: sy });
-      ext(sx, feedFrom, sx, sy);
+      wires.push({ x1: sx, y1: feedFrom, x2: sx, y2: sy0 });
+      ext(sx, feedFrom, sx, sy0);
     }
     const gx = trunkX(tr);
     const tops = tr.links.map(tyOf);
@@ -1610,9 +1645,10 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       const gr = groundOfDest(destOf(tr));
       const xs = stackX(tr);
       // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、ケーブルの端末のIDに印を付ける（開閉器のIDは、送り先の番号つきなので、印は要らない）
-      const sfx = tr.index === 0 ? '' : `-${tr.links[0]!.n + 1}`;
+      const sfx = tr.oid === 0 ? '' : `-${tr.links[0]!.n + 1}`;
       // 同じ位置から出る2本目以降のケーブルは、前の線の縦の並びの位置から、右へ分かれる（同じ線を、重ねて引かない）
-      const prev = tr.gi > 0 ? trunks.find((x) => x.cable && x.from === tr.from && Math.abs(x.sy - tr.sy) < 0.5 && x.gi === tr.gi - 1) : undefined;
+      const prevCable = tr.cable && tr.gi > 0 ? trunks.find((x) => x.cable && x.from === tr.from && x.gi === tr.gi - 1) : undefined;
+      const prev = prevCable && Math.abs(prevCable.sy - tr.sy) < 0.5 ? prevCable : undefined;
       const startX = prev ? stackX(prev) : sx;
       wires.push({ x1: startX, y1: sy, x2: xs, y2: sy });
       ext(startX, sy, xs, sy);
@@ -1828,7 +1864,11 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       });
       // 外側の線は、内側の線の並びの下を通って、右へ出る。端末のあとを、その分、下へ延ばす（ここから先が、ケーブル）
       if (tr.cable && tr.gn > 1 && tr.gi < tr.gn - 1) {
-        const extra = DROP_STEP * (tr.gn - 1 - tr.gi);
+        // 同じ高さから出る、右の線の数ぶん。また、右にある線（上から出る線）の並びの、いちばん下の端より下を通る
+        const rights = trunks.filter((x) => x.cable && x.from === tr.from && x.gi > tr.gi);
+        const sameRight = rights.filter((x) => Math.abs(x.sy - tr.sy) < 0.5).length;
+        const rightBottom = Math.max(-Infinity, ...rights.map((x) => bottomOf.get(x) ?? -Infinity));
+        const extra = Math.max(DROP_STEP * sameRight, rightBottom + DROP_MARGIN - y);
         wires.push({ x1: xs, y1: y, x2: xs, y2: y + extra, dashed: tr.links.every((l) => l.dashed) });
         ext(xs, y, xs, y + extra);
         y += extra;
@@ -1961,6 +2001,16 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       const r = labelRect({ x: tx, y: tyText, anchor: 'end' }, lines);
       ext(r.x0, r.y0, r.x1, r.y1);
     }
+    // この組の並び（記号・文字・線）の、いちばん下の端。あとの、下の組が、この下を通るために使う
+    let bottom = sy0;
+    for (const sym of symbols.slice(s0)) {
+      const rb = rotatedBox(getSymbol(sym.symbolId).box, sym.rotate);
+      bottom = Math.max(bottom, sym.y + rb.dy + rb.h);
+      if (sym.label.length > 0) bottom = Math.max(bottom, labelRect(sym.labelAt, sym.label).y1);
+    }
+    for (const w of wires.slice(w0)) bottom = Math.max(bottom, w.y1, w.y2);
+    for (const tx of texts.slice(t0)) bottom = Math.max(bottom, labelRect({ x: tx.x, y: tx.y, anchor: tx.anchor }, tx.lines).y1);
+    bottomOf.set(tr, bottom);
   }
 
   return { symbols, wires, frames, texts, bounds: { x0, y0, x1, y1 } };
