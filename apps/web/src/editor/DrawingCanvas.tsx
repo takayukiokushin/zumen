@@ -98,6 +98,10 @@ interface Props {
 const SNAP_PX = 9;
 
 /** 拡大縮小の範囲（Editor の「拡大」「縮小」ボタンと同じ） */
+/** 図面の見える範囲の、最低の大きさ（図面の座標）。部品が少ないときに、大きく映りすぎないようにする */
+const MIN_VIEW_W = 520;
+const MIN_VIEW_H = 680;
+
 export const ZOOM_MIN = 0.4;
 export const ZOOM_MAX = 3;
 
@@ -408,7 +412,13 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   // 見える範囲は動かす前の図面から決める。動かすたびに画面が揺れないように
   const b = docBounds(doc);
   const pad = 40;
-  const vb = { x: b.x0 - pad, y: b.y0 - pad, w: b.x1 - b.x0 + pad * 2, h: b.y1 - b.y0 + pad * 2 };
+  // 部品が少ないとき（1〜3点など）に、拡大されすぎないよう、見える範囲に最低限の広さを持たせる。
+  // 横は中央、縦は上に寄せる（図面は上から下へ描いていくので、下側に、次の記号を置く余白を残す）
+  const rawW = b.x1 - b.x0 + pad * 2;
+  const rawH = b.y1 - b.y0 + pad * 2;
+  const vbW = Math.max(rawW, MIN_VIEW_W);
+  const vbH = Math.max(rawH, MIN_VIEW_H);
+  const vb = { x: b.x0 - pad - (vbW - rawW) / 2, y: b.y0 - pad, w: vbW, h: vbH };
 
   /** 吸い付く範囲（図面の長さ）。画面で SNAP_PX ピクセルになるよう、拡大率に合わせる */
   const snapRange = () => {
