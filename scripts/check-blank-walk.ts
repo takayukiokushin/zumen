@@ -9,6 +9,8 @@
  *   ・**見た目は答え済みなのに、実際は未入力**（画面には選ばれた状態で出ているのに、アプリの中では空のまま。
  *     答えたつもりでも次の入力が開かず、先へ進めなくなる。蓄電池を「あり」にすると補助変圧器が「あり」に見えた不具合が、これ）
  *   ・必須として数えた項目が、入力画面に出る行の中にない
+ *   ・**途中の状態でも、図面が作れる**（入力の途中＝答えた分だけ描く図面を、毎回、組み立てて・配置して・用紙に書き出す。
+ *     落ちない、付ける先（親・付け先）が描かれていない部品が無い。第16弾 項目2・整合チェック）
  * 質問を足したり、出す条件を変えたときに、行き止まりを作っていないかを、パソコンの中で、数秒で確かめる。
  *
  * 乱数は決まった種から作るので、毎回同じ試行になる。回数は、環境変数 FUZZ_COUNT で増やせる（`pnpm fuzz` は 10倍）。
@@ -27,6 +29,7 @@ import {
   viewAt,
 } from '../packages/knowledge/src/index.ts';
 import type { Answers, MissingField } from '../packages/knowledge/src/index.ts';
+import { layout, renderSvg } from '../packages/layout/src/index.ts';
 
 const SCALE = Math.max(1, Number(process.env.FUZZ_COUNT ?? 1));
 const WALKS = 30 * SCALE;
@@ -74,6 +77,8 @@ function randomAnswer(f: MissingField, rnd: () => number): string | number | und
 console.log('■ 白紙で始めた案件を、最後まで入力できるか');
 let steps = 0;
 let finished = 0;
+let drawn = 0;
+let emptyDrawn = 0;
 for (let n = 0; n < WALKS; n++) {
   const rnd = rng(n * 7919 + 17);
   let answers: Answers = { startMode: 'blank' };
@@ -81,6 +86,20 @@ for (let n = 0; n < WALKS; n++) {
   for (const id of ['hasGenerator', 'hasPv', 'hasBattery', 'hasAuxTr', 'hasMotor']) if (rnd() < 0.4) answers = { ...answers, [id]: 'yes' };
   let done = false;
   for (let step = 0; step < MAX_STEPS; step++) {
+    // 途中の状態でも、図面が作れる（答えた分だけ描く）
+    try {
+      const items = buildComposition(answers);
+      renderSvg(layout(items, answers), { site: '', name: 'テスト' });
+      const roles = new Set(items.map((i) => i.role));
+      for (const it of items) {
+        if (it.parent && !roles.has(it.parent)) fail(`付ける先が描かれていない部品があります：${it.role}（親 ${it.parent}）`);
+        if (it.attachTo && !roles.has(it.attachTo)) fail(`付ける先が描かれていない部品があります：${it.role}（付け先 ${it.attachTo}）`);
+      }
+      drawn++;
+      if (items.length === 0) emptyDrawn++;
+    } catch (e) {
+      fail(`途中の状態で、図面が作れません：${e instanceof Error ? e.message.slice(0, 80) : String(e)}（答え ${Object.keys(answers).length}個）`);
+    }
     const missing = missingRequiredFields(answers);
     if (missing.length === 0) {
       done = true;
@@ -122,6 +141,8 @@ for (let n = 0; n < WALKS; n++) {
   if (missingRequiredFields({ ...answers, startMode: 'blank-open' }).length !== 0) fail('全部の項目を開く形にすると、必須が残っていると数えられます');
 }
 console.log(`  ${WALKS}通りのでたらめな入力のうち、${finished}通りが最後まで入力できた（平均 ${Math.round(steps / Math.max(1, finished))}回の入力）。グループ ${QUESTION_GROUPS.length}個`);
+console.log(`  途中の状態 ${drawn}通り（うち、何も描かない状態 ${emptyDrawn}通り）で、図面を組み立てて、用紙に書き出せた`);
+if (emptyDrawn === 0) fail('何も答えていない状態（空の図面）を、確かめていません');
 
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
