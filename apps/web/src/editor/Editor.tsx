@@ -30,7 +30,7 @@ import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { moveWithInsert } from './rewire.ts';
-import { addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
+import { addFan, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
 
 /** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
 const AREA_KIND_LABEL = { outage: 'area.kind.outage', live: 'area.kind.live', applied: 'area.kind.applied' } as const;
@@ -109,7 +109,10 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
   const [zoom, setZoom] = useState(1);
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
-  const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow' | 'link'>('select');
+  const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow' | 'link' | 'fan'>('select');
+  /** 結線で、クリックして選んだ記号（最初が元の記号、2つ目から下の機器。クリックした順） */
+  const [fanPicks, setFanPicks] = useState<string[]>([]);
+  const [fanNote, setFanNote] = useState<string | null>(null);
   /** 赤い枠を描くときの種類（停電範囲・充電範囲・印加範囲）。最初に入れる文字と、斜線の有無が決まる */
   const [areaKind, setAreaKind] = useState<string>(AREA_KINDS[0]!.id);
   /** 渡り線を引くときの形（直線／ゆるい弧／普通の弧／すごく丸い弧） */
@@ -233,8 +236,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
 
   const apply = useCallback(
     (next: Doc) => {
-      // 手で直した印を付ける。どの回答から作った図面かは、そのまま持ち越す
-      const stamped: Doc = { ...next, edited: true, basis: doc.basis };
+      // 手で直した印を付ける。どの回答から作った図面かは、そのまま持ち越す。結線の線は、いまの記号の位置に合わせて引き直す
+      const stamped: Doc = { ...refreshFans(next), edited: true, basis: doc.basis };
       setHistory((h) => commit(h, stamped));
       onDocChange?.(stamped);
     },
@@ -655,6 +658,20 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         setMode('select');
         return;
       }
+      // 結線：Esc＝選びを取りやめる（選んでいるものが無ければ、モードをやめる）。Enter＝結線を確定する
+      if (mode === 'fan' && !e.isComposing) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          if (fanPicks.length > 0) setFanPicks([]);
+          else setMode('select');
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitFan(false);
+          return;
+        }
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         stepHistory(e.shiftKey ? 'redo' : 'undo');
@@ -685,7 +702,23 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, layerDocItems, layerCrosses, layerGrounds, layerAreas, layerDots, layerArrows]);
+  }, [doc, selection, apply, sheetView, locked, activeId, layerHist, mode, fanPicks, layerDocItems, layerCrosses, layerGrounds, layerAreas, layerDots, layerArrows]);
+
+  /** 結線で、記号をクリックしたとき：1つ目は元の記号、2つ目からは下の機器。もう一度クリックすると、選びから外す */
+  const onFanPick = (id: string) => {
+    setFanNote(null);
+    setFanPicks((p) => (p.includes(id) ? (id === p[0] ? [] : p.filter((x) => x !== id)) : [...p, id]));
+  };
+  /** 結線を確定する（元の記号と、下の機器が1つ以上あるとき）。leave が true なら、そのあと結線のモードをやめる */
+  const commitFan = (leave: boolean) => {
+    if (fanPicks.length >= 2) {
+      const r = addFan(doc, fanPicks[0]!, fanPicks.slice(1));
+      if (r.added > 0) apply(r.doc);
+      else setFanNote(t('fan.none'));
+      setFanPicks([]);
+    }
+    if (leave) setMode('select');
+  };
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
@@ -779,6 +812,25 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 }}
               >
                 {t('editor.drawWire')}
+              </button>
+              <button
+                type="button"
+                className={`sec${mode === 'fan' ? ' on' : ''}`}
+                aria-pressed={mode === 'fan'}
+                disabled={frozen}
+                title={t('editor.fanHelp')}
+                onClick={() => {
+                  // 結線のモードをやめるときは、選んでいる分を確定する
+                  if (mode === 'fan') commitFan(true);
+                  else {
+                    setMode('fan');
+                    setSelection([]);
+                    setFanPicks([]);
+                    setFanNote(null);
+                  }
+                }}
+              >
+                {t('editor.fan')}
               </button>
             </div>
           </div>
@@ -1097,6 +1149,21 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         <p className="mode-hint">{t('editor.wireHint')}</p>
       )}
 
+      {mode === 'fan' && !sheetView && (
+        <p className="mode-hint cross-hint" role="status">
+          <span>{fanNote ?? (fanPicks.length === 0 ? t('fan.hint0') : t('fan.hint1', { n: Math.max(0, fanPicks.length - 1) }))}</span>
+          <button type="button" className="btn" disabled={fanPicks.length < 2} onClick={() => commitFan(false)}>
+            {t('fan.commit')}
+          </button>
+          <button type="button" className="btn" disabled={fanPicks.length === 0} onClick={() => setFanPicks([])}>
+            {t('fan.clear')}
+          </button>
+          <button type="button" className="btn" onClick={() => commitFan(true)}>
+            {t('fan.done')}
+          </button>
+        </p>
+      )}
+
       {mode === 'area' && locked && !sheetView && (
         <p className="mode-hint cross-hint">
           <span>{t('area.hint')}</span>
@@ -1315,6 +1382,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             }}
             links={layerLinks}
             linkShape={linkShape}
+            onFanPick={onFanPick}
+            fanPicks={fanPicks}
             onLinkAdd={addLink}
             dots={layerDots}
             arrows={layerArrows}

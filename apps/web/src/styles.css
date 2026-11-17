@@ -1337,3 +1337,8 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 .overwrote p { margin: 0 0 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .overwrote ul { margin: 4px 0 0; padding-left: 1.4em; color: var(--ink-2); }
 .sketch-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: calc(10px * var(--text-scale)); }
+
+/* 結線で選んだ記号の番号（1番目＝元の記号） */
+.fan-badge circle { fill: var(--accent); stroke: #fff; stroke-width: 1.5; }
+.fan-badge text { fill: #fff; font-size: 12px; font-weight: 700; font-family: inherit; }
+.canvas.fan-mode { cursor: pointer; }

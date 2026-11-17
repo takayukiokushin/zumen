@@ -1,0 +1,117 @@
+/**
+ * 「結線」（元の記号から、下の機器たちへ、縦線・母線・縦線で結ぶ）の検証（第16弾 整合チェックのあとの追加）。
+ *
+ *   ・記号の位置は動かさない。母線の高さは、元の記号の下端と、いちばん上の機器の上端の、ちょうど真ん中
+ *   ・各機器への縦線は、機器の上端の接続点につながる（印が付く）。記号を動かすと、縦線・母線がついていく
+ *   ・機器を消すと、その縦線が消える。最後の1台を消すと、元の記号から出ている縦線・母線も消える
+ *   ・あとから機器を足すと、今までの母線と同じ高さに合流する
+ *   ・引き直しを何度行っても、結果が変わらない
+ *
+ *   node --experimental-strip-types scripts/check-fan.ts
+ */
+import { buildComposition } from '../packages/knowledge/src/index.ts';
+import { layout } from '../packages/layout/src/index.ts';
+import { addFan, addSymbol, fanSourcePort, fanTargetPort, fromLayout, moveItem, refreshFans, removeItem, removeItems, tidyDoc } from '../apps/web/src/editor/doc.ts';
+import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
+
+let failed = 0;
+const fail = (msg: string) => {
+  console.error(`  NG: ${msg}`);
+  failed++;
+};
+const ok = (c: boolean, msg: string) => {
+  if (!c) fail(msg);
+};
+const near = (a: number, b: number, e = 0.6) => Math.abs(a - b) <= e;
+
+console.log('■ 結線（縦線・母線・縦線で、まとめて結ぶ）');
+
+// 材料：LBS（主遮断装置）と、その下の変圧器・コンデンサ。線は全部外して、記号だけにする
+const a = { sourceType: 'pole', mainBreakerForm: 'pfs', hasCapacitor: 'yes' } as Record<string, string>;
+let base: Doc = fromLayout(layout(buildComposition(a), a));
+base = { ...base, items: base.items.filter((i) => i.kind !== 'wire') };
+const sym = (d: Doc, id: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === id)!;
+const SRC = 'main-breaker';
+// 変圧器を、横に3台並べる（1台目は、すでにある）
+let t2 = addSymbol(base, 'tr-3p-yd', sym(base, 'transformer').x + 120, sym(base, 'transformer').y);
+base = t2.doc;
+const T2 = t2.id;
+const t3 = addSymbol(base, 'tr-3p-yd', sym(base, 'transformer').x + 240, sym(base, 'transformer').y);
+base = t3.doc;
+const T3 = t3.id;
+const kids = ['transformer', T2, T3, 'capacitor'];
+const wires = (d: Doc, fid?: string) => d.items.filter((i): i is DocWire => i.kind === 'wire' && !!i.fan && (!fid || i.fan.id === fid));
+const pos = (d: Doc) => JSON.stringify(d.items.filter((i) => i.kind === 'symbol').map((i) => [i.id, (i as DocSymbol).x, (i as DocSymbol).y]));
+
+// 1. 結線する（4台）
+const r = addFan(base, SRC, kids);
+const d1 = r.doc;
+ok(r.added === 4 && !!r.fanId, `4台を結んだはずが ${r.added}台です`);
+ok(pos(d1) === pos(base), '結線で、記号の位置が動いています');
+const w1 = wires(d1, r.fanId!);
+const trunk = w1.find((w) => w.fan!.role === 'trunk')!;
+const bus = w1.find((w) => w.fan!.role === 'bus')!;
+const drops = w1.filter((w) => w.fan!.role === 'drop');
+const sp = fanSourcePort(sym(d1, SRC))!;
+ok(!!trunk && !!bus && drops.length === 4, `縦線1・母線1・縦線4のはずが ${w1.map((w) => w.fan!.role).join(',')} です`);
+ok(near(trunk.x1, sp.x) && near(trunk.y1, sp.y) && trunk.at1?.item === SRC, '元の記号の縦線が、元の記号の下端から出ていません');
+const tops = kids.map((k) => fanTargetPort(sym(d1, k))!);
+const minTop = Math.min(...tops.map((p) => p.y));
+ok(near(bus.y1, (sp.y + minTop) / 2, 1) && near(bus.y1, bus.y2), `母線の高さが、真ん中ではありません（${bus.y1}／真ん中 ${(sp.y + minTop) / 2}）`);
+const xs = [sp.x, ...tops.map((p) => p.x)];
+ok(near(Math.min(bus.x1, bus.x2), Math.min(...xs)) && near(Math.max(bus.x1, bus.x2), Math.max(...xs)), '母線の左右の端が、元の記号と機器の左右の端にそろっていません');
+for (const k of kids) {
+  const dw = drops.find((w) => w.at2?.item === k);
+  const p = fanTargetPort(sym(d1, k))!;
+  ok(!!dw && near(dw.x2, p.x) && near(dw.y2, p.y) && near(dw.x1, p.x) && near(dw.y1, bus.y1), `${k}への縦線が、母線から機器の上端まで、まっすぐ引けていません`);
+}
+// 引き直しを何度行っても、結果が変わらない／「結線を整える」でも変わらない
+ok(JSON.stringify(refreshFans(d1).items) === JSON.stringify(d1.items), '引き直しを重ねると、結果が変わります');
+ok(JSON.stringify(wires(tidyDoc(d1), r.fanId!).map((w) => [w.x1, w.y1, w.x2, w.y2])) === JSON.stringify(w1.map((w) => [w.x1, w.y1, w.x2, w.y2])), '「結線を整える」で、結線の線が動きました');
+console.log('  4台（変圧器3台・コンデンサ1台）を結んだ：縦線1・母線1・縦線4。母線は真ん中の高さ。記号は動かない');
+
+// 2. 動かす：横にずらすと、縦線がついていき、母線が伸び縮みする
+const far = moveItem(d1, T3, 200, 0);
+const bus2 = wires(far, r.fanId!).find((w) => w.fan!.role === 'bus')!;
+const drop3 = wires(far, r.fanId!).find((w) => w.at2?.item === T3)!;
+ok(near(drop3.x1, drop3.x2) && near(drop3.x2, fanTargetPort(sym(far, T3))!.x), '動かした機器の縦線が、ついてきません');
+ok(Math.max(bus2.x1, bus2.x2) > Math.max(bus.x1, bus.x2) + 100, '母線が、右へ伸びていません');
+ok(near(bus2.y1, bus.y1), '横に動かしただけなのに、母線の高さが変わりました');
+const back = moveItem(far, T3, -200, 0);
+ok(near(Math.max(...wires(back, r.fanId!).filter((w) => w.fan!.role === 'bus').map((w) => Math.max(w.x1, w.x2))), Math.max(bus.x1, bus.x2)), '元の位置へ戻したのに、母線が元の長さに戻りません');
+// 元の記号を動かす：縦線が、ついていく
+const srcMoved = moveItem(d1, SRC, 30, 0);
+const trunk3 = wires(srcMoved, r.fanId!).find((w) => w.fan!.role === 'trunk')!;
+ok(near(trunk3.x1, fanSourcePort(sym(srcMoved, SRC))!.x), '元の記号を動かしたとき、縦線がついてきません');
+console.log('  横に動かすと縦線がついていき、母線が伸び縮みする。元の記号を動かしても縦線がついていく');
+
+// 3. 消す：機器を1台消すと、その縦線だけが消える。母線と、ほかの機器は残る
+let del = removeItem(d1, T2);
+const left = wires(del, r.fanId!);
+ok(left.filter((w) => w.fan!.role === 'drop').length === 3 && !left.some((w) => w.at2?.item === T2), '機器を消したのに、その縦線が残っています／ほかの縦線まで消えました');
+ok(left.some((w) => w.fan!.role === 'bus') && left.some((w) => w.fan!.role === 'trunk'), '機器を1台消したら、母線・縦線まで消えました');
+// 最後の1台を消す：元の記号から出ている縦線も、母線も消える
+del = removeItems(d1, kids);
+ok(wires(del).length === 0, `全部の機器を消したのに、結線の線が残っています（${wires(del).length}本）`);
+const one = addFan(base, SRC, ['capacitor']);
+const oneDel = removeItem(one.doc, 'capacitor');
+ok(wires(oneDel).length === 0, '機器が1台だけのとき、その機器を消しても、縦線が残っています');
+// 元の記号を消す：元の記号の縦線は消える。母線と、機器への縦線は残る
+const noSrc = removeItem(d1, SRC);
+const ns = wires(noSrc, r.fanId!);
+ok(!ns.some((w) => w.fan!.role === 'trunk') && ns.some((w) => w.fan!.role === 'bus') && ns.filter((w) => w.fan!.role === 'drop').length === 4, '元の記号を消したとき、縦線だけが消えて、母線・機器への縦線は残るはずです');
+console.log('  機器を消すと、その縦線が消える（母線は残る）。最後の1台を消すと、縦線・母線も消える。元の記号を消すと、元の縦線だけが消える');
+
+// 4. あとから足す：同じ元の記号を、もう一度結ぶと、今までの母線に合流する
+const t4 = addSymbol(d1, 'tr-3p-yd', sym(d1, 'transformer').x - 120, sym(d1, 'transformer').y);
+const added = addFan(t4.doc, SRC, [t4.id]);
+const wa = wires(added.doc, r.fanId!);
+ok(added.fanId === r.fanId && added.added === 1, '同じ元の記号を結ぶと、同じ結線に足されるはずです');
+ok(wa.filter((w) => w.fan!.role === 'bus').length === 1 && wa.filter((w) => w.fan!.role === 'trunk').length === 1, '足したとき、母線・縦線が、増えています');
+ok(near(wa.find((w) => w.fan!.role === 'bus')!.y1, bus.y1), '足したとき、母線の高さが変わりました');
+ok(near(Math.min(...wa.filter((w) => w.fan!.role === 'bus').map((w) => Math.min(w.x1, w.x2))), fanTargetPort(sym(added.doc, t4.id))!.x), '足した機器まで、母線が伸びていません');
+ok(addFan(added.doc, SRC, [t4.id]).added === 0, 'すでに結んだ機器を、もう一度結ぼうとすると、増えるはずがありません');
+console.log('  あとから機器を足して結ぶと、同じ母線の高さで合流する（同じ機器を重ねて結んでも増えない）');
+
+console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
+process.exit(failed === 0 ? 0 : 1);

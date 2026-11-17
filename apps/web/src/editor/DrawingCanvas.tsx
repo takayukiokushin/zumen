@@ -2,10 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, shapesToSvg } from '@zumen/symbols';
 import { boldStrokeWidth, AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
-import type { Doc, DocItem, PointAssist } from './doc.ts';
+import type { Doc, DocItem, DocSymbol, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { insertTarget } from './rewire.ts';
-import { assistGroundPoint, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
+import { assistGroundPoint, fanSourcePort, fanTargetPort, assistMove, assistPoint, assistWireEnd, assistWireNew, defOf, docBounds, groupOf, groupRootOf, itemBounds, itemsInRange, moveItem, moveItems, moveWireEnd, resizeInfoOf, setItemRect } from './doc.ts';
 import type { Issue } from './inspect.ts';
 import { groundOverlapsSymbols, isHorizontalWire, markPoint, normalizeRect } from './layers.ts';
 import type { AreaRect, ArrowDir, LinkShape } from '@zumen/layout';
@@ -24,7 +24,11 @@ interface Props {
   /** 線を引き終えたとき */
   onAddWire: (x1: number, y1: number, x2: number, y2: number, opts?: { assist?: boolean; range?: number }) => void;
   /** 'wire' のときは2点をクリックして線を引く。'cross' のときは、開閉器をクリックして、開放の×印を付ける・外す */
-  mode: 'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow' | 'link';
+  mode: 'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow' | 'link' | 'fan';
+  /** 'fan'（結線）のときに、記号をクリックしたとき（PASのように中に部品を抱えるものは、かたまりの親のid） */
+  onFanPick?: (symbolId: string) => void;
+  /** 'fan' で、クリックして選んだ記号（最初が元の記号、2つ目から下の機器。クリックした順） */
+  fanPicks?: string[];
   /** レイヤーに置いた渡り線（点と点を結ぶ弧の線） */
   links?: ResolvedLink[];
   /** 'link' のとき、置く前の見本の形 */
@@ -136,7 +140,7 @@ interface Resize {
 }
 
 /** 図面のキャンバス。記号をクリックで選び、ドラッグで動かせる */
-export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -453,6 +457,14 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
       }
       return;
     }
+    // 結線のモード：記号をクリックして、元の記号・下の機器を選ぶ（それ以外は、何もしない）
+    if (mode === 'fan') {
+      if (it.kind === 'symbol' && !inert(it.id)) {
+        e.stopPropagation();
+        onFanPick?.(groupRootOf(doc, it.id));
+      }
+      return;
+    }
     // 接地のマークを置くモード・枠を描くモード：どこをクリックしても（記号の上でも）、図面の台紙のクリックとして扱う
     if (mode === 'ground' || mode === 'area') return;
     if (mode === 'wire' || inert(it.id)) return;
@@ -694,7 +706,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
 
   /** 線を引くモードのとき、1回目のクリックで始点、2回目で線を確定する */
   const onCanvasDown = (e: React.PointerEvent) => {
-    if (mode === 'cross') return;
+    if (mode === 'cross' || mode === 'fan') return;
     // 印加点の矢印：1回目は印加点のクリック（点のほうで受ける）。そのあと、図面のどこかをクリックすると、そこが尾の位置（2回目）
     if (mode === 'arrow') {
       if (e.button === 0 && arrowStart !== null) confirmArrow(e);
@@ -770,7 +782,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
   return (
     <svg
       ref={svgRef}
-      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}${mode === 'area' ? ' area-mode' : ''}${mode === 'dot' ? ' dot-mode' : ''}${mode === 'arrow' ? ' arrow-mode' : ''}${mode === 'link' ? ' link-mode' : ''}`}
+      className={`canvas${locked ? ' locked' : ''}${mode === 'cross' ? ' cross-mode' : ''}${mode === 'ground' ? ' ground-mode' : ''}${mode === 'area' ? ' area-mode' : ''}${mode === 'dot' ? ' dot-mode' : ''}${mode === 'arrow' ? ' arrow-mode' : ''}${mode === 'link' ? ' link-mode' : ''}${mode === 'fan' ? ' fan-mode' : ''}`}
       viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: `${zoom * 100}%` }}
       onPointerDown={onCanvasDown}
@@ -1359,6 +1371,20 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onMoveEnd, onWireEnd
         {mode === 'wire' && hint?.guideY !== undefined && (
           <line className="guide" x1={vb.x} y1={hint.guideY} x2={vb.x + vb.w} y2={hint.guideY} pointerEvents="none" />
         )}
+
+        {/* 結線で選んだ記号に、選んだ順の番号を出す（1＝元の記号。元の記号は下端、下の機器は上端に付ける） */}
+        {mode === 'fan' &&
+          fanPicks.map((pid, i) => {
+            const s = doc.items.find((x): x is DocSymbol => x.kind === 'symbol' && x.id === pid);
+            const p = s ? (i === 0 ? fanSourcePort(s) : fanTargetPort(s)) : null;
+            if (!p) return null;
+            return (
+              <g key={`fan-${pid}`} className="fan-badge" pointerEvents="none">
+                <circle cx={p.x} cy={p.y} r={11} />
+                <text x={p.x} y={p.y + 4} textAnchor="middle">{i === 0 ? tr('fan.badgeSource') : i}</text>
+              </g>
+            );
+          })}
 
         {/* 直しきれなかったところに、赤い印を出す */}
         {issues.map((is, i) => (

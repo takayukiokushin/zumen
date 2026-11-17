@@ -71,6 +71,19 @@ export interface DocWire {
    * 「結線を整える」で、つなぎ直せなかった行き止まりの線を見分けて消すための印
    */
   orphan?: boolean;
+  /**
+   * 「結線」で引いた線の印。1つの結線（元の記号から、下の機器たちへ）は、縦線（trunk）・横の母線（bus）・各機器への縦線（drop）の
+   * 組で、同じ id（fan.id）を持つ。記号を動かす・消す・足すたびに、この組全体を引き直す（refreshFans）。
+   * item・port は、trunk は元の記号と接続点、drop は下の機器と接続点
+   */
+  fan?: FanTag;
+}
+
+export interface FanTag {
+  id: string;
+  role: 'trunk' | 'bus' | 'drop';
+  item?: string;
+  port?: string;
 }
 
 export interface DocFrame {
@@ -539,7 +552,7 @@ function freeEndFolds(
  * 片側だけつないでいる線は、縦なら縦、横なら横のまま伸び縮みさせる。
  */
 export function applyAnchors(doc: Doc): Doc {
-  return {
+  return refreshFans({
     ...doc,
     items: doc.items.map((it) => {
       if (it.kind !== 'wire') return it;
@@ -601,6 +614,128 @@ export function applyAnchors(doc: Doc): Doc {
       }
       return w;
     }),
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* 結線（元の記号から、下の機器たちへ、縦線・母線・縦線で結ぶ）            */
+/* ------------------------------------------------------------------ */
+
+/** 母線と、元の記号・下の機器との、最低限の間隔 */
+const FAN_GAP = 12;
+
+/** 元の記号の、いちばん下の接続点（結線の出口） */
+export function fanSourcePort(it: DocSymbol): { id: string; x: number; y: number } | null {
+  const ps = portsOf(it);
+  return ps.length === 0 ? null : ps.reduce((a, b) => (b.y > a.y ? b : a));
+}
+
+/** 下の機器の、いちばん上の接続点（結線の入口） */
+export function fanTargetPort(it: DocSymbol): { id: string; x: number; y: number } | null {
+  const ps = portsOf(it);
+  return ps.length === 0 ? null : ps.reduce((a, b) => (b.y < a.y ? b : a));
+}
+
+/** 同じ元の記号から出ている結線（あれば、その id） */
+export function fanIdOf(doc: Doc, sourceId: string): string | null {
+  const t = doc.items.find((it): it is DocWire => it.kind === 'wire' && it.fan?.role === 'trunk' && it.fan.item === sourceId);
+  return t?.fan?.id ?? null;
+}
+
+/**
+ * 結線を作る・足す。元の記号から、下の機器（childIds）へ。
+ * 同じ元の記号から出る結線が、もうあるときは、その母線に合流する（母線の高さは、そのまま）。
+ * 記号の位置は動かさない。引き直したあとの図面と、足した機器の数を返す
+ */
+export function addFan(doc: Doc, sourceId: string, childIds: string[]): { doc: Doc; added: number; fanId: string | null } {
+  const src = doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === sourceId);
+  const sp = src ? fanSourcePort(src) : null;
+  if (!src || !sp) return { doc, added: 0, fanId: null };
+  const existing = fanIdOf(doc, sourceId);
+  const fanId = existing ?? `fan-${nextId('g')}`;
+  const have = new Set(
+    doc.items.flatMap((it) => (it.kind === 'wire' && it.fan?.id === fanId && it.fan.role === 'drop' ? [it.fan.item ?? ''] : [])),
+  );
+  const add: DocWire[] = [];
+  for (const cid of childIds) {
+    const c = doc.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === cid);
+    const cp = c ? fanTargetPort(c) : null;
+    if (!c || !cp || cid === sourceId || have.has(cid)) continue;
+    have.add(cid);
+    add.push({ kind: 'wire', id: nextId('wire'), x1: cp.x, y1: cp.y, x2: cp.x, y2: cp.y, at2: { item: cid, port: cp.id }, fan: { id: fanId, role: 'drop', item: cid, port: cp.id } });
+  }
+  if (add.length === 0) return { doc, added: 0, fanId: existing };
+  const hasTrunk = doc.items.some((it) => it.kind === 'wire' && it.fan?.id === fanId && it.fan.role === 'trunk');
+  if (!hasTrunk) {
+    add.unshift({ kind: 'wire', id: nextId('wire'), x1: sp.x, y1: sp.y, x2: sp.x, y2: sp.y, at1: { item: sourceId, port: sp.id }, fan: { id: fanId, role: 'trunk', item: sourceId, port: sp.id } });
+  }
+  return { doc: refreshFans({ ...doc, items: [...doc.items, ...add] }), added: add.filter((w) => w.fan?.role === 'drop').length, fanId };
+}
+
+/**
+ * 結線の線を、いまの記号の位置に合わせて、引き直す（記号を動かす・消す・足すたびに呼ぶ）。
+ * - 元の記号から、母線の高さまで縦線。母線は、元の記号と下の機器の、いちばん左〜いちばん右。各機器へ、母線から縦線
+ * - 母線の高さは、いまの高さを保つ。元の記号・下の機器に近すぎるとき（動かしたなど）は、元の記号の下端と、
+ *   いちばん上の機器の上端の、ちょうど真ん中にする
+ * - 下の機器が消えたら、その縦線も消す。最後の1台が消えたら、元の記号から出ている縦線・母線も消す
+ * - 元の記号が消えたら、元の記号から出ている縦線を消す（母線と、残った機器への縦線は残す）
+ * - 下の機器の途中の記号を消して、つなぎ直されたとき（つなぎ先が変わったとき）は、新しいつなぎ先に付け替える
+ */
+export function refreshFans(doc: Doc): Doc {
+  if (!doc.items.some((it) => it.kind === 'wire' && it.fan)) return doc;
+  const syms = new Map(doc.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => [i.id, i]));
+  const portOf = (item: string | undefined, port: string | undefined) => {
+    const s = item ? syms.get(item) : undefined;
+    return s ? (portsOf(s).find((p) => p.id === port) ?? null) : null;
+  };
+  const groups = new Map<string, DocWire[]>();
+  for (const it of doc.items) if (it.kind === 'wire' && it.fan) groups.set(it.fan.id, [...(groups.get(it.fan.id) ?? []), it]);
+  const drop = new Set<string>();
+  const patch = new Map<string, DocWire>();
+  const extra: DocWire[] = [];
+  for (const [fid, ws] of groups) {
+    const trunk = ws.find((w) => w.fan!.role === 'trunk');
+    const bus = ws.find((w) => w.fan!.role === 'bus');
+    const drops = ws.filter((w) => w.fan!.role === 'drop');
+    // 下の機器（つなぎ先が変わっていれば、新しいつなぎ先）
+    const members: { w: DocWire; item: string; port: string; x: number; y: number }[] = [];
+    for (const d of drops) {
+      const cand = d.at2 && syms.has(d.at2.item) ? d.at2 : d.fan!.item && syms.has(d.fan!.item) ? { item: d.fan!.item, port: d.fan!.port ?? '' } : null;
+      const p = cand ? portOf(cand.item, cand.port) : null;
+      if (!cand || !p) drop.add(d.id);
+      else members.push({ w: d, item: cand.item, port: cand.port, x: p.x, y: p.y });
+    }
+    if (members.length === 0) {
+      for (const w of ws) drop.add(w.id);
+      continue;
+    }
+    // 元の記号
+    const srcCand = trunk ? (trunk.at1 && syms.has(trunk.at1.item) ? trunk.at1 : trunk.fan!.item && syms.has(trunk.fan!.item) ? { item: trunk.fan!.item, port: trunk.fan!.port ?? '' } : null) : null;
+    const sp = srcCand ? portOf(srcCand.item, srcCand.port) : null;
+    if (trunk && !sp) drop.add(trunk.id);
+    const minTop = Math.min(...members.map((m) => m.y));
+    const lo = sp ? sp.y + FAN_GAP : -Infinity;
+    const hi = minTop - FAN_GAP;
+    const prev = bus ? bus.y1 : trunk && Math.abs(trunk.y2 - trunk.y1) > 0.01 ? trunk.y2 : NaN;
+    const busY = Number.isFinite(prev) && prev >= lo && prev <= hi ? prev : Math.round(sp ? (sp.y + minTop) / 2 : minTop - 40);
+    const xs = members.map((m) => m.x);
+    const x0 = Math.min(...xs, ...(sp ? [sp.x] : []));
+    const x1 = Math.max(...xs, ...(sp ? [sp.x] : []));
+    if (trunk && sp && srcCand) {
+      patch.set(trunk.id, { ...trunk, x1: sp.x, y1: sp.y, x2: sp.x, y2: busY, at1: { item: srcCand.item, port: srcCand.port }, at2: undefined, fan: { id: fid, role: 'trunk', item: srcCand.item, port: srcCand.port } });
+    }
+    if (x1 - x0 > 0.5) {
+      const b: DocWire = { kind: 'wire', id: bus?.id ?? nextId('wire'), x1: x0, y1: busY, x2: x1, y2: busY, at1: undefined, at2: undefined, fan: { id: fid, role: 'bus' }, ...(trunk?.dashed ? { dashed: true } : {}) };
+      if (bus) patch.set(bus.id, b);
+      else extra.push(b);
+    } else if (bus) drop.add(bus.id);
+    for (const m of members) {
+      patch.set(m.w.id, { ...m.w, x1: m.x, y1: busY, x2: m.x, y2: m.y, at1: undefined, at2: { item: m.item, port: m.port }, fan: { id: fid, role: 'drop', item: m.item, port: m.port } });
+    }
+  }
+  return {
+    ...doc,
+    items: [...doc.items.filter((it) => !drop.has(it.id)).map((it) => patch.get(it.id) ?? it), ...extra],
   };
 }
 
@@ -905,6 +1040,22 @@ export const addWire = (
 
 /** 要素を消す。記号を消すと、内蔵しているものも一緒に消える */
 export const removeItem = (doc: Doc, id: string, opts: { noHeal?: boolean } = {}): Doc => {
+  // 「結線」の下の機器を消すとき：その機器の下に、つながる記号が1つだけあれば、母線から、その記号へ付け替える。
+  // 下に何も無い（または、枝分かれしている）ときは、母線からの縦線ごと消す（上下のつなぎ直しはしない）
+  const dropW = doc.items.find((w): w is DocWire => w.kind === 'wire' && w.fan?.role === 'drop' && w.at2?.item === id);
+  if (dropW) {
+    const below = doc.items.filter((w): w is DocWire => w.kind === 'wire' && !w.fan && ((w.at1?.item === id) !== (w.at2?.item === id)));
+    const far = below.length === 1 ? (below[0]!.at1?.item === id ? below[0]!.at2 : below[0]!.at1) : undefined;
+    if (far && far.item !== id && doc.items.some((i) => i.id === far.item && i.kind === 'symbol') && !below[0]!.dashed) {
+      doc = {
+        ...doc,
+        items: doc.items
+          .filter((w) => w.id !== below[0]!.id)
+          .map((w) => (w.id === dropW.id ? ({ ...dropW, at2: { ...far }, fan: { ...dropW.fan!, item: far.item, port: far.port } } as DocWire) : w)),
+      };
+    }
+    opts = { ...opts, noHeal: true };
+  }
   // 消す前に、上下の線を1本につなぐ（鎖の端なら、行き止まりの線も消す）（第13弾 項目55 修正18／B-10）
   if (!opts.noHeal) doc = healBeforeRemove(doc, id);
   const gone = new Set(groupOf(doc, id));
@@ -922,7 +1073,7 @@ export const removeItem = (doc: Doc, id: string, opts: { noHeal?: boolean } = {}
     }
     freed.push({ y0, y1, x0: it.x + rb.dx, x1: it.x + rb.dx + rb.w });
   }
-  return {
+  return refreshFans({
     ...doc,
     ...(freed.length > 0 ? { vacated: [...(doc.vacated ?? []), ...freed] } : {}),
     items: doc.items
@@ -945,7 +1096,7 @@ export const removeItem = (doc: Doc, id: string, opts: { noHeal?: boolean } = {}
         if (!a1 && !a2 && !e1 && !e2) return it;
         return { ...it, at1: a1 ? undefined : it.at1, at2: a2 ? undefined : it.at2, orphan: true };
       }),
-  };
+  });
 };
 
 /**
