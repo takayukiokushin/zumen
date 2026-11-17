@@ -685,6 +685,8 @@ export function applyAnchors(doc: Doc): Doc {
 
 /** 母線と、元の記号・下の機器との、最低限の間隔 */
 const FAN_GAP = 12;
+/** 結線の母線を、元の記号の下端から、最低でもこれだけ離す（機器が近い・高さが同じなどで、ふつうの間隔が取れないときの、最低の間隔） */
+export const FAN_MIN = 6;
 
 /** 元の記号の、いちばん下の接続点（結線の出口） */
 export function fanSourcePort(it: DocSymbol): { id: string; x: number; y: number } | null {
@@ -748,6 +750,7 @@ export function addFan(doc: Doc, sourceId: string, childIds: string[]): { doc: D
  * - 元の記号から、母線の高さまで縦線。母線は、元の記号と下の機器の、いちばん左〜いちばん右。各機器へ、母線から縦線
  * - 母線の高さは、いまの高さを保つ。元の記号・下の機器に近すぎるとき（動かしたなど）は、元の記号の下端と、
  *   いちばん上の機器の上端の、ちょうど真ん中にする
+ * - 機器が近すぎる・同じ高さ・上にあるときも、母線は、元の記号の下端から FAN_MIN（6）以上、下に置く（縦線が逆向きにならない）
  * - 下の機器が消えたら、その縦線も消す。最後の1台が消えたら、元の記号から出ている縦線・母線も消す
  * - 元の記号が消えたら、元の記号から出ている縦線を消す（母線と、残った機器への縦線は残す）
  * - 下の機器の途中の記号を消して、つなぎ直されたとき（つなぎ先が変わったとき）は、新しいつなぎ先に付け替える
@@ -788,7 +791,9 @@ export function refreshFans(doc: Doc): Doc {
     const lo = sp ? sp.y + FAN_GAP : -Infinity;
     const hi = minTop - FAN_GAP;
     const prev = bus ? bus.y1 : trunk && Math.abs(trunk.y2 - trunk.y1) > 0.01 ? trunk.y2 : NaN;
-    const busY = Number.isFinite(prev) && prev >= lo && prev <= hi ? prev : Math.round(sp ? (sp.y + minTop) / 2 : minTop - 40);
+    let busY = Number.isFinite(prev) && prev >= lo && prev <= hi ? prev : Math.round(sp ? (sp.y + minTop) / 2 : minTop - 40);
+    // 近すぎる・同じ高さのときも、母線は、元の記号の下端から FAN_MIN 以上、下に置く（記号の中や、縦線の逆向きにならないように）
+    if (sp) busY = Math.max(busY, sp.y + FAN_MIN);
     const xs = members.map((m) => m.x);
     const x0 = Math.min(...xs, ...(sp ? [sp.x] : []));
     const x1 = Math.max(...xs, ...(sp ? [sp.x] : []));

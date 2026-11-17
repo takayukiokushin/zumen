@@ -160,5 +160,38 @@ console.log('  「結線を整える」：きれいな結線はそのまま。�
   console.log('  すでに線でつながっている記号は、結線しても、線を足さない（「新しくつなぐ機器がありません」と知らせる）');
 }
 
+// 元の記号と、下の機器が近い・同じ高さのとき：母線の最低の間隔（全体デバッグ 直し7）
+{
+  const base2: Doc = { ...base };
+  const src0 = sym(base2, SRC);
+  const sp0 = fanSourcePort(src0)!;
+  let worstBus = Infinity;
+  let reversed = 0;
+  let checked = 0;
+  for (const off of [-40, -10, 0, 3, 6, 10, 16, 24, 40]) {
+    // 下の機器の上端が、元の記号の下端から off だけ下に来るように置く
+    const t = addSymbol(base2, 'tr-3p-yd', sp0.x + 150, 0);
+    const kid = t.doc.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === t.id)!;
+    const dy = sp0.y + off - fanTargetPort(kid)!.y;
+    const placed = { ...t.doc, items: t.doc.items.map((i) => (i.id === t.id && i.kind === 'symbol' ? { ...i, y: i.y + dy } : i)) };
+    const r = addFan(placed, SRC, [t.id]);
+    const bus = wires(r.doc, r.fanId!).find((w) => w.fan!.role === 'bus');
+    const tr = wires(r.doc, r.fanId!).find((w) => w.fan!.role === 'trunk');
+    checked++;
+    if (!bus || !tr) {
+      fail(`母線または縦線ができていません（下の機器の上端が、元の記号の下端から ${off}）`);
+      continue;
+    }
+    worstBus = Math.min(worstBus, bus.y1 - sp0.y);
+    if (tr.y2 < tr.y1 - 0.01) reversed++;
+    // 引き直しを重ねても、同じ高さ
+    const again = wires(refreshFans(r.doc), r.fanId!).find((w) => w.fan!.role === 'bus');
+    ok(!!again && near(again.y1, bus.y1), `引き直しで、母線の高さが変わりました（下の機器の上端が ${off}）`);
+  }
+  ok(worstBus >= 6 - 0.01, `母線が、元の記号の下端から 6 以上離れていません（いちばん近いもので ${worstBus}）`);
+  ok(reversed === 0, `元の記号から出る縦線が、上向き（逆向き）になっているものが ${reversed}件あります`);
+  console.log(`  下の機器が近い・同じ高さ・上にあるときも、母線は、元の記号の下端から6以上離れ、縦線は逆向きにならない（${checked}通り）`);
+}
+
 console.log(failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${failed}件の問題があります`);
 process.exit(failed === 0 ? 0 : 1);
