@@ -427,6 +427,7 @@ export const ja = {
   'sketch.undone': '反映前に戻しました。もう一度、読み取れます。',
   'sketch.answer': '図面を作るために、答えてください',
   'hearing.areaPrefix': '{n}か所目：',
+  'hearing.unitPrefix': '{nth}：',
   'hearing.sendTitle': '他のエリアへの送り出し',
   'hearing.sendDesc': 'このエリアから、後ろのエリアへ送り出す線ごとに、分岐する位置・ケーブル・開閉器を入力します',
   'hearing.sendNth': '→ {n}か所目へ',

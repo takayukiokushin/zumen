@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { areaCountOf, countOf, maxCountOf, areaKey, areaView, dropHiddenChoices, evaluate, indexedKey, inputNotices, linkFromOf, QUESTION_GROUPS, QUESTIONS, viewAt, visibleQuestions } from '@zumen/knowledge';
-import type { Answers, Question, QuestionGroup, Value } from '@zumen/knowledge';
+import { areaCountOf, areaRows, areaView, dropHiddenChoices, inputNotices, isUnanswered, linkFromOf, linkRows, QUESTION_GROUPS, QUESTIONS, sectionRows, viewAt, visibleQuestions } from '@zumen/knowledge';
+import type { Answers, InputRow, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
 import { useT, useTx } from './i18n/useT.ts';
 import { useTrends } from './trends.ts';
@@ -36,14 +36,7 @@ interface Props {
  * 既定値のままでよい質問（必須でなく、まだ触っていないもの）は最初は畳んでおく。
  * ただし図面の中身を左右する質問（分岐・件数を決めるもの）は必ず表示する。
  */
-interface Row {
-  key: string;
-  question: Question;
-  /** 繰り返しの何件目か（0始まり）。選択肢を絞る条件を、その件の答えで見るのに使う */
-  unit: number;
-  /** どのエリアの答えか（0始まり。1か所目と、エリア全体で1つの質問は0） */
-  area: number;
-}
+type Row = InputRow;
 
 interface Block {
   index: number;
@@ -81,6 +74,8 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
     [views, resolvedByAi],
   );
   const visible = visibleByArea[0]!;
+  /** 行を決めるための、エリアごとの答えなど（rows.ts） */
+  const rowsCtx = useMemo(() => ({ effective, areas, views, visibleByArea, resolvedByAi }), [effective, areas, views, visibleByArea, resolvedByAi]);
 
   const set = (key: string, value: Value) =>
     onChange((prev) => {
@@ -98,56 +93,30 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
    */
   const buildSection = (group: QuestionGroup, area: number, leadOnly = false) => {
     const view = views[area]!;
-    const groupQuestions = visibleByArea[area]!.filter((q) => q.group === group.id);
-    if (groupQuestions.length === 0) return null;
-    const keyOf = (id: string, unit: number) => (group.perArea ? areaKey(indexedKey(id, unit), area) : indexedKey(id, unit));
+    // どの行を出すか（件数・エリア・2件目以降の出し分け）は、knowledge の rows.ts で決める。
+    // 「必須が残っているか」の判断（スケッチ・音声の確認画面など）と、同じ行の並びを使うため
+    const sec = sectionRows(rowsCtx, group, area, leadOnly);
+    if (!sec) return null;
+    const miss = (r: Row) => r.question.required && isUnanswered(effective[r.key]);
 
-    const countKey = group.repeatCountKey;
-    // 件数の一覧に「0」がある項目（VT・CTの組数など）は、0件のとき、入力欄を1つも出さない
-    const zeroOk = countKey ? (QUESTIONS.find((q) => q.id === countKey)?.options ?? []).some((o) => o.value === '0') : false;
-    const count = countKey ? countOf(view[countKey], zeroOk ? 0 : 1, maxCountOf(countKey)) : 1;
-    // 件数そのものと、件数に関わらず1回だけ聞く質問は、繰り返しの外に出す
-    const leading = groupQuestions.filter((q) => q.id === countKey || q.shared);
-    const repeated = leadOnly ? [] : groupQuestions.filter((q) => q.id !== countKey && !q.shared);
+    const blocks: Block[] = sec.blocks.map((b) => ({
+      index: b.index,
+      heading: sec.count > 1 ? t('hearing.nth', { n: b.index + 1, unit: tx(group.repeatUnit ?? '件', 'nth') }) : null,
+      rows: b.rows,
+      answered: b.rows.filter((r) => effective[r.key] !== undefined).length,
+      need: b.rows.some(miss),
+    }));
 
-    // 質問は畳まず、対象になったものは全部出す。
-    // 隠れている項目に気づかないまま入力漏れになるほうが困るため
-    const lead: Row[] = leading.map((q) => ({ key: keyOf(q.id, 0), question: q, unit: 0, area }));
-
-    /** 1台目・2台目…のまとまり。count が1なら見出しの無い1つだけ */
-    const blocks: Block[] = [];
-    for (let i = 0; i < count && !leadOnly; i++) {
-      const rows: Row[] = [];
-      // 表示条件も件ごとに見る（他の件の答えは引き継がない）。
-      // 1台目の答えで出ている質問の中から選ぶと、「1台目はPCなし・2台目だけPCあり」のとき、2台目のPCの定格が出なくなるので、
-      // 2台目以降は、その件の答えで、出す質問を決め直す
-      const unitQuestions =
-        i === 0
-          ? repeated
-          : visibleQuestions(viewAt(view, i), { resolvedByAi }).filter((q) => q.group === group.id && q.id !== countKey && !q.shared);
-      for (const q of unitQuestions) {
-        rows.push({ key: keyOf(q.id, i), question: q, unit: i, area });
-      }
-      if (rows.length === 0) continue;
-      blocks.push({
-        index: i,
-        heading: count > 1 ? t('hearing.nth', { n: i + 1, unit: tx(group.repeatUnit ?? '件', 'nth') }) : null,
-        rows,
-        answered: rows.filter((r) => effective[r.key] !== undefined).length,
-        need: rows.some((r) => r.question.required && effective[r.key] === undefined),
-      });
-    }
-
-    const all = [...lead, ...blocks.flatMap((b) => b.rows)];
+    const all = [...sec.lead, ...blocks.flatMap((b) => b.rows)];
     return {
       group,
-      lead,
+      lead: sec.lead,
       blocks,
       // 図面は、そのまま描く。直したほうがよいところを、入力画面で知らせる
       notices: inputNotices(view, effective).filter((n) => n.group === group.id).map((n) => n.text),
       answered: all.filter((r) => effective[r.key] !== undefined).length,
       total: all.length,
-      need: all.some((r) => r.question.required && effective[r.key] === undefined),
+      need: all.some(miss),
     };
   };
   type Section = NonNullable<ReturnType<typeof buildSection>>;
@@ -162,12 +131,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
   const areaBlocks = splitByArea
     ? Array.from({ length: areas }, (_, n) => {
         // 受電設備エリアの質問（形態・設置場所…）は、「か所目」ごとの答え
-        const areaGroup = QUESTION_GROUPS.find((g) => g.id === 'area')!;
-        // （2か所目以降だけに出す質問があるので、2か所目以降は、1か所目で出ている質問からではなく、全部の質問から選ぶ）
-        const areaRows: Row[] = (n === 0 ? visibleByArea[0]! : QUESTIONS)
-          .filter((q) => q.group === 'area' && q.id !== areaGroup.repeatCountKey)
-          .filter((q) => n === 0 || evaluate(q.showIf, viewAt(effective, n)))
-          .map((q) => ({ key: indexedKey(q.id, n), question: q, unit: n, area: 0 }));
+        const areaRowList = areaRows(rowsCtx, n);
         // 「エリア間の接続」（分岐する位置・ケーブル・送り出す側の開閉器）は、送り先のエリアの答えだが、
         // 入力画面では、送り出す側のエリアの欄に、送り先ごとの一塊として出す（第13弾 項目22）
         const groups = QUESTION_GROUPS.filter((g) => g.perArea && g.id !== 'link')
@@ -178,25 +142,25 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
           const to = n + 1 + k;
           const parent = linkFromOf(views[to]!, to);
           const sec = buildSection(linkGroup, to);
-          const rows = (sec?.blocks.flatMap((b) => b.rows) ?? []).filter((r) => r.question.id !== 'linkFrom');
+          const rows = linkRows(rowsCtx, to);
           return { to, parent, owned: parent === n, rows, notices: sec?.notices ?? [] };
         });
         // 受ける側の欄に出す、読み取り専用の1行（どこから送られてくるか）
         const from = n >= 1 ? linkFromOf(views[n]!, n) : -1;
-        const all = [...areaRows, ...groups.flatMap((g) => [...g.lead, ...g.blocks.flatMap((b) => b.rows)]), ...dests.filter((d) => d.owned).flatMap((d) => d.rows)];
-        const miss = (r: Row) => r.question.required && effective[r.key] === undefined;
+        const all = [...areaRowList, ...groups.flatMap((g) => [...g.lead, ...g.blocks.flatMap((b) => b.rows)]), ...dests.filter((d) => d.owned).flatMap((d) => d.rows)];
+        const miss = (r: Row) => r.question.required && isUnanswered(effective[r.key]);
         return {
           index: n,
-          areaRows,
+          areaRows: areaRowList,
           groups,
           dests,
           from,
           // 1つずつ開くときの、小さな段ごとの「入力が残っているか」
-          areaNeed: areaRows.some(miss),
+          areaNeed: areaRowList.some(miss),
           sendNeed: dests.filter((d) => d.owned).some((d) => d.rows.some(miss)),
           answered: all.filter((r) => effective[r.key] !== undefined).length,
           total: all.length,
-          need: all.some((r) => r.question.required && effective[r.key] === undefined),
+          need: all.some(miss),
         };
       })
     : [];

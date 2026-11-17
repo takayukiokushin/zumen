@@ -423,6 +423,7 @@ export const zh: Dict = {
   'sketch.undone': '已还原到反映前。可以重新读取。',
   'sketch.answer': '为生成图纸，请回答以下问题',
   'hearing.areaPrefix': '第{n}处：',
+  'hearing.unitPrefix': '{nth}：',
   'hearing.sendTitle': '向其他区域送出',
   'hearing.sendDesc': '针对从本区域送往后面区域的每条线路，输入分支位置、电缆和开关',
   'hearing.sendNth': '→ 送往第{n}处',

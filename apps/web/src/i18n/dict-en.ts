@@ -426,6 +426,7 @@ export const en: Dict = {
   'sketch.undone': 'Restored to before the reading was applied. You can read again.',
   'sketch.answer': 'Please answer to build the diagram',
   'hearing.areaPrefix': 'Area {n}: ',
+  'hearing.unitPrefix': '{nth}: ',
   'hearing.sendTitle': 'Feeds to other areas',
   'hearing.sendDesc': 'For each line sent from this area to a later area, enter the branch position, the cable and the switch',
   'hearing.sendNth': '→ To area {n}',

@@ -202,52 +202,6 @@ export function questionsByGroup(answers: Answers, opts: AskOptions = {}): {
   })).filter((g) => g.questions.length > 0);
 }
 
-/** 未回答の必須項目 */
-export function missingRequired(rawAnswers: Answers, opts: AskOptions = {}): Question[] {
-  const empty = (v: unknown) => v === undefined || v === null || v === '';
-  // 実際に効いている回答（既定値・初期値を足したもの。白紙で始めた案件は、足さない）で、答えが空かを見る
-  const answers = effectiveAnswers(rawAnswers);
-  const out = visibleQuestions(answers, opts).filter((q) => q.required && empty(answers[q.id]));
-  // 2か所目以降のエリアは、そのエリアの答えで見る（エリアごとの質問と、エリア自体の質問だけ）
-  for (let n = 1; n < areaCountOf(answers); n++) {
-    const view = normalizeAnswers(areaView(answers, n));
-    for (const q of visibleQuestions(view, opts)) {
-      const scoped = q.group === 'area' ? q.id !== 'areaCount' : PER_AREA_QUESTION_IDS.has(q.id);
-      if (scoped && q.required && empty(view[q.id])) out.push({ ...q, label: `${n + 1}か所目：${q.label}` });
-    }
-  }
-  return out;
-}
-
-/** 未回答の必須項目を、入力欄を出せる形で返す（スケッチ読み取りの画面で、その場で答えてもらうため） */
-export interface MissingField {
-  /** 答えを入れる先のキー（2か所目以降は a2:〜 の書き方） */
-  key: string;
-  question: Question;
-  /** 画面に出す名前（2か所目以降は「2か所目：」が付く） */
-  label: string;
-  /** 2か所目以降のエリアの項目のとき、何か所目か（2〜）。画面で、選んでいる言葉に合わせた「2か所目：」を付けるのに使う */
-  areaNo?: number;
-  /** その項目の選択肢を絞る条件を見るための、そのエリアの答え */
-  context: Answers;
-}
-
-export function missingRequiredFields(rawAnswers: Answers, opts: AskOptions = {}): MissingField[] {
-  const empty = (v: unknown) => v === undefined || v === null || v === '';
-  const answers = effectiveAnswers(rawAnswers);
-  const out: MissingField[] = visibleQuestions(answers, opts)
-    .filter((q) => q.required && empty(answers[q.id]))
-    .map((q) => ({ key: q.id, question: q, label: q.label, context: answers }));
-  for (let n = 1; n < areaCountOf(answers); n++) {
-    const view = normalizeAnswers(areaView(answers, n));
-    for (const q of visibleQuestions(view, opts)) {
-      const scoped = q.group === 'area' ? q.id !== 'areaCount' : PER_AREA_QUESTION_IDS.has(q.id);
-      if (scoped && q.required && empty(view[q.id])) out.push({ key: areaKey(q.id, n), question: q, label: `${n + 1}か所目：${q.label}`, areaNo: n + 1, context: view });
-    }
-  }
-  return out;
-}
-
 /**
  * 設備容量から主遮断装置の形式を提案する。
  * 300kVA以下ならPFS形を採用可能、301kVA以上はCB形でなければならない。

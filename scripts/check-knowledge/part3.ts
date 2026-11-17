@@ -2,7 +2,7 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
+import { inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, rowsContext, allInputRows, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import { AI_HINTS } from '../../packages/knowledge/src/ai-hints.ts';
@@ -271,6 +271,28 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       const two = { startMode: mode, areaCount: '2', hasBattery: 'yes', 'a2:hasBattery': 'yes' };
       ok(areaView(two, 1).hasAuxTr === undefined, `${mode}：2か所目のエリアで、補助変圧器が、答えていないのに「あり」と見えています`);
       ok(normalizeAnswers({ ...bt, hasAuxTr: 'no' }).hasAuxTr === 'no', `${mode}：答えた「なし」が、読み替えで変わっています`);
+    }
+    // 必須の数え方：2台目以降・2か所目以降も数える（入力画面と同じ行の並びから数える。第14弾 整合チェック 3）
+    {
+      const three = { startMode: 'blank-open', sourceType: 'pole', mainBreakerForm: 'cb', transformerCount: '3', trUsage: '動力', trConnection: 'tr-3p-dy', trCapacity: 300 };
+      const f = missingRequiredFields(three);
+      const keys = new Set(f.map((x) => x.key));
+      ok(keys.has('trCapacity__2') && keys.has('trCapacity__3') && keys.has('trUsage__2') && keys.has('trConnection__3') && !keys.has('trCapacity') && !keys.has('trUsage'), `変圧器3台で1台目だけ答えたとき、2台目・3台目の必須が数えられていません（${[...keys].filter((k) => /^tr/.test(k)).join(',')}）`);
+      const second = f.find((x) => x.key === 'trCapacity__2');
+      ok(second?.unitNo === 2 && second.unitName === '台' && second.label === '2台目：' + second.question.label, '2台目の項目に、「2台目：」の名前・件の番号が付いていません');
+      ok(missingRequired(three).some((q) => q.label.startsWith('2台目：')), 'missingRequired の名前に、「2台目：」が付いていません');
+      const done = missingRequiredFields({ ...three, trUsage__2: '動力', trConnection__2: 'tr-3p-dy', trCapacity__2: 100, trUsage__3: '電灯', trConnection__3: 'tr-1p', trCapacity__3: 50 });
+      ok(!done.some((x) => /^tr(Usage|Connection|Capacity)/.test(x.key)), '2台目・3台目に答えたのに、まだ残っていると数えられています');
+      // 2か所目のエリアの、2台目
+      const area2 = missingRequiredFields({ ...three, areaCount: '2', 'a2:transformerCount': '2', 'a2:trCapacity': 100 });
+      const a2 = area2.find((x) => x.key === 'a2:trCapacity__2');
+      ok(a2?.areaNo === 2 && a2.unitNo === 2 && a2.label.startsWith('2か所目：2台目：'), `2か所目のエリアの2台目が、数えられていません（${area2.map((x) => x.key).filter((k) => k.includes('trCapacity')).join(',')}）`);
+      // 入力欄を出すための文脈（その件の答え）が付く
+      ok(second?.context.unitNo === 2, '2台目の項目に、その件の答え（文脈）が付いていません');
+      // 入力画面が出す行の、どれかである（数えた項目は、画面で必ず答えられる）
+      const eff = effectiveAnswers({ ...three, areaCount: '3' });
+      const rowKeys = new Set(allInputRows(rowsContext(eff)).map((r) => r.key));
+      ok(missingRequiredFields({ ...three, areaCount: '3' }).every((x) => rowKeys.has(x.key)), '必須として数えた項目が、入力画面に出る行の中にありません（答えられません）');
     }
     // 名前の頭の部分（中電柱：・キャビネット番号：）は、白紙で始めた案件でも、最初から入っている（続けて入力できる）。ほかの初期値は入らない
     for (const mode of ['blank', 'blank-open']) {

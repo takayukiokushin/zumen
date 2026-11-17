@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { missingRequiredFields } from '@zumen/knowledge';
+import { missingLabel } from '../missingLabel.ts';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
 import { Field } from '../Field.tsx';
@@ -91,7 +92,7 @@ export function SketchResult({
             {rows.map((r) => (
               <Field
                 key={r.key}
-                question={{ ...r.question, label: r.areaNo ? `${t('hearing.areaPrefix', { n: r.areaNo })}${tx(r.question.label)}` : r.question.label }}
+                question={{ ...r.question, label: missingLabel(r, t, tx) }}
                 fieldKey={r.key}
                 value={current[r.key]}
                 onChange={onSetAnswer}

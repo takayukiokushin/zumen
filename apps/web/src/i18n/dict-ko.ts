@@ -425,6 +425,7 @@ export const ko: Dict = {
   'sketch.undone': '반영 전으로 되돌렸습니다. 다시 읽을 수 있습니다.',
   'sketch.answer': '도면을 만들기 위해 답해 주세요',
   'hearing.areaPrefix': '{n}번째 구역: ',
+  'hearing.unitPrefix': '{nth}: ',
   'hearing.sendTitle': '다른 구역으로의 송출',
   'hearing.sendDesc': '이 구역에서 뒤쪽 구역으로 보내는 선마다 분기 위치, 케이블, 개폐기를 입력합니다',
   'hearing.sendNth': '→ {n}번째 구역으로',

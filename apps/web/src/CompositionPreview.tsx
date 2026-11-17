@@ -1,8 +1,9 @@
 import { Fragment } from 'react';
-import { buildComposition, missingRequired } from '@zumen/knowledge';
+import { buildComposition, missingRequiredFields } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { findSymbol } from '@zumen/symbols';
 import { useT, useTx } from './i18n/useT.ts';
+import { missingLabel } from './missingLabel.ts';
 import type { Key } from './i18n/index.ts';
 
 /**
@@ -13,7 +14,7 @@ export function CompositionPreview({ answers }: { answers: Answers }) {
   const t = useT();
   const tx = useTx();
   const items = buildComposition(answers);
-  const missing = missingRequired(answers);
+  const missing = missingRequiredFields(answers);
 
   return (
     <aside className="preview">
@@ -43,7 +44,7 @@ export function CompositionPreview({ answers }: { answers: Answers }) {
         <div className="warn">
           <b>{t('comp.missing', { n: missing.length })}</b>
           <br />
-          {missing.map((q) => tx(q.label)).join(' / ')}
+          {missing.map((f) => missingLabel(f, t, tx)).join(' / ')}
         </div>
       )}
     </aside>

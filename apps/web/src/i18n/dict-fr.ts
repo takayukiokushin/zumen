@@ -427,6 +427,7 @@ export const fr: Dict = {
   'sketch.undone': 'État d’avant la prise en compte rétabli. Vous pouvez relire.',
   'sketch.answer': 'Répondez pour créer le schéma',
   'hearing.areaPrefix': 'Zone n° {n} :',
+  'hearing.unitPrefix': '{nth} : ',
   'hearing.sendTitle': "Départs vers d’autres zones",
   'hearing.sendDesc': "Pour chaque ligne partant de cette zone vers une zone suivante, saisissez la position de dérivation, le câble et l’appareil de coupure",
   'hearing.sendNth': '→ Vers la zone n° {n}',
