@@ -90,7 +90,9 @@ html[data-zoom="standard"] #root { height: 100%; }
 .shell > .body > * { flex: 1 1 auto; min-height: 0; }
 button, input, select, textarea { font: inherit; color: inherit; }
 
-.app { display: grid; grid-template-columns: 220px 1fr 300px; height: 100%; }
+/* 左の目次・右の「今の構成」の幅は、取っ手（ColResizer）で変えられる（第17弾 項目5）。--nav-w・--preview-w に、覚えている幅が入る。
+   真ん中の入力欄が 480px より狭くならないよう、広すぎるときは、実際に使う幅（--nav-eff・--prev-eff）を、自動で狭める */
+.app { --nw: var(--nav-w, 220px); --pw: var(--preview-w, 300px); --nav-eff: min(var(--nw), max(160px, calc(100% - 480px - var(--pw)))); --prev-eff: min(var(--pw), max(220px, calc(100% - 480px - var(--nav-eff)))); display: grid; grid-template-columns: var(--nav-eff) 1fr var(--prev-eff); height: 100%; position: relative; }
 /* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 900px 以下のとき（html の data-uw に 900 が入る） */
  :where(html[data-uw~="900"]) .app { grid-template-columns: 1fr; height: auto; } :where(html[data-uw~="900"]) .nav, :where(html[data-uw~="900"]) .preview { position: static; height: auto; } 
 
@@ -654,9 +656,20 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 /* ------------------------------------------------------------------ */
 /* ㉖㉗ ヒアリングの左の目次・右の「いまの構成」を隠す／出す             */
 /* ------------------------------------------------------------------ */
-.app.no-nav { grid-template-columns: 1fr 300px; }
-.app.no-preview { grid-template-columns: 220px 1fr; }
+.app.no-nav { --nw: 0px; grid-template-columns: 1fr var(--prev-eff); }
+.app.no-preview { --pw: 0px; grid-template-columns: var(--nav-eff) 1fr; }
+.app.no-nav.no-preview { --nw: 0px; --pw: 0px; }
 .app.no-nav.no-preview { grid-template-columns: 1fr; }
+/* 左右の枠の境目の取っ手（幅を変える）。境目の上に重ねる、細い縦の帯。狭い画面（枠が縦に並ぶ・出ない）では出さない */
+.panel-handle { position: absolute; top: 0; bottom: 0; width: 8px; z-index: 5; cursor: col-resize; touch-action: none; user-select: none; -webkit-user-select: none; background: transparent; }
+.nav-handle { left: calc(var(--nav-eff) - 4px); }
+.preview-handle { right: calc(var(--prev-eff) - 4px); }
+.panel-handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 36px; margin: -18px 0 0 -1px; border-radius: 1px; background: var(--muted); opacity: 0; transition: opacity .12s; }
+.panel-handle:hover::after, .panel-handle.dragging::after, .panel-handle:focus-visible::after { background: var(--accent); opacity: 1; }
+.panel-handle:hover, .panel-handle.dragging { background: var(--accent-soft); }
+.panel-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (pointer: coarse) { .panel-handle::after { opacity: 0.6; } }
+:where(html[data-uw~="900"]) .panel-handle { display: none; }
 .panel-toggle { padding: calc(4px * var(--ctl-scale)) calc(10px * var(--ctl-scale));
   font-size: calc(11.5px * var(--ctl-scale)); min-height: calc(34px * var(--ctl-scale)); background: transparent; border-color: transparent; color: var(--muted); }
 .panel-toggle:hover { color: var(--ink); background: var(--alt); border-color: var(--rule); }

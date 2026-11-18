@@ -232,6 +232,60 @@ try {
         failed++;
         problems.push(`${name}／入力の途中：下の余白の大きさが、枠の高さの半分になっていません（${Math.round(pad.h)}／${Math.round(pad.want)}）`);
       }
+      // 左の目次・右の「今の構成」の幅（第17弾 項目5）：取っ手をドラッグすると幅が変わる／ダブルクリックで元の幅／再読み込みしても覚えている。
+      // 実効幅が 900px 以下の画面は、枠が縦に並ぶ（出ない）ので、取っ手そのものを出さない
+      if (pad && c.w / c.scale > 900) {
+        const showPanels = async () => {
+          const tg = page.locator('button.panel-toggle');
+          for (let i = 0; i < (await tg.count()); i++) if ((await tg.nth(i).getAttribute('aria-pressed')) === 'true' && (await tg.nth(i).isEnabled())) await tg.nth(i).click({ force: true });
+          await sleep(400);
+        };
+        const navW = () => page.evaluate(() => (document.querySelector('.app > .nav') as HTMLElement | null)?.getBoundingClientRect().width ?? -1);
+        await showPanels();
+        screens++;
+        const z = c.scale;
+        const w0 = await navW();
+        const hb = await page.locator('.nav-handle').boundingBox({ timeout: 1500 }).catch(() => null);
+        if (!hb || w0 < 0) {
+          failed++;
+          problems.push(`${name}／入力：目次の幅の取っ手が見つかりません`);
+        } else {
+          await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+          await page.mouse.down();
+          await page.mouse.move(hb.x + hb.width / 2 + 30, hb.y + hb.height / 2, { steps: 4 });
+          await page.mouse.move(hb.x + hb.width / 2 + 60, hb.y + hb.height / 2, { steps: 4 });
+          await page.mouse.up();
+          await sleep(300);
+          const w1 = await navW();
+          if (Math.abs(w1 - w0 - 60) > 2 && Math.abs(w1 - w0) < 20) {
+            failed++;
+            problems.push(`${name}／入力：取っ手をドラッグしても、目次の幅が変わりません（${Math.round(w0)}→${Math.round(w1)}）`);
+          }
+          // 再読み込みしても、同じ幅
+          await page.reload();
+          await sleep(1000);
+          await page.locator('button', { hasText: /閉じる|Close|Fermer|关闭|닫기/ }).first().click({ timeout: 400 }).catch(() => {});
+          await page.locator('tr', { hasText: '余白の検査' }).first().locator('button.job-open').click({ timeout: 2000, force: true }).catch(() => {});
+          await sleep(900);
+          await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+          await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(2).click({ force: true, timeout: 1500 }).catch(() => {});
+          await sleep(900);
+          await showPanels();
+          const w2 = await navW();
+          if (Math.abs(w2 - w1) > 2) {
+            failed++;
+            problems.push(`${name}／入力：再読み込みすると、目次の幅が元に戻っています（${Math.round(w1)}→${Math.round(w2)}）`);
+          }
+          // ダブルクリックで、元の幅（220）
+          await page.locator('.nav-handle').dblclick({ timeout: 1500, force: true }).catch(() => {});
+          await sleep(300);
+          const w3 = await navW();
+          if (Math.abs(w3 - 220 * z) > 2) {
+            failed++;
+            problems.push(`${name}／入力：ダブルクリックしても、目次の幅が元（220）に戻りません（${Math.round(w3 / z)}）`);
+          }
+        }
+      }
       await page.locator('.icon-btn').nth(0).click({ timeout: 1500, force: true }).catch(() => {});
       await sleep(600);
       rec('使い方', await measure(page, c.touch));

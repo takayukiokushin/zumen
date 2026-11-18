@@ -7,6 +7,7 @@ import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
 import { HearingForm } from './HearingForm.tsx';
+import { ColResizer, FORM_MIN, NAV_SPEC, PREVIEW_SPEC, loadPanelWidth, setPanelAccount } from './ColResizer.tsx';
 import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
@@ -101,6 +102,17 @@ export function App() {
   const [sketchRead, setSketchRead] = useState(false);
   // 右の「いまの構成」は、最初は隠しておく（「いまの構成を出す」で開く。入力欄を広く使うため。左の目次と同じ考え方）
   const [showPreview, setShowPreview] = useState(false);
+  // 設備を入力する画面の、左の目次・右の「今の構成」の幅（利用者ごと・ブラウザごとに覚える。第17弾 項目5）
+  setPanelAccount(user?.id);
+  const [navW, setNavW] = useState(() => loadPanelWidth(NAV_SPEC));
+  const [previewW, setPreviewW] = useState(() => loadPanelWidth(PREVIEW_SPEC));
+  // ログインの確認が終わって、利用者が分かったとき（別の利用者に替わったときも）、その利用者の幅を読み直す
+  const accountId = user?.id;
+  useEffect(() => {
+    if (!accountId) return;
+    setNavW(loadPanelWidth(NAV_SPEC));
+    setPreviewW(loadPanelWidth(PREVIEW_SPEC));
+  }, [accountId]);
 
   const [projectId, setProjectId] = useState<string | null>(null);
   // 別の案件を開いたら、読み取りの状態の印は、消す
@@ -886,9 +898,36 @@ export function App() {
                   {showPreview ? `${t('hearing.hidePreview')} ▶` : `◀ ${t('hearing.showPreview')}`}
                 </button>
               </div>
-              <div className={`app${showNav ? '' : ' no-nav'}${showPreview ? '' : ' no-preview'}`}>
+              <div
+                className={`app${showNav ? '' : ' no-nav'}${showPreview ? '' : ' no-preview'}`}
+                style={{ '--nav-w': `${navW}px`, '--preview-w': `${previewW}px` } as React.CSSProperties}
+              >
                 <HearingForm key={projectId ?? 'none'} answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} sketchRead={sketchRead} stepwise={isStepStart(answers)} onOpenAll={() => updateAnswers((prev) => openStartMode(prev))} onOpenDrawing={() => setTab('drawing')} />
                 {showPreview && <CompositionPreview answers={effective} />}
+                {showNav && (
+                  <ColResizer
+                    spec={NAV_SPEC}
+                    width={navW}
+                    grow="right"
+                    className="panel-handle nav-handle"
+                    limit={(boxW) => boxW - (showPreview ? previewW : 0) - FORM_MIN}
+                    panel={(h) => h.parentElement?.querySelector<HTMLElement>(':scope > .nav') ?? null}
+                    live={(w, box) => box.style.setProperty('--nav-w', `${w}px`)}
+                    onChange={setNavW}
+                  />
+                )}
+                {showPreview && (
+                  <ColResizer
+                    spec={PREVIEW_SPEC}
+                    width={previewW}
+                    grow="left"
+                    className="panel-handle preview-handle"
+                    limit={(boxW) => boxW - (showNav ? navW : 0) - FORM_MIN}
+                    panel={(h) => h.parentElement?.querySelector<HTMLElement>(':scope > .preview') ?? null}
+                    live={(w, box) => box.style.setProperty('--preview-w', `${w}px`)}
+                    onChange={setPreviewW}
+                  />
+                )}
               </div>
             </KeepScroll>
           )}
