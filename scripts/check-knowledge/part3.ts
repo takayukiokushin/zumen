@@ -1064,3 +1064,59 @@ console.log('\n■ 過去の案件の傾向');
   ok(!JSON.stringify(tallyTrends(named)).includes('秘密'), '傾向の結果に、お客様の名前が入っています');
   if (state.failed === 0) console.log(`  対象 ${TREND_QUESTION_IDS.size}問（選択肢から選ぶ質問だけ）／${TREND_MIN_COUNT}件に満たないうちは出さない／受電の形が同じ案件→足りなければ全案件／一覧にない値は数えない／お客様の名前は結果に入らない`);
 }
+
+console.log('\n■ 区分開閉器と主遮断装置の間の開閉器（第17弾 項目6）');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  const base: Answers = { ...answers, areaCount: '1', mainBreakerForm: 'cb' };
+  const roles = (a: Answers) => buildComposition({ ...base, ...a }).map((i) => i.role);
+  const shown = (a: Answers) => new Set(visibleQuestions(withAutoValues({ ...base, ...a }), {}).map((q) => q.id));
+  const mid = (a: Answers): Answers => ({ midSwitch: 'yes', ...a });
+  // 質問の出し方：区分開閉器がPAS・PGS・UGSのときだけ、「あり」のボタンが出る。「なし」では出ない。何も押さなければ、何も描かない
+  for (const sec of ['pas', 'pgs', 'ugs']) ok(shown({ sectionalizer: sec }).has('midSwitch'), `区分開閉器が${sec}のとき、「DS以外の開閉器はありますか」が出ません`);
+  ok(!shown({ sectionalizer: 'none', groundCabinet: 'no' }).has('midSwitch'), '区分開閉器が「なし」なのに、「DS以外の開閉器はありますか」が出ています');
+  ok(!shown({ sectionalizer: 'pas' }).has('midKind') && !roles({ sectionalizer: 'pas' }).some((r) => r.startsWith('mid-')), '「あり」を選んでいないのに、続きの質問・図面の部品が出ています');
+  const q = QUESTIONS.find((x) => x.id === 'midSwitch')!;
+  ok(q.required !== true && q.bothChoices !== true, '「DS以外の開閉器はありますか」が、最初から両方のボタンを出す形になっています（最初は「あり」だけ）');
+  // 「あり」のあと：種類 → 取り付け場所。選べる場所は、種類と区分開閉器で変わる
+  ok(shown(mid({ sectionalizer: 'pas' })).has('midKind') && !shown(mid({ sectionalizer: 'pas' })).has('midPlace'), '種類を選ぶ前に、取り付け場所が出ています');
+  const placeOpts = (a: Answers) => {
+    const view = normalizeAnswers(withAutoValues({ ...base, ...mid(a) }));
+    return QUESTIONS.find((x) => x.id === 'midPlace')!.options!.filter((o) => evaluate(o.showIf, view)).map((o) => o.value).join(',');
+  };
+  ok(placeOpts({ sectionalizer: 'pas', midKind: 'pas' }) === 'same-pole,pole,wall', `PAS・PGS（区分開閉器もPAS）の取り付け場所の選択肢が違います（${placeOpts({ sectionalizer: 'pas', midKind: 'pas' })}）`);
+  ok(placeOpts({ sourceType: 'cabinet', sectionalizer: 'ugs', midKind: 'pgs' }) === 'pole,wall', `区分開閉器がUGSのとき、「同じ柱」が選べます（${placeOpts({ sourceType: 'cabinet', sectionalizer: 'ugs', midKind: 'pgs' })}）`);
+  ok(placeOpts({ sectionalizer: 'pgs', midKind: 'as' }) === 'same-pole,away', `ASの取り付け場所の選択肢が違います（${placeOpts({ sectionalizer: 'pgs', midKind: 'as' })}）`);
+  ok(placeOpts({ sourceType: 'cabinet', sectionalizer: 'ugs', midKind: 'as' }) === 'away', `区分開閉器がUGSで、ASのとき、「離れた場所」だけのはずです（${placeOpts({ sourceType: 'cabinet', sectionalizer: 'ugs', midKind: 'as' })}）`);
+  // 最初に選んでおく場所：PAS・PGSは構内柱、ASは離れた場所
+  ok(withAutoValues({ ...base, ...mid({ midKind: 'pas' }) }).midPlace === 'pole' && withAutoValues({ ...base, ...mid({ midKind: 'as' }) }).midPlace === 'away', '取り付け場所の、最初に選んでおく値が違います（PAS・PGS＝構内柱、AS＝離れた場所）');
+  // 図面の部品と並び
+  const order = (r: string[], a: string, b: string) => r.indexOf(a) >= 0 && r.indexOf(a) < r.indexOf(b);
+  const pole = roles(mid({ sectionalizer: 'pas', midKind: 'pas', midPlace: 'pole', midControl: 'dgr', midBuiltinVt: 'yes', midBuiltinLa: 'yes' }));
+  ok(['mid-cable-source', 'mid-cable-site', 'mid-pas', 'mid-customer-pole', 'mid-pas-zct', 'mid-pas-vt', 'mid-pas-la', 'mid-pas-zpd', 'mid-pas-relay'].every((r) => pole.includes(r)), `構内柱のPASに、ケーブル・客柱・中身（ZCT・VT・LA・ZPD・DGR）がそろっていません（${pole.filter((r) => r.startsWith('mid-')).join('>')}）`);
+  ok(order(pole, 'pas', 'mid-cable-source') && order(pole, 'mid-cable-source', 'mid-cable-site') && order(pole, 'mid-cable-site', 'mid-pas') && order(pole, 'mid-pas', 'cable-head-source'), '並びが、「区分開閉器 → ケーブル → 途中のPAS → 引込ケーブル」になっていません');
+  ok(pole.filter((r) => r === 'boundary').length === 1 && !pole.some((r) => r.startsWith('mid-boundary')), '財産・責任分界点の線が、区分開閉器の側の1本だけになっていません');
+  const wall = roles(mid({ sectionalizer: 'pgs', midKind: 'pgs', midPlace: 'wall', midControl: 'gr' }));
+  ok(wall.includes('mid-cable-source') && !wall.includes('mid-customer-pole') && wall.includes('mid-pas-relay'), '建物の屋側：ケーブルがあり、客柱が無いはずです');
+  const same = roles(mid({ sectionalizer: 'pas', midKind: 'as', midPlace: 'same-pole' }));
+  ok(same.includes('mid-as') && !same.includes('mid-cable-source') && !same.includes('mid-customer-pole'), '同じ柱のAS：ケーブルも客柱も無いはずです');
+  const away = roles(mid({ sourceType: 'cabinet', sectionalizer: 'ugs', midKind: 'as', midPlace: 'away' }));
+  ok(away.includes('mid-as') && away.includes('mid-cable-source') && !away.includes('mid-customer-pole'), 'UGSの後ろのAS：ケーブルがあり、客柱は自動では描かないはずです');
+  // ケーブル・PASの文字
+  const items = buildComposition({ ...base, ...mid({ sectionalizer: 'pas', midKind: 'pas', midPlace: 'pole', midControl: 'dgr', midRatedVoltage: '7200', midRatedCurrent: '200', midCableInstallation: 'buried', midCableStructure: 'CVT', midCableVoltage: '6600', midCableCrossSection: '38', midCableLength: 30, midCableLengthApprox: 'yes' }) });
+  ok(items.find((i) => i.role === 'mid-cable-source')?.label.join('|') === '埋ケ|CVT|6600V 38mm2 約30m', `途中のケーブルの文字が違います（${items.find((i) => i.role === 'mid-cable-source')?.label.join('|')}）`);
+  ok(items.find((i) => i.role === 'mid-pas')?.label.join('|') === 'PAS|7200V 200A', `途中のPASの文字が違います（${items.find((i) => i.role === 'mid-pas')?.label.join('|')}）`);
+  ok(!!items.find((i) => i.role === 'mid-cable-source')?.dashedAfter, '埋設のケーブルが、点線になっていません');
+  ok(buildComposition({ ...base, ...mid({ sectionalizer: 'pgs', midKind: 'pgs', midPlace: 'wall' }) }).find((i) => i.role === 'mid-pas')?.label[0] === 'PGS', '途中のPGSの名前が、PGSになっていません');
+  // 続きの質問：ケーブルの項目は、同じ柱のときは出ない。GR・DGRの質問はPAS・PGSだけ
+  ok(!shown(mid({ sectionalizer: 'pas', midKind: 'as', midPlace: 'same-pole' })).has('midCableLength') && shown(mid({ sectionalizer: 'pas', midKind: 'as', midPlace: 'away' })).has('midCableLength'), 'ケーブルの項目が、「同じ柱」のときだけ消えるはずです');
+  ok(!shown(mid({ sectionalizer: 'pas', midKind: 'as', midPlace: 'away' })).has('midControl') && shown(mid({ sectionalizer: 'pas', midKind: 'pgs', midPlace: 'pole' })).has('midControl'), 'GR・DGRの質問は、PAS・PGSのときだけ出るはずです');
+  // 区分開閉器を「なし」に変えたら、質問も図面も出ない（「あり」の答えが残っていても）
+  ok(!roles({ sectionalizer: 'none', groundCabinet: 'no', midSwitch: 'yes', midKind: 'as', midPlace: 'away' }).some((r) => r.startsWith('mid-')), '区分開閉器が「なし」なのに、途中の開閉器が描かれています');
+  // 必須：種類・取り付け場所（白紙の案件は、答えるまで描かない）
+  const miss = missingRequiredFields({ ...base, ...mid({ sectionalizer: 'pas' }) }).map((m) => m.key);
+  ok(miss.includes('midKind'), '「あり」を選んだのに、種類が必須の未入力になっていません');
+  const blankMid = buildComposition({ startMode: 'blank', sectionalizer: 'pas', midSwitch: 'yes', midKind: 'pas', mainBreakerForm: 'cb' } as Answers).map((i) => i.role);
+  ok(!blankMid.some((r) => r.startsWith('mid-')), '白紙の案件で、取り付け場所を答える前に、途中の開閉器が描かれています');
+  if (state.failed === 0) console.log('  質問の出し方・選べる取り付け場所・図面の並び・文字・分界点の線・白紙の案件の扱い：すべて想定どおり');
+}

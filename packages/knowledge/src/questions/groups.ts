@@ -1,11 +1,19 @@
 import type { QuestionGroup } from './types.ts';
 import { CT_SHOWN, VT_SHOWN } from '../composition.ts';
+import { MID_ASK } from './common.ts';
 
 export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'customer', label: 'お客様・現場', description: '表題欄と図面の基本情報' },
   { id: 'source', label: '引込元', description: '電力会社所有の電柱' },
   { id: 'boundary', label: '責任分界点' },
   { id: 'pas', label: '区分開閉器' },
+  {
+    // 区分開閉器の横の「DS以外の開閉器はありますか」で「あり」を選んだときだけ出す（第17弾 項目6）
+    id: 'midswitch',
+    label: '区分開閉器と主遮断装置の間の開閉器',
+    description: '区分開閉器の後ろに付く、DS以外の開閉器（PAS・PGS・AS）',
+    showIf: MID_ASK,
+  },
   {
     // 区分開閉器も地上キャビネットも無いときだけ出す
     id: 'precable',

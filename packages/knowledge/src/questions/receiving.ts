@@ -24,6 +24,19 @@ export const RECEIVING_QUESTIONS: Question[] = [
     help: 'PAS・PGS＝電柱上に設置する区分開閉器。UGS＝キャビネット内に設置する区分開閉器。図面には、選んだ名前（PAS・PGS・UGS）を書く。引込元が地上キャビネットのときは、UGS（またはなし）。',
   },
   {
+    // 区分開閉器と主遮断装置の間に、DS以外の開閉器（PAS・PGS・AS）が付く、まれな構成（第17弾 項目6）。
+    // ふだんは何も押さなくてよい（最初は「あり」のボタンだけ。何も選ばない＝なし）。「あり」を押すと、種類・取り付け場所などの質問が出る
+    id: 'midSwitch',
+    group: 'pas',
+    label: '区分開閉器から主遮断装置までの間に、DS以外の開閉器はありますか？',
+    type: 'select',
+    options: YES_NO,
+    defaultValue: 'no',
+    showIf: { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] },
+    ask: 'ai-uncertain',
+    help: 'まれな構成。例：高圧マンションで、地上キャビネットのUGSが区分開閉器で、そこから構内柱までケーブルでつなぎ、構内柱にPASが付く。「あり」を選ぶと、開閉器の種類（PAS・PGS・AS）と、取り付け場所を聞く。この開閉器には、責任分界点の線は引かない（区分開閉器の側にだけ引く）',
+  },
+  {
     id: 'ugsCabinetName',
     group: 'pas',
     label: 'UGSのキャビネット名称',

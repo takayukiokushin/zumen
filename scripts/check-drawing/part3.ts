@@ -1096,6 +1096,45 @@ console.log('\n■ 範囲選択・複数選択');
   console.log(`  継電器 → TC：曲がりは1回まで、TC → OCR は縦に真っすぐ、線・文字が重ならない（${n}通り）`);
 }
 
+/* ---------- 区分開閉器と主遮断装置の間の開閉器（第17弾 項目6）：どの組み合わせでも、線・文字が重ならない ---------- */
+{
+  const b0: Answers = { ...answers, hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', vcbRatedVoltage: '7200', vcbRatedCurrent: 600, midSwitch: 'yes', midRatedVoltage: '7200', midRatedCurrent: '200', midCableLength: 30 };
+  let n = 0;
+  const places = (kind: string, sec: string): string[] => (kind === 'as' ? (sec === 'ugs' ? ['away'] : ['same-pole', 'away']) : sec === 'ugs' ? ['pole', 'wall'] : ['same-pole', 'pole', 'wall']);
+  for (const form of ['cb', 'pfs', 'pole-top']) {
+    for (const sec of ['pas', 'pgs', 'ugs']) {
+      for (const kind of ['pas', 'pgs', 'as']) {
+        for (const place of places(kind, sec)) {
+          for (const ctl of kind === 'as' ? ['none'] : ['dgr', 'gr', 'none']) {
+            const a: Answers = { ...b0, mainBreakerForm: form, sectionalizer: sec, ...(sec === 'ugs' ? { sourceType: 'cabinet' } : {}), midKind: kind, midPlace: place, midControl: ctl, midBuiltinVt: 'yes', midBuiltinLa: ctl === 'gr' ? 'no' : 'yes' };
+            const label = `${form}・区分開閉器=${sec}・${kind}・${place}・${ctl}`;
+            const d = layout(buildComposition(a), a);
+            const has = (r: string) => d.symbols.some((x) => x.role === r);
+            const want = (r: string, ok: boolean) => has(r) === ok;
+            const poleOk = want('mid-customer-pole', place === 'pole');
+            const cableOk = want('mid-cable-source', place !== 'same-pole') && want('mid-cable-site', place !== 'same-pole');
+            const bodyOk = kind === 'as' ? has('mid-as') && !has('mid-pas') : has('mid-pas') && !has('mid-as');
+            const sogOk = want('mid-pas-relay', kind !== 'as' && ctl !== 'none');
+            if (!poleOk || !cableOk || !bodyOk || !sogOk) { fail(`${label}：部品の有無が想定と違います（客柱${poleOk}・ケーブル${cableOk}・本体${bodyOk}・継電器${sogOk}）`); continue; }
+            // 並び：区分開閉器 → 途中の開閉器 → 引込ケーブル（上から下へ）
+            const body = d.symbols.find((x) => x.role === (kind === 'as' ? 'mid-as' : 'mid-pas'))!;
+            const pas = d.symbols.find((x) => x.role === 'pas')!;
+            const cableHead = d.symbols.find((x) => x.role === 'cable-head-source');
+            if (!(body.y > pas.y + 40) || (cableHead && !(cableHead.y > body.y))) { fail(`${label}：区分開閉器・途中の開閉器・引込ケーブルの、上下の並びが違います`); continue; }
+            const found = inspectDrawing(fromLayout(d), 'A3', 'portrait').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind));
+            if (findLabelCollisions(d).length > 0 || found.length > 0) { fail(`${label}：線・文字が重なっています（${found.map((i) => i.message).slice(0, 2).join(' / ')}）`); continue; }
+            n++;
+          }
+        }
+      }
+    }
+  }
+  // 財産・責任分界点の線は、区分開閉器の側の1本だけ（途中の開閉器には引かない）
+  const bd = layout(buildComposition({ ...b0, mainBreakerForm: 'cb', midKind: 'pas', midPlace: 'pole', midControl: 'dgr' }), { ...b0, mainBreakerForm: 'cb', midKind: 'pas', midPlace: 'pole', midControl: 'dgr' });
+  if (bd.symbols.filter((x) => x.symbolId.startsWith('boundary')).length !== 1) fail('途中の開閉器があるとき、財産・責任分界点の線が1本になっていません');
+  console.log(`  区分開閉器（PAS・PGS・UGS）× 途中の開閉器（PAS・PGS・AS）× 取り付け場所 × GR・DGR × 主遮断装置（CB形・PFS形・電柱上）：部品・並び・線と文字が重ならない（${n}通り）`);
+}
+
 /* ---------- LAの上位（上側）の開閉器：開閉器の真下にLA。縦につながる ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };

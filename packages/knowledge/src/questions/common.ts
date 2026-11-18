@@ -257,3 +257,21 @@ export const RELAY_CHOICES: Choice[] = [
   ['2E', '電動機保護継電器（2要素）'],
   ['3E', '電動機保護継電器（3要素）'],
 ].map(([value, name]) => ({ value: value!, label: `${value}（${name}）` }));
+
+/**
+ * 区分開閉器と主遮断装置の間の開閉器（第17弾 項目6）。
+ *   MID_ASK   … 質問を出す条件：区分開閉器が、PAS・PGS・UGSのどれかで、「DS以外の開閉器が、間にある」を選んだとき
+ *   MID_DRAW  … 図面に描く条件：種類と取り付け場所が決まっているとき
+ *   MID_PAS   … PAS・PGSが付くとき（中身は、1か所目の区分開閉器と同じ）
+ *   MID_AS    … ASが付くとき
+ *   MID_CABLE … 区分開閉器との間に、新しいケーブルを描くとき（同じ柱以外）
+ *   MID_POLE  … 構内柱（客柱の記号を添える）
+ */
+export const MID_ASK: Condition = { all: [{ key: 'midSwitch', eq: 'yes' }, { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] }] };
+export const MID_DRAW: Condition = { all: [MID_ASK, { key: 'midKind', answered: true }, { key: 'midPlace', answered: true }] };
+export const MID_PAS: Condition = { all: [MID_DRAW, { key: 'midKind', in: ['pas', 'pgs'] }] };
+export const MID_AS: Condition = { all: [MID_DRAW, { key: 'midKind', eq: 'as' }] };
+export const MID_CABLE: Condition = { all: [MID_DRAW, { not: { key: 'midPlace', eq: 'same-pole' } }] };
+export const MID_POLE: Condition = { all: [MID_PAS, { key: 'midPlace', eq: 'pole' }] };
+/** 途中のPAS・PGSに、GR・DGR（制御装置）が付くとき */
+export const MID_SOG: Condition = { all: [MID_PAS, { key: 'midControl', in: ['gr', 'dgr'] }] };

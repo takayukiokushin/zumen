@@ -3,6 +3,7 @@ import type { Value } from './condition.ts';
 import type { Question } from './questions/types.ts';
 import { SITE_QUESTIONS } from './questions/site.ts';
 import { RECEIVING_QUESTIONS } from './questions/receiving.ts';
+import { MIDSWITCH_QUESTIONS } from './questions/midswitch.ts';
 import { COMPOSITION_QUESTIONS } from './questions/composition.ts';
 import { TRANSFORMER_QUESTIONS } from './questions/transformer.ts';
 import { EQUIPMENT_QUESTIONS } from './questions/equipment.ts';
@@ -23,6 +24,7 @@ export { QUESTION_GROUPS } from './questions/groups.ts';
 export const QUESTIONS: Question[] = [
   ...SITE_QUESTIONS,
   ...RECEIVING_QUESTIONS,
+  ...MIDSWITCH_QUESTIONS,
   ...COMPOSITION_QUESTIONS,
   ...TRANSFORMER_QUESTIONS,
   ...EQUIPMENT_QUESTIONS,

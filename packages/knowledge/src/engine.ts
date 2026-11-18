@@ -349,6 +349,17 @@ export function withDerived(rawAnswers: Answers): Answers {
     .filter(Boolean)
     .join(' ');
 
+  // 区分開閉器と主遮断装置の間の開閉器（第17弾 項目6）。PAS・PGSは、1か所目の区分開閉器と同じ決まり（内蔵表記・図記号・ZPD・定格）
+  const midKind = String(answers.midKind ?? '');
+  d.midSwitchName = midKind === 'pgs' ? 'PGS' : midKind === 'as' ? 'AS' : 'PAS';
+  const midBuiltin: string[] = [];
+  if ((answers.midControl === 'gr' || answers.midControl === 'dgr') && answers.midBuiltinVt === 'yes') midBuiltin.push('VT');
+  if (answers.midBuiltinLa === 'yes') midBuiltin.push('LA');
+  d.midPasBuiltinText = midBuiltin.length ? `${midBuiltin.join(',')}内蔵型` : '';
+  d.midPasSymbol = midBuiltin.length ? 'pas-builtin' : 'pas';
+  d.midPasZpdSymbol = answers.midBuiltinLa === 'yes' ? 'zpd-pas-boxed' : 'zpd-pas';
+  d.midRatingText = [answers.midRatedVoltage ? `${answers.midRatedVoltage}V` : '', answers.midRatedCurrent ? `${answers.midRatedCurrent}A` : ''].filter(Boolean).join(' ');
+
   // 送り出しのLBSのパワーヒューズ（例: PF 30A）。定格電流が分からないときは、書かない
   d.linkFuseText = answers.linkFuseCurrent ? `PF ${answers.linkFuseCurrent}A` : '';
 
@@ -474,6 +485,10 @@ export function withDerived(rawAnswers: Answers): Answers {
   // 引込点から責任分界点までのケーブルの注記（区分開閉器なし・地上キャビネットなしのとき）
   d.preCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.preCableInstallation)) ?? '';
   d.preCableSpecLine = cableSpec(answers.preCableVoltage, answers.preCableCrossSection, answers.preCableLength, answers.preCableLengthApprox);
+
+  // 区分開閉器と、その後ろの開閉器とのあいだのケーブルの注記
+  d.midCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.midCableInstallation)) ?? '';
+  d.midCableSpecLine = cableSpec(answers.midCableVoltage, answers.midCableCrossSection, answers.midCableLength, answers.midCableLengthApprox);
 
   // 電動機（台ごとの答えで組み立てる）：途中のケーブルの注記は、ほかのケーブルと同じ書き方。容量は「500kW」、LBSのパワーヒューズは「PF 30A」
   d.motorCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.motorCableInstallation)) ?? '';

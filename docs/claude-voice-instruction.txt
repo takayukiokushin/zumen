@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vtr2tq8",
+  "version": "vjzq2lo",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：vtr2tq8）
+# 項目の一覧（版：vjzq2lo）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -208,6 +208,7 @@
 
 【区分開閉器】
 - sectionalizer：区分開閉器は｜pas=PAS（電柱上） ／ pgs=PGS（電柱上） ／ ugs=UGS（キャビネット内） ／ none=なし
+- midSwitch：区分開閉器から主遮断装置までの間に、DS以外の開閉器はありますか｜yes/no｜条件：sectionalizer=pas/ugs/pgs
 - ugsCabinetName：UGSのキャビネット名称｜文字｜条件：sectionalizer=ugs
 - groundCabinet：地上キャビネットはありますか｜yes/no｜条件：sectionalizer=none
 - groundCabinetType：地上キャビネットの種類は｜mold-discon=モールドディスコン ／ t-shelter=T型シェルター ／ three-pole=三極連動｜条件：sectionalizer=none かつ groundCabinet=yes
@@ -216,6 +217,22 @@
 - pasBuiltinLa：LAは内蔵されていますか｜yes/no｜条件：sectionalizer=pas/ugs/pgs
 - pasRatedVoltage：定格電圧は｜数（3300〜34500）｜条件：sectionalizer=pas/ugs/pgs
 - pasRatedCurrent：定格電流は｜100=100A ／ 200=200A ／ 300=300A ／ 400=400A｜条件：sectionalizer=pas/ugs/pgs
+
+【区分開閉器と主遮断装置の間の開閉器】
+（このまとまりを聞くのは midSwitch=yes かつ sectionalizer=pas/ugs/pgs）
+- midKind：開閉器の種類は｜pas=PAS ／ pgs=PGS ／ as=AS（気中開閉器）｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs
+- midPlace：取り付け場所は｜same-pole=区分開閉器と同じ柱 ／ pole=構内柱 ／ wall=建物の屋側 ／ away=離れた場所（受電設備のところなど）｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり
+- midControl：GR・DGR（制御装置）は｜none=なし ／ gr=GR（無方向性） ／ dgr=DGR（方向性）｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり かつ midKind=pas/pgs
+- midBuiltinVt：VTは内蔵されていますか｜yes/no｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり かつ midKind=pas/pgs かつ midControl=gr/dgr
+- midBuiltinLa：LAは内蔵されていますか｜yes/no｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり かつ midKind=pas/pgs
+- midRatedVoltage：定格電圧は｜数（3300〜34500）｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs
+- midRatedCurrent：定格電流は｜100=100A ／ 200=200A ／ 300=300A ／ 400=400A ／ ほかの値も可｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs
+- midCableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり
+- midCableStructure：ケーブルの構造は｜CVT ／ CV｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり
+- midCableVoltage：定格電圧は｜3300=3300V ／ 6600=6600V ／ 22000=22000V ／ 33000=33000V｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり
+- midCableCrossSection：断面積は｜数（14〜150）｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり
+- midCableLength：長さは｜数字のみ（m）｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり
+- midCableLengthApprox：長さに「約」を付ける｜yes/no｜条件：midSwitch=yes かつ sectionalizer=pas/ugs/pgs かつ midKindに答えあり かつ midPlaceに答えあり かつ midCableLength>0
 
 【引込点〜責任分界点のケーブル】
 （このまとまりを聞くのは sectionalizer=none かつ groundCabinet=no）

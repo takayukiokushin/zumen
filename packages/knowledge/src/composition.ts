@@ -1,6 +1,6 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
-import { NO_SECTIONALIZER_SPLIT, PROPERTY_AT_DS, POLE_TOP, SPLIT_BOUNDARY } from './questions/common.ts';
+import { MID_AS, MID_CABLE, MID_PAS, MID_POLE, MID_SOG, NO_SECTIONALIZER_SPLIT, PROPERTY_AT_DS, POLE_TOP, SPLIT_BOUNDARY } from './questions/common.ts';
 import { LINK_PART_MAX, LINK_RELAYS, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
@@ -382,6 +382,98 @@ export const UPSTREAM: Placement[] = [
     labelTemplate: ['VCT'],
     repeatCountKey: 'vctCount',
     props: { location: 'vctLocation' },
+  },
+  /* ---- 区分開閉器と主遮断装置の間の開閉器（第17弾 項目6）。VCTの下、受電設備までの引込ケーブルの上。財産・責任分界点の線は引かない ---- */
+  {
+    // 区分開閉器と、この開閉器のあいだの新しいケーブル（同じ柱のときは描かない）。描き方は、引込ケーブルと同じ
+    role: 'mid-cable-source',
+    symbolId: 'cable-head',
+    kind: 'series',
+    when: MID_CABLE,
+    labelTemplate: ['{midCableInstallationLabel}', '{midCableStructure}', '{midCableSpecLine}'],
+    gapAfter: 56,
+    dashedAfter: { key: 'midCableInstallation', eq: 'buried' },
+    note: '区分開閉器 → 途中の開閉器のケーブル（送り出し側の端末）。埋設（埋ケ）のときは線を点線で描く',
+  },
+  {
+    role: 'mid-cable-site',
+    symbolId: 'cable-head',
+    kind: 'series',
+    when: MID_CABLE,
+    note: '区分開閉器 → 途中の開閉器のケーブル（受ける側の端末。180°回して使う）',
+  },
+  {
+    // PAS・PGS：1か所目の区分開閉器と同じ図記号・同じ中身
+    role: 'mid-pas',
+    symbolId: '{midPasSymbol}',
+    kind: 'series',
+    when: MID_PAS,
+    labelTemplate: ['{midSwitchName}', '{midRatingText}', '{midPasBuiltinText}'],
+    props: { ratedVoltage: 'midRatedVoltage', ratedCurrent: 'midRatedCurrent', control: 'midControl' },
+    note: '区分開閉器と主遮断装置の間のPAS・PGS。責任分界点の線は引かない',
+  },
+  {
+    // 構内柱：開閉器の左に、客柱の丸を添える（線はつながない）。建物の屋側・同じ柱では、添えない
+    role: 'mid-customer-pole',
+    symbolId: 'pole-customer',
+    kind: 'beside-left',
+    attachTo: 'mid-pas',
+    when: MID_POLE,
+    note: '途中のPAS・PGSが構内柱に付くとき、客柱の記号を、開閉器の左に添える',
+  },
+  {
+    role: 'mid-pas-zct',
+    symbolId: 'zct',
+    kind: 'inside',
+    parent: 'mid-pas',
+    slot: 'zct',
+    when: MID_SOG,
+  },
+  {
+    role: 'mid-pas-vt',
+    symbolId: 'vt',
+    kind: 'inside',
+    parent: 'mid-pas',
+    slot: 'vt',
+    when: { all: [MID_SOG, { key: 'midBuiltinVt', eq: 'yes' }] },
+  },
+  {
+    role: 'mid-pas-la',
+    symbolId: 'la',
+    kind: 'inside',
+    parent: 'mid-pas',
+    slot: 'la',
+    when: { all: [MID_PAS, { key: 'midBuiltinLa', eq: 'yes' }] },
+  },
+  {
+    role: 'mid-pas-zpd',
+    symbolId: '{midPasZpdSymbol}',
+    kind: 'inside',
+    parent: 'mid-pas',
+    slot: 'zpd',
+    when: { all: [MID_PAS, { key: 'midControl', eq: 'dgr' }] },
+  },
+  {
+    role: 'mid-pas-relay',
+    symbolId: 'relay-gr',
+    kind: 'branch-right',
+    when: { all: [MID_PAS, { key: 'midControl', eq: 'gr' }] },
+    connectFrom: ['mid-pas-zct'],
+  },
+  {
+    role: 'mid-pas-relay',
+    symbolId: 'relay-dgr',
+    kind: 'branch-right',
+    when: { all: [MID_PAS, { key: 'midControl', eq: 'dgr' }] },
+    connectFrom: ['mid-pas-zct', 'mid-pas-vt', 'mid-pas-zpd'],
+  },
+  {
+    role: 'mid-as',
+    symbolId: 'as',
+    kind: 'series',
+    when: MID_AS,
+    labelTemplate: ['AS', '{midRatingText}'],
+    note: '区分開閉器と主遮断装置の間のAS。客柱は、自動では描かない',
   },
   {
     // 引込ケーブルが「なし」のとき（電柱の上に受電設備を構成する場合など）は、ケーブル端末も描かない
@@ -1185,6 +1277,16 @@ export const BLANK_GATES: Record<string, string[]> = {
   'pas-la': ['sectionalizer'],
   'pas-zpd': ['sectionalizer'],
   'pas-relay': ['sectionalizer'],
+  'mid-cable-source': ['midKind', 'midPlace'],
+  'mid-cable-site': ['midKind', 'midPlace'],
+  'mid-pas': ['midKind', 'midPlace'],
+  'mid-customer-pole': ['midKind', 'midPlace'],
+  'mid-pas-zct': ['midKind', 'midPlace'],
+  'mid-pas-vt': ['midKind', 'midPlace'],
+  'mid-pas-la': ['midKind', 'midPlace'],
+  'mid-pas-zpd': ['midKind', 'midPlace'],
+  'mid-pas-relay': ['midKind', 'midPlace'],
+  'mid-as': ['midKind', 'midPlace'],
   'cable-head-source': ['cableInstallation'],
   'cable-head-site': ['cableInstallation'],
   'area-frame': ['areaCount'],
