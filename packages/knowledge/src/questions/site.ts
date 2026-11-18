@@ -1,5 +1,5 @@
 import type { Question } from './types.ts';
-import { PROPERTY_AT_DS } from './common.ts';
+import { NO_SECTIONALIZER_SPLIT, SPLIT_BOUNDARY } from './common.ts';
 
 /** 質問の定義：お客様・現場、引込元、責任分界点 */
 export const SITE_QUESTIONS: Question[] = [
@@ -97,8 +97,9 @@ export const SITE_QUESTIONS: Question[] = [
       { value: 'split', label: 'いいえ（3点不一致）' },
     ],
     defaultValue: 'coincident',
-    // 区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点がDSの一次側に移る（3点一致ではない）ので、聞かない
-    showIf: { not: PROPERTY_AT_DS },
+    // 区分開閉器が「なし」のときは、責任分界点が主遮断装置の本体になり、財産分界点とは別の位置（3点一致ではない）に決まるので、聞かない
+    // （自動で「いいえ」として扱う。区分開閉器を「あり」に戻せば、また聞く）
+    showIf: { not: NO_SECTIONALIZER_SPLIT },
     ask: 'ai-uncertain',
     required: true,
     help: '引込点・財産分界点・責任分界点が同じ地点なら「3点一致」',
@@ -116,7 +117,7 @@ export const SITE_QUESTIONS: Question[] = [
     // 未入力のときだけ聞く
     showIf: {
       // 電柱上の構成（主遮断装置が無い）では、LBSもVCBも無いので聞かない
-      all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }, { not: { key: 'mainBreakerForm', in: ['cb', 'pfs', 'pole-top'] } }],
+      all: [SPLIT_BOUNDARY, { not: { key: 'mainBreakerForm', in: ['cb', 'pfs', 'pole-top'] } }],
     },
     ask: 'always',
     help: '3点不一致のときは、主遮断装置の図記号の中央に横線を引いて記載する。主遮断装置の形式を入力すれば、この質問は不要（CB形はVCB、PFS形はLBSに自動で決まる）',

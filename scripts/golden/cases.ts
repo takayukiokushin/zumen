@@ -321,7 +321,7 @@ export const GOLDEN_CASES: GoldenCase[] = [
     cableCrossSection: '100',
     cableLength: 30,
   }),
-  mk('30-customer-cable', '区分開閉器なし・引込ケーブルがお客様のもの：財産・責任分界点は、これまでどおり、引込点の下（電力会社のケーブルのときは、DSの一次側に移る）', ['boundary-both=1', 'cable-head=2'], CB, {
+  mk('30-customer-cable', '区分開閉器なし・引込ケーブルがお客様のもの：財産分界点は、引込点の下（電力会社のケーブルのときは、DSの一次側に移る）。責任分界点は、主遮断装置の本体（別の線）', ['boundary-property=1', 'boundary-safety=1', 'cable-head=2'], CB, {
     sectionalizer: 'none',
     groundCabinet: 'no',
     cableOwner: 'customer',

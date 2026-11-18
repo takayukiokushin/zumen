@@ -90,7 +90,7 @@
       <line x1="96" y1="0" x2="96" y2="24" stroke-width="1" />
       <line x1="0" y1="12" x2="120" y2="12" stroke-width="1" />
     </g>
-    <text x="-106" y="502" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-106" dy="0">財産・責任分界点</tspan></text>
+    <text x="-106" y="502" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-106" dy="0">財産分界点</tspan></text>
     <g transform="translate(-24 532)">
       <line x1="24" y1="0" x2="24" y2="11.5" stroke-width="1" />
       <line x1="15" y1="11.5" x2="33" y2="11.5" stroke-width="1" />
@@ -100,6 +100,10 @@
       <line x1="24" y1="59" x2="24" y2="72" stroke-width="1" />
     </g>
     <text x="34" y="542" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="34" dy="0">LBS</tspan><tspan x="34" dy="12.5">7200V 200A</tspan><tspan x="34" dy="12.5">PF×3</tspan><tspan x="34" dy="12.5">G50A 40kA</tspan></text>
+    <g transform="translate(-130 567)">
+      <line x1="0" y1="1" x2="100" y2="1" stroke-width="1" />
+    </g>
+    <text x="-128" y="561" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-128" dy="0">責任分界点</tspan></text>
     <g transform="translate(-24 620)">
       <line x1="24" y1="0" x2="24" y2="44" stroke-width="1" />
       <line x1="16" y1="14" x2="40" y2="14" stroke-width="1" />

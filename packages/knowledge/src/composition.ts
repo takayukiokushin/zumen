@@ -1,6 +1,6 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
-import { PROPERTY_AT_DS, POLE_TOP } from './questions/common.ts';
+import { NO_SECTIONALIZER_SPLIT, PROPERTY_AT_DS, POLE_TOP, SPLIT_BOUNDARY } from './questions/common.ts';
 import { LINK_PART_MAX, LINK_RELAYS, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
@@ -262,7 +262,7 @@ export const UPSTREAM: Placement[] = [
     // （責任分界点を置く主遮断装置が無いため）。区分開閉器も無ければ、線は引かない（第13弾 項目55 修正13／A-8）
     when: {
       all: [
-        { not: PROPERTY_AT_DS },
+        { not: NO_SECTIONALIZER_SPLIT },
         {
           any: [
             { all: [{ key: 'boundaryPattern', eq: 'coincident' }, { not: POLE_TOP }] },
@@ -279,7 +279,8 @@ export const UPSTREAM: Placement[] = [
     labelSide: 'left',
     symbolId: 'boundary-property',
     kind: 'series',
-    when: { all: [{ key: 'boundaryPattern', eq: 'split' }, { not: PROPERTY_AT_DS }, { not: POLE_TOP }] },
+    // 区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点は、DSの一次側（boundary-ds）に引くので、引込点の下には引かない
+    when: { all: [SPLIT_BOUNDARY, { not: PROPERTY_AT_DS }, { not: POLE_TOP }] },
     labelTemplate: ['財産分界点'],
   },
   {
@@ -452,7 +453,7 @@ export const UPSTREAM: Placement[] = [
 /**
  * 区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点は、ケーブルの負荷側にある。
  * VCT（電力会社の持ち物）がケーブルの負荷側にあるので、DSの一次側（DSが無ければ、LBSの一次側）。
- * 財産と責任の分界点を同じ位置とみなして、「財産・責任分界点」の横線を、DS（LBS）の真上に1本引く
+ * 財産分界点の横線（「財産分界点」）を、DS（LBS）の真上に引く。責任分界点は、主遮断装置（LBS・VCB）の本体に、別の線で引く（boundary-safety）
  */
 const BOUNDARY_AT_DS: Placement = {
   role: 'boundary-ds',
@@ -460,8 +461,8 @@ const BOUNDARY_AT_DS: Placement = {
   symbolId: 'boundary-both',
   kind: 'series',
   when: PROPERTY_AT_DS,
-  labelTemplate: ['財産・責任分界点'],
-  note: '区分開閉器なし＋電力会社のケーブル。財産分界点は、DS（無ければLBS）の一次側。VCTの下、DSの真上に横線を引く',
+  labelTemplate: ['財産分界点'],
+  note: '区分開閉器なし＋電力会社のケーブル。財産分界点は、DS（無ければLBS）の一次側。VCTの下、DSの真上に横線を引く。責任分界点は、主遮断装置の本体（boundary-safety）に別の線で引く',
 };
 
 /** 主遮断装置がLBSの構成 */
@@ -632,8 +633,7 @@ export const DOWNSTREAM: Placement[] = [
     // （未入力のときの主遮断装置はLBSとして描かれるので、LBSと答えたときだけ引ける）
     when: {
       all: [
-        { key: 'boundaryPattern', eq: 'split' },
-        { not: PROPERTY_AT_DS },
+        SPLIT_BOUNDARY,
         {
           any: [
             { key: 'mainBreakerForm', eq: 'cb' },

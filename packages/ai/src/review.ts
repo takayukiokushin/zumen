@@ -180,7 +180,9 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
   // ただし主遮断装置の形式が決まっていれば、そこから決まる（CB形ならVCB、PFS形ならLBS）ので聞かない
   // 電柱上の構成（pole-top）は、主遮断装置が無いので、聞かない（区分開閉器の位置に、財産・責任分界点を1本引く）
   const mainKnown = a.mainBreakerForm === 'cb' || a.mainBreakerForm === 'pfs' || a.mainBreakerForm === 'pole-top';
-  if (a.boundaryPattern === 'split' && !mainKnown && !a.boundarySafetyDevice) {
+  // 区分開閉器が「なし」（電柱上の構成を除く）のときは、「3点一致ですか？」を聞かず、3点不一致として扱う
+  const noSect = a.sectionalizer === 'none' && a.mainBreakerForm !== 'pole-top';
+  if ((a.boundaryPattern === 'split' || noSect) && !mainKnown && !a.boundarySafetyDevice) {
     items.push({
       level: 'ask',
       questionId: 'boundarySafetyDevice',
@@ -191,7 +193,7 @@ export function checkConsistency(raw: Answers): ReviewItem[] {
 
   // 3点一致なのに、区分開閉器も地上キャビネットも無い
   // （区分開閉器が無くても、電力会社の地上キャビネットで受電する場合は、3点一致でよい）
-  if (a.boundaryPattern === 'coincident' && noPas && a.groundCabinet === 'no') {
+  if (a.boundaryPattern === 'coincident' && noPas && !noSect && a.groundCabinet === 'no') {
     items.push({
       level: 'confirm',
       questionId: 'boundaryPattern',

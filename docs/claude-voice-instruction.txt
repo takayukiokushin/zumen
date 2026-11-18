@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vozrfzo",
+  "version": "vtr2tq8",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -123,7 +123,7 @@
 - **補助変圧器（MCCB→補助変圧器）は、蓄電池の有無（hasBattery）に関わらず**、図に書かれていれば、まず hasAuxTr を yes にして、読み取ってください（書かれていなければ答えに入れない）。auxTrCount（台数）・auxTrUsage（用途）・auxTrConnection・auxTrCapacity・
   auxTrVoltage（例：550/220V）・auxTrMccb（MCCBの定格。数字だけ）・auxTrFrom（どの変圧器の低圧側か）を読み取ってください。
 - **分界点の言葉は、「財産・責任分界点」「責任分界点」「財産分界点」の3つだけを使います。** 手書きの図にほかの書き方があっても、この3つのどれかに読み替えます。
-  3点一致のときの横線の文言は「財産・責任分界点」です（3点不一致のときだけ、「財産分界点」と「責任分界点」を別々の線で書きます）。
+  3点一致のときの横線の文言は「財産・責任分界点」です（3点不一致のときと、区分開閉器が「なし」のときは、「財産分界点」と「責任分界点」を別々の線で書きます）。
 - 3点一致（引込点・財産分界点・責任分界点が同じ地点）が全体の約99%です。
   区分開閉器（PAS・PGS）があれば3点一致の可能性が高いですが、確証が無ければ uncertain に入れてください。
 - **区分開閉器は sectionalizer で答えます。** PAS（電柱上に設置）／PGS（電柱上に設置）／UGS（キャビネット内に設置）／none（設置なし）のどれかです。
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：vozrfzo）
+# 項目の一覧（版：vtr2tq8）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -204,7 +204,7 @@
 
 【責任分界点】
 - boundaryPattern：3点一致ですか｜coincident=はい（3点一致） ／ split=いいえ（3点不一致）
-- boundarySafetyDevice：責任分界点は、LBSですか、VCBですか｜lbs=LBS ／ vcb=VCB｜条件：boundaryPattern=split
+- boundarySafetyDevice：責任分界点は、LBSですか、VCBですか｜lbs=LBS ／ vcb=VCB｜条件：(boundaryPattern=split または sectionalizer=none)
 
 【区分開閉器】
 - sectionalizer：区分開閉器は｜pas=PAS（電柱上） ／ pgs=PGS（電柱上） ／ ugs=UGS（キャビネット内） ／ none=なし

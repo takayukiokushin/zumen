@@ -107,7 +107,7 @@ export const POLE_TOP: Condition = { key: 'mainBreakerForm', eq: 'pole-top' };
  *   ・引込点から責任分界点までのケーブル（項目15）が「ある」ときは、そのあとの引込ケーブルは、お客様のものなので、対象外
  *   ・引込ケーブルが「なし」・主遮断装置のない構成（電柱上）も、対象外
  *   ・「引込ケーブルは誰のものか」は、初期値が電力会社のケーブルなので、お客様のケーブルと答えたとき以外は、電力会社のケーブルとして扱う
- * この条件のとき、「3点一致ですか？」は聞かず、DSの一次側に「財産・責任分界点」の横線を1本引く。
+ * この条件のとき、財産分界点は、DSの一次側（「財産分界点」の横線）。責任分界点は、主遮断装置（LBS・VCB）の本体に、別の線で引く（第17弾 項目2）。
  */
 export const PROPERTY_AT_DS: Condition = {
   all: [
@@ -117,6 +117,19 @@ export const PROPERTY_AT_DS: Condition = {
     { not: { key: 'mainBreakerForm', eq: 'pole-top' } },
     { not: { key: 'cableOwner', eq: 'customer' } },
   ],
+};
+
+/**
+ * 区分開閉器が「なし」（電柱上の構成を除く）：責任分界点は、主遮断装置（LBS・VCB）の本体にあり、財産分界点とは別の位置になる。
+ * 「3点一致ですか？」は聞かず、「いいえ（3点不一致）」として扱う（第17弾 項目2）。
+ */
+export const NO_SECTIONALIZER_SPLIT: Condition = {
+  all: [{ key: 'sectionalizer', eq: 'none' }, { not: { key: 'mainBreakerForm', eq: 'pole-top' } }],
+};
+
+/** 3点不一致として扱うとき：「いいえ（3点不一致）」と答えた、または、区分開閉器が「なし」（電柱上の構成を除く） */
+export const SPLIT_BOUNDARY: Condition = {
+  any: [{ key: 'boundaryPattern', eq: 'split' }, NO_SECTIONALIZER_SPLIT],
 };
 
 /** 引込ケーブルがあるとき（「なし」と答えたとき以外。まだ答えていないときは、あるものとして聞く） */
