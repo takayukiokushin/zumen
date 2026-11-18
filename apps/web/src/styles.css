@@ -585,6 +585,17 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]) .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
   :where(html[data-uw~="700"]) .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* スマホを横向きにした画面（html の data-short が on：指で操作する端末で、高さ500px以下・幅700px超）：
+   上の帯が、高さの半分近くを取らないよう、右側（使い方〜ログアウト）の行を、「隠す・出す」ボタンで隠せるようにし、出すときは1行に並べる。
+   4つのタブは、これまでどおり1行・1段のまま（名前を2行に割らない） */
+  :where(html[data-short="on"]) .tabbar > .tabbar-toggle { display: block; flex: 1 1 100%; padding: calc(7px * var(--text-scale)) 4px; font-size: calc(11px * var(--text-scale)); color: var(--ink-2); background: transparent; border: 0; border-top: 1px solid var(--rule-soft); border-radius: 0; text-align: center; min-height: 0; }
+  :where(html[data-short="on"]) .tabbar-right[data-open="false"] { display: none; }
+  :where(html[data-short="on"]) .tabbar > .tabbar-right { flex: 1 1 100%; margin-left: 0; justify-content: space-between; flex-wrap: nowrap; align-items: center; gap: calc(2px * var(--text-scale)); }
+  :where(html[data-short="on"]) .tabbar-right > button { flex: 0 1 auto; min-width: 0; padding-left: calc(7px * var(--ctl-scale)); padding-right: calc(7px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); white-space: nowrap; line-height: 1.15; }
+  :where(html[data-short="on"]) .tabbar-right > button.icon-btn { flex: 0 0 auto; padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(10.5px * var(--ctl-scale)); }
+  :where(html[data-short="on"]) .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+  :where(html[data-short="on"]) .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* きわめて狭い画面（実効幅300以下。スマホで、画面全体を160%にしたときなど）：4つのタブを、2つずつ2段に並べる。
    1段に4つ並べると、1つの幅が50px足らずになり、日本語は1文字ずつ縦に並び、英語・フランス語は、右にはみ出す */
   :where(html[data-uw~="300"]) .tabbar > button, :where(html[data-uw~="300"]) .tabbar > .tab-wrap { flex: 1 1 calc(50% - var(--gap, 10px)); }
@@ -1398,6 +1409,8 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 
 /* サーバーの状態（管理者） */
 .status-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+/* 画面の高さが低いとき（スマホを横向きにしたときなど）：サーバーの状態の知らせが、高さの大半を取って、下の一覧・図面を隠さないよう、高さの上限を決め、はみ出す分は、知らせの中でなぞって読む */
+@media (max-height: 500px) { .status-banner { max-height: 34vh; overflow-y: auto; } }
 .server-status .status-warn { margin: 0 0 10px; padding: 8px 12px 8px 28px; background: var(--need-soft); border: 1px solid var(--need); border-radius: 6px; color: var(--need); }
 .server-status .status-table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
 .server-status .status-table th { text-align: left; font-weight: 600; padding: 4px 12px 4px 0; white-space: nowrap; vertical-align: top; }

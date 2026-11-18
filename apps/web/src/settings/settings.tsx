@@ -148,11 +148,23 @@ function applyWidth(uiScale: number): void {
   if (el.dataset.uw !== v) el.dataset.uw = v;
 }
 
+/** スマホを横向きにした画面（指で操作する端末で、高さが500px以下。幅は700pxより広い）か。上の帯が高さを取りすぎないよう、右側の行を、隠せる・1行にする */
+export function isShortLandscape(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.innerWidth > 700 && window.innerHeight <= 500 && window.matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+}
+
 /** 設定を実際の画面に効かせる。CSS側はこの印と変数だけを見る */
 function applyToDocument(s: Settings): void {
   const el = document.documentElement;
   const ui = effectiveUiScale(s.uiScale);
   applyWidth(ui);
+  const short = isShortLandscape() ? 'on' : 'off';
+  if (el.dataset.short !== short) el.dataset.short = short;
   el.dataset.theme = s.theme;
   el.dataset.bold = s.bold ? 'on' : 'off';
   el.dataset.sb = s.scrollbar;

@@ -7,7 +7,7 @@
  * ことを、実際に画面を開いて確かめる（全体デバッグ 直し9）。
  *
  *   pnpm build          （画面を先に組み立てておく）
- *   pnpm screens        ふつうの検査（約14通り）
+ *   pnpm screens        ふつうの検査（約17通り）
  *   pnpm screens -- --full   たくさん（約60通り。`pnpm fuzz` が使う）
  *
  * 試験用の一時フォルダの中だけで動かす（本物の案件・APIキーには触らない）。
@@ -97,12 +97,13 @@ try {
 
   /* ---------- 検査する組み合わせ ---------- */
   type Combo = { dev: string; w: number; h: number; touch: boolean; theme: 'light' | 'dark'; lang: string; scale: number };
-  const DEV: Record<string, [number, number, boolean]> = { phone: [390, 844, true], phoneS: [360, 740, true], tablet: [820, 1180, true], tabletL: [1180, 820, true], pc: [1280, 800, false] };
+  const DEV: Record<string, [number, number, boolean]> = { phone: [390, 844, true], phoneS: [360, 740, true], phoneL: [844, 390, true], tablet: [820, 1180, true], tabletL: [1180, 820, true], pc: [1280, 800, false] };
   const mk = (dev: string, lang: string, scale: number, theme: 'light' | 'dark' = 'light'): Combo => ({ dev, w: DEV[dev]![0], h: DEV[dev]![1], touch: DEV[dev]![2], theme, lang, scale });
   let combos: Combo[] = [
     mk('phone', 'ja', 1), mk('phone', 'ja', 1.3), mk('phone', 'en', 1.3), mk('phone', 'fr', 1.3, 'dark'), mk('phone', 'zh', 1), mk('phone', 'ko', 1.3),
     mk('phoneS', 'ja', 1), mk('phone', 'ja', 1.6),
     mk('tablet', 'ja', 1), mk('tablet', 'en', 1.3), mk('tabletL', 'ja', 1, 'dark'), mk('tablet', 'fr', 1.6),
+    mk('phoneL', 'ja', 1), mk('phoneL', 'ja', 1.3), mk('phoneL', 'fr', 1.6),
     mk('pc', 'ja', 1), mk('pc', 'en', 1.6),
   ];
   if (FULL) {
