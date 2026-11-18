@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { areaCountOf, areaRows, areaView, dropHiddenChoices, inputNotices, isUnanswered, linkFromOf, linkRows, QUESTION_GROUPS, QUESTIONS, sectionRows, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, InputRow, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
@@ -204,6 +204,35 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
   const [lockedHint, setLockedHint] = useState<string | null>(null);
   const currentId = steps[lastOpen]?.id;
   useEffect(() => setLockedHint(null), [currentId]);
+  /**
+   * 下の余白（第17弾 項目4）。次の段は、いま入力している段の下に開くので、画面の下の外に出てしまい、見えない。
+   * そこで、入力の途中だけ、いちばん下に余白を足して、いま入力している段（内容のいちばん下）が、画面の真ん中あたりまで、
+   * 上へスクロールできるようにする。画面は、自動では動かさない（余白を足すだけ）。
+   * 余白の大きさは、スクロールする枠の高さの半分から、もとからある下の余白を引いたもの（画面の高さ・設定の大きさが変わると、そのたびに計算し直す）。
+   * 最後まで入力し終わったとき（完了の案内が出たとき）と、全部の欄を開いているときは、足さない。
+   */
+  const formRef = useRef<HTMLElement>(null);
+  const [padH, setPadH] = useState(0);
+  const wantPad = stepwise && !allDone;
+  useLayoutEffect(() => {
+    const form = formRef.current;
+    if (!form || !wantPad) {
+      setPadH(0);
+      return;
+    }
+    // スクロールするのは、ふつうは入力欄の枠。幅の狭い画面では、その外側（全体）
+    const scroller = (): HTMLElement => (/(auto|scroll)/.test(getComputedStyle(form).overflowY) ? form : (form.closest<HTMLElement>('.app') ?? form));
+    // 枠の高さの半分から、入力欄の枠の、もとからある下の余白を引く（内容のいちばん下が、ちょうど真ん中に来る）
+    const measure = () => setPadH(Math.max(0, Math.round(scroller().clientHeight / 2 - (parseFloat(getComputedStyle(form).paddingBottom) || 0))));
+    measure();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    ro?.observe(scroller());
+    window.addEventListener('resize', measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [wantPad]);
   const pressLocked = (label: string) => {
     setLockedHint(label);
     if (currentId) document.getElementById(currentId)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -411,7 +440,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
       </nav>
       )}
 
-      <main className="form">
+      <main className="form" ref={formRef}>
         <div className="form-head">
           <h2>{t('hearing.items')}</h2>
           {stepwise && onOpenAll && (
@@ -457,6 +486,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
         {stepwise && !allDone && steps.some((x) => !isOpen(x.id)) && (
           <p className="step-later">{t('hearing.stepLater', { list: steps.filter((x) => !isOpen(x.id)).map(stepName).join(' → ') })}</p>
         )}
+        {wantPad && <div className="step-pad" style={{ height: padH }} aria-hidden="true" />}
       </main>
     </>
   );

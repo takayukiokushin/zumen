@@ -94,6 +94,9 @@ try {
   const cookie = (lr.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
   const cr = await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '画面検査の案件', answers: answersSpread }) });
   if (!cr.ok) throw new Error('試験用の案件を作れませんでした');
+  // 1つずつ開く方式（白紙から）の案件：入力の途中の、下の余白の検査に使う（第17弾 項目4）
+  const cr2 = await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '余白の検査', answers: { startMode: 'blank' } }) });
+  if (!cr2.ok) throw new Error('試験用の案件（白紙）を作れませんでした');
 
   /* ---------- 検査する組み合わせ ---------- */
   type Combo = { dev: string; w: number; h: number; touch: boolean; theme: 'light' | 'dark'; lang: string; scale: number };
@@ -203,6 +206,32 @@ try {
       rec('設定', await measure(page, c.touch));
       await page.keyboard.press('Escape');
       await sleep(300);
+      // 入力の途中の、下の余白：入力欄を表示している枠の高さの、半分（もとからある下の余白は、引いた分）。画面の大きさ・文字の大きさが変わっても、そうなっていること
+      await page.goto(base);
+      await sleep(900);
+      await page.locator('button', { hasText: /閉じる|Close|Fermer|关闭|닫기/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '余白の検査' }).first().locator('button.job-open').click({ timeout: 2000, force: true }).catch(() => {});
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(2).click({ force: true, timeout: 1500 }).catch(() => {});
+      await sleep(900);
+      const pad = await page.evaluate(() => {
+        const form = document.querySelector('main.form') as HTMLElement | null;
+        const padEl = document.querySelector('.step-pad') as HTMLElement | null;
+        if (!form) return null;
+        const sc = /(auto|scroll)/.test(getComputedStyle(form).overflowY) ? form : ((form.closest('.app') as HTMLElement | null) ?? form);
+        const zoom = Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1;
+        return { has: !!padEl, h: padEl ? padEl.getBoundingClientRect().height / zoom : 0, want: Math.max(0, sc.clientHeight / 2 - parseFloat(getComputedStyle(form).paddingBottom)) };
+      });
+      // 画面がせまい・大きく拡大していて、入力欄そのものが開けなかったとき（上の帯だけで画面が埋まる）は、調べない
+      if (pad) screens++;
+      if (pad && !pad.has) {
+        failed++;
+        problems.push(`${name}／入力の途中：下の余白がありません`);
+      } else if (pad && Math.abs(pad.h - pad.want) > 3 && pad.want > 0) {
+        failed++;
+        problems.push(`${name}／入力の途中：下の余白の大きさが、枠の高さの半分になっていません（${Math.round(pad.h)}／${Math.round(pad.want)}）`);
+      }
       await page.locator('.icon-btn').nth(0).click({ timeout: 1500, force: true }).catch(() => {});
       await sleep(600);
       rec('使い方', await measure(page, c.touch));
