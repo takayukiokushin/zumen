@@ -391,6 +391,45 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       .filter((id) => items.find((x) => x.id === id)?.symbolId === 'relay-ocr'),
   );
 
+  /**
+   * トリップコイル（TC）の列のいちばん左の位置。TCより上にある GR・DGR の右の端子から、右へ、下へ、の2本だけでTCの上の端子へ引けるよう、
+   * その高さの範囲にある記号・文字の、いちばん右より、さらに右に取る（曲がりを増やさない）。
+   * 上にある GR・DGR が無ければ、-Infinity。OCRの置き場所を決めるときと、TCを置くときの、両方で使う（同じ値になる）
+   */
+  const coilItem = items.find((i) => i.kind === 'coil');
+  const groundColumnX = (): number => {
+    if (!coilItem) return -Infinity;
+    const breaker = coilItem.attachTo ? placed.get(coilItem.attachTo) : undefined;
+    const cdef = findSymbol(coilItem.symbolId);
+    const cl = cdef ? portOf(cdef, 'l') : undefined;
+    const ctp = cdef ? portOf(cdef, 't') : undefined;
+    const cbp = cdef ? portOf(cdef, 'b') : undefined;
+    if (!breaker || !cl || !ctp || !cbp) return -Infinity;
+    const symY = breaker.sym.y + breaker.def.box.h / 2 - cl.y;
+    const tcTop = symY + ctp.y;
+    const tcBottom = symY + cbp.y;
+    let x = -Infinity;
+    for (const id of coilItem.connectFrom ?? []) {
+      const g = placed.get(id);
+      if (!g || g.sym.symbolId === 'relay-ocr') continue;
+      const gr = portOf(g.def, 'r');
+      if (!gr) continue;
+      const gx0 = g.sym.x + gr.x;
+      const gy0 = g.sym.y + gr.y;
+      if (gy0 > tcBottom + 2) continue; // TCより下にあるものは、別のつなぎ方（下の端子へ）
+      let rx = gx0 + 12;
+      for (const p of placed.values()) {
+        if (p.sym === g.sym) continue;
+        const rb = rotatedBox(p.def.box, p.sym.rotate);
+        const boxes: Rect[] = [{ x0: p.sym.x + rb.dx, y0: p.sym.y + rb.dy, x1: p.sym.x + rb.dx + rb.w, y1: p.sym.y + rb.dy + rb.h }];
+        if (p.sym.label.length > 0) boxes.push(labelRect(p.sym.labelAt, p.sym.label));
+        for (const r of boxes) if (r.y1 > gy0 - 4 && r.y0 < tcTop && r.x1 > SPINE) rx = Math.max(rx, r.x1 + 12);
+      }
+      x = Math.max(x, rx);
+    }
+    return x;
+  };
+
   for (const item of items) {
     const def = findSymbol(item.symbolId);
     if (!def) continue;
@@ -462,7 +501,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const ocrX = ocr && top ? ocr.sym.x + top.x : 0;
       const ocrY = ocr && top ? ocr.sym.y + top.y : 0;
       // コイルの中心は、OCRの真上の線に合わせる（OCRが無ければ、主回路から離した位置）。VCBの文字と重ならないよう、主回路から離す
-      const cx = Math.max(ocr ? ocrX : 0, SPINE + COIL_MIN_X);
+      const cx = Math.max(ocr ? ocrX : 0, SPINE + COIL_MIN_X, groundColumnX());
       // 開閉器（VCB・LBS）の図記号の真ん中（主回路の縦線の上、記号の高さの中央）から、右へ点線で連動を引く
       const bIn = portOf(breaker.def, 'in');
       const linkY = breaker.sym.y + breaker.def.box.h / 2;
@@ -500,20 +539,10 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
             if (!ocr || gy0 > ocrY) wires.push({ x1: tcX, y1: tcBottom, x2: tcX, y2: gy0 });
             continue;
           }
-          const railY = tcY - 10;
-          // この高さの範囲にある記号・文字の、いちばん右より、さらに右を通る
-          let railX = Math.max(gx0, tcX) + 12;
-          for (const p of placed.values()) {
-            if (p.sym === g.sym || p.sym === sym) continue;
-            const rb = rotatedBox(p.def.box, p.sym.rotate);
-            const boxes: Rect[] = [{ x0: p.sym.x + rb.dx, y0: p.sym.y + rb.dy, x1: p.sym.x + rb.dx + rb.w, y1: p.sym.y + rb.dy + rb.h }];
-            if (p.sym.label.length > 0) boxes.push(labelRect(p.sym.labelAt, p.sym.label));
-            for (const r of boxes) if (r.y1 > gy0 - 4 && r.y0 < railY && r.x1 > SPINE) railX = Math.max(railX, r.x1 + 12);
-          }
-          wires.push({ x1: gx0, y1: gy0, x2: railX, y2: gy0 });
-          wires.push({ x1: railX, y1: gy0, x2: railX, y2: railY });
-          wires.push({ x1: railX, y1: railY, x2: tcX, y2: railY });
-          wires.push({ x1: tcX, y1: railY, x2: tcX, y2: tcY });
+          // DGR・GRがTCより上のとき：右の端子から、右へ、TCの列まで、そこから真下へ、TCの上の端子へ（曲がりは1回だけ）。
+          // TCの列は、途中の記号・文字より右に取ってある（groundColumnX）ので、突き抜けない
+          wires.push({ x1: gx0, y1: gy0, x2: tcX, y2: gy0 });
+          wires.push({ x1: tcX, y1: gy0, x2: tcX, y2: tcY });
         }
       }
       continue;
@@ -696,7 +725,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       let x = dir > 0 ? railX + BRANCH_OFFSET : railX - BRANCH_OFFSET - def.box.w;
       // トリップコイルがつながるOCRは、コイルの真下に来る位置（主回路から COIL_MIN_X 以上）まで右へ寄せる
       const coilTop = dir > 0 && coilTargets.has(item.id) ? portOf(def, 'top') : undefined;
-      if (coilTop) x = Math.max(x, SPINE + COIL_MIN_X - coilTop.x);
+      if (coilTop) x = Math.max(x, Math.max(SPINE + COIL_MIN_X, groundColumnX()) - coilTop.x);
       // 同じ機器の二次側につなぐ2つ目以降は、1つ目の下に並べる（並列）
       const stackKey = item.sourceLabel === 'below' && sources.length === 1 ? sources[0]!.from.sym.id : undefined;
       const stack = stackKey ? stacks.get(stackKey) : undefined;
@@ -801,8 +830,9 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     const coilTop2 = dir > 0 && !chain && coilTargets.has(item.id) ? portOf(def, 'top') : undefined;
     if (coilTop2) {
       const topX = x + rb.dx + coilTop2.x;
-      if (topX < SPINE + COIL_MIN_X) {
-        x += SPINE + COIL_MIN_X - topX;
+      const minTop = Math.max(SPINE + COIL_MIN_X, groundColumnX());
+      if (topX < minTop) {
+        x += minTop - topX;
         // 主回路から出た線も、その分、長くする（さきほど引いた線を、置き直す）
         const w = wires[wires.length - 1]!;
         w.x2 = x + erx;

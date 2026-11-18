@@ -1039,6 +1039,63 @@ console.log('\n■ 範囲選択・複数選択');
   }
 }
 
+/* ---------- GR・DGR → TC の線：曲がりは1回だけ（右へ、下へ）。TC → OCR は、真っすぐ縦（第17弾 項目3） ---------- */
+{
+  const b0: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', vcbRatedVoltage: '7200', vcbRatedCurrent: 600 };
+  const lbs0: Answers = { ...b0, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasSiteCt: 'yes', hasSiteVt: 'no', relayCount: '1', relayType: 'OCR' };
+  const eq = (p: number, q: number) => Math.abs(p - q) < 0.5;
+  let n = 0;
+  for (const [fname, fb] of [['VCB', b0], ['LBS', lbs0]] as const) {
+    for (const rel of ['gr', 'dgr']) {
+      for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
+        for (const withOcr of [true, false]) {
+          const a: Answers = { ...fb, mainGroundRelay: rel, mainZctPos: pos };
+          if (!withOcr) { a.relayCount = '0'; delete a.relayType; }
+          const label = `${fname}・${rel.toUpperCase()}・ZCT=${pos}・OCR=${withOcr ? 'あり' : 'なし'}`;
+          const d = layout(buildComposition(a), a);
+          const tc = d.symbols.find((s) => s.role === 'trip-coil');
+          const gr = d.symbols.find((s) => s.role === 'main-ground-relay');
+          if (!tc || !gr) { fail(`${label}：TCまたは継電器が描かれていません`); continue; }
+          const r = portAbs(gr, 'r');
+          const goal = [portAbs(tc, 't'), portAbs(tc, 'b')];
+          // 継電器の右の端子から、実線をたどって、TCの端子に着くまでの、曲がりの数
+          const used = new Set<number>();
+          let cur = r;
+          let turns = 0;
+          let prevVert: boolean | null = null;
+          let arrived = false;
+          for (let k = 0; k < 12 && !arrived; k++) {
+            const i = d.wires.findIndex((w, j) => !used.has(j) && !w.dashed && ((eq(w.x1, cur.x) && eq(w.y1, cur.y)) || (eq(w.x2, cur.x) && eq(w.y2, cur.y))));
+            if (i < 0) break;
+            used.add(i);
+            const w = d.wires[i]!;
+            const fwd = eq(w.x1, cur.x) && eq(w.y1, cur.y);
+            const nx = fwd ? { x: w.x2, y: w.y2 } : { x: w.x1, y: w.y1 };
+            const vert = eq(nx.x, cur.x);
+            if (prevVert !== null && vert !== prevVert) turns++;
+            prevVert = vert;
+            cur = nx;
+            // TCの下の線（OCRへ降りる線）の途中につながる場合（継電器がTCより下）も、着いたことにする
+            arrived = goal.some((g) => eq(g.x, cur.x) && eq(g.y, cur.y)) || (eq(cur.x, goal[1]!.x) && cur.y > goal[1]!.y);
+          }
+          if (!arrived) { fail(`${label}：継電器からTCまで、線がつながっていません`); continue; }
+          if (turns > 1) { fail(`${label}：継電器からTCまでの線が、${turns}回曲がっています（曲がりは1回まで）`); continue; }
+          const ocr = d.symbols.find((s) => /relay-ocr$/.test(s.symbolId) || s.symbolId === 'relay-ocr');
+          if (ocr) {
+            const o = portAbs(ocr, 'top');
+            const tb = portAbs(tc, 'b');
+            if (!eq(o.x, tb.x) || !d.wires.some((w) => eq(w.x1, tb.x) && eq(w.x2, tb.x) && Math.min(w.y1, w.y2) <= tb.y + 0.5 && Math.max(w.y1, w.y2) >= o.y - 0.5)) { fail(`${label}：TCからOCRへの線が、真っすぐ縦ではありません`); continue; }
+          }
+          const found = inspectDrawing(fromLayout(d), 'A3', 'landscape').filter((i) => ['floating', 'through', 'overlap'].includes(i.kind));
+          if (findLabelCollisions(d).length > 0 || found.length > 0) { fail(`${label}：文字や線が重なっています`); continue; }
+          n++;
+        }
+      }
+    }
+  }
+  console.log(`  継電器 → TC：曲がりは1回まで、TC → OCR は縦に真っすぐ、線・文字が重ならない（${n}通り）`);
+}
+
 /* ---------- LAの上位（上側）の開閉器：開閉器の真下にLA。縦につながる ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };
