@@ -1,4 +1,5 @@
 import { rotatedBox } from '@zumen/layout';
+import { followAutoWires } from './wireFollow.ts';
 import { applyAnchors, baselineOf, defOf, freshId, moveItem, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
 import type { AddedItem, Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire, FrameEdit, Overrides, Placement, SymbolEdit } from './doc.ts';
 
@@ -20,6 +21,7 @@ export function hasOverrides(o: Overrides | undefined): boolean {
   return !!o && (Object.keys(o.moved).length > 0 || o.removed.length > 0 || o.wiresRemoved.length > 0 || o.added.length > 0 || Object.keys(o.frames ?? {}).length > 0);
 }
 
+const r3 = (v: number) => Math.round(v * 1000) / 1000;
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /** 近くの機器（自動で作った図面にあるもの）からのずれ。近くに無ければ、場所だけで覚える */
@@ -196,6 +198,29 @@ export function rebuildWithOverrides(
     const dy = g.y + e.dy - w.y;
     if (dx !== 0 || dy !== 0) work = moveItem(work, id, dx, dy);
   }
+  // 新しく増えた機器（入力で足した機器）：手で直した内容の記録が無いので、作り直した、元の位置に置かれる。
+  // 縮小・拡大や手の移動で、まわりの機器が動いていると、そこだけ取り残されて、重なる・離れすぎる。
+  // そこで、いちばん近い（作り直した図面で、近い）、もとからある機器と、同じ量だけ、動かす
+  if (current?.base) {
+    const known = new Set(Object.keys(current.base.symbols));
+    const top = [...gen.values()].filter((g) => !g.parent);
+    const olds = top.filter((g) => known.has(sameName(g.id)));
+    const centre = (g: DocSymbol) => ({ x: g.x + defOf(g).box.w / 2, y: g.y + defOf(g).box.h / 2 });
+    for (const n of top.filter((g) => !known.has(sameName(g.id)))) {
+      const c = centre(n);
+      let best: { g: DocSymbol; d: number } | null = null;
+      for (const o of olds) {
+        const oc = centre(o);
+        const d = Math.hypot(oc.x - c.x, oc.y - c.y);
+        if (!best || d < best.d) best = { g: o, d };
+      }
+      const w = best ? actual(sameName(best.g.id)) : undefined;
+      if (!best || !w) continue;
+      const dx = w.x - best.g.x;
+      const dy = w.y - best.g.y;
+      if (dx !== 0 || dy !== 0) work = moveItem(work, n.id, dx, dy);
+    }
+  }
   const movedIds = movedNames.map((n) => actual(n)!.id);
   if (movedNames.some((n) => ov.moved[n]!.rotate !== undefined || ov.moved[n]!.dLabelDx !== undefined || ov.moved[n]!.dLabelDy !== undefined || ov.moved[n]!.label || ov.moved[n]!.values)) {
     work = applyAnchors({
@@ -277,6 +302,10 @@ export function rebuildWithOverrides(
     }
   }
   work = applyAnchors(work);
+  // 記号につないでいない線（自動で作った、途中の折れ線・低圧の母線・PASの内蔵品の中の線など）を、記号の動きに合わせて動かし直す
+  if (current?.base) work = followAutoWires(generated, work);
+  // 計算の端数（0.0000000001 など）で、まっすぐな線が、斜めと判定されないよう、線の端を、1000分の1までに丸める
+  work = { ...work, items: work.items.map((it): DocItem => (it.kind === 'wire' ? { ...it, x1: r3(it.x1), y1: r3(it.y1), x2: r3(it.x2), y2: r3(it.y2) } : it)) };
 
   // 重なりの知らせ（勝手には動かさない）
   const touched = new Set<string>([...movedIds, ...newSymbols.map((s) => s.id)]);
