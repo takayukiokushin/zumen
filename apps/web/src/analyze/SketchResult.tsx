@@ -45,6 +45,16 @@ export function SketchResult({
   const nowMissing = missingRequiredFields(current);
   const rows = [...firstMissing, ...nowMissing.filter((m) => !firstMissing.some((f) => f.key === m.key))];
   const stillMissing = nowMissing.length > 0;
+  // 入力画面と同じ、エリアごとのまとまりにする（1か所目と、全体の項目は、1つ目。2か所目以降は、それぞれ別）
+  const groups = (() => {
+    const m = new Map<number, typeof rows>();
+    for (const r of rows) m.set(r.areaNo ?? 1, [...(m.get(r.areaNo ?? 1) ?? []), r]);
+    return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([no, list]) => ({ no, rows: list }));
+  })();
+  const isAnswered = (v: unknown) => v !== undefined && v !== null && v !== '';
+  const doneCount = rows.filter((r) => isAnswered(current[r.key])).length;
+  // 項目が少ないときは、ぜんぶ開いておく。多いとき（複数エリア）は、1か所目だけ開いて、残りは、見出しを押して開く
+  const openAll = rows.length <= 12;
 
   return (
     <>
@@ -88,18 +98,42 @@ export function SketchResult({
       {rows.length > 0 && (
         <section className="panel">
           <h2>{t('sketch.answer')}</h2>
-          <div className="fields">
-            {rows.map((r) => (
-              <Field
-                key={r.key}
-                question={{ ...r.question, label: missingLabel(r, t, tx) }}
-                fieldKey={r.key}
-                value={current[r.key]}
-                onChange={onSetAnswer}
-                context={{ ...r.context, ...current }}
-              />
-            ))}
-          </div>
+          <p className="sketch-count" role="status">
+            {t('sketch.count', { total: rows.length, done: doneCount })}
+            {groups.length > 1 && (
+              <button type="button" className="btn" onClick={onGoToHearing}>
+                {t('sketch.continueHearing')}
+              </button>
+            )}
+          </p>
+          {groups.map((g) => {
+            const done = g.rows.filter((r) => isAnswered(current[r.key])).length;
+            const fields = (
+              <div className="fields">
+                {g.rows.map((r) => (
+                  <Field
+                    key={r.key}
+                    question={{ ...r.question, label: missingLabel(r, t, tx) }}
+                    fieldKey={r.key}
+                    value={current[r.key]}
+                    onChange={onSetAnswer}
+                    context={{ ...r.context, ...current }}
+                  />
+                ))}
+              </div>
+            );
+            // エリアが1か所だけのときは、見出しも折りたたみも付けない
+            if (groups.length === 1) return <div key={g.no}>{fields}</div>;
+            return (
+              <details key={g.no} className="sketch-group" open={openAll || g.no === 1}>
+                <summary>
+                  <b>{g.no === 1 ? t('sketch.groupFirst') : t('hearing.areaNth', { n: g.no })}</b>
+                  <span className={done === g.rows.length ? 'done' : ''}>{done === g.rows.length ? t('sketch.groupDone') : t('sketch.groupCount', { done, total: g.rows.length })}</span>
+                </summary>
+                {fields}
+              </details>
+            );
+          })}
         </section>
       )}
     </>

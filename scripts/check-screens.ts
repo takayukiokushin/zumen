@@ -501,6 +501,69 @@ try {
     }
     await ctx.close();
   }
+  // スケッチを読み取ったあと、未回答の必須項目は、エリアごとにまとまり、「全○問中○問」が出る。複数エリアは、1か所目だけ開く（第18弾 E-①）
+  // （AI には頼まず、読み取りの返事を、画面に差し込んで試す）
+  {
+    const proj = await (
+      await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '読み取りの検査', answers: { startMode: 'sketch' } }) })
+    ).json() as { id: string };
+    void proj;
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(() => {
+      try {
+        localStorage.setItem('zumen.helpSeen', '1');
+        localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+      } catch {}
+    });
+    const page = await ctx.newPage();
+    page.setDefaultTimeout(8000);
+    await page.route('**/api/analyze', (r: any) => (r.request().method() === 'POST' ? r.fulfill({ json: { jobId: 'job-x' } }) : r.continue()));
+    await page.route('**/api/analyze/job-x', (r: any) => {
+      const m = r.request().method();
+      if (m === 'GET') return r.fulfill({ json: { state: 'done', result: { answers: { areaCount: '8', siteName: 'テスト工場' }, uncertain: [], evidence: {}, notes: [], questions: [] } } });
+      return r.fulfill({ json: {} });
+    });
+    screens++;
+    try {
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '読み取りの検査' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(0).click({ force: true, timeout: 1500 });
+      await sleep(500);
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+      await page.setInputFiles('input[type=file]', { name: 'sketch.png', mimeType: 'image/png', buffer: png });
+      await sleep(400);
+      await page.locator('section button.primary').first().click({ timeout: 3000 });
+      await page.waitForSelector('details.sketch-group', { timeout: 12000 });
+      const groups = await page.locator('details.sketch-group').count();
+      const opened = await page.locator('details.sketch-group[open]').count();
+      const count = await page.locator('.sketch-count').innerText();
+      const fieldsInOpen = await page.locator('details.sketch-group[open] .field, details.sketch-group[open] .fields > *').count();
+      if (groups !== 8 || opened !== 1 || !/全\d+問中\s*0問/.test(count) || fieldsInOpen < 1) {
+        failed++;
+        problems.push(`読み取りの検査：8エリアの結果が、まとまりと件数で出ていません（まとまり ${groups}個・開いている ${opened}個・「${count.replace(/\s+/g, ' ')}」）`);
+      } else {
+        await page.locator('details.sketch-group:not([open]) > summary').first().click({ timeout: 2000 });
+        await sleep(200);
+        const after = await page.locator('details.sketch-group[open]').count();
+        if (after !== 2) {
+          failed++;
+          problems.push(`読み取りの検査：見出しを押しても、エリアが開きません（開いている ${after}個）`);
+        }
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`読み取りの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   await browser.close();
   console.log(`  ${combos.length}通り・${screens}画面を調べた（${FULL ? 'たくさん' : 'ふつう'}の検査）`);
 } catch (e) {

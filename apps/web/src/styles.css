@@ -1503,3 +1503,10 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
   button:not(#_), select:not(#_), input:not(#_):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]) { min-height: 44px; }
   button:not(#_), select:not(#_) { min-width: 44px; }
 }
+
+/* スケッチ読み取りのあと：未回答の必須項目を、エリアごとにまとめる（第18弾 E-①） */
+.sketch-count { display: flex; flex-wrap: wrap; align-items: center; gap: calc(8px * var(--text-scale)); margin: 0 0 calc(8px * var(--text-scale)); font-weight: 600; }
+.sketch-group { border: 1px solid var(--line, #d0d4da); border-radius: 8px; margin: calc(8px * var(--text-scale)) 0; }
+.sketch-group > summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 0 calc(12px * var(--text-scale)); cursor: pointer; }
+.sketch-group > summary .done { color: #1a7f37; }
+.sketch-group > .fields { padding: 0 calc(12px * var(--text-scale)) calc(12px * var(--text-scale)); }
