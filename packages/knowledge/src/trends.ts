@@ -1,6 +1,7 @@
 import type { Answers } from './condition.ts';
+import { evaluate } from './condition.ts';
 import { isBlankStart } from './engine.ts';
-import { QUESTIONS, startsWithYesOnly } from './questions.ts';
+import { QUESTIONS, QUESTION_GROUPS, startsWithYesOnly } from './questions.ts';
 import type { Question } from './questions/types.ts';
 
 /**
@@ -38,6 +39,10 @@ export function isTrendQuestion(q: Question): boolean {
 
 const TREND_QUESTIONS = QUESTIONS.filter(isTrendQuestion);
 
+const GROUP_SHOW = new Map(QUESTION_GROUPS.map((g) => [g.id, g.showIf]));
+/** その案件の答えで、その質問が出るか（グループの条件と、質問の条件の両方） */
+const asked = (a: Answers, q: Question): boolean => evaluate(GROUP_SHOW.get(q.group), a) && evaluate(q.showIf, a);
+
 /** 傾向の対象になる質問の id（繰り返しの2件目以降・2か所目以降の答えも、基本の質問の傾向を使う） */
 export const TREND_QUESTION_IDS: ReadonlySet<string> = new Set(TREND_QUESTIONS.map((q) => q.id));
 
@@ -61,7 +66,9 @@ export function tallyTrends(list: readonly Answers[], context?: string): Record<
     const unansweredIsNo = startsWithYesOnly(q);
     for (const a of rows) {
       let v = a[q.id];
-      if ((v === undefined || v === null || v === '') && unansweredIsNo && isBlankStart(a)) v = 'no';
+      // ただし、その案件で、その質問が出ない（条件を満たさない）ときは、そもそも聞かれていないので、数えない
+      // （例：区分開閉器の後ろの開閉器が「ない」案件を、「途中のLAの内蔵：なし」として数えない）
+      if ((v === undefined || v === null || v === '') && unansweredIsNo && isBlankStart(a) && asked(a, q)) v = 'no';
       if (v === undefined || v === null || v === '') continue;
       const s = String(v);
       // 一覧にない値（昔の選択肢・手で書き換えた値）は、数えない

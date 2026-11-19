@@ -21,7 +21,7 @@ export const MIDSWITCH_QUESTIONS: Question[] = [
     showIf: MID_ASK,
     ask: 'ai-uncertain',
     required: true,
-    help: '区分開閉器の後ろに付く、DS以外の開閉器の種類。PAS・PGSは、1か所目の区分開閉器と同じ図記号・同じ入力項目（GR・DGR・VT・LAなど）',
+    help: '区分開閉器の後ろに付く、DS以外の開閉器の種類。PAS・PGSは、1か所目の区分開閉器と同じ図記号・同じ入力項目（GR・DGR・VT・LAなど）。引込点より上（電力会社側）のASは、「AS（気中開閉器）はありますか？」で答える',
   },
   {
     id: 'midPlace',

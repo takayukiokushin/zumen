@@ -1149,3 +1149,14 @@ console.log('\n■ 区分開閉器なし＋電力会社のケーブルでは、V
   ok(!inputNotices(withAutoValues(mk({ mainBreakerForm: 'cb', cableOwner: 'customer', vctTap: 'vcb-ct' }))).some((n) => n.group === 'vct'), 'お客様のケーブルなのに、置けないという知らせが出ています');
   if (state.failed === 0) console.log('  選べる置き場所・古い案件の扱い（ケーブルの次として描く＋知らせ）・お客様のケーブル／区分開閉器ありは、そのまま：すべて想定どおり');
 }
+
+// 傾向：その案件で出ない質問は、「なし」として数えない（第17弾 項目7の調査11）
+{
+  const blank = (n: number, extra: Answers = {}): Answers[] => Array.from({ length: n }, () => ({ startMode: 'blank', sectionalizer: 'pas', ...extra }) as Answers);
+  const noMid = tallyTrends(blank(20));
+  if (noMid.midBuiltinLa !== undefined) fail('区分開閉器の後ろの開閉器が「ない」案件で、「途中のLAの内蔵：なし」として数えています');
+  if (noMid.midSwitch === undefined || noMid.midSwitch.top[0]?.value !== 'no') fail('「区分開閉器の後ろの開閉器があるか」は、答えの無い案件を「なし」として数えるはずです');
+  const withMid = tallyTrends(blank(20, { midSwitch: 'yes', midKind: 'pas', midPlace: 'pole' }));
+  if (withMid.midBuiltinLa?.top[0]?.value !== 'no') fail('開閉器が「ある」案件では、答えていない途中のLAの内蔵を、「なし」として数えるはずです');
+  else console.log('  傾向：出ない質問は数えない（出る案件の、答えの無いものだけ「なし」）');
+}

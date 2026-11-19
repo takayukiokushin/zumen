@@ -69,7 +69,7 @@ export const SITE_QUESTIONS: Question[] = [
     defaultValue: 'no',
     showIf: { key: 'sourceType', ne: 'cabinet' },
     ask: 'ai-uncertain',
-    help: '電力会社側の開閉器。引込元〜責任分界点の間に入る場合がある',
+    help: '電力会社側の開閉器。引込元〜責任分界点の間に入る場合がある（引込点より上）。区分開閉器の後ろにある開閉器は、ここではなく、区分開閉器の欄の「DS以外の開閉器はありますか？」で答える',
   },
   // ---- 地上キャビネットのとき（電柱も AS も無い） ----
   {
