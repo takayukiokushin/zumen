@@ -156,3 +156,20 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
   }
   console.log('  差し替え・文字・あり／なし・台数を書き戻す／位置だけ・決まりに合わない文字・ほかの記号も変わるものは書き戻さない');
 }
+
+/* 入力の質問ではない、答えから自動で決まる目印（hasPas など）には、書き戻さない（第17弾 項目7の調査5）：
+   図面で区分開閉器（PAS）を消しても、入力の「区分開閉器」は、PASのまま変わらず、書き戻した、という知らせだけが出ていた */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const raw: Answers = { ...answersSpread, areaCount: '1', sectionalizer: 'pas' };
+  const d0 = buildGenerated(toEff(raw));
+  const pas = d0.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === 'pas');
+  if (!pas) fail('区分開閉器（PAS）が、自動の図面にありません');
+  else {
+    const r = writeBack(raw, { ...removeItem(d0, pas.id), edited: true }, toEff);
+    if (r && r.applied.length > 0) fail(`図面で区分開閉器（PAS）を消したとき、入力に書き戻していません（なのに、書き戻した知らせが出ています：${r.applied.map((a) => a.question).join('、')}）`);
+    else if (r && r.answers.sectionalizer !== 'pas') fail('図面で区分開閉器（PAS）を消したとき、入力の区分開閉器が、勝手に変わっています');
+    else console.log('  図面で区分開閉器（PAS）を消しても、「書き戻した」という偽の知らせは出ない（入力の答えは、そのまま。図面にだけ、消えた形で残る）');
+  }
+}

@@ -95,12 +95,14 @@ function roleTable(): Map<string, RoleInfo> {
   for (const [role, ps] of by) {
     const symbolIds = new Set(ps.map((p) => p.symbolId).filter((s) => !s.includes('{')));
     const keySets = ps.map((p) => new Set(yesKeys(p.when)));
+    // 入力の質問そのものだけを、書き戻し先にする。構成の条件には、答えから自動で決まる目印（hasPas・intakeDs など）も使われているが、
+    // それは入力の質問ではなく、書いても、次に読み直したときに上書きされて、効かない（図面で区分開閉器を消しても、入力のPASが変わらなかった）
     const common = [...(keySets[0] ?? [])].filter((k) => keySets.every((s) => s.has(k)));
     const countKeys = new Set(ps.map((p) => p.repeatCountKey).filter((k): k is string => Boolean(k)));
     table.set(role, {
       role,
       symbolIds,
-      ...(common.length === 1 && countKeys.size === 0 ? { presenceKey: common[0]! } : {}),
+      ...(common.length === 1 && countKeys.size === 0 && QUESTION_IDS.has(common[0]!) ? { presenceKey: common[0]! } : {}),
       ...(countKeys.size === 1 ? { countKey: [...countKeys][0]! } : {}),
     });
   }
@@ -109,6 +111,7 @@ function roleTable(): Map<string, RoleInfo> {
 }
 
 const Q = new Map(QUESTIONS.map((q) => [q.id, q]));
+const QUESTION_IDS: ReadonlySet<string> = new Set(Q.keys());
 const questionLabel = (id: string): string => Q.get(id)?.label ?? id;
 /** 選択肢の名前（無ければ、値そのまま） */
 function valueText(id: string, v: Value): string {
