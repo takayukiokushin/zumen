@@ -63,37 +63,48 @@ const DEVICES: Device[] = [
 
 const all = (...c: (Condition | undefined)[]): Condition => ({ all: c.filter((x): x is Condition => x !== undefined) });
 
+/** 開閉器の欄（1つ目〜3つ目）。ケーブルの手前（Up）・あと（Dn）。has：ケーブルがあるとき。help1：1つ目の説明 */
+export function cableSwitchSlots(o: { p: string; group: string; section: string; has: Condition; side: 'Up' | 'Dn'; help1: string }): Question[] {
+  const { p, side } = o;
+  return [1, 2, 3].map((k): Question => {
+    const id = `${p}Cable${side}${k}`;
+    const earlier = [1, 2, 3].filter((n) => n < k).map((n) => `${p}Cable${side}${n}`);
+    return {
+      id,
+      noTrend: true,
+      group: o.group,
+      section: o.section,
+      label: side === 'Up' ? `ケーブルの手前の開閉器（${k}つ目）` : `ケーブルのあとの開閉器（${k}つ目）`,
+      type: 'select',
+      // 前の欄で選んだ開閉器は、選べない（同じ並びに、2回は入らない）
+      options: [
+        { value: 'none', label: 'なし' },
+        ...SWITCHES.map((c) => ({ ...c, ...(earlier.length > 0 ? { showIf: { all: earlier.map((e) => ({ not: { key: e, eq: c.value } })) } as Condition } : {}) })),
+      ],
+      defaultValue: 'none',
+      dropdown: true,
+      // 1つ目は、ケーブルが「あり」のとき。2つ目以降は、前の欄で開閉器を選んだとき
+      showIf: all(o.has, ...(k > 1 ? [{ key: `${p}Cable${side}${k - 1}`, in: SWITCHES.map((c) => c.value) } as Condition] : [])),
+      ask: 'always',
+      help: k === 1 ? o.help1 : `${k - 1}つ目の次に付く開閉器。付かないときは「なし」`,
+    };
+  });
+}
+
 function questionsOf(d: Device): Question[] {
   const has = `${d.p}HasCable`;
   const hasCable: Condition = all(d.base, { key: has, eq: 'yes' });
   const slots = (side: 'Up' | 'Dn'): Question[] =>
-    [1, 2, 3].map((k): Question => {
-      const id = `${d.p}Cable${side}${k}`;
-      const earlier = [1, 2, 3].filter((n) => n < k).map((n) => `${d.p}Cable${side}${n}`);
-      return {
-        id,
-        noTrend: true,
-        group: d.group,
-        section: '高圧ケーブル',
-        label: side === 'Up' ? `ケーブルの手前の開閉器（${k}つ目）` : `ケーブルのあとの開閉器（${k}つ目）`,
-        type: 'select',
-        // 前の欄で選んだ開閉器は、選べない（同じ並びに、2回は入らない）
-        options: [
-          { value: 'none', label: 'なし' },
-          ...SWITCHES.map((o) => ({ ...o, ...(earlier.length > 0 ? { showIf: { all: earlier.map((e) => ({ not: { key: e, eq: o.value } })) } as Condition } : {}) })),
-        ],
-        defaultValue: 'none',
-        dropdown: true,
-        // 1つ目は、ケーブルが「あり」のとき。2つ目以降は、前の欄で開閉器を選んだとき
-        showIf: all(hasCable, ...(k > 1 ? [{ key: `${d.p}Cable${side}${k - 1}`, in: SWITCHES.map((o) => o.value) } as Condition] : [])),
-        ask: 'always',
-        help:
-          k === 1
-            ? side === 'Up'
-              ? '母線から、ケーブルの電源側の端末までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など。1つ目に、いちばん母線に近いものを選ぶ）。付かないときは「なし」'
-              : 'ケーブルの機器側の端末から、機器（手前のPC・LBSがあれば、その手前）までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など）。付かないときは「なし」'
-            : '1つ目の次に付く開閉器。付かないときは「なし」',
-      };
+    cableSwitchSlots({
+      p: d.p,
+      group: d.group,
+      section: '高圧ケーブル',
+      has: hasCable,
+      side,
+      help1:
+        side === 'Up'
+          ? '母線から、ケーブルの電源側の端末までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など。1つ目に、いちばん母線に近いものを選ぶ）。付かないときは「なし」'
+          : 'ケーブルの機器側の端末から、機器（手前のPC・LBSがあれば、その手前）までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など）。付かないときは「なし」',
     });
   return [
     {
@@ -114,8 +125,21 @@ function questionsOf(d: Device): Question[] {
   ];
 }
 
-/** 機器ごとの質問の組：その質問IDの後ろに入れる */
-export const DEVICE_CABLE_QUESTIONS: { after: string; questions: Question[] }[] = DEVICES.map((d) => ({ after: d.after, questions: questionsOf(d) }));
+/** 機器ごとの質問の組：その質問IDの後ろに入れる。電動機は、ケーブルの質問がすでにあるので、「ケーブルのあとの開閉器」だけを足す（母線から接続するときだけ） */
+export const DEVICE_CABLE_QUESTIONS: { after: string; questions: Question[] }[] = [
+  ...DEVICES.map((d) => ({ after: d.after, questions: questionsOf(d) })),
+  {
+    after: 'motorFuseCurrent',
+    questions: cableSwitchSlots({
+      p: 'motor',
+      group: 'motor',
+      section: '接続元',
+      has: { all: [{ key: 'motorSource', eq: 'bus' }, { key: 'motorCable', eq: 'yes' }] },
+      side: 'Dn',
+      help1: 'ケーブルの電動機側の端末から、電動機までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」など）。付かないときは「なし」。母線から接続するときだけ',
+    }),
+  },
+];
 
 /** 質問の並び questions に、機器ごとの高圧ケーブルの質問を、それぞれの位置（after の質問の後ろ）に入れた並びを返す */
 export function withDeviceCableQuestions(questions: Question[]): Question[] {

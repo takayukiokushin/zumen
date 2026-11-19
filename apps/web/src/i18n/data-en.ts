@@ -2,6 +2,8 @@
 // キーは、質問（packages/knowledge）と記号（packages/symbols）にある日本語の文そのもの。
 // 図面に印刷される文字は、ここでは訳さない（日本語のまま）。足りないものは、検査（check-i18n）が見つける。
 const data: Record<string, string> = {
+  "2つ目の次に付く開閉器。付かないときは「なし」": "A switch after the 2nd one. Choose “None” if there is no switch.",
+  "ケーブルの電動機側の端末から、電動機までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」など）。付かないときは「なし」。母線から接続するときだけ": "A switch between the cable terminal on the motor side and the motor. They are drawn from the top in the order you choose (for example DS + LBS, LBS + VCS). Choose “None” if there is no switch. Only when connected from the busbar.",
   "変圧器の電源側に、高圧ケーブルがありますか？": "Is there an HV cable on the source side of the transformer?",
   "母線から変圧器までの間に、高圧ケーブルがあるとき（オープンフレーム式の電気室で、離れた場所の変圧器へ、ケーブルで送る場合など）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "When there is an HV cable between the busbar and the transformer (for example, in an open-frame electrical room that sends power by cable to a transformer placed some distance away). Press “Yes” to show the switches before and after the cable and the cable input fields. Normally, leave it alone.",
   "ケーブルの手前の開閉器（1つ目）": "Switch before the cable (1st)",

@@ -129,7 +129,8 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     const ids2 = (a: Answers) => ofGroup({ ...base, ...a }, 'motor').join();
     if (!ids2({ motorSource: 'secondary' }).includes('motorSourceTr')) fail('変圧器が2台で二次側からのとき、「何台目」を聞いていません');
     if (ids2({ motorSource: 'bus' }).includes('motorSourceTr') || ofGroup({ hasMotor: 'yes', transformerCount: 1, motorSource: 'secondary' }, 'motor').includes('motorSourceTr')) fail('母線から・変圧器が1台のとき、「何台目」を聞いています');
-    if (ids2({ motorSource: 'bus', motorCable: 'yes' }).split(',').filter((x) => /^motorCable/.test(x)).length !== 6) fail(`ケーブルが「はい」のとき、ケーブルの入力欄（6つ）が出ていません（${ids2({ motorSource: 'bus', motorCable: 'yes' })}）`);
+    // （ケーブルの入力欄は6つ。このほかに、ケーブルのあとの開閉器の1つ目〜が出る。第18弾 F）
+    if (ids2({ motorSource: 'bus', motorCable: 'yes' }).split(',').filter((x) => /^motorCable(?!Dn)/.test(x)).length !== 6) fail(`ケーブルが「はい」のとき、ケーブルの入力欄（6つ）が出ていません（${ids2({ motorSource: 'bus', motorCable: 'yes' })}）`);
     if (/motorCableLength/.test(ids2({ motorCable: 'no' }))) fail('ケーブルが「いいえ」なのに、ケーブルの入力欄が出ています');
     if (!ids2({ motorSwitch: 'lbs', motorSource: 'bus' }).includes('motorFuseCurrent') || ids2({ motorSwitch: 'ds', motorSource: 'bus' }).includes('motorFuseCurrent')) fail('LBSのときだけ、パワーヒューズの容量を聞くはずです');
     // 変圧器0台：2か所目以降のエリアだけ。1か所目は、1台以上

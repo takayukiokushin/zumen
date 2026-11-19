@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vy1atrh",
+  "version": "v8bn40m",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：vy1atrh）
+# 項目の一覧（版：v8bn40m）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -619,3 +619,6 @@
 - motorSwitch：途中に開閉器はありますか｜none=なし（母線から直接） ／ ds=DS ／ vcb=VCB ／ ds-vcb=DS＋VCB ／ lbs-plain=LBS（PFなし） ／ lbs=LBS（PF付） ／ none=なし ／ mccb=MCCB（配線用遮断器）｜条件：motorSource=bus/secondary
 - motorSwitch2：2段目の開閉器はありますか｜none=なし ／ vcs=VCS（真空電磁接触器）｜条件：motorSource=bus
 - motorFuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：motorSwitch=lbs
+- motorCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：motorSource=bus かつ motorCable=yes
+- motorCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：motorSource=bus かつ motorCable=yes かつ motorCableDn1=ds/vcb/lbs/lbs-plain/vcs/as
+- motorCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：motorSource=bus かつ motorCable=yes かつ motorCableDn2=ds/vcb/lbs/lbs-plain/vcs/as

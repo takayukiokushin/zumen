@@ -500,7 +500,7 @@ export function withDerived(rawAnswers: Answers): Answers {
     vcs: { symbol: 'vcs', label: 'VCS' },
     as: { symbol: 'as', label: 'AS' },
   };
-  for (const p of ['tr', 'cap', 'gen']) {
+  for (const p of ['tr', 'cap', 'gen', 'motor']) {
     for (const side of ['Up', 'Dn']) {
       for (const k of [1, 2, 3]) {
         const sw = pickOwn(SWITCH_SYMBOL, String(answers[`${p}Cable${side}${k}`]));

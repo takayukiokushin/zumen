@@ -2,6 +2,8 @@
 // キーは、質問（packages/knowledge）と記号（packages/symbols）にある日本語の文そのもの。
 // 図面に印刷される文字は、ここでは訳さない（日本語のまま）。足りないものは、検査（check-i18n）が見つける。
 const data: Record<string, string> = {
+  "2つ目の次に付く開閉器。付かないときは「なし」": "Appareil placé après le 2e. Choisissez « Aucun » s’il n’y en a pas.",
+  "ケーブルの電動機側の端末から、電動機までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」など）。付かないときは「なし」。母線から接続するときだけ": "Appareil placé entre l’extrémité du câble côté moteur et le moteur. Ils sont dessinés de haut en bas dans l’ordre choisi (par exemple DS + LBS, LBS + VCS). Choisissez « Aucun » s’il n’y en a pas. Seulement pour un raccordement depuis le jeu de barres.",
   "変圧器の電源側に、高圧ケーブルがありますか？": "Y a-t-il un câble HT côté source du transformateur ?",
   "母線から変圧器までの間に、高圧ケーブルがあるとき（オープンフレーム式の電気室で、離れた場所の変圧器へ、ケーブルで送る場合など）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "Lorsqu’un câble HT relie le jeu de barres au transformateur (par exemple dans un local électrique à cadre ouvert qui alimente par câble un transformateur situé plus loin). Appuyez sur « Oui » pour afficher les appareils avant et après le câble et les champs du câble. En général, ne touchez à rien.",
   "ケーブルの手前の開閉器（1つ目）": "Appareil avant le câble (1er)",

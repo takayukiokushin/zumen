@@ -204,8 +204,8 @@ export interface Placement {
 
 /** 並列の段。読みやすさのために名前を付けておく */
 /** cable：電動機のケーブルの向かい側の端末。VCSがある列で、ケーブルの電源側の端末（reactorの段）の次に置く（誰も使わない段は、詰めて描く） */
-export const ROW = { up1: 0, up2: 1, up3: 2, cableS: 3, cableT: 4, dn1: 5, dn2: 6, dn3: 7, pc: 8, lbs: 9, vcs: 10, reactor: 11, cable: 12, main: 13 } as const;
-export const ROW_COUNT = 14;
+export const ROW = { up1: 0, up2: 1, up3: 2, cableS: 3, cableT: 4, dn1: 5, dn2: 6, dn3: 7, pc: 8, lbs: 9, vcs: 10, reactor: 11, cable: 12, mdn1: 13, mdn2: 14, mdn3: 15, main: 16 } as const;
+export const ROW_COUNT = 17;
 
 /**
  * 変圧器・高圧進相設備（コンデンサ）・高圧の発電機の、電源側の高圧ケーブル（第18弾 F）。
@@ -1137,6 +1137,17 @@ const MOTOR_ITEMS: Placement[] = [
   { role: 'motor-cable-site', symbolId: 'cable-head', kind: 'parallel', row: ROW.reactor, when: { all: [MOTOR_BUS, MOTOR_CABLE, { not: MOTOR_VCS }] }, labelTemplate: MOTOR_CABLE_LABEL, repeatCountKey: 'motorCount', zeroOk: true, note: '電動機へのケーブルの、電動機側の端末（180°回して、頂点をケーブル側に向ける）' },
   { role: 'motor-cable-source', symbolId: 'cable-head', kind: 'parallel', row: ROW.reactor, when: { all: [MOTOR_BUS, MOTOR_CABLE, MOTOR_VCS] }, dashedAfter: { key: 'motorCableInstallation', eq: 'buried' }, repeatCountKey: 'motorCount', zeroOk: true, note: '電動機へのケーブルの、電源側の端末（VCSの次）' },
   { role: 'motor-cable-site', symbolId: 'cable-head', kind: 'parallel', row: ROW.cable, when: { all: [MOTOR_BUS, MOTOR_CABLE, MOTOR_VCS] }, labelTemplate: MOTOR_CABLE_LABEL, repeatCountKey: 'motorCount', zeroOk: true, note: '電動機へのケーブルの、電動機側の端末（VCSの次。180°回して、頂点をケーブル側に向ける）' },
+  // ケーブルのあとの開閉器（最大3つ。選んだ順に、上から並ぶ。第18弾 F）。母線から接続するときだけ
+  ...([1, 2, 3] as const).map((k): Placement => ({
+    role: `motor-cable-dn${k}`,
+    symbolId: `{motorDn${k}Symbol}`,
+    kind: 'parallel',
+    row: ROW[`mdn${k}` as 'mdn1'],
+    when: { all: [MOTOR_BUS, MOTOR_CABLE] },
+    labelTemplate: [`{motorDn${k}Label}`],
+    repeatCountKey: 'motorCount',
+    zeroOk: true,
+  })),
   { role: 'motor', symbolId: 'motor', kind: 'parallel', row: ROW.main, when: MOTOR_BUS, labelTemplate: MOTOR_LABEL, props: { startMethod: 'motorStartMethod', capacity: 'motorCapacity', place: 'motorPlace' }, repeatCountKey: 'motorCount', zeroOk: true },
   // ---- 変圧器の二次側から接続する電動機（その変圧器の低圧側の下へぶら下がる列） ----
   { role: 'motor-mccb', symbolId: 'mccb', kind: 'feeder', when: { all: [MOTOR_SECONDARY, { key: 'motorSwitch', eq: 'mccb' }] }, labelTemplate: ['MCCB'], props: { transformer: 'motorSourceTr' }, repeatCountKey: 'motorCount', laneBase: MOTOR_LANE_BASE, zeroOk: true },
