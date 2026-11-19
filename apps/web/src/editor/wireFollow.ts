@@ -261,8 +261,15 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
   const next = new Map<string, DocWire>();
   wires.forEach((w, wi) => {
     const cur = workWire.get(w.id)!;
+    // 両端がつないである線が、「描かない」状態（長さ0）に畳まれているときは、そのまま残す。
+    // 記号を動かして、線が、つなぎ先の記号の中へ折り返してしまうとき（applyAnchors が決める。接続点の位置だけで決まる）は、手で直した図面でも、線は描かない。
+    // ここで広げ直すと、手で直した図面と違って、斜め・記号を突き抜ける線として、再び現れる（第18弾 C-1）
+    if (cur.at1 && cur.at2 && portNow(cur.at1) && portNow(cur.at2) && Math.hypot(cur.x1 - cur.x2, cur.y1 - cur.y2) < 0.01) {
+      next.set(w.id, cur);
+      return;
+    }
     const out: DocWire = { ...cur };
-    // つないである端は、接続点の真上（途中で「描かない」状態に畳まれていた線も、ここで、広げ直す）。つないでいない端は、動き量の分だけ動かす
+    // つないである端は、接続点の真上（片側だけつないでいて、途中で「描かない」状態に畳まれていた線は、ここで、広げ直す）。つないでいない端は、動き量の分だけ動かす
     out.x1 = ends[2 * wi]!.x + dxOf(2 * wi);
     out.y1 = ends[2 * wi]!.y + dyOf(2 * wi);
     out.x2 = ends[2 * wi + 1]!.x + dxOf(2 * wi + 1);
