@@ -16,6 +16,7 @@ import { inspectDrawing } from '../apps/web/src/editor/inspect.ts';
 import { buildComposition, dropHiddenChoices, effectiveAnswers, feedChoices } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
+import { getSymbol } from '../packages/symbols/src/index.ts';
 import { answersSpread } from './check-drawing/common.ts';
 
 let failed = 0;
@@ -135,6 +136,7 @@ const drawFeed = (name: string, raw: Raw, expect?: (doc: Doc, comp: ReturnType<t
   }
   drawings++;
   const issues = inspectDrawing(doc, 'A3', 'portrait').filter((i) => KINDS.includes(i.kind));
+  if (issues.length > 0 && process.env.DBG_ISSUE) console.log('DBG', name, JSON.stringify(raw), JSON.stringify(issues.map((i) => [i.kind, Math.round(i.x), Math.round(i.y), i.itemId])), JSON.stringify(doc.items.find((x) => x.id === issues[0]!.itemId)));
   if (issues.length > 0) fail(`${name}：図面に異常があります（${[...new Set(issues.map((i) => i.kind))].join('・')} ${issues.length}件：${issues[0]!.message}）`);
   if (cableViolations(doc).length > 0) fail(`${name}：ケーブルの途中に、ZCT 以外が接続されています`);
   const msg = expect?.(doc, comp);
@@ -232,6 +234,72 @@ for (const n of [2, 3, 5, 8]) {
   // 3か所目のエリアが、2か所目から分岐する（段あり）
   drawFeed('3か所目が、2か所目から、2段（DS＋VCB → ケーブル → AS）で分岐', { areaCount: '3', transformerCount: '1', 'a3:linkFrom': '2', 'a3:linkTap': 'bus', 'a3:linkStageCount': '2', 'a3:linkSwitch': 'ds-vcb', 'a3:linkCable': 'yes', 'a3:link2Switch': 'as', 'a3:link2Cable': 'yes' });
   console.log(`  エリア間の段（分岐位置 5 × 段数 4 × 1段目 3）${n}通り＋3か所目`);
+}
+
+/* ---- 変圧器の二次側から別のエリアへ：開閉器・ケーブルの端末を、変圧器の真下に置き、ケーブルは、まわりを避ける（第18弾 F-③） ---- */
+{
+  const none = { hasCapacitor: 'no', hasGenerator: 'no', hasPv: 'no', hasBattery: 'no', hasAuxTr: 'no', hasMotor: 'no' };
+  const link = (trNo: number, sw: string, extra: Raw = {}): Raw => ({ 'a2:linkTap': 'tr-secondary', 'a2:linkSourceTr': String(trNo), 'a2:linkSwitch': sw, 'a2:linkCable': 'yes', 'a2:linkCableInstallation': 'buried', 'a2:linkCableStructure': 'CVT', ...extra });
+  const under = (name: string, raw: Raw, expectUnder: boolean, trNo: number) =>
+    drawFeed(name, { areaCount: '2', transformerCount: '3', ...none, ...raw }, (doc) => {
+      const syms = doc.items.filter((i): i is DocSymbol => i.kind === 'symbol');
+      const tr = syms.find((x) => x.id === `transformer-${trNo}` || (trNo === 1 && x.id === 'transformer'));
+      const sw = syms.find((x) => /(^|:)sendout-(lbs|ds|vcb)$/.test(x.id)) ?? syms.find((x) => /(^|:)cable-head-send$/.test(x.id));
+      if (!tr || !sw) return '変圧器か送り出しの開閉器が見つかりません';
+      const trCx = tr.x + getSymbol(tr.symbolId).box.w / 2;
+      const swCx = sw.x + getSymbol(sw.symbolId).box.w / 2;
+      const isUnder = Math.abs(trCx - swCx) < 6 && sw.y > tr.y;
+      if (isUnder !== expectUnder) return expectUnder ? `開閉器が、変圧器の真下にありません（変圧器 ${Math.round(trCx)}・開閉器 ${Math.round(swCx)}）` : '変圧器の真下に置けない場面なのに、真下に置いています';
+      return null;
+    });
+  under('変圧器2台目の二次側から、LBS＋ケーブル：2台目の真下', link(2, 'lbs'), true, 2);
+  under('変圧器1台目の二次側から、DS＋VCB＋ケーブル：1台目の真下', link(1, 'ds-vcb'), true, 1);
+  under('変圧器3台目の二次側から、開閉器なし＋ケーブル：3台目の真下', link(3, 'none'), true, 3);
+  under('変圧器2台目の二次側から、2段（LBS → ケーブル → AS → ケーブル）：真下', link(2, 'lbs', { 'a2:linkStageCount': '2', 'a2:link2Switch': 'as', 'a2:link2Cable': 'yes' }), true, 2);
+  // 真下に置けない場面は、これまでどおり、エリアのすきまに置き、図面は崩れない
+  under('変圧器の下に低圧の回線（太陽光）がある：すきまに置く', link(2, 'lbs', { hasPv: 'yes' }), false, 2);
+  under('図面の下に、電動機（つながない）が、変圧器の真下に来る：すきまに置く', { transformerCount: '1', ...link(1, 'lbs', { hasMotor: 'yes', motorCount: '1' }) }, false, 1);
+  under('同じ変圧器から、2本出る：すきまに置く', { areaCount: '3', ...link(2, 'lbs'), 'a3:linkFrom': '1', ...Object.fromEntries(Object.entries(link(2, 'vcb')).map(([k, v]) => [k.replace('a2:', 'a3:'), v])) }, false, 2);
+}
+
+// 変圧器の二次側から出す線：でたらめな組み合わせ（変圧器の台数・どの台から出すか・開閉器・ケーブル・太陽光・発電機・電動機・蓄電池など）で、図面が崩れない
+{
+  const SCALE = Math.max(1, Number(process.env.FUZZ_COUNT ?? 1));
+  let seed = 777;
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 2 ** 32;
+  };
+  const pick = <T,>(l: T[]): T => l[Math.floor(rnd() * l.length)]!;
+  let inArea = 0;
+  for (let n = 0; n < 60 * SCALE; n++) {
+    const trs = 1 + Math.floor(rnd() * 4);
+    const areas = 2 + Math.floor(rnd() * 2);
+    const raw: Raw = {
+      areaCount: String(areas), transformerCount: String(trs),
+      hasCapacitor: pick(['yes', 'no']), hasGenerator: pick(['yes', 'no']), hasPv: pick(['yes', 'no']), hasBattery: pick(['yes', 'no']), hasMotor: pick(['yes', 'no']),
+    };
+    for (let to = 2; to <= areas; to++) {
+      const p = `a${to}:`;
+      Object.assign(raw, {
+        [`${p}linkTap`]: pick(['tr-secondary', 'tr-secondary', 'bus', 'ds-vcb']),
+        [`${p}linkSourceTr`]: String(1 + Math.floor(rnd() * trs)),
+        [`${p}linkSwitch`]: pick(['none', 'lbs', 'ds-vcb', 'vcb', 'as']),
+        [`${p}linkCable`]: pick(['yes', 'yes', 'no']),
+        [`${p}linkCableInstallation`]: pick(['buried', 'overhead']),
+        [`${p}linkCableStructure`]: 'CVT',
+      });
+    }
+    drawFeed(`変圧器の二次側から（でたらめ ${n + 1}）`, raw, (doc) => {
+      const syms = doc.items.filter((i): i is DocSymbol => i.kind === 'symbol');
+      const sw = syms.find((x) => /(^|:)sendout-(lbs|ds|vcb)$/.test(x.id) || /(^|:)cable-head-send$/.test(x.id));
+      const tr = syms.find((x) => /^transformer(-\d+)?$/.test(x.id) && sw && Math.abs(x.x + getSymbol(x.symbolId).box.w / 2 - (sw.x + getSymbol(sw.symbolId).box.w / 2)) < 6);
+      if (tr) inArea++;
+      return null;
+    });
+  }
+  console.log(`  変圧器の二次側から出す線（でたらめ ${60 * SCALE}通り・うち変圧器の真下に置いたもの ${inArea}通り）`);
+  if (inArea < Math.max(2, SCALE * 3)) fail(`変圧器の真下に置いた図面が少なすぎます（${inArea}通り）。置き方が壊れていないか確かめてください`);
 }
 
 // でたらめな組み合わせ：機器の種類・台数・ケーブル・開閉器・接続元を、でたらめに選んで、図面が崩れない

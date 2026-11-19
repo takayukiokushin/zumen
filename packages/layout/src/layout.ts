@@ -1472,14 +1472,14 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     }
   }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
-  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 上から出る線ほど小さい番号（記号のIDの末尾に使う。並びの順を変えても、IDが変わらないように） */ under: boolean; oid: number; /** 同じエリアから出るケーブルの線の、左から数えた順番と、本数（同じ高さからは、近いエリアへの線が先） */ gi: number; gn: number };
+  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 上から出る線ほど小さい番号（記号のIDの末尾に使う。並びの順を変えても、IDが変わらないように） */ under: boolean; /** 変圧器の真下に、送り出しの並びを置く（変圧器の二次側から出す、単純な線のとき。第18弾 F-③） */ inArea: boolean; oid: number; /** 同じエリアから出るケーブルの線の、左から数えた順番と、本数（同じ高さからは、近いエリアへの線が先） */ gi: number; gn: number };
   const trunks: Trunk[] = [];
   for (const li of linkInfos) {
     // ケーブルでつなぐ線は、1本ずつ、別の幹にする（ケーブルは、線ごとに別の物なので、端末も、線の数だけ描く）。
     // ふつうの線でつなぐ線は、同じ位置から出るものを、1つの幹にまとめる
     let tr = li.cable || li.stages.length > 1 ? undefined : trunks.find((x) => x.from === li.from && !x.cable && Math.abs(x.sy - li.sy) < 0.5);
     if (!tr) {
-      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, oid: 0, under: false, gi: 0, gn: 1 };
+      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, oid: 0, under: false, inArea: false, gi: 0, gn: 1 };
       trunks.push(tr);
     }
     tr.links.push(li);
@@ -1559,6 +1559,48 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
   /** 送り出しの縦の並びを作る幹が、1本でもあるエリアか */
   const stackedArea = (area: number): boolean => trunks.some((x) => x.from === area && stackedTrunk(x));
   /**
+   * 変圧器の二次側から出す線は、変圧器の真下に、開閉器・ケーブルの端末の並びを置く（第18弾 F-③）。
+   * そのあと、ケーブルは、まわりの記号・文字・線の、いちばん下を通って、横へ出る（ほかのものと重ならない）。
+   * 次のときは、これまでどおり、エリアのすきまに置く：その変圧器の下に、低圧の回線がある／地絡継電器・途中の部品・継電器がある／同じ変圧器から、2本以上出る／
+   * 変圧器の真下（並びと文字が入る幅）に、すでに記号・文字・線がある（図面の下に置いた電動機・発電機など。重ならないように、避ける）。
+   * 同じエリアから出る、ほかの線が、すきまに置くものになるときは、そのエリアの線は、すべて、これまでどおり（真下に置くものと、すきまに置くものが混ざると、線が交わるため）
+   */
+  for (const f of new Set(trunks.map((x) => x.from))) {
+    const mine = trunks.filter((x) => x.from === f && stackedTrunk(x));
+    const part = parts[f];
+    if (mine.length === 0 || !part || trunks.some((x) => x.from === f && !stackedTrunk(x))) continue;
+    const dy = dys[f]!;
+    const ok = mine.every((tr) => {
+      const li = tr.links[0]!;
+      if (li.feedFrom === undefined || tr.links.length !== 1) return false;
+      const dest = destOf(tr);
+      if (groundOfDest(dest) || partsOfDest(dest).length > 0 || relaysOfDest(dest).length > 0) return false;
+      if (mine.some((x) => x !== tr && Math.abs(x.links[0]!.sx - li.sx) < 0.5)) return false;
+      // 変圧器の真下（並びと、その右の文字が入る幅）に、ほかの記号・文字・線が無いか（変圧器そのもの＝出口の点をはさんでいるものは、数えない）
+      const xl = li.sx - 24;
+      const xr = li.sx + 130;
+      const y0 = li.feedFrom;
+      const r = part.result;
+      const blocked =
+        r.symbols.some((sym) => {
+          const rb = rotatedBox(getSymbol(sym.symbolId).box, sym.rotate);
+          const top = sym.y + dy + rb.dy;
+          if (sym.x + rb.dx + rb.w > xl && sym.x + rb.dx < xr && top >= y0 - 4 && top + rb.h > y0 + 1) return true;
+          if (sym.label.length === 0) return false;
+          const lr = labelRect({ ...sym.labelAt, y: sym.labelAt.y + dy }, sym.label);
+          return lr.x1 > xl && lr.x0 < xr && lr.y0 >= y0 - 4 && lr.y1 > y0 + 1;
+        }) ||
+        r.wires.some((w) => Math.max(w.x1, w.x2) > xl && Math.min(w.x1, w.x2) < xr && Math.max(w.y1, w.y2) + dy > y0 + 1) ||
+        (r.texts ?? []).some((t) => {
+          const lr = labelRect({ x: t.x, y: t.y + dy, anchor: t.anchor }, t.lines);
+          return lr.x1 > xl && lr.x0 < xr && lr.y1 > y0 + 1;
+        });
+      return !blocked;
+    });
+    if (ok) for (const tr of mine) tr.inArea = true;
+  }
+
+  /**
    * 同じエリアから出る線の、左から右への並び（縦の並びの位置と、ケーブルの縦線の位置）。
    * 低い所から出る線ほど、左に置く（横線が、右の並びの上を通るので、並びを横切らない）。同じ高さからは、近いエリアへの線ほど、左。
    * 左の線ほど、縦の長さを長くして、右の線の並びの下を通り、縦線は、いちばん右の並びのさらに右（左の線ほど外側）を上がる
@@ -1572,6 +1614,9 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     for (const p of mine) {
       p.under = p.cable && mine.some((q) => q.cable && q.sy < p.sy - 0.5 && destOf(q) < destOf(p));
     }
+    // 変圧器の真下に置くときは、左の変圧器から出る線ほど、左（ケーブルは、深く、外側の縦線を通る。右の線の下を通るので、線が交わらない）
+    if (mine.every((x) => x.inArea || !stackedTrunk(x))) mine.sort((a, b) => a.links[0]!.sx - b.links[0]!.sx || a.sy - b.sy);
+    else
     // 低い所から出る線ほど左。同じ高さからは、下を通す線（遠いエリアへ）を左に、遠い順。そのあと、上から回す線を、近い順
     mine.sort((a, b) => b.sy - a.sy || Number(b.under) - Number(a.under) || (a.under ? destOf(b) - destOf(a) : destOf(a) - destOf(b)));
     mine.forEach((x, i) => { x.index = i; });
@@ -1645,6 +1690,8 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     ext(r.bounds.x0 + dx, r.bounds.y0 + dy, r.bounds.x1 + dx, r.bounds.y1 + dy);
   }
 
+
+
   // 前のエリアの指定の位置から、このエリアの上へ、ケーブルの線を引く
   const maxLines = Math.max(1, ...linkInfos.map((l) => l.label.length));
   /** 遠くのエリアへ渡す線が通る高さの間隔（文字が入る分、広げる） */
@@ -1717,15 +1764,20 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     let endY = sy;
     if (useStack) {
       const gr = groundOfDest(destOf(tr));
-      const xs = stackX(tr);
+      // 変圧器の真下に置くときは、変圧器の列の位置（sx）。ほかは、エリアのすきま
+      const xs = tr.inArea ? sx : stackX(tr);
       // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、ケーブルの端末のIDに印を付ける（開閉器のIDは、送り先の番号つきなので、印は要らない）
       const sfx = tr.oid === 0 ? '' : `-${tr.links[0]!.n + 1}`;
       // 同じ位置から出る2本目以降のケーブルは、前の線の縦の並びの位置から、右へ分かれる（同じ線を、重ねて引かない）
       const prevCable = tr.cable && tr.gi > 0 ? trunks.find((x) => x.cable && x.from === tr.from && x.gi === tr.gi - 1) : undefined;
-      const prev = prevCable && Math.abs(prevCable.sy - tr.sy) < 0.5 ? prevCable : undefined;
+      // （前の線から分かれるのは、同じ位置（同じ変圧器の二次側など）から出る線だけ。違う変圧器の出口から出る線は、自分の出口から、横へ出る）
+      const prev = prevCable && !prevCable.inArea && !tr.inArea && Math.abs(prevCable.sy - tr.sy) < 0.5 && Math.abs(prevCable.links[0]!.sx - tr.links[0]!.sx) < 0.5 ? prevCable : undefined;
       const startX = prev ? stackX(prev) : sx;
-      wires.push({ x1: startX, y1: sy, x2: xs, y2: sy });
-      ext(startX, sy, xs, sy);
+      // （変圧器の真下に置くときは、横へは出ない。変圧器の出口から、そのまま真下へ）
+      if (!tr.inArea) {
+        wires.push({ x1: startX, y1: sy, x2: xs, y2: sy });
+        ext(startX, sy, xs, sy);
+      }
       let y = sy;
       /** 縦の並びに、記号を1つ置く。入口を、いまの位置から SENDOUT_GAP 下に。出口の高さを返す */
       const stackPut = (id: string, role: string, symbolId: string, label: string[], opt: { rotate?: 0 | 180; dashedIn?: boolean } = {}): PlacedSymbol => {
@@ -1966,6 +2018,33 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         ext(xs, y, xs, y + extra);
         y += extra;
       }
+      // 変圧器の真下に置いたとき：ケーブルは、まわりの記号・文字・線の、いちばん下を通って、横へ出る（変圧器の隣の列や、文字と重ならない）
+      if (tr.inArea) {
+        const xl = xs + 1;
+        const xr = gx - 1;
+        let low = y;
+        for (const sym of symbols.slice(0, s0)) {
+          const rb = rotatedBox(getSymbol(sym.symbolId).box, sym.rotate);
+          if (sym.x + rb.dx + rb.w > xl && sym.x + rb.dx < xr) {
+            low = Math.max(low, sym.y + rb.dy + rb.h);
+            if (sym.label.length > 0) {
+              const lr = labelRect(sym.labelAt, sym.label);
+              if (lr.x1 > xl && lr.x0 < xr) low = Math.max(low, lr.y1);
+            }
+          }
+        }
+        for (const w of wires.slice(0, w0)) if (Math.max(w.x1, w.x2) > xl && Math.min(w.x1, w.x2) < xr) low = Math.max(low, w.y1, w.y2);
+        for (const t of texts.slice(0, t0)) {
+          const r = labelRect({ x: t.x, y: t.y, anchor: t.anchor }, t.lines);
+          if (r.x1 > xl && r.x0 < xr) low = Math.max(low, r.y1);
+        }
+        const extra = Math.max(0, low + 24 - y);
+        if (extra > 0) {
+          wires.push({ x1: xs, y1: y, x2: xs, y2: y + extra, dashed: tr.cable && tr.links.every((l) => l.dashed) });
+          ext(xs, y, xs, y + extra);
+          y += extra;
+        }
+      }
       // 名前だけの継電器（つなぐ先の機器が無い・名前だけ書くと答えたもの）：縦の並びの、いちばん下に、名前を並べて書く
       {
         const loose = relaysOfDest(dest0).filter((r) => r.n === null || !parts.some((g) => g.n === r.n));
@@ -2070,7 +2149,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const dashedTrunk = tr.links.every((l) => l.dashed);
     if (useStack) {
       // 並びの下の端から、右へ（ケーブル。ケーブルでないときは、ふつうの線）、そこから、いちばん高い横線の高さまで上へ
-      seg(stackX(tr), endY, gx, endY, tr.cable && dashedTrunk);
+      seg(tr.inArea ? sx : stackX(tr), endY, gx, endY, tr.cable && dashedTrunk);
       seg(gx, endY, gx, topY, tr.cable && dashedTrunk);
     } else {
       // ふつうの線でつなぐとき（ケーブルでなく、開閉器も無いとき）は、端末も点線も無く、ふつうの線だけ
