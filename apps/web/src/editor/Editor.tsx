@@ -123,6 +123,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const selectedId = selection.length === 1 ? selection[0]! : null;
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
   const [zoom, setZoom] = useState(1);
+  /** 拡大・縮小のボタンは、図面を見ている枠の真ん中を中心に、拡大・縮小する（DrawingCanvas が窓口を入れる） */
+  const zoomApi = useRef<((next: number, at?: { x: number; y: number }) => void) | null>(null);
+  const stepZoom = (delta: number) => {
+    const next = Math.round(Math.max(0.4, Math.min(3, zoom + delta)) * 100) / 100;
+    if (zoomApi.current) zoomApi.current(next);
+    else setZoom(next);
+  };
   const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
   const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow' | 'link' | 'fan'>('select');
   /** 結線で、クリックして選んだ記号（最初が元の記号、2つ目から下の機器。クリックした順） */
@@ -1101,12 +1108,12 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           <div className="tool-group zoom-group">
             <span className="cap">{t('editor.group.view')}</span>
             <div className="tool-row">
-              <button type="button" className="with-icon" aria-label={t('editor.zoomOut')} disabled={sheetView} onClick={() => setZoom((z) => Math.max(0.4, z - 0.2))}>
+              <button type="button" className="with-icon" aria-label={t('editor.zoomOut')} disabled={sheetView} onClick={() => stepZoom(-0.2)}>
                 <ZoomIcon kind="out" />
                 <span className="zoom-text">{t('editor.zoomOut')}</span>
               </button>
               <span className="zoom">{Math.round(zoom * 100)}%</span>
-              <button type="button" className="with-icon" aria-label={t('editor.zoomIn')} disabled={sheetView} onClick={() => setZoom((z) => Math.min(3, z + 0.2))}>
+              <button type="button" className="with-icon" aria-label={t('editor.zoomIn')} disabled={sheetView} onClick={() => stepZoom(0.2)}>
                 <ZoomIcon kind="in" />
                 <span className="zoom-text">{t('editor.zoomIn')}</span>
               </button>
@@ -1475,6 +1482,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             wireDashed={wireDashed}
             zoom={zoom}
             onZoom={setZoom}
+            zoomRef={zoomApi}
             issues={issues ?? []}
           />
           </>

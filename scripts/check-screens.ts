@@ -24,6 +24,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answersSpread } from './check-drawing/common.ts';
+import { digest, fromLayout } from '../apps/web/src/editor/doc.ts';
+import { buildComposition } from '../packages/knowledge/src/index.ts';
+import { layout } from '../packages/layout/src/index.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const FULL = process.argv.includes('--full');
@@ -94,6 +97,15 @@ try {
   const cookie = (lr.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
   const cr = await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '画面検査の案件', answers: answersSpread }) });
   if (!cr.ok) throw new Error('試験用の案件を作れませんでした');
+  // 図面を保存しておく（図面のタブが、空でなく、記号の並んだ図面を開くように。拡大・スクロールの検査に使う）
+  {
+    const created = (await cr.json()) as { id: string; updatedAt: string };
+    const comp = buildComposition(answersSpread);
+    const basis = digest(JSON.stringify(comp.map((i) => [i.role, i.symbolId, i.label, i.unit ?? 0])));
+    const drawing = { ...fromLayout(layout(comp, answersSpread), basis), edited: true };
+    const pr = await fetch(`${base}/api/projects/${created.id}`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '画面検査の案件', answers: answersSpread, drawing, baseUpdatedAt: created.updatedAt, force: true }) });
+    if (!pr.ok) throw new Error('試験用の案件に、図面を保存できませんでした');
+  }
   // 1つずつ開く方式（白紙から）の案件：入力の途中の、下の余白の検査に使う（第17弾 項目4）
   const cr2 = await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '余白の検査', answers: { startMode: 'blank' } }) });
   if (!cr2.ok) throw new Error('試験用の案件（白紙）を作れませんでした');
@@ -186,7 +198,8 @@ try {
       await sleep(1100);
       await page.locator('button', { hasText: /閉じる|Close|Fermer|关闭|닫기/ }).first().click({ timeout: 400 }).catch(() => {});
       rec('一覧', await measure(page, c.touch));
-      await page.locator('button.job-open').first().click({ timeout: 2000, force: true }).catch(() => {});
+      // 複数エリアの案件を、名前で開く（一覧の先頭は、あとから作った「余白の検査」の案件になるため）
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true }).catch(() => {});
       await sleep(900);
       await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
       const tabs = page.locator('.tabbar > button, .tabbar .tab-wrap > button');
@@ -198,6 +211,44 @@ try {
         rec(`${names[i]}のタブ`, await measure(page, c.touch));
         // 図面のタブ：拡大しても、図面の左右・上下の端まで、スクロールで行ける（大きい図面の左側が、枠の外にはみ出して見えなくならない。第18弾 B-1）
         if (names[i] === '図面') {
+          // Ctrl＋ホイールの拡大縮小は、カーソルの位置を中心に行う（カーソルを置いた記号が、拡大・縮小のあとも、カーソルの下に残る。第18弾 B-2）
+          if (!c.touch) {
+            await page.waitForSelector('svg.canvas g.item', { timeout: 4000 }).catch(() => {});
+            const cands = await page.evaluate(() => {
+              const wr = document.querySelector('.canvas-wrap') as HTMLElement | null;
+              if (!wr) return [];
+              const a = wr.getBoundingClientRect();
+              return Array.from(document.querySelectorAll('svg.canvas g.item'))
+                .map((g, k) => {
+                  const r = g.getBoundingClientRect();
+                  return { k, x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };
+                })
+                .filter((o) => o.w > 6 && o.x > a.left + 40 && o.x < a.right - 40 && o.y > a.top + 40 && o.y < a.bottom - 40)
+                .sort((p, q) => Math.hypot(p.x - (a.left + a.right) / 2, p.y - (a.top + a.bottom) / 2) - Math.hypot(q.x - (a.left + a.right) / 2, q.y - (a.top + a.bottom) / 2));
+            });
+            // 枠の真ん中から、いちばん遠い記号で試す（真ん中に近いと、中心がずれていても、ずれが小さくて、見つからない）
+            const pick = cands[cands.length - 1];
+            if (pick) {
+              await page.mouse.move(pick.x, pick.y);
+              await page.keyboard.down('Control');
+              await page.mouse.wheel(0, -100);
+              await sleep(150);
+              await page.mouse.wheel(0, -100);
+              await sleep(250);
+              await page.keyboard.up('Control');
+              const gap = await page.evaluate(({ k, x, y }: { k: number; x: number; y: number }) => {
+                const g = document.querySelectorAll('svg.canvas g.item')[k];
+                if (!g) return null;
+                const r = g.getBoundingClientRect();
+                return Math.hypot(r.x + r.width / 2 - x, r.y + r.height / 2 - y);
+              }, pick);
+              screens++;
+              if (gap !== null && gap > 4) {
+                failed++;
+                problems.push(`${name}／図面：Ctrl＋ホイールで拡大したとき、カーソルの位置を中心にしていません（カーソルの下の記号が、${Math.round(gap)}pxずれました）`);
+              }
+            }
+          }
           const zin = page.locator('.zoom-group button').nth(1);
           for (let k = 0; k < 6; k++) {
             if (!(await zin.isVisible().catch(() => false)) || (await zin.isDisabled().catch(() => true))) break;

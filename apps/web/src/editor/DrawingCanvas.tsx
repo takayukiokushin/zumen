@@ -94,6 +94,8 @@ interface Props {
   zoom: number;
   /** 2本指で拡大縮小したとき（指で操作する端末用） */
   onZoom?: (zoom: number) => void;
+  /** 拡大縮小のボタンが、枠の真ん中を中心に拡大縮小するための窓口（描き直すたびに、ここに入る） */
+  zoomRef?: React.MutableRefObject<((next: number, at?: { x: number; y: number }) => void) | null>;
   /** 枠の端・角をつかんで、大きさを変え終わったとき（左上の位置と大きさ） */
   onResizeEnd?: (id: string, rect: { x: number; y: number; w: number; h: number }) => void;
   /** 「結線を整える」で直しきれなかったところ。赤い印で知らせる */
@@ -165,7 +167,7 @@ function scrollWithOuter(sc: HTMLElement, dx: number, dy: number) {
   if (Math.abs(restX) >= 0.5) outerScroller(sc, 'x').scrollLeft += restX;
 }
 
-export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, viewOnly = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, viewOnly = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -217,7 +219,8 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
   /** 何も無いところを1本指でなぞっている状態。動かしていなければ、離したときに「選択を外す」 */
   const pan = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   /** 拡大縮小の前後で、指の位置がずれないよう、動かす前の位置を覚えておく */
-  const anchor = useRef<{ fx: number; fy: number; sl: number; st: number; sw: number; sh: number } | null>(null);
+  /** 拡大縮小の中心：画面の位置（cx, cy）と、そこにある図面の点の、図面の中での割合（u, v。0〜1）。拡大縮小のあと、その点を、同じ画面の位置に戻す */
+  const anchor = useRef<{ cx: number; cy: number; u: number; v: number } | null>(null);
 
   // 線を引くモードに入った・出たときは、引きかけの線を捨てる（Esc で解除したときも、ここで片づく）
   useLayoutEffect(() => {
@@ -277,11 +280,34 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
   useLayoutEffect(() => {
     const a = anchor.current;
     const sc = scroller();
-    if (!a || !sc) return;
-    sc.scrollLeft = (a.sl + a.fx) * (sc.scrollWidth / a.sw) - a.fx;
-    sc.scrollTop = (a.st + a.fy) * (sc.scrollHeight / a.sh) - a.fy;
+    const sv = svgRef.current;
+    if (!a || !sc || !sv) return;
+    // 拡大縮小のあとの図面の位置を測り、中心にした点が、もとの画面の位置に戻るよう、スクロールをずらす
+    // （余白・左右の中央寄せ・はみ出しがあっても、ずれない。図面の大きさの比だけで決めると、余白のぶん、ずれる）
+    const r = sv.getBoundingClientRect();
+    sc.scrollLeft += r.left + a.u * r.width - a.cx;
+    sc.scrollTop += r.top + a.v * r.height - a.cy;
     anchor.current = null;
   }, [zoom]);
+
+  /**
+   * 拡大縮小を、画面の位置 at を中心に行う（at が無ければ、図面を見ている枠の真ん中）。
+   * Ctrl＋ホイール・2本指は、カーソル・指の位置。ボタンは、枠の真ん中。
+   */
+  const zoomAround = (next: number, at?: { x: number; y: number }) => {
+    const sc = scroller();
+    const sv = svgRef.current;
+    if (!sc || !sv || !latest.current.onZoom) return;
+    const rs = sc.getBoundingClientRect();
+    const rv = sv.getBoundingClientRect();
+    const cx = at?.x ?? rs.left + sc.clientWidth / 2;
+    const cy = at?.y ?? rs.top + sc.clientHeight / 2;
+    anchor.current = { cx, cy, u: rv.width > 0 ? (cx - rv.left) / rv.width : 0.5, v: rv.height > 0 ? (cy - rv.top) / rv.height : 0.5 };
+    latest.current.zoom = next;
+    latest.current.onZoom(next);
+  };
+
+  if (zoomRef) zoomRef.current = zoomAround;
 
   const centerOf = () => {
     const pts = [...touches.current.values()];
@@ -335,15 +361,11 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
         stop(e);
         // 2本指：指の間隔で拡大縮小し、指の中心が動いた分だけ、画面を動かす
         const c = centerOf();
-        const r = sc.getBoundingClientRect();
         const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pinch.current.startZoom * (distOf() / pinch.current.startDist)));
         sc.scrollLeft -= (cur.x - prev.x) / 2;
         sc.scrollTop -= (cur.y - prev.y) / 2;
         const z = latest.current.zoom;
-        if (latest.current.onZoom && Math.abs(next - z) > 0.01) {
-          anchor.current = { fx: c.x - r.left, fy: c.y - r.top, sl: sc.scrollLeft, st: sc.scrollTop, sw: sc.scrollWidth, sh: sc.scrollHeight };
-          latest.current.onZoom(next);
-        }
+        if (latest.current.onZoom && Math.abs(next - z) > 0.01) zoomAround(next, { x: c.x, y: c.y });
         return;
       }
       if (ignored.current.has(e.pointerId) || touches.current.size > 1) {
@@ -393,10 +415,7 @@ export function DrawingCanvas({ doc, selectedIds, onSelect, onFanPick, fanPicks 
       const z = latest.current.zoom;
       const next = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z * Math.exp(-dy * 0.002)));
       if (Math.abs(next - z) < 0.005) return;
-      const r = sc.getBoundingClientRect();
-      anchor.current = { fx: e.clientX - r.left, fy: e.clientY - r.top, sl: sc.scrollLeft, st: sc.scrollTop, sw: sc.scrollWidth, sh: sc.scrollHeight };
-      latest.current.zoom = next;
-      latest.current.onZoom(next);
+      zoomAround(next, { x: e.clientX, y: e.clientY });
     };
 
     sc.addEventListener('pointerdown', down, true);
