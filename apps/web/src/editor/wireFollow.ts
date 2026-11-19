@@ -23,6 +23,8 @@ interface End {
   fixed?: { x: number; y: number };
   /** 接続点につないである端か */
   port?: boolean;
+  /** つないでいないが、記号の中にある端か */
+  inside?: boolean;
 }
 
 class UnionFind {
@@ -88,7 +90,7 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
       // つないでいない端が、記号の中（たとえば、開閉器の真ん中から出るTCの点線）にあるときは、その記号と同じ量だけ動く
       const inside = !an ? insideSymbol(x, y) : null;
       const fixed = p ? { x: p.x, y: p.y } : inside ? { x: x + inside.dx, y: y + inside.dy } : undefined;
-      ends.push({ x, y, ...(fixed ? { fixed } : {}), ...(p ? { port: true } : {}) });
+      ends.push({ x, y, ...(fixed ? { fixed } : {}), ...(p ? { port: true } : {}), ...(inside ? { inside: true } : {}) });
       if (fixed && (Math.abs(fixed.x - x) > 0.01 || Math.abs(fixed.y - y) > 0.01)) anyMoved = true;
     }
   }
@@ -96,6 +98,17 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
 
   const isV = (w: DocWire) => Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y1 - w.y2) >= 0.01;
   const isH = (w: DocWire) => Math.abs(w.y1 - w.y2) < 0.01 && Math.abs(w.x1 - w.x2) >= 0.01;
+  // 片方が記号の接続点、もう片方が記号の中（つないでいない）の線：記号の中の端は、線の向きには、その記号と同じだけ動くが、
+  // 線と直角の向きには、接続点の側の動きに合わせる（手で動かしたときと同じ。そのままだと、線が斜めになる）（第18弾 C-2）
+  wires.forEach((w, i) => {
+    for (const [a, b] of [[2 * i, 2 * i + 1], [2 * i + 1, 2 * i]] as const) {
+      const e = ends[a]!;
+      const o = ends[b]!;
+      if (!e.inside || e.port || !e.fixed || !o.port || !o.fixed) continue;
+      if (isH(w)) e.fixed = { x: e.fixed.x, y: e.y + (o.fixed.y - o.y) };
+      else if (isV(w)) e.fixed = { x: e.x + (o.fixed.x - o.x), y: e.fixed.y };
+    }
+  });
 
   const ufx = new UnionFind(ends.length);
   const ufy = new UnionFind(ends.length);
@@ -276,6 +289,26 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
     out.y2 = ends[2 * wi + 1]!.y + dyOf(2 * wi + 1);
     next.set(w.id, out);
   });
+  // 同じ点に集まっていた端が、別々の動き量になって、離れたとき：
+  // 線と直角に出ている線の端は、そのまま残し、横（縦）の線のほうを、その端まで届くように、のばす（T字の分かれ目が切れて、浮かないように）（第18弾 C-2）
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue;
+    for (const b of list) {
+      const bw = wires[b >> 1]!;
+      const px = ends[b]!.x + dxOf(b);
+      const py = ends[b]!.y + dyOf(b);
+      for (const a of list) {
+        if (a >> 1 === b >> 1) continue;
+        const aw = wires[a >> 1]!;
+        const ax = ends[a]!.x + dxOf(a);
+        const ay = ends[a]!.y + dyOf(a);
+        if (Math.abs(ax - px) < 0.5 && Math.abs(ay - py) < 0.5) continue; // 離れていない
+        const out = next.get(aw.id)!;
+        if (isH(aw) && isV(bw) && Math.abs(py - out.y1) < 0.5) contacts.push({ end: b, wire: a >> 1 });
+        else if (isV(aw) && isH(bw) && Math.abs(px - out.x1) < 0.5) contacts.push({ end: b, wire: a >> 1 });
+      }
+    }
+  }
   // ほかの線の途中に触れている端：その線が、端まで届くように、のばす
   for (const c of contacts) {
     const w = wires[c.wire]!;

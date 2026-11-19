@@ -24,7 +24,7 @@ import { getSymbol } from '../packages/symbols/src/index.ts';
 const SCALE = Math.max(1, Number(process.env.FUZZ_COUNT ?? 1));
 const N = 240 * SCALE;
 /** 崩れた試行の割合の上限（％）。直すたびに、下げていく */
-const MAX_RATE = Number(process.env.EDIT_REPLAY_MAX ?? 7);
+const MAX_RATE = Number(process.env.EDIT_REPLAY_MAX ?? 5.5);
 
 function rng(seed: number) {
   let s = seed >>> 0;
