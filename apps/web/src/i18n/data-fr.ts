@@ -2,6 +2,22 @@
 // キーは、質問（packages/knowledge）と記号（packages/symbols）にある日本語の文そのもの。
 // 図面に印刷される文字は、ここでは訳さない（日本語のまま）。足りないものは、検査（check-i18n）が見つける。
 const data: Record<string, string> = {
+  "変圧器の電源側に、高圧ケーブルがありますか？": "Y a-t-il un câble HT côté source du transformateur ?",
+  "母線から変圧器までの間に、高圧ケーブルがあるとき（オープンフレーム式の電気室で、離れた場所の変圧器へ、ケーブルで送る場合など）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "Lorsqu’un câble HT relie le jeu de barres au transformateur (par exemple dans un local électrique à cadre ouvert qui alimente par câble un transformateur situé plus loin). Appuyez sur « Oui » pour afficher les appareils avant et après le câble et les champs du câble. En général, ne touchez à rien.",
+  "ケーブルの手前の開閉器（1つ目）": "Appareil avant le câble (1er)",
+  "母線から、ケーブルの電源側の端末までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など。1つ目に、いちばん母線に近いものを選ぶ）。付かないときは「なし」": "Appareil placé entre le jeu de barres et l’extrémité du câble côté source. Ils sont dessinés de haut en bas dans l’ordre choisi (par exemple DS + LBS, LBS + VCS, DS + LBS + VCS ; choisissez d’abord le plus proche du jeu de barres). Choisissez « Aucun » s’il n’y en a pas.",
+  "高圧ケーブル": "Câble HT",
+  "ケーブルの手前の開閉器（2つ目）": "Appareil avant le câble (2e)",
+  "1つ目の次に付く開閉器。付かないときは「なし」": "Appareil placé après le 1er. Choisissez « Aucun » s’il n’y en a pas.",
+  "ケーブルの手前の開閉器（3つ目）": "Appareil avant le câble (3e)",
+  "ケーブルのあとの開閉器（1つ目）": "Appareil après le câble (1er)",
+  "ケーブルの機器側の端末から、機器（手前のPC・LBSがあれば、その手前）までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など）。付かないときは「なし」": "Appareil placé entre l’extrémité du câble côté équipement et l’équipement (avant le PC ou le LBS qui le précède, le cas échéant). Ils sont dessinés de haut en bas dans l’ordre choisi (par exemple DS + LBS, LBS + VCS, DS + LBS + VCS). Choisissez « Aucun » s’il n’y en a pas.",
+  "ケーブルのあとの開閉器（2つ目）": "Appareil après le câble (2e)",
+  "ケーブルのあとの開閉器（3つ目）": "Appareil après le câble (3e)",
+  "このコンデンサの電源側に、高圧ケーブルがありますか？": "Y a-t-il un câble HT côté source de ce condensateur ?",
+  "母線からコンデンサ（リアクトル）までの間に、高圧ケーブルがあるとき。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "Lorsqu’un câble HT relie le jeu de barres au condensateur (réactance). Appuyez sur « Oui » pour afficher les appareils avant et après le câble et les champs du câble. En général, ne touchez à rien.",
+  "この発電機の電源側に、高圧ケーブルがありますか？": "Y a-t-il un câble HT côté source de ce générateur ?",
+  "高圧母線から発電機までの間に、高圧ケーブルがあるとき（接続先が「高圧母線から接続する」のときだけ）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "Lorsqu’un câble HT relie le jeu de barres HT au générateur (seulement si le raccordement se fait « depuis le jeu de barres HT »). Appuyez sur « Oui » pour afficher les appareils avant et après le câble et les champs du câble. En général, ne touchez à rien.",
   "お客様・現場": "Client et site",
   "表題欄と図面の基本情報": "Cartouche et informations générales du schéma",
   "引込元": "Origine du branchement",

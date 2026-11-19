@@ -9,6 +9,7 @@ import { TRANSFORMER_QUESTIONS } from './questions/transformer.ts';
 import { EQUIPMENT_QUESTIONS } from './questions/equipment.ts';
 import { AREAS_QUESTIONS } from './questions/areas.ts';
 import { BREAKER_QUESTIONS } from './questions/breakers.ts';
+import { withDeviceCableQuestions } from './questions/devcable.ts';
 
 /**
  * ヒアリングの質問定義。
@@ -21,7 +22,7 @@ export type { QuestionType, Choice, AskWhen, Question, QuestionGroup } from './q
 export { QUESTION_GROUPS } from './questions/groups.ts';
 
 /** すべての質問（この順番が、入力画面の並び順になる）。種類ごとの定義は、`questions/` の中にある */
-export const QUESTIONS: Question[] = [
+export const QUESTIONS: Question[] = withDeviceCableQuestions([
   ...SITE_QUESTIONS,
   ...RECEIVING_QUESTIONS,
   ...MIDSWITCH_QUESTIONS,
@@ -30,7 +31,7 @@ export const QUESTIONS: Question[] = [
   ...EQUIPMENT_QUESTIONS,
   ...AREAS_QUESTIONS,
   ...BREAKER_QUESTIONS,
-];
+]);
 
 /** AIに渡す説明（詳しい文章）を、各項目に付ける。内容は ai-hints.ts にある */
 for (const q of QUESTIONS) {

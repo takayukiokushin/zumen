@@ -204,8 +204,57 @@ export interface Placement {
 
 /** 並列の段。読みやすさのために名前を付けておく */
 /** cable：電動機のケーブルの向かい側の端末。VCSがある列で、ケーブルの電源側の端末（reactorの段）の次に置く（誰も使わない段は、詰めて描く） */
-export const ROW = { pc: 0, lbs: 1, vcs: 2, reactor: 3, cable: 4, main: 5 } as const;
-export const ROW_COUNT = 6;
+export const ROW = { up1: 0, up2: 1, up3: 2, cableS: 3, cableT: 4, dn1: 5, dn2: 6, dn3: 7, pc: 8, lbs: 9, vcs: 10, reactor: 11, cable: 12, main: 13 } as const;
+export const ROW_COUNT = 14;
+
+/**
+ * 変圧器・高圧進相設備（コンデンサ）・高圧の発電機の、電源側の高圧ケーブル（第18弾 F）。
+ * 母線から下へ、上から：ケーブルの手前の開閉器（最大3つ）→ ケーブルの端末（電源側）→ ケーブルの端末（機器側。180°回す）→ ケーブルのあとの開閉器（最大3つ）→
+ * 機器の手前のPC・LBS…→ 機器。開閉器は、選んだ順に、上から並ぶ。ケーブルの途中には、何も入れない（ZCT以外は入れられない決まり）。
+ * 開閉器の図記号・文字は、engine が、答えから作る（`{trUp1Symbol}` など）。誰も使わない段は、詰めて描く。
+ * p：tr（変圧器）・cap（コンデンサ）・gen（発電機）。base：その機器があるときの条件
+ */
+export function deviceCablePlacements(p: 'tr' | 'cap' | 'gen', repeatCountKey: string, base: Condition, zeroOk: boolean): Placement[] {
+  const has: Condition = { all: [base, { key: `${p}HasCable`, eq: 'yes' }] };
+  const rep = { repeatCountKey, ...(zeroOk ? { zeroOk: true } : {}) };
+  const slot = (side: 'Up' | 'Dn', k: 1 | 2 | 3): Placement => ({
+    role: `${p}-cable-${side === 'Up' ? 'up' : 'dn'}${k}`,
+    symbolId: `{${p}${side}${k}Symbol}`,
+    kind: 'parallel',
+    row: ROW[`${side === 'Up' ? 'up' : 'dn'}${k}` as 'up1'],
+    when: has,
+    labelTemplate: [`{${p}${side}${k}Label}`],
+    ...rep,
+  });
+  return [
+    slot('Up', 1),
+    slot('Up', 2),
+    slot('Up', 3),
+    {
+      role: `${p}-cable-source`,
+      symbolId: 'cable-head',
+      kind: 'parallel',
+      row: ROW.cableS,
+      when: has,
+      dashedAfter: { key: `${p}CableInstallation`, eq: 'buried' },
+      ...rep,
+      note: '機器の電源側の高圧ケーブルの、電源側の端末',
+    },
+    {
+      role: `${p}-cable-site`,
+      symbolId: 'cable-head',
+      kind: 'parallel',
+      row: ROW.cableT,
+      when: has,
+      labelTemplate: [`{${p}CableInstallationLabel}`, `{${p}CableStructure}`, `{${p}CableSpecLine}`],
+      ...rep,
+      note: '機器の電源側の高圧ケーブルの、機器側の端末（180°回して、頂点をケーブル側に向ける）',
+    },
+    slot('Dn', 1),
+    slot('Dn', 2),
+    slot('Dn', 3),
+  ];
+}
 
 /** 引込元から受電設備の入口まで（主遮断装置の形式によらず共通） */
 export const UPSTREAM: Placement[] = [
@@ -984,6 +1033,7 @@ export const SENDOUT: Placement[] = [
 
 /** 変圧器（台数分くり返す） */
 export const TRANSFORMER: Placement[] = [
+  ...deviceCablePlacements('tr', 'transformerCount', { all: [] }, true),
   // 変圧器は主回路から「分岐」して並列に入る（直列ではない）。
   // PCやLBSが手前に付く場合は、その変圧器と同じ列の上に入る。
   {
@@ -1103,6 +1153,7 @@ export const EXTRAS: Placement[] = [
   // 隣り合わせにしてあるため SR1→SC1→SR2→SC2 の順に出る
   // 高圧進相設備は変圧器と並列に入る。1台ごとに「リアクトル→コンデンサ」が1本の列になる
   // コンデンサの手前に入る開閉器。PCだけ・LBSだけ・LBS＋VCS など現場によって違う
+  ...deviceCablePlacements('cap', 'capacitorCount', { key: 'hasCapacitor', eq: 'yes' }, false),
   {
     role: 'cap-pc',
     symbolId: 'pc',
@@ -1167,6 +1218,7 @@ export const EXTRAS: Placement[] = [
     repeatCountKey: 'generatorCount',
     laneBase: 100,
   },
+  ...deviceCablePlacements('gen', 'generatorCount', { all: [{ key: 'hasGenerator', eq: 'yes' }, { key: 'generatorTransformer', eq: 'bus' }] }, false),
   {
     // 高圧母線から分岐して接続する発電機（高圧母線から下へぶら下がる列。開閉器・切替器・連系保護の記号は、描かない）
     role: 'generator',

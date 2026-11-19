@@ -491,6 +491,27 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.midCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.midCableInstallation)) ?? '';
   d.midCableSpecLine = cableSpec(answers.midCableVoltage, answers.midCableCrossSection, answers.midCableLength, answers.midCableLengthApprox);
 
+  // 変圧器・コンデンサ・高圧の発電機の、電源側の高圧ケーブル（第18弾 F）：開閉器の図記号と文字（選んだ順に、最大3つずつ）・ケーブルの注記
+  const SWITCH_SYMBOL: Record<string, { symbol: string; label: string }> = {
+    ds: { symbol: 'ds', label: 'DS' },
+    vcb: { symbol: 'vcb', label: 'VCB' },
+    lbs: { symbol: 'lbs-pf', label: 'LBS' },
+    'lbs-plain': { symbol: 'lbs', label: 'LBS' },
+    vcs: { symbol: 'vcs', label: 'VCS' },
+    as: { symbol: 'as', label: 'AS' },
+  };
+  for (const p of ['tr', 'cap', 'gen']) {
+    for (const side of ['Up', 'Dn']) {
+      for (const k of [1, 2, 3]) {
+        const sw = pickOwn(SWITCH_SYMBOL, String(answers[`${p}Cable${side}${k}`]));
+        d[`${p}${side}${k}Symbol`] = sw?.symbol ?? '';
+        d[`${p}${side}${k}Label`] = sw?.label ?? '';
+      }
+    }
+    d[`${p}CableInstallationLabel`] = pickOwn(CABLE_INSTALLATION_LABEL, String(answers[`${p}CableInstallation`])) ?? '';
+    d[`${p}CableSpecLine`] = cableSpec(answers[`${p}CableVoltage`], answers[`${p}CableCrossSection`], answers[`${p}CableLength`], answers[`${p}CableLengthApprox`]);
+  }
+
   // 電動機（台ごとの答えで組み立てる）：途中のケーブルの注記は、ほかのケーブルと同じ書き方。容量は「500kW」、LBSのパワーヒューズは「PF 30A」
   d.motorCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.motorCableInstallation)) ?? '';
   d.motorCableSpecLine = cableSpec(answers.motorCableVoltage, answers.motorCableCrossSection, answers.motorCableLength, answers.motorCableLengthApprox);

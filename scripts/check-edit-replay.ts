@@ -113,6 +113,30 @@ const INPUT: { name: string; run: (a: Answers, r: Rnd) => Answers }[] = [
   { name: '台数を変える', run: (a, r) => dropHiddenChoices({ ...a, [pick(['transformerCount', 'capacitorCount', 'relayCount', 'vtSetCount', 'ctSetCount', 'feederCount'], r)]: String(Math.floor(r() * 4)) } as Answers) },
   { name: '主遮断装置を替える', run: (a) => dropHiddenChoices({ ...a, mainBreakerForm: a.mainBreakerForm === 'cb' ? 'pfs' : 'cb' } as Answers) },
   { name: '区分開閉器を替える', run: (a, r) => dropHiddenChoices({ ...a, sectionalizer: pick(['pas', 'pgs', 'ugs', 'none'], r) } as Answers) },
+  {
+    name: '機器の電源側にケーブルを付ける',
+    run: (a, r) => {
+      const dev = pick(['tr', 'cap', 'gen'], r);
+      const sw = ['ds', 'vcb', 'lbs', 'vcs', 'as'];
+      const out: Record<string, unknown> = { ...a, [`${dev}HasCable`]: 'yes', [`${dev}CableInstallation`]: pick(['buried', 'overhead'], r) };
+      if (dev === 'cap') out.hasCapacitor = 'yes';
+      if (dev === 'gen') Object.assign(out, { hasGenerator: 'yes', generatorTransformer: 'bus' });
+      for (const side of ['Up', 'Dn']) {
+        let ok = true;
+        const used: string[] = [];
+        for (let k = 1; k <= 3 && ok; k++) {
+          const rest = sw.filter((x) => !used.includes(x));
+          if (r() < 0.45 || rest.length === 0) ok = false;
+          else {
+            const v = pick(rest, r);
+            used.push(v);
+            out[`${dev}Cable${side}${k}`] = v;
+          }
+        }
+      }
+      return dropHiddenChoices(out as Answers);
+    },
+  },
   { name: '途中の開閉器', run: (a, r) => dropHiddenChoices({ ...a, midSwitch: 'yes', midKind: pick(['pas', 'pgs', 'as'], r), midPlace: 'pole' } as Answers) },
 ];
 

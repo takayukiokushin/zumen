@@ -31,8 +31,8 @@ const splitId = (id: string): { area: boolean; base: string } => {
   return { area: !!m, base: (m ? m[1]! : id).replace(/-\d+$/, '') };
 };
 
-/** 引込・途中の開閉器の前後のケーブルは、必ず高圧（受電設備の引込ケーブル） */
-const HV_BASES = new Set(['cable-head-source', 'cable-head-site', 'pre-cable-source', 'pre-cable-site', 'mid-cable-source', 'mid-cable-site']);
+/** 引込・途中の開閉器の前後のケーブル・変圧器／コンデンサ／発電機の電源側のケーブルは、必ず高圧 */
+const HV_BASES = new Set(['cable-head-source', 'cable-head-site', 'pre-cable-source', 'pre-cable-site', 'mid-cable-source', 'mid-cable-site', 'tr-cable-source', 'tr-cable-site', 'cap-cable-source', 'cap-cable-site', 'gen-cable-source', 'gen-cable-site']);
 
 /** ケーブルヘッドの文字に、1000V 以上の定格電圧が書いてあるか */
 function labelVoltage(h: DocSymbol): number | null {

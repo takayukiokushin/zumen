@@ -8,6 +8,9 @@ import type { DrawingGround } from './ground.ts';
 import type { DrawingLink } from './link.ts';
 import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
 
+/** ケーブルの、機器側の端末（180°回して、頂点をケーブル側＝上に向ける）：電動機・変圧器・コンデンサ・発電機 */
+const isCableSiteRole = (role: string): boolean => role === 'motor-cable-site' || /^(tr|cap|gen)-cable-site$/.test(role);
+
 /**
  * 構成データ（上流→下流に並んだ機器）を、図面上の座標に落とす。
  *
@@ -350,7 +353,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       for (const item of inLane) {
         const def = getSymbol(item.symbolId);
         // 電動機のケーブルの、向かい側の端末は、180°回して、頂点をケーブル側（上）に向ける
-        const rot = item.role === 'motor-cable-site' ? 180 : 0;
+        const rot = isCableSiteRole(item.role) ? 180 : 0;
         const inP = portOf(def, 'in') ?? def.ports[0]!;
         const outP = portOf(def, 'out', 'sec');
         const entry = rot === 180 && outP ? { x: flip(def, outP.x, outP.y, rot)[0], y: flip(def, outP.x, outP.y, rot)[1] } : inP;
@@ -909,7 +912,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
         for (const [i, item] of inLane.entries()) {
           const def = getSymbol(item.symbolId);
           // 電動機のケーブルの、向かい側の端末は、180°回して、頂点をケーブル側（上）に向ける
-          const rot = item.role === 'motor-cable-site' ? 180 : 0;
+          const rot = isCableSiteRole(item.role) ? 180 : 0;
           const inP = portOf(def, 'in') ?? portOf(def, 'out')!;
           const outP = portOf(def, 'out');
           const entry = rot === 180 && outP ? { x: flip(def, outP.x, outP.y, rot)[0], y: flip(def, outP.x, outP.y, rot)[1] } : inP;

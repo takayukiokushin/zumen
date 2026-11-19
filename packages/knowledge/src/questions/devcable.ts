@@ -1,0 +1,128 @@
+import type { Condition } from '../condition.ts';
+import type { Choice, Question } from './types.ts';
+import { YES_NO, connectionCableQuestions } from './common.ts';
+
+/**
+ * 変圧器・高圧コンデンサ（進相設備）・高圧の発電機の、電源側の高圧ケーブル（第18弾 F）。
+ *
+ * 入力の流れ（それぞれの機器の、手前のPC・LBSの質問の前に出る）：
+ *   「電源側に、高圧ケーブルがありますか？」（最初は「あり」だけ） → 「あり」を選ぶと、
+ *   ケーブルの手前の開閉器（1つ目〜3つ目。選んだ順に、上から並ぶ） → ケーブルの入力欄（引込・電動機・エリア間と同じ部品）
+ *   → ケーブルのあとの開閉器（1つ目〜3つ目）。
+ * 開閉器は、「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」のような組み合わせを、選ぶ順番で作る（組み合わせごとの選択肢は持たない）。
+ * 同じ開閉器は、1つの並びに、2回は選べない。ケーブルの途中には、何も入れない（ZCT以外は入れない決まり）。
+ */
+
+/** 開閉器の選択肢（1つ目〜3つ目で共通）。「なし」を選ぶと、そのあとの欄は出ない */
+const SWITCHES: Choice[] = [
+  { value: 'ds', label: 'DS' },
+  { value: 'vcb', label: 'VCB' },
+  { value: 'lbs', label: 'LBS（PF付）' },
+  { value: 'lbs-plain', label: 'LBS（PFなし）', share: '実務では、ほとんど使わない' },
+  { value: 'vcs', label: 'VCS' },
+  { value: 'as', label: 'AS（気中開閉器）' },
+];
+
+interface Device {
+  /** 質問IDの先頭（tr・cap・gen） */
+  p: 'tr' | 'cap' | 'gen';
+  group: string;
+  /** その機器があるとき */
+  base?: Condition;
+  label: string;
+  help: string;
+  /** この質問を、この質問IDの後ろに入れる（その機器の、手前のPC・LBSなどの質問の後ろ） */
+  after: string;
+}
+
+const DEVICES: Device[] = [
+  {
+    p: 'tr',
+    group: 'transformer',
+    label: '変圧器の電源側に、高圧ケーブルがありますか？',
+    help: '母線から変圧器までの間に、高圧ケーブルがあるとき（オープンフレーム式の電気室で、離れた場所の変圧器へ、ケーブルで送る場合など）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい',
+    after: 'trHasLbs',
+  },
+  {
+    p: 'cap',
+    group: 'compensation',
+    base: { key: 'hasCapacitor', eq: 'yes' },
+    label: 'このコンデンサの電源側に、高圧ケーブルがありますか？',
+    help: '母線からコンデンサ（リアクトル）までの間に、高圧ケーブルがあるとき。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい',
+    after: 'capHasVcs',
+  },
+  {
+    p: 'gen',
+    group: 'generator',
+    base: { key: 'generatorTransformer', eq: 'bus' },
+    label: 'この発電機の電源側に、高圧ケーブルがありますか？',
+    help: '高圧母線から発電機までの間に、高圧ケーブルがあるとき（接続先が「高圧母線から接続する」のときだけ）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい',
+    after: 'generatorTransformer',
+  },
+];
+
+const all = (...c: (Condition | undefined)[]): Condition => ({ all: c.filter((x): x is Condition => x !== undefined) });
+
+function questionsOf(d: Device): Question[] {
+  const has = `${d.p}HasCable`;
+  const hasCable: Condition = all(d.base, { key: has, eq: 'yes' });
+  const slots = (side: 'Up' | 'Dn'): Question[] =>
+    [1, 2, 3].map((k): Question => {
+      const id = `${d.p}Cable${side}${k}`;
+      const earlier = [1, 2, 3].filter((n) => n < k).map((n) => `${d.p}Cable${side}${n}`);
+      return {
+        id,
+        noTrend: true,
+        group: d.group,
+        section: '高圧ケーブル',
+        label: side === 'Up' ? `ケーブルの手前の開閉器（${k}つ目）` : `ケーブルのあとの開閉器（${k}つ目）`,
+        type: 'select',
+        // 前の欄で選んだ開閉器は、選べない（同じ並びに、2回は入らない）
+        options: [
+          { value: 'none', label: 'なし' },
+          ...SWITCHES.map((o) => ({ ...o, ...(earlier.length > 0 ? { showIf: { all: earlier.map((e) => ({ not: { key: e, eq: o.value } })) } as Condition } : {}) })),
+        ],
+        defaultValue: 'none',
+        dropdown: true,
+        // 1つ目は、ケーブルが「あり」のとき。2つ目以降は、前の欄で開閉器を選んだとき
+        showIf: all(hasCable, ...(k > 1 ? [{ key: `${d.p}Cable${side}${k - 1}`, in: SWITCHES.map((o) => o.value) } as Condition] : [])),
+        ask: 'always',
+        help:
+          k === 1
+            ? side === 'Up'
+              ? '母線から、ケーブルの電源側の端末までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など。1つ目に、いちばん母線に近いものを選ぶ）。付かないときは「なし」'
+              : 'ケーブルの機器側の端末から、機器（手前のPC・LBSがあれば、その手前）までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など）。付かないときは「なし」'
+            : '1つ目の次に付く開閉器。付かないときは「なし」',
+      };
+    });
+  return [
+    {
+      id: has,
+      group: d.group,
+      label: d.label,
+      type: 'select',
+      options: YES_NO,
+      defaultValue: 'no',
+      ...(d.base ? { showIf: d.base } : {}),
+      ask: 'ai-uncertain',
+      help: d.help,
+    },
+    ...slots('Up'),
+    // ケーブルの入力欄（種類・構造・定格電圧・断面積・長さ・約）は、引込・電動機・エリア間と同じ部品
+    ...connectionCableQuestions({ prefix: d.p, group: d.group, section: '高圧ケーブル', when: hasCable }),
+    ...slots('Dn'),
+  ];
+}
+
+/** 機器ごとの質問の組：その質問IDの後ろに入れる */
+export const DEVICE_CABLE_QUESTIONS: { after: string; questions: Question[] }[] = DEVICES.map((d) => ({ after: d.after, questions: questionsOf(d) }));
+
+/** 質問の並び questions に、機器ごとの高圧ケーブルの質問を、それぞれの位置（after の質問の後ろ）に入れた並びを返す */
+export function withDeviceCableQuestions(questions: Question[]): Question[] {
+  const out: Question[] = [];
+  for (const q of questions) {
+    out.push(q);
+    for (const g of DEVICE_CABLE_QUESTIONS) if (g.after === q.id) out.push(...g.questions);
+  }
+  return out;
+}

@@ -2,6 +2,22 @@
 // キーは、質問（packages/knowledge）と記号（packages/symbols）にある日本語の文そのもの。
 // 図面に印刷される文字は、ここでは訳さない（日本語のまま）。足りないものは、検査（check-i18n）が見つける。
 const data: Record<string, string> = {
+  "変圧器の電源側に、高圧ケーブルがありますか？": "Is there an HV cable on the source side of the transformer?",
+  "母線から変圧器までの間に、高圧ケーブルがあるとき（オープンフレーム式の電気室で、離れた場所の変圧器へ、ケーブルで送る場合など）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "When there is an HV cable between the busbar and the transformer (for example, in an open-frame electrical room that sends power by cable to a transformer placed some distance away). Press “Yes” to show the switches before and after the cable and the cable input fields. Normally, leave it alone.",
+  "ケーブルの手前の開閉器（1つ目）": "Switch before the cable (1st)",
+  "母線から、ケーブルの電源側の端末までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など。1つ目に、いちばん母線に近いものを選ぶ）。付かないときは「なし」": "A switch between the busbar and the cable terminal on the source side. They are drawn from the top in the order you choose (for example DS + LBS, LBS + VCS, DS + LBS + VCS; choose the one closest to the busbar first). Choose “None” if there is no switch.",
+  "高圧ケーブル": "HV cable",
+  "ケーブルの手前の開閉器（2つ目）": "Switch before the cable (2nd)",
+  "1つ目の次に付く開閉器。付かないときは「なし」": "A switch after the 1st one. Choose “None” if there is no switch.",
+  "ケーブルの手前の開閉器（3つ目）": "Switch before the cable (3rd)",
+  "ケーブルのあとの開閉器（1つ目）": "Switch after the cable (1st)",
+  "ケーブルの機器側の端末から、機器（手前のPC・LBSがあれば、その手前）までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など）。付かないときは「なし」": "A switch between the cable terminal on the equipment side and the equipment (before the PC or LBS in front of it, if any). They are drawn from the top in the order you choose (for example DS + LBS, LBS + VCS, DS + LBS + VCS). Choose “None” if there is no switch.",
+  "ケーブルのあとの開閉器（2つ目）": "Switch after the cable (2nd)",
+  "ケーブルのあとの開閉器（3つ目）": "Switch after the cable (3rd)",
+  "このコンデンサの電源側に、高圧ケーブルがありますか？": "Is there an HV cable on the source side of this capacitor?",
+  "母線からコンデンサ（リアクトル）までの間に、高圧ケーブルがあるとき。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "When there is an HV cable between the busbar and the capacitor (reactor). Press “Yes” to show the switches before and after the cable and the cable input fields. Normally, leave it alone.",
+  "この発電機の電源側に、高圧ケーブルがありますか？": "Is there an HV cable on the source side of this generator?",
+  "高圧母線から発電機までの間に、高圧ケーブルがあるとき（接続先が「高圧母線から接続する」のときだけ）。「あり」を押すと、ケーブルの手前・あとの開閉器と、ケーブルの入力欄が出る。ふだんは、何も押さなくてよい": "When there is an HV cable between the HV busbar and the generator (only when the connection is “connected from the HV busbar”). Press “Yes” to show the switches before and after the cable and the cable input fields. Normally, leave it alone.",
   "お客様・現場": "Customer & site",
   "表題欄と図面の基本情報": "Title block and basic drawing information",
   "引込元": "Service source",
