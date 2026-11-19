@@ -75,7 +75,7 @@ const data: Record<string, string> = {
   "電力会社のケーブル": "Câble de la compagnie d’électricité",
   "区分開閉器が無いとき、財産分界点は、引込ケーブルが誰のものかで決まる。お客様のケーブルなら、ケーブルの電源側（引込点の下）。電力会社のケーブルなら、ケーブルの負荷側で、DSの一次側（DSが無ければ、LBSの一次側）。区分開閉器が無いときは、責任分界点は主遮断装置（LBS・VCB）の本体なので、「3点一致ですか？」は聞かず、財産分界点（DSの一次側）と責任分界点（主遮断装置の本体）を、別々の線で描く": "En l’absence d’interrupteur de section, le point de démarcation de propriété dépend du propriétaire du câble de branchement. Câble du client : côté source du câble (sous le point de branchement). Câble de la compagnie : côté charge du câble, soit le côté primaire du sectionneur DS (ou du LBS s’il n’y a pas de DS). Sans interrupteur de section, le point de démarcation de responsabilité se situe sur l’appareil de coupure principal (LBS ou VCB) lui-même ; la question « Les 3 points coïncident-ils ? » n’est donc pas posée, et le point de propriété (côté primaire du DS) et le point de responsabilité (l’appareil de coupure principal) sont tracés par deux lignes distinctes.",
   "VCTを置く位置は？": "Où placer le VCT ?",
-  "VCTが2台のときは、2台とも、同じ位置に置く。同じ位置にVT・CTがあるときは、VCTを電源側（上）に置く": "Avec 2 VCT, les deux sont placés à la même position. Si un VT ou un CT se trouve à la même position, le VCT est placé côté source (au-dessus).",
+  "VCTが2台のときは、2台とも、同じ位置に置く。同じ位置にVT・CTがあるときは、VCTを電源側（上）に置く。区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点がVCTの下に来るので、主遮断装置より下（VCB・LBSの次・変圧器の手前）には置けない": "Avec 2 VCT, les deux sont placés à la même position. Si un VT ou un CT se trouve à la même position, le VCT est placé côté source (au-dessus). Le point de démarcation de propriété se situe sous le VCT : sans interrupteur de section et avec un câble de branchement appartenant au distributeur, le VCT ne peut pas être placé après le dispositif de coupure principal (après le VCB / LBS, ou juste avant le transformateur).",
   "ケーブルとDSの間": "Entre le câble et le sectionneur (DS)",
   "ケーブルとLBSの間": "Entre le câble et le LBS",
   "0（なし）": "0 (aucun)",
@@ -926,5 +926,6 @@ const data: Record<string, string> = {
   "離れた場所（受電設備のところなど）": "À distance (par ex. au niveau de l’installation de réception)",
   "区分開閉器から、この開閉器までのケーブル。受電設備までの「引込ケーブル」は、これとは別に、これまでどおり": "Le câble entre l’interrupteur de section et cet interrupteur. Le câble de branchement vers l’installation de réception reste distinct, comme avant.",
   "ケーブル（区分開閉器 → この開閉器）": "Câble (interrupteur de section → cet interrupteur)",
+  "VCTの置き場所が「主遮断装置（VCB・LBS）より下」になっていますが、区分開閉器が「なし」で、引込ケーブルが電力会社のものなので、その位置には置けません（財産分界点が、責任分界点より下流になるため）。「ケーブルの次」として描いています。置き場所を選び直してください。": "La position du VCT est réglée sous le dispositif de coupure principal (VCB / LBS), mais sans interrupteur de section et avec un câble de branchement appartenant au distributeur, il ne peut pas y être placé (le point de démarcation de propriété serait en aval du point de démarcation de responsabilité). Il est dessiné « après le câble ». Choisissez à nouveau la position.",
 };
 export default data;

@@ -81,7 +81,7 @@ const data: Record<string, string> = {
   "電力会社のケーブル": "Power company’s cable",
   "区分開閉器が無いとき、財産分界点は、引込ケーブルが誰のものかで決まる。お客様のケーブルなら、ケーブルの電源側（引込点の下）。電力会社のケーブルなら、ケーブルの負荷側で、DSの一次側（DSが無ければ、LBSの一次側）。区分開閉器が無いときは、責任分界点は主遮断装置（LBS・VCB）の本体なので、「3点一致ですか？」は聞かず、財産分界点（DSの一次側）と責任分界点（主遮断装置の本体）を、別々の線で描く": "When there is no sectionalizing switch, the property demarcation point depends on who owns the service cable. Customer’s cable: the source side of the cable (below the point of supply). Power company’s cable: the load side of the cable, i.e. the primary side of the DS (or of the LBS if there is no DS). With no sectionalizing switch, the responsibility demarcation point is the main breaking device itself (LBS or VCB), so “Do the 3 points coincide?” is not asked; the property demarcation point (primary side of the DS) and the responsibility demarcation point (the main breaking device itself) are drawn as separate lines.",
   "VCTを置く位置は？": "Where is the VCT placed?",
-  "VCTが2台のときは、2台とも、同じ位置に置く。同じ位置にVT・CTがあるときは、VCTを電源側（上）に置く": "With 2 VCTs, both are placed at the same position. If a VT or CT is at the same position, the VCT goes on the source side (above).",
+  "VCTが2台のときは、2台とも、同じ位置に置く。同じ位置にVT・CTがあるときは、VCTを電源側（上）に置く。区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点がVCTの下に来るので、主遮断装置より下（VCB・LBSの次・変圧器の手前）には置けない": "With 2 VCTs, both are placed at the same position. If a VT or CT is at the same position, the VCT goes on the source side (above). The property demarcation point falls below the VCT, so when there is no sectionalizing switch and the service cable belongs to the utility, the VCT cannot be placed below the main breaking device (after the VCB / LBS, or just before the transformer).",
   "ケーブルとDSの間": "Between the cable and the DS",
   "ケーブルとLBSの間": "Between the cable and the LBS",
   "0（なし）": "0 (none)",
@@ -932,5 +932,6 @@ const data: Record<string, string> = {
   "離れた場所（受電設備のところなど）": "Away from it (e.g. at the receiving equipment)",
   "区分開閉器から、この開閉器までのケーブル。受電設備までの「引込ケーブル」は、これとは別に、これまでどおり": "The cable from the sectionalizing switch to this switch. The service cable to the receiving equipment is separate, as before.",
   "ケーブル（区分開閉器 → この開閉器）": "Cable (sectionalizing switch → this switch)",
+  "VCTの置き場所が「主遮断装置（VCB・LBS）より下」になっていますが、区分開閉器が「なし」で、引込ケーブルが電力会社のものなので、その位置には置けません（財産分界点が、責任分界点より下流になるため）。「ケーブルの次」として描いています。置き場所を選び直してください。": "The VCT position is set below the main breaking device (VCB / LBS), but with no sectionalizing switch and a utility-owned service cable it cannot be placed there (the property demarcation point would fall downstream of the responsibility demarcation point). It is drawn as “after the cable”. Please choose the position again.",
 };
 export default data;

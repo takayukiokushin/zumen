@@ -1,5 +1,5 @@
 import type { Question } from './types.ts';
-import { CABLE_CROSS_SECTION_OPTIONS, CABLE_EXISTS, CABLE_STRUCTURE_OPTIONS, CABLE_VOLTAGE_OPTIONS, YES_NO, YES_NO_Q } from './common.ts';
+import { CABLE_CROSS_SECTION_OPTIONS, CABLE_EXISTS, CABLE_STRUCTURE_OPTIONS, CABLE_VOLTAGE_OPTIONS, PROPERTY_AT_DS, YES_NO, YES_NO_Q } from './common.ts';
 
 /** 質問の定義：PAS、VCT、引込ケーブル、受電設備エリア */
 export const RECEIVING_QUESTIONS: Question[] = [
@@ -167,14 +167,15 @@ export const RECEIVING_QUESTIONS: Question[] = [
       { value: 'cable', label: 'ケーブルとDSの間', showIf: { key: 'mainBreakerForm', eq: 'cb' } },
       { value: 'cable', label: 'ケーブルとLBSの間', showIf: { not: { key: 'mainBreakerForm', eq: 'cb' } } },
       { value: 'ds-vcb', label: 'DSとVCBの間', showIf: { key: 'mainBreakerForm', eq: 'cb' } },
-      { value: 'vcb-ct', label: 'VCBとCTの間', showIf: { key: 'mainBreakerForm', eq: 'cb' } },
-      { value: 'lbs-ct', label: 'LBSの次（LBSとCTの間）', showIf: { not: { key: 'mainBreakerForm', eq: 'cb' } } },
-      { value: 'ct-bus', label: '変圧器の手前（CTの下・高圧母線の上）' },
+      // 区分開閉器が「なし」で、電力会社のケーブルのときは、主遮断装置より下には置けない（財産分界点が、責任分界点より下流になるため）
+      { value: 'vcb-ct', label: 'VCBとCTの間', showIf: { all: [{ key: 'mainBreakerForm', eq: 'cb' }, { not: PROPERTY_AT_DS }] } },
+      { value: 'lbs-ct', label: 'LBSの次（LBSとCTの間）', showIf: { all: [{ not: { key: 'mainBreakerForm', eq: 'cb' } }, { not: PROPERTY_AT_DS }] } },
+      { value: 'ct-bus', label: '変圧器の手前（CTの下・高圧母線の上）', showIf: { not: PROPERTY_AT_DS } },
     ],
     defaultValue: 'cable',
     showIf: { all: [{ key: 'vctLocation', eq: 'indoor' }, { not: { key: 'mainBreakerForm', eq: 'pole-top' } }] },
     ask: 'ai-uncertain',
-    help: 'VCTが2台のときは、2台とも、同じ位置に置く。同じ位置にVT・CTがあるときは、VCTを電源側（上）に置く',
+    help: 'VCTが2台のときは、2台とも、同じ位置に置く。同じ位置にVT・CTがあるときは、VCTを電源側（上）に置く。区分開閉器が「なし」で、引込ケーブルが電力会社のものなら、財産分界点がVCTの下に来るので、主遮断装置より下（VCB・LBSの次・変圧器の手前）には置けない',
   },
   {
     id: 'vctCount',

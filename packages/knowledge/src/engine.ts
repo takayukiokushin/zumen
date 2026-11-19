@@ -3,6 +3,7 @@ import { PCS_INPUT_MAX, countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
 import { LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 import { evaluate, fillTemplate } from './condition.ts';
+import { PROPERTY_AT_DS, VCT_BELOW_BREAKER } from './questions/common.ts';
 import { BLANK_DEFAULTS, QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
 import { AREA_CHAIN, BLANK_AREA_GATES, BLANK_CHAIN_GATE, BLANK_GATES, CHAIN_BY_FORM, CT_SHOWN, DOWNSTREAM, EXTRAS, FEEDERS, MAIN_GROUND_ON, SENDOUT, TRANSFORMER, UPSTREAM } from './composition.ts';
@@ -1186,7 +1187,10 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
       }
     }
   }
-  return placeVct(placeByTap(arrangeInstruments(out)), String(answers.vctTap ?? 'cable'));
+  // 区分開閉器なし＋電力会社のケーブルのときは、VCTを主遮断装置より下には置けない（古い案件に、その位置が残っていても、「ケーブルの次」として描く）
+  const vctTap = String(answers.vctTap ?? 'cable');
+  const vctAt = evaluate(PROPERTY_AT_DS, answers) && (VCT_BELOW_BREAKER as readonly string[]).includes(vctTap) ? 'cable' : vctTap;
+  return placeVct(placeByTap(arrangeInstruments(out)), vctAt);
 }
 
 
@@ -1488,6 +1492,13 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
   }
   // 接地コンデンサ（GC）があるのに、主遮断装置の地絡継電器（GR・DGR）が無いとき：GCは、ZCTの電源側につなぐ機器なので、確認を促す（第13弾 項目21）
   const dv = withDerived(view);
+  // VCTの置き場所が、主遮断装置より下になっているのに、区分開閉器なし＋電力会社のケーブルのとき（古い案件）：その位置には置けないので、「ケーブルの次」として描いている
+  if (evaluate({ key: 'vctLocation', eq: 'indoor' }, dv) && evaluate(PROPERTY_AT_DS, dv) && (VCT_BELOW_BREAKER as readonly string[]).includes(String(view.vctTap ?? ''))) {
+    out.push({
+      group: 'vct',
+      text: 'VCTの置き場所が「主遮断装置（VCB・LBS）より下」になっていますが、区分開閉器が「なし」で、引込ケーブルが電力会社のものなので、その位置には置けません（財産分界点が、責任分界点より下流になるため）。「ケーブルの次」として描いています。置き場所を選び直してください。',
+    });
+  }
   if (dv.hasGc === 'yes' && (evaluate({ key: 'intakeVcb', eq: 'yes' }, dv) || evaluate({ key: 'intakeLbs', eq: 'yes' }, dv)) && !evaluate(MAIN_GROUND_ON, dv)) {
     out.push({
       group: 'receiving',

@@ -1135,6 +1135,26 @@ console.log('\n■ 範囲選択・複数選択');
   console.log(`  区分開閉器（PAS・PGS・UGS）× 途中の開閉器（PAS・PGS・AS）× 取り付け場所 × GR・DGR × 主遮断装置（CB形・PFS形・電柱上）：部品・並び・線と文字が重ならない（${n}通り）`);
 }
 
+/* ---------- 区分開閉器なし＋電力会社のケーブル：財産分界点の線が、責任分界点（主遮断装置）より上（第17弾 項目7の調査1） ---------- */
+{
+  let n = 0;
+  for (const form of ['cb', 'pfs']) {
+    for (const owner of ['utility', 'customer']) {
+      for (const tap of ['cable', 'ds-vcb', 'vcb-ct', 'lbs-ct', 'ct-bus']) {
+        const a: Answers = { ...answers, mainBreakerForm: form, hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', areaCount: '1', sectionalizer: 'none', groundCabinet: 'yes', groundCabinetType: 'mold-discon', cableInstallation: 'buried', cableOwner: owner, vctLocation: 'indoor', vctTap: tap };
+        const d = layout(buildComposition(a), a);
+        const property = d.symbols.find((s) => s.role === 'boundary-ds' || s.role === 'boundary-property');
+        const safety = d.symbols.find((s) => s.role === 'boundary-safety');
+        const label = `${form}・${owner}・VCT=${tap}`;
+        if (!property || !safety) { fail(`${label}：財産分界点・責任分界点の線が描かれていません`); continue; }
+        if (!(property.y < safety.y)) fail(`${label}：財産分界点の線が、責任分界点の線より下にあります`);
+        else n++;
+      }
+    }
+  }
+  console.log(`  財産分界点の線は、いつも、責任分界点の線より上（${n}通り。区分開閉器なし・CB形／PFS形・ケーブルの持ち主・VCTの置き場所）`);
+}
+
 /* ---------- LAの上位（上側）の開閉器：開閉器の真下にLA。縦につながる ---------- */
 {
   const base: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'yes', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy' };

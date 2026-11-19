@@ -275,3 +275,10 @@ export const MID_CABLE: Condition = { all: [MID_DRAW, { not: { key: 'midPlace', 
 export const MID_POLE: Condition = { all: [MID_PAS, { key: 'midPlace', eq: 'pole' }] };
 /** 途中のPAS・PGSに、GR・DGR（制御装置）が付くとき */
 export const MID_SOG: Condition = { all: [MID_PAS, { key: 'midControl', in: ['gr', 'dgr'] }] };
+
+/**
+ * VCTの置き場所のうち、主遮断装置（VCB・LBS）より下流になるもの（第17弾 項目7の調査1）。
+ * 区分開閉器が「なし」で、引込ケーブルが電力会社のもの（PROPERTY_AT_DS）のとき、財産分界点の線は、VCT（電力会社の持ち物）の真下に引くので、
+ * VCTが主遮断装置より下にあると、財産分界点が責任分界点（主遮断装置の本体）より下流になり、電気の面で矛盾する。この置き場所は、その構成では、選べない
+ */
+export const VCT_BELOW_BREAKER = ['vcb-ct', 'lbs-ct', 'ct-bus'] as const;

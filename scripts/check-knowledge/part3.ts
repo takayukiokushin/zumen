@@ -662,8 +662,9 @@ console.log('\n■ 変圧器の初期値の自動入力（用途→結線方式�
       const seq = (a: Answers) => ordered({ ...none, vctLocation: 'indoor', vctCount: 1, ...a }).filter((r) => ['vct-indoor', 'boundary-ds', 'ds', 'main-breaker', 'ct'].includes(r)).join('>');
       ok(seq({}) === 'vct-indoor>boundary-ds>ds>main-breaker>ct', `VCTが初期位置のとき、分界線はVCTの下・DSの上のはずです（${seq({})}）`);
       ok(seq({ vctTap: 'ds-vcb' }) === 'ds>vct-indoor>boundary-ds>main-breaker>ct', `VCTをDSの次へ動かしたとき、分界線もVCTの真下に移るはずです（${seq({ vctTap: 'ds-vcb' })}）`);
-      ok(seq({ vctTap: 'vcb-ct' }) === 'ds>main-breaker>vct-indoor>boundary-ds>ct', `VCTをVCBの次へ動かしたとき、分界線もVCTの真下に移るはずです（${seq({ vctTap: 'vcb-ct' })}）`);
-      ok(seq({ vctTap: 'vcb-ct', vctCount: 2 }) === 'ds>main-breaker>vct-indoor>vct-indoor>boundary-ds>ct', `VCTが2台のとき、分界線は2台の下に移るはずです（${seq({ vctTap: 'vcb-ct', vctCount: 2 })}）`);
+      // VCBの次（主遮断装置より下）には置けない（財産分界点が、責任分界点より下流になるため）。残っていても、「ケーブルの次」として描く（第17弾 項目7の調査1）
+      ok(seq({ vctTap: 'vcb-ct' }) === 'vct-indoor>boundary-ds>ds>main-breaker>ct', `VCTをVCBの次へ動かしても、この構成では、ケーブルの次のままのはずです（${seq({ vctTap: 'vcb-ct' })}）`);
+      ok(seq({ vctTap: 'ds-vcb', vctCount: 2 }) === 'ds>vct-indoor>vct-indoor>boundary-ds>main-breaker>ct', `VCTが2台のとき、分界線は2台の下に移るはずです（${seq({ vctTap: 'ds-vcb', vctCount: 2 })}）`);
       // 動かせないとき（PFS形でDSが無いのに「DSとVCBの間」を選んだとき）は、VCTも分界線も動かない
       const pfsNoDs = (a: Answers) => ordered({ ...none, mainBreakerForm: 'pfs', vctLocation: 'indoor', ...a }).filter((r) => ['vct-indoor', 'boundary-ds', 'main-breaker'].includes(r)).join('>');
       ok(pfsNoDs({ vctTap: 'ds-vcb' }) === pfsNoDs({}), 'DSが無くてVCTが動けないのに、分界線だけ動いています');
@@ -1119,4 +1120,32 @@ console.log('\n■ 区分開閉器と主遮断装置の間の開閉器（第17�
   const blankMid = buildComposition({ startMode: 'blank', sectionalizer: 'pas', midSwitch: 'yes', midKind: 'pas', mainBreakerForm: 'cb' } as Answers).map((i) => i.role);
   ok(!blankMid.some((r) => r.startsWith('mid-')), '白紙の案件で、取り付け場所を答える前に、途中の開閉器が描かれています');
   if (state.failed === 0) console.log('  質問の出し方・選べる取り付け場所・図面の並び・文字・分界点の線・白紙の案件の扱い：すべて想定どおり');
+}
+
+console.log('\n■ 区分開閉器なし＋電力会社のケーブルでは、VCTを主遮断装置より下に置けない（第17弾 項目7の調査1）');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  const mk = (extra: Answers): Answers => ({ ...answers, areaCount: '1', sectionalizer: 'none', groundCabinet: 'yes', groundCabinetType: 'mold-discon', cableInstallation: 'buried', vctLocation: 'indoor', ...extra });
+  const opts = (a: Answers) => {
+    const view = normalizeAnswers(withAutoValues({ ...a }));
+    return QUESTIONS.find((q) => q.id === 'vctTap')!.options!.filter((o) => evaluate(o.showIf, view)).map((o) => o.value).join(',');
+  };
+  ok(opts(mk({ mainBreakerForm: 'cb', cableOwner: 'utility' })) === 'cable,ds-vcb', `CB形・電力会社のケーブル：選べる置き場所が違います（${opts(mk({ mainBreakerForm: 'cb', cableOwner: 'utility' }))}）`);
+  ok(opts(mk({ mainBreakerForm: 'pfs', cableOwner: 'utility' })) === 'cable', `PFS形・電力会社のケーブル：選べる置き場所が違います（${opts(mk({ mainBreakerForm: 'pfs', cableOwner: 'utility' }))}）`);
+  ok(opts(mk({ mainBreakerForm: 'cb', cableOwner: 'customer' })) === 'cable,ds-vcb,vcb-ct,ct-bus', `お客様のケーブルでは、全部選べるはずです（${opts(mk({ mainBreakerForm: 'cb', cableOwner: 'customer' }))}）`);
+  ok(opts(mk({ mainBreakerForm: 'cb', sectionalizer: 'pas' })) === 'cable,ds-vcb,vcb-ct,ct-bus', `区分開閉器が「あり」のときは、全部選べるはずです（${opts(mk({ mainBreakerForm: 'cb', sectionalizer: 'pas' }))}）`);
+  // 古い案件に、その位置が残っていても、「ケーブルの次」として描く（VCTは、財産分界点の線より上）。知らせも出る
+  const pos = (a: Answers) => buildComposition(a).map((i) => i.role);
+  for (const tap of ['vcb-ct', 'ct-bus']) {
+    const r = pos(mk({ mainBreakerForm: 'cb', cableOwner: 'utility', vctTap: tap }));
+    ok(r.indexOf('vct-indoor') < r.indexOf('boundary-ds') && r.indexOf('boundary-ds') < r.indexOf('main-breaker') && r.indexOf('main-breaker') < r.indexOf('boundary-safety'), `${tap}：VCTが、財産分界点の線より上、主遮断装置より上に、描かれていません（${r.filter((x) => /vct|boundary|^ds$|main-breaker/.test(x)).join('>')}）`);
+    ok(inputNotices(withAutoValues(mk({ mainBreakerForm: 'cb', cableOwner: 'utility', vctTap: tap }))).some((n) => n.group === 'vct'), `${tap}：置けない位置が残っているのに、知らせが出ません`);
+  }
+  const lbs = pos(mk({ mainBreakerForm: 'pfs', cableOwner: 'utility', vctTap: 'lbs-ct' }));
+  ok(lbs.indexOf('boundary-ds') < lbs.indexOf('main-breaker') && lbs.indexOf('vct-indoor') < lbs.indexOf('boundary-ds'), 'LBSの次：VCTが、財産分界点の線より上に、描かれていません');
+  // お客様のケーブル・区分開閉器ありは、これまでどおり、VCTが動く
+  const cust = pos(mk({ mainBreakerForm: 'cb', cableOwner: 'customer', vctTap: 'vcb-ct' }));
+  ok(cust.indexOf('vct-indoor') > cust.indexOf('main-breaker'), 'お客様のケーブルでは、VCTが、VCBの次に動くはずです');
+  ok(!inputNotices(withAutoValues(mk({ mainBreakerForm: 'cb', cableOwner: 'customer', vctTap: 'vcb-ct' }))).some((n) => n.group === 'vct'), 'お客様のケーブルなのに、置けないという知らせが出ています');
+  if (state.failed === 0) console.log('  選べる置き場所・古い案件の扱い（ケーブルの次として描く＋知らせ）・お客様のケーブル／区分開閉器ありは、そのまま：すべて想定どおり');
 }
