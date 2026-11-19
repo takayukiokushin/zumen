@@ -55,7 +55,22 @@ class UnionFind {
 export function followAutoWires(generated: Doc, work: Doc): Doc {
   const genWires = generated.items.filter((i): i is DocWire => i.kind === 'wire' && !i.fan);
   const workWire = new Map(work.items.filter((i): i is DocWire => i.kind === 'wire').map((w) => [w.id, w]));
-  const wires = genWires.filter((w) => workWire.has(w.id));
+  const sameAnchor = (a: DocWire['at1'], b: DocWire['at1']) => (a?.item ?? '') === (b?.item ?? '') && (a?.port ?? '') === (b?.port ?? '');
+  // 記号を消したときに、上下の線が1本につながれて（つなぎ先が変わって）いる線は、作り直した直後の形ではなく、つなぎ直したあとの端の位置・つなぎ先を、元にする
+  // （そうしないと、つなぎ直した線が、短い元の形に戻って、端が浮く）（第18弾 C-4）
+  const wires = genWires
+    .filter((w) => workWire.has(w.id))
+    .map((w): DocWire => {
+      const cur = workWire.get(w.id)!;
+      const c1 = !sameAnchor(w.at1, cur.at1);
+      const c2 = !sameAnchor(w.at2, cur.at2);
+      if (!c1 && !c2) return w;
+      return {
+        ...w,
+        ...(c1 ? { x1: cur.x1, y1: cur.y1, at1: cur.at1 } : {}),
+        ...(c2 ? { x2: cur.x2, y2: cur.y2, at2: cur.at2 } : {}),
+      };
+    });
   if (wires.length === 0) return work;
 
   const sym = new Map(work.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((s) => [s.id, s]));
