@@ -232,6 +232,9 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
     const fixedG = axis === 'x' ? fixedGroupsX : fixedGroupsY;
     const lo = new Map<number, number>();
     const hi = new Map<number, number>();
+    // 下（右）の記号の、いちばん下（右）の辺と、上（左）の記号の、いちばん上（左）の辺（新しい位置と、作り直した直後の位置）
+    const loEdge = new Map<number, { n: number; o: number; at: number }>();
+    const hiEdge = new Map<number, { n: number; o: number; at: number }>();
     wires.forEach((w, wi) => {
       // y を決める線は横の線、x を決める線は縦の線
       if (!(axis === 'y' ? isH(w) : isV(w))) return;
@@ -256,8 +259,13 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
         const sHi = axis === 'y' ? b.g.y1 : b.g.x1;
         const tLo = axis === 'y' ? b.n.y0 : b.n.x0;
         const tHi = axis === 'y' ? b.n.y1 : b.n.x1;
-        if (at >= sHi - 0.5) lo.set(g, Math.max(lo.get(g) ?? -Infinity, tHi + (at - sHi) - at));
-        else if (at <= sLo + 0.5) hi.set(g, Math.min(hi.get(g) ?? Infinity, tLo - (sLo - at) - at));
+        if (at >= sHi - 0.5) {
+          lo.set(g, Math.max(lo.get(g) ?? -Infinity, tHi + (at - sHi) - at));
+          if (tHi > (loEdge.get(g)?.n ?? -Infinity)) loEdge.set(g, { n: tHi, o: sHi, at });
+        } else if (at <= sLo + 0.5) {
+          hi.set(g, Math.min(hi.get(g) ?? Infinity, tLo - (sLo - at) - at));
+          if (tLo < (hiEdge.get(g)?.n ?? Infinity)) hiEdge.set(g, { n: tLo, o: sLo, at });
+        }
       }
     });
     for (const g of new Set([...lo.keys(), ...hi.keys()])) {
@@ -265,6 +273,12 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
       const h = hi.get(g) ?? Infinity;
       const v = value.get(g)!;
       if (l <= h) value.set(g, Math.min(h, Math.max(l, v)));
+      else {
+        // 上と下の記号の間が、元の間隔を保てないほど縮んだとき：間の、元の割合の位置に置く（どちらの記号も突き抜けない）（第18弾 C-2）
+        const a = loEdge.get(g);
+        const b = hiEdge.get(g);
+        if (a && b && b.n - a.n > 1 && b.o - a.o > 0.01) value.set(g, a.n + ((b.n - a.n) * (a.at - a.o)) / (b.o - a.o) - a.at);
+      }
     }
   };
   keepSide('y');
