@@ -7,7 +7,7 @@ import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
 import { HearingForm } from './HearingForm.tsx';
-import { ColResizer, FORM_MIN, NAV_SPEC, PREVIEW_SPEC, loadPanelWidth, setPanelAccount } from './ColResizer.tsx';
+import { ColResizer, FORM_MIN, NAV_SPEC, PREVIEW_SPEC, loadPanelWidth, savePanelWidth, setPanelAccount } from './ColResizer.tsx';
 import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
 import { Editor } from './editor/Editor.tsx';
@@ -106,6 +106,23 @@ export function App() {
   setPanelAccount(user?.id);
   const [navW, setNavW] = useState(() => loadPanelWidth(NAV_SPEC));
   const [previewW, setPreviewW] = useState(() => loadPanelWidth(PREVIEW_SPEC));
+  /**
+   * どちらかの枠を広げた（または元に戻した）とき、入力欄を FORM_MIN 以上に保つために、もう一方の枠が入りきらなければ、
+   * もう一方を、最小の幅まで狭めて、その幅を覚える（広げた枠が、狭いほうに押されて、動かないように。第17弾 項目7）
+   */
+  const appBox = useRef<HTMLDivElement>(null);
+  const fitPanels = (changed: 'nav' | 'preview', w: number) => {
+    const box = appBox.current?.offsetWidth ?? 0;
+    if (box <= 0 || !showNav || !showPreview) return;
+    const other = changed === 'nav' ? previewW : navW;
+    const room = box - FORM_MIN - w;
+    if (other <= room) return;
+    const spec = changed === 'nav' ? PREVIEW_SPEC : NAV_SPEC;
+    const next = Math.max(spec.min, Math.round(room));
+    if (next === other) return;
+    savePanelWidth(spec, next);
+    (changed === 'nav' ? setPreviewW : setNavW)(next);
+  };
   // ログインの確認が終わって、利用者が分かったとき（別の利用者に替わったときも）、その利用者の幅を読み直す
   const accountId = user?.id;
   useEffect(() => {
@@ -899,6 +916,7 @@ export function App() {
                 </button>
               </div>
               <div
+                ref={appBox}
                 className={`app${showNav ? '' : ' no-nav'}${showPreview ? '' : ' no-preview'}`}
                 style={{ '--nav-w': `${navW}px`, '--preview-w': `${previewW}px` } as React.CSSProperties}
               >
@@ -910,10 +928,17 @@ export function App() {
                     width={navW}
                     grow="right"
                     className="panel-handle nav-handle"
-                    limit={(boxW) => boxW - (showPreview ? previewW : 0) - FORM_MIN}
+                    limit={(boxW) => boxW - (showPreview ? PREVIEW_SPEC.min : 0) - FORM_MIN}
                     panel={(h) => h.parentElement?.querySelector<HTMLElement>(':scope > .nav') ?? null}
-                    live={(w, box) => box.style.setProperty('--nav-w', `${w}px`)}
-                    onChange={setNavW}
+                    live={(w, box) => {
+                      box.style.setProperty('--nav-w', `${w}px`);
+                      // 「今の構成」が入りきらないぶんは、ドラッグの途中から、狭める（手を離したときの幅と、同じ見た目にする）
+                      if (showPreview) box.style.setProperty('--preview-w', `${Math.max(PREVIEW_SPEC.min, Math.min(previewW, box.offsetWidth - FORM_MIN - w))}px`);
+                    }}
+                    onChange={(w) => {
+                      setNavW(w);
+                      fitPanels('nav', w);
+                    }}
                   />
                 )}
                 {showPreview && (
@@ -922,10 +947,16 @@ export function App() {
                     width={previewW}
                     grow="left"
                     className="panel-handle preview-handle"
-                    limit={(boxW) => boxW - (showNav ? navW : 0) - FORM_MIN}
+                    limit={(boxW) => boxW - (showNav ? NAV_SPEC.min : 0) - FORM_MIN}
                     panel={(h) => h.parentElement?.querySelector<HTMLElement>(':scope > .preview') ?? null}
-                    live={(w, box) => box.style.setProperty('--preview-w', `${w}px`)}
-                    onChange={setPreviewW}
+                    live={(w, box) => {
+                      box.style.setProperty('--preview-w', `${w}px`);
+                      if (showNav) box.style.setProperty('--nav-w', `${Math.max(NAV_SPEC.min, Math.min(navW, box.offsetWidth - FORM_MIN - w))}px`);
+                    }}
+                    onChange={(w) => {
+                      setPreviewW(w);
+                      fitPanels('preview', w);
+                    }}
                   />
                 )}
               </div>

@@ -50,7 +50,7 @@ export function loadPanelWidth(spec: PanelSpec): number {
   }
 }
 
-function savePanelWidth(spec: PanelSpec, w: number): void {
+export function savePanelWidth(spec: PanelSpec, w: number): void {
   try {
     localStorage.setItem(keyOf(spec.name), String(w));
   } catch {

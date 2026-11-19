@@ -244,6 +244,7 @@ try {
         await showPanels();
         screens++;
         const z = c.scale;
+        const innerW = c.w;
         const w0 = await navW();
         const hb = await page.locator('.nav-handle').boundingBox({ timeout: 1500 }).catch(() => null);
         if (!hb || w0 < 0) {
@@ -280,9 +281,11 @@ try {
           await page.locator('.nav-handle').dblclick({ timeout: 1500, force: true }).catch(() => {});
           await sleep(300);
           const w3 = await navW();
-          if (Math.abs(w3 - 220 * z) > 2) {
+          // 元の幅は220。ただし、入力欄を480px以上に保つため、「今の構成」（最小220）を狭めても入りきらない画面（実効幅が900px台）では、入る幅まで
+          const want = Math.min(220, Math.max(160, innerW / z - 480 - 220));
+          if (Math.abs(w3 - want * z) > 2) {
             failed++;
-            problems.push(`${name}／入力：ダブルクリックしても、目次の幅が元（220）に戻りません（${Math.round(w3 / z)}）`);
+            problems.push(`${name}／入力：ダブルクリックしても、目次の幅が元（${Math.round(want)}）に戻りません（${Math.round(w3 / z)}）`);
           }
         }
       }
