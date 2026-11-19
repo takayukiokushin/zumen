@@ -1,7 +1,7 @@
 import type { Answers } from './condition.ts';
 import { evaluate } from './condition.ts';
 import { countOf, maxCountOf } from './counts.ts';
-import { areaCountOf, areaKey, areaView, effectiveAnswers, indexedKey, linkFromOf, viewAt, visibleQuestions } from './engine.ts';
+import { areaCountOf, areaKey, areaView, effectiveAnswers, feedChoices, indexedKey, linkFromOf, viewAt, visibleQuestions } from './engine.ts';
 import type { AskOptions } from './engine.ts';
 import { QUESTIONS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
@@ -89,7 +89,16 @@ export function sectionRows(ctx: RowsContext, group: QuestionGroup, area: number
       i === 0
         ? repeated
         : visibleQuestions(viewAt(view, i), { resolvedByAi: ctx.resolvedByAi }).filter((q) => q.group === group.id && q.id !== countKey && !q.shared);
-    const rows: InputRow[] = unitQuestions.map((q) => ({ key: keyOf(q.id, i), question: q, unit: i, area }));
+    const rows: InputRow[] = unitQuestions.flatMap((q): InputRow[] => {
+      // 接続元（ほかの機器の開閉器の二次側から分かれるか）：選べる開閉器があるときだけ出し、選択肢は、入力の内容から作る（第18弾 F-②）
+      const fm = /^(tr|cap|gen|motor)From$/.exec(q.id);
+      if (fm) {
+        const choices = feedChoices(view, fm[1]!, i);
+        if (choices.length === 0) return [];
+        return [{ key: keyOf(q.id, i), question: { ...q, options: [...(q.options ?? []), ...choices] }, unit: i, area }];
+      }
+      return [{ key: keyOf(q.id, i), question: q, unit: i, area }];
+    });
     if (rows.length === 0) continue;
     blocks.push({ index: i, rows });
   }

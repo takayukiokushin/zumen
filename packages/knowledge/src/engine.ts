@@ -761,6 +761,11 @@ export interface PlacedItem {
   /** 低圧の回線のとき、何本目か（0始まり） */
   lane?: number;
   /**
+   * 高圧母線から並列にぶら下がる機器の列が、母線ではなく、ほかの機器の列の開閉器の二次側から分かれて出るとき、その開閉器（「役割:何件目」。0始まり）。
+   * その列のすべての機器に付く。分かれる元は、自分より前の列の開閉器だけ（第18弾 F-②）
+   */
+  feedFrom?: string;
+  /**
    * 高圧母線から並列にぶら下がるときの「段」（Placement.row と同じ）。
    * 同じ段の機器は、どの列でも同じ高さに揃う。
    */
@@ -1108,6 +1113,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
         parent: item.parent ? asPlaced(item.parent) : undefined,
         attachTo: item.attachTo ? asPlaced(item.attachTo) : undefined,
         connectFrom: item.connectFrom?.map(asPlaced),
+        ...(item.feedFrom ? { feedFrom: asPlaced(item.feedFrom) } : {}),
         area: n,
         ...(item.kind === 'link'
           ? {
@@ -1144,6 +1150,92 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
     }
   }
   return blank ? dropOrphans(out) : out;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* 接続元（ほかの機器の開閉器の二次側から分かれる）の選択肢（第18弾 F-②）  */
+/* ------------------------------------------------------------------ */
+
+/** 分かれる元にできる、開閉器の役割（機器の列にある、手前・あとの開閉器と、機器の手前のPC・LBS・VCS） */
+const FEED_SOURCE_ROLE = /^((tr|cap|gen)-cable-(up|dn)[123]|(tr|cap)-(pc|lbs)|cap-vcs|motor-(ds|vcb|lbs|lbs-plain|vcs)|motor-cable-dn[123])$/;
+const FEED_DEVICE_ROLE: Record<string, string> = { tr: 'transformer', cap: 'capacitor', gen: 'generator', motor: 'motor' };
+const FEED_SWITCH_NAME: Record<string, string> = { ds: 'DS', vcb: 'VCB', lbs: 'LBS', 'lbs-pf': 'LBS', vcs: 'VCS', as: 'AS', pc: 'PC' };
+
+/**
+ * 機器（p：tr・cap・gen・motor の、unit 件目＝0始まり）が、接続元として選べる開閉器（自分より前の列の開閉器だけ）。
+ * view は、そのエリアの答え（件ごとの答えを含む）。value は「役割:何件目」、label は、画面が言葉に直す符号（feed:機器:何台目:開閉器:位置:何つ目）。
+ * 選べるものが無ければ、空。
+ */
+export function feedChoices(view: Answers, p: string, unit: number): { value: string; label: string }[] {
+  const devRole = FEED_DEVICE_ROLE[p];
+  if (!devRole) return [];
+  // 接続元の答えは、並べ替えに影響するので、いったん外して（どの機器も、母線から出るものとして）数える
+  const clean: Answers = {};
+  for (const [k, v] of Object.entries(view)) if (!/^(tr|cap|gen|motor)From(__\d+)?$/.test(k)) clean[k] = v;
+  const items = composeChain(withAutoValues(normalizeAnswers(clean)), [...TRANSFORMER, ...EXTRAS]).filter((i) => i.kind === 'parallel' && i.lane !== undefined);
+  const me = items.find((i) => i.role === devRole && (i.unit ?? 0) === unit);
+  if (!me) return [];
+  const out: { value: string; label: string; lane: number; row: number }[] = [];
+  for (const i of items) {
+    if (!FEED_SOURCE_ROLE.test(i.role) || (i.lane ?? 0) >= (me.lane ?? 0)) continue;
+    const dev = i.role.startsWith('tr') ? 'tr' : i.role.startsWith('cap') ? 'cap' : i.role.startsWith('gen') ? 'gen' : 'motor';
+    const m = /(up|dn)([123])$/.exec(i.role);
+    const pos = m ? m[1]! : /^motor/.test(i.role) ? 'up' : 'own';
+    const k = m ? m[2]! : '0';
+    const sw = FEED_SWITCH_NAME[/^(?:tr|cap)-(pc)$/.test(i.role) ? 'pc' : i.symbolId] ?? i.symbolId.toUpperCase();
+    const label = pos === 'up' && !m ? `feed:${dev}:${(i.unit ?? 0) + 1}:${sw}:mup:0` : `feed:${dev}:${(i.unit ?? 0) + 1}:${sw}:${pos}:${k}`;
+    out.push({ value: `${i.role}:${i.unit ?? 0}`, label, lane: i.lane ?? 0, row: i.row ?? 0 });
+  }
+  return out.sort((a, b) => a.lane - b.lane || a.row - b.row).map(({ value, label }) => ({ value, label }));
+}
+
+/** 並列の機器の列が、どの質問（接続元）の答えで、母線以外から分かれるか（変圧器 trFrom・コンデンサ capFrom・発電機 genFrom・電動機 motorFrom） */
+function feedKeyOf(role: string): string | undefined {
+  if (role === 'transformer' || /^tr-/.test(role)) return 'trFrom';
+  if (role === 'capacitor' || role === 'reactor' || /^cap-/.test(role)) return 'capFrom';
+  if (role === 'generator') return 'genFrom';
+  if (/^motor/.test(role)) return 'motorFrom';
+  return undefined;
+}
+
+/**
+ * 母線以外（ほかの機器の開閉器の二次側）から分かれる列を、分かれる元の列の、すぐ右に並べ直す（第18弾 F-②）。
+ * ・分かれる元は、自分より前（左）の列の開閉器だけ。元が見つからない・自分より後ろの列のものは、母線から出るものとして扱う（feedFrom を消す）
+ * ・同じ元の列の中で、低い位置の開閉器から分かれる列ほど、元の列の近くに置く（横に分かれる線が、ほかの列の縦の線と交わらない）
+ * ・並べ直したあとの列の番号（lane）を付け直す。何も分かれていなければ、何も変えない
+ */
+function arrangeFeeds(out: PlacedItem[]): PlacedItem[] {
+  const par = out.filter((i) => i.kind === 'parallel' && i.lane !== undefined);
+  if (!par.some((i) => i.feedFrom)) return out;
+  const byKey = new Map(par.map((i) => [`${i.role}:${i.unit ?? 0}`, i]));
+  const laneOfKey = (k: string) => byKey.get(k)?.lane;
+  const lanes = [...new Set(par.map((i) => i.lane!))].sort((a, b) => a - b);
+  // 列ごとの、分かれる元（有効なもの）
+  const feed = new Map<number, { key: string; fromLane: number; row: number }>();
+  for (const lane of lanes) {
+    const key = par.find((i) => i.lane === lane && i.feedFrom)?.feedFrom;
+    if (!key) continue;
+    const src = byKey.get(key);
+    if (!src || src.lane === undefined || src.lane >= lane) continue;
+    feed.set(lane, { key, fromLane: src.lane, row: src.row ?? 0 });
+  }
+  const children = new Map<number, number[]>();
+  for (const [lane, f] of feed) children.set(f.fromLane, [...(children.get(f.fromLane) ?? []), lane]);
+  for (const list of children.values()) list.sort((a, b) => feed.get(b)!.row - feed.get(a)!.row || a - b);
+  const order: number[] = [];
+  const visit = (lane: number) => {
+    order.push(lane);
+    for (const c of children.get(lane) ?? []) visit(c);
+  };
+  for (const lane of lanes) if (!feed.has(lane)) visit(lane);
+  const newLane = new Map(order.map((l, i) => [l, i]));
+  void laneOfKey;
+  return out.map((i) => {
+    if (i.kind !== 'parallel' || i.lane === undefined) return i;
+    const { feedFrom: _drop, ...rest } = i;
+    return { ...rest, lane: newLane.get(i.lane) ?? i.lane, ...(feed.has(i.lane) ? { feedFrom: feed.get(i.lane)!.key } : {}) };
+  });
 }
 
 /** 機器の並びの定義（chain）から、回答に合う機器の一覧を作る */
@@ -1195,6 +1287,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           labelSide: p.labelSide,
           attachTo: p.attachTo,
           lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' ? laneBase + i : undefined,
+          ...(p.kind === 'parallel' && feedKeyOf(p.role) && isAnswered(a[feedKeyOf(p.role)!]) && a[feedKeyOf(p.role)!] !== 'bus' ? { feedFrom: String(a[feedKeyOf(p.role)!]) } : {}),
           row: p.row,
           unit: countKey ? i : undefined,
           ...(p.stage !== undefined ? { stage: p.stage } : {}),
@@ -1211,7 +1304,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
   // 区分開閉器なし＋電力会社のケーブルのときは、VCTを主遮断装置より下には置けない（古い案件に、その位置が残っていても、「ケーブルの次」として描く）
   const vctTap = String(answers.vctTap ?? 'cable');
   const vctAt = evaluate(PROPERTY_AT_DS, answers) && (VCT_BELOW_BREAKER as readonly string[]).includes(vctTap) ? 'cable' : vctTap;
-  return placeVct(placeByTap(arrangeInstruments(out)), vctAt);
+  return placeVct(placeByTap(arrangeInstruments(arrangeFeeds(out))), vctAt);
 }
 
 

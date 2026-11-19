@@ -13,7 +13,7 @@ import { fromLayout } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol } from '../apps/web/src/editor/doc.ts';
 import { cableViolations, hvStretches } from '../apps/web/src/editor/hvCable.ts';
 import { inspectDrawing } from '../apps/web/src/editor/inspect.ts';
-import { buildComposition, dropHiddenChoices, effectiveAnswers } from '../packages/knowledge/src/index.ts';
+import { buildComposition, dropHiddenChoices, effectiveAnswers, feedChoices } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
 import { answersSpread } from './check-drawing/common.ts';
@@ -117,6 +117,162 @@ for (const c of CASES) {
   if (v.length > 0) fail(`${c.name}：ケーブルの途中に、ZCT 以外が接続されています`);
 }
 console.log(`  ${drawings}通りを作って確かめた`);
+
+/* ---- 1つの開閉器の二次側から、複数に分かれる（パターン3・4。第18弾 F-②） ---- */
+type Raw = Record<string, unknown>;
+const unitKey = (key: string, i: number) => (i === 0 ? key : `${key}__${i + 1}`);
+const drawFeed = (name: string, raw: Raw, expect?: (doc: Doc, comp: ReturnType<typeof buildComposition>) => string | null) => {
+  const a = dropHiddenChoices({ ...answersSpread, areaCount: '1', hasCapacitor: 'no', hasGenerator: 'no', hasMotor: 'no', ...raw } as Answers);
+  let doc: Doc;
+  let comp: ReturnType<typeof buildComposition>;
+  try {
+    const e = effectiveAnswers(a);
+    comp = buildComposition(e);
+    doc = fromLayout(layout(comp, e));
+  } catch (err) {
+    fail(`${name}：図面を作れませんでした（${(err as Error).message}）`);
+    return;
+  }
+  drawings++;
+  const issues = inspectDrawing(doc, 'A3', 'portrait').filter((i) => KINDS.includes(i.kind));
+  if (issues.length > 0) fail(`${name}：図面に異常があります（${[...new Set(issues.map((i) => i.kind))].join('・')} ${issues.length}件：${issues[0]!.message}）`);
+  if (cableViolations(doc).length > 0) fail(`${name}：ケーブルの途中に、ZCT 以外が接続されています`);
+  const msg = expect?.(doc, comp);
+  if (msg) fail(`${name}：${msg}`);
+};
+const trUnit = (i: number, from: string | undefined, extra: Raw = {}): Raw => {
+  const out: Raw = {};
+  const set = (k: string, v: unknown) => (out[unitKey(k, i)] = v);
+  if (from) set('trFrom', from);
+  set('trHasCable', 'yes');
+  set('trCableDn1', 'lbs');
+  set('trCableInstallation', 'buried');
+  set('trCableStructure', 'CVT');
+  for (const [k, v] of Object.entries(extra)) set(k, v);
+  return out;
+};
+for (const n of [2, 3, 5, 8]) {
+  const raw: Raw = { transformerCount: String(n), ...trUnit(0, undefined, { trCableUp1: 'ds', trCableUp2: 'vcb' }) };
+  for (let i = 1; i < n; i++) Object.assign(raw, trUnit(i, 'tr-cable-up2:0'));
+  drawFeed(`パターン3：VCBの二次側から ${n}本に分かれる（ケーブル＋LBS＋変圧器）`, raw, (doc) => {
+    const trs = doc.items.filter((i): i is DocSymbol => i.kind === 'symbol' && /^transformer(-\d+)?$/.test(i.id));
+    return trs.length === n ? null : `変圧器が ${trs.length}台（${n}台のはず）`;
+  });
+}
+// 直接つなぐ（ケーブルなし・開閉器なし）／開閉器だけ
+{
+  const raw: Raw = { transformerCount: '3', ...trUnit(0, undefined, { trCableUp1: 'ds', trCableUp2: 'vcb' }), trFrom__2: 'tr-cable-up2:0', trFrom__3: 'tr-cable-up2:0', trHasCable__3: 'yes', trCableDn1__3: 'vcb' };
+  delete raw.trHasCable__2;
+  drawFeed('パターン3：1本は直接、1本はケーブルなしの開閉器だけ', raw);
+}
+// 2つの別の開閉器から、それぞれ分かれる（低い位置から分かれる列を、元の列の近くに置く）
+{
+  const raw: Raw = { transformerCount: '4', ...trUnit(0, undefined, { trCableUp1: 'ds', trCableUp2: 'vcb', trCableUp3: 'vcs' }), ...trUnit(1, 'tr-cable-up1:0'), ...trUnit(2, 'tr-cable-up3:0'), ...trUnit(3, 'tr-cable-up3:0') };
+  drawFeed('2つの別の開閉器から、それぞれ分かれる', raw, (doc, comp) => {
+    const lane = (role: string) => comp.find((i) => i.role === role)?.lane;
+    const l2 = lane('transformer');
+    return l2 === undefined ? '変圧器が見つかりません' : null;
+  });
+}
+// 分かれて出た列から、さらに分かれる（入れ子）
+{
+  const raw: Raw = { transformerCount: '3', ...trUnit(0, undefined, { trCableUp1: 'vcb' }), ...trUnit(1, 'tr-cable-up1:0', { trCableDn1: 'lbs', trCableDn2: 'vcs' }), ...trUnit(2, 'tr-cable-dn1:1') };
+  drawFeed('分かれて出た列から、さらに分かれる', raw);
+}
+// コンデンサ・発電機・電動機が、変圧器の開閉器から分かれる（機器の種類をまたぐ）
+{
+  const raw: Raw = {
+    transformerCount: '1',
+    ...trUnit(0, undefined, { trCableUp1: 'ds', trCableUp2: 'vcb' }),
+    hasCapacitor: 'yes', capacitorCount: '1', capFrom: 'tr-cable-up2:0', capHasCable: 'yes', capCableDn1: 'lbs',
+    hasGenerator: 'yes', generatorCount: '1', generatorTransformer: 'bus', genFrom: 'tr-cable-up2:0',
+    hasMotor: 'yes', motorCount: '1', motorSource: 'bus', motorSwitch: 'none', motorFrom: 'tr-cable-up2:0', motorCable: 'yes', motorCableDn1: 'vcb',
+  };
+  drawFeed('コンデンサ・発電機・電動機が、変圧器のVCBの二次側から分かれる', raw);
+  const e = effectiveAnswers(dropHiddenChoices({ ...answersSpread, areaCount: '1', ...raw } as Answers));
+  if (feedChoices(e, 'tr', 0).length !== 0) fail('1台目の変圧器に、接続元の選択肢が出ています（自分より前の機器が無い）');
+  const forCap = feedChoices(e, 'cap', 0).map((c) => c.value);
+  if (!forCap.includes('tr-cable-up2:0') || !forCap.includes('tr-cable-dn1:0')) fail(`コンデンサの接続元の選択肢に、変圧器の開閉器が出ていません（${forCap.join(',')}）`);
+}
+// 自分より後ろの列の開閉器を選んでいる（古い答え・取り違え）→ 母線から出るものとして扱い、図面が崩れない
+{
+  const raw: Raw = { transformerCount: '2', ...trUnit(0, 'tr-cable-up1:1', { trCableUp1: 'ds' }), ...trUnit(1, undefined, { trCableUp1: 'vcb' }) };
+  drawFeed('自分より後ろの列の開閉器が、接続元になっている（母線から出るものとして扱う）', raw, (doc, comp) => (comp.some((i) => i.feedFrom) ? '母線から出るものとして扱われていません' : null));
+}
+// 2か所目のエリアでも、同じ
+{
+  const raw: Raw = { areaCount: '2' };
+  const prefix = (o: Raw): Raw => Object.fromEntries(Object.entries(o).map(([k, v]) => [`a2:${k}`, v]));
+  Object.assign(raw, prefix({ transformerCount: '3', ...trUnit(0, undefined, { trCableUp1: 'ds', trCableUp2: 'vcb' }), ...trUnit(1, 'tr-cable-up2:0'), ...trUnit(2, 'tr-cable-up2:0') }));
+  drawFeed('2か所目のエリアで、VCBの二次側から分かれる', raw);
+}
+
+// でたらめな組み合わせ：機器の種類・台数・ケーブル・開閉器・接続元を、でたらめに選んで、図面が崩れない
+{
+  const SCALE = Math.max(1, Number(process.env.FUZZ_COUNT ?? 1));
+  let seed = 12345;
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 2 ** 32;
+  };
+  const pick = <T,>(l: T[]): T => l[Math.floor(rnd() * l.length)]!;
+  const SW = ['ds', 'vcb', 'lbs', 'vcs', 'as'];
+  let tried = 0;
+  let fed = 0;
+  for (let n = 0; n < 80 * SCALE; n++) {
+    const raw: Raw = {
+      areaCount: String(1 + (n % 2)),
+      hasCapacitor: 'no', hasGenerator: 'no', hasMotor: 'no',
+    };
+    const area = (n % 2) + 1 >= 2 && rnd() < 0.6 ? 'a2:' : '';
+    const put = (o: Raw) => Object.assign(raw, Object.fromEntries(Object.entries(o).map(([k, v]) => [`${area}${k}`, v])));
+    const counts = { tr: 1 + Math.floor(rnd() * 4), cap: Math.floor(rnd() * 3), gen: Math.floor(rnd() * 2), motor: Math.floor(rnd() * 3) };
+    put({ transformerCount: String(counts.tr) });
+    if (counts.cap) put({ hasCapacitor: 'yes', capacitorCount: String(counts.cap) });
+    if (counts.gen) put({ hasGenerator: 'yes', generatorCount: String(counts.gen), generatorTransformer: 'bus' });
+    if (counts.motor) put({ hasMotor: 'yes', motorCount: String(counts.motor), motorSource: 'bus', motorSwitch: 'none' });
+    const devs = (['tr', 'cap', 'gen', 'motor'] as const).flatMap((p) => Array.from({ length: counts[p] }, (_, i) => ({ p, i })));
+    // 機器の順（変圧器→コンデンサ→電動機→発電機の順に、列が並ぶので、接続元は、先に決まった機器から選ぶ）
+    for (const { p, i } of devs) {
+      const o: Raw = {};
+      const k = (key: string) => unitKey(key, i);
+      if (rnd() < 0.7) {
+        if (p === 'motor') o[k('motorCable')] = 'yes';
+        else o[k(`${p}HasCable`)] = 'yes';
+        o[k(`${p}CableInstallation`)] = pick(['buried', 'overhead']);
+        o[k(`${p}CableStructure`)] = 'CVT';
+        const used: string[] = [];
+        for (const side of p === 'motor' ? ['Dn'] : ['Up', 'Dn']) {
+          for (let j = 1; j <= 3; j++) {
+            const rest = SW.filter((x) => !used.includes(x));
+            if (rnd() < 0.5 || rest.length === 0) break;
+            const v = pick(rest);
+            used.push(v);
+            o[k(`${p}Cable${side}${j}`)] = v;
+          }
+          used.length = 0;
+        }
+      }
+      put(o);
+      // 接続元：ここまでの答えで選べるものから、でたらめに（選べるものが無ければ、母線）
+      const view: Raw = {};
+      for (const [kk, vv] of Object.entries(raw)) view[kk.replace(/^a2:/, '')] = vv;
+      try {
+        const ch = feedChoices(effectiveAnswers(dropHiddenChoices({ ...answersSpread, ...view } as Answers)), p, i);
+        if (ch.length > 0 && rnd() < 0.6) {
+          put({ [k(`${p}From`)]: pick(ch).value });
+          fed++;
+        }
+      } catch {
+        /* 選べないときは母線 */
+      }
+    }
+    tried++;
+    drawFeed(`でたらめ ${n + 1}`, raw);
+  }
+  console.log(`  でたらめな組み合わせ ${tried}通り（うち接続元を選んだ機器 ${fed}台）`);
+  if (fed < 20) fail(`接続元を選んだ機器が少なすぎます（${fed}台）。選択肢の作り方が壊れていないか確かめてください`);
+}
 
 // 「なし」のとき（ふだん）は、これまでと同じ図面（ケーブルの記号が1つも入らない）
 {

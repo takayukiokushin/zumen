@@ -265,6 +265,12 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     if (parallels.length === 0) return;
 
     const lanes = [...new Set(parallels.map((p) => p.lane ?? 0))].sort((a, b) => a - b);
+    // 母線ではなく、ほかの列の開閉器の二次側から分かれて出る列（第18弾 F-②）：分かれる元が、この区画にあるものだけ
+    const unitKey = (p: PlacedItem) => `${p.role}:${p.unit ?? 0}`;
+    const hereKeys = new Set(parallels.map(unitKey));
+    const feedOf = new Map<number, string>();
+    for (const p of parallels) if (p.feedFrom && hereKeys.has(p.feedFrom) && !feedOf.has(p.lane ?? 0)) feedOf.set(p.lane ?? 0, p.feedFrom);
+    const rootLanes = lanes.filter((l) => !feedOf.has(l));
     // 直前の分岐（試験端子・OCR・ZPDなど）の下端より下に引く。母線を描くときは、さらに余裕を持たせる
     const before = started ? pendingGap : GAP;
     const busY = spineY + (lanes.length > 1 ? Math.max(before + 8, BUS_CLEAR) : before);
@@ -295,13 +301,16 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const widen = LANE_GAP + spanUnder(lanes[j - 1]!) / 2 + spanUnder(lanes[j]!) / 2;
       colX.push(colX[j - 1]! + Math.max(PARALLEL_GAP, widen));
     }
-    const colCenter = ((colX[0] ?? 0) + (colX.at(-1) ?? 0)) / 2;
+    // 横の位置は、母線から出る列（root）の真ん中を、主回路の縦線にそろえる（分かれて出る列は、元の列の右に並ぶ）
+    const rootX0 = colX[lanes.indexOf(rootLanes[0]!)] ?? 0;
+    const rootX1 = colX[lanes.indexOf(rootLanes.at(-1)!)] ?? 0;
+    const colCenter = feedOf.size === 0 ? ((colX[0] ?? 0) + (colX.at(-1) ?? 0)) / 2 : (rootX0 + rootX1) / 2;
     const laneX = (lane: number) => (lanes.length <= 1 ? SPINE : SPINE + (colX[lanes.indexOf(lane)] ?? 0) - colCenter);
 
-    busInfo = { x: lanes.length > 1 ? laneX(lanes.at(-1)!) : SPINE, y: busY };
+    busInfo = { x: rootLanes.length > 1 ? laneX(rootLanes.at(-1)!) : SPINE, y: busY };
     wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: busY, dashed: pendingDashed });
-    if (lanes.length > 1) {
-      wires.push({ x1: laneX(lanes[0]!), y1: busY, x2: laneX(lanes.at(-1)!), y2: busY });
+    if (rootLanes.length > 1) {
+      wires.push({ x1: laneX(rootLanes[0]!), y1: busY, x2: laneX(rootLanes.at(-1)!), y2: busY });
     }
     pendingDashed = false;
 
@@ -328,6 +337,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const def = findSymbol(p.symbolId);
       if (!def) continue;
       const r = rowOf(p);
+      // 分かれて出る列は、上から順に積むので、段の高さには数えない（機器の段だけ、ほかの列と高さをそろえる）
+      if (feedOf.has(p.lane ?? 0) && r !== ROW.main) continue;
       rowHeight[r] = Math.max(rowHeight[r]!, def.box.h);
     }
     // 誰も使わない段は詰める（1台だけの図面を無駄に縦長にしないため）
@@ -344,12 +355,25 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     }
 
     let deepest = busY;
+    /** 置いた機器の、下の出口の位置（分かれて出る列の、分かれる元になる）と、元ごとの、横の線をここまで引いた、右の端 */
+    const placedByUnit = new Map<string, { x: number; exitY: number }>();
+    const feedReach = new Map<string, number>();
     for (const lane of lanes) {
       let ly = busY;
       const inLane = parallels
         .filter((p) => (p.lane ?? 0) === lane)
         .sort((a, b) => rowOf(a) - rowOf(b));
       let prevDashed = false;
+      // 分かれて出る列：元の開閉器の二次側の高さから、横に線を引いて、この列の頭につなぐ
+      const feedKey = feedOf.get(lane);
+      const feedSrc = feedKey ? placedByUnit.get(feedKey) : undefined;
+      if (feedKey && feedSrc) {
+        ly = feedSrc.exitY;
+        const reach = feedReach.get(feedKey) ?? feedSrc.x;
+        if (laneX(lane) > reach + 0.01) wires.push({ x1: reach, y1: ly, x2: laneX(lane), y2: ly });
+        feedReach.set(feedKey, Math.max(reach, laneX(lane)));
+      }
+      const fed = !!(feedKey && feedSrc);
       for (const item of inLane) {
         const def = getSymbol(item.symbolId);
         // 電動機のケーブルの、向かい側の端末は、180°回して、頂点をケーブル側（上）に向ける
@@ -358,13 +382,15 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
         const outP = portOf(def, 'out', 'sec');
         const entry = rot === 180 && outP ? { x: flip(def, outP.x, outP.y, rot)[0], y: flip(def, outP.x, outP.y, rot)[1] } : inP;
         const exit = rot === 180 ? { x: flip(def, inP.x, inP.y, rot)[0], y: flip(def, inP.x, inP.y, rot)[1] } : outP;
-        const top = rowTop[rowOf(item)]!;
+        // 分かれて出る列は、元の開閉器の二次側から、上から順に積む（機器の段だけ、ほかの列とそろえる）
+        const top = fed ? (rowOf(item) === ROW.main ? Math.max(ly + GAP, rowTop[ROW.main]!) : ly + GAP) : rowTop[rowOf(item)]!;
         const x = laneX(lane) - entry.x;
         const yy = top - entry.y;
         wires.push({ x1: laneX(lane), y1: ly, x2: laneX(lane), y2: top, ...(prevDashed ? { dashed: true } : {}) });
         add(item, def, x, yy, rot, 'right');
         prevDashed = item.dashedAfter === true;
         ly = exit ? yy + exit.y : yy + def.box.h;
+        placedByUnit.set(unitKey(item), { x: laneX(lane), exitY: ly });
         if (item.role === 'transformer') {
           transformerOut[item.unit ?? 0] = { x: laneX(lane), y: ly };
           // 三巻線変圧器のように、下の出口が決まっていないものは、下にぶら下げる回線を線でつながない

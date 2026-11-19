@@ -54,7 +54,7 @@ export function translator(lang: Lang): (key: Key, vars?: Vars) => string {
 export function dataTranslator(lang: Lang): (text: string, context?: string) => string {
   const dict = lang === 'ja' ? undefined : DATA[lang];
   // context：同じ日本語でも、場面で訳が変わるときの印（「なし@yesno」＝あり・なしの2択の「なし」。無ければ、ふつうの訳）
-  return (text, context) => (context ? dict?.[`${text}@${context}`] : undefined) ?? dict?.[text] ?? text;
+  return (text, context) => (text.startsWith('feed:') ? feedLabel(lang, text) : undefined) ?? (context ? dict?.[`${text}@${context}`] : undefined) ?? dict?.[text] ?? text;
 }
 
 /**
@@ -89,4 +89,21 @@ export function dictionaryOf(lang: Lang): Record<string, string> {
 /** 検証用：言語ごとの、質問・選択肢・説明文・記号の名前の訳 */
 export function dataOf(lang: Exclude<Lang, 'ja'>): Record<string, string> {
   return DATA[lang];
+}
+
+
+/**
+ * 接続元の選択肢の名前（入力の内容から、自動で作られる。第18弾 F-②）。符号 feed:機器:何台目:開閉器:位置:何つ目 を、選んでいる言葉の文にする。
+ * 機器：tr・cap・gen・motor／位置：up（ケーブルの手前）・dn（ケーブルのあと）・own（機器の手前）・mup（電動機の手前）
+ */
+function feedLabel(lang: Lang, text: string): string | undefined {
+  const m = /^feed:(tr|cap|gen|motor):(\d+):([^:]+):(up|dn|own|mup):(\d+)$/.exec(text);
+  if (!m) return undefined;
+  const t = translator(lang);
+  return t('feed.opt', {
+    device: t(`feed.device.${m[1]}` as Key),
+    n: m[2]!,
+    sw: m[3]!,
+    pos: t(`feed.pos.${m[4]}` as Key, { k: m[5]! }),
+  });
 }

@@ -137,6 +137,21 @@ const INPUT: { name: string; run: (a: Answers, r: Rnd) => Answers }[] = [
       return dropHiddenChoices(out as Answers);
     },
   },
+  {
+    name: '機器の接続元を替える（1つの開閉器から分ける）',
+    run: (a, r) => {
+      const n = 2 + Math.floor(r() * 3);
+      const src = pick(['tr-cable-up1:0', 'tr-cable-up2:0'], r);
+      const out: Record<string, unknown> = { ...a, transformerCount: String(n), trHasCable: 'yes', trCableUp1: 'ds', trCableUp2: 'vcb', trCableInstallation: 'buried' };
+      for (let i = 1; i < n; i++) {
+        out[`trFrom__${i + 1}`] = r() < 0.85 ? src : 'bus';
+        out[`trHasCable__${i + 1}`] = 'yes';
+        out[`trCableDn1__${i + 1}`] = pick(['lbs', 'vcb', 'as'], r);
+        out[`trCableInstallation__${i + 1}`] = pick(['buried', 'overhead'], r);
+      }
+      return dropHiddenChoices(out as Answers);
+    },
+  },
   { name: '途中の開閉器', run: (a, r) => dropHiddenChoices({ ...a, midSwitch: 'yes', midKind: pick(['pas', 'pgs', 'as'], r), midPlace: 'pole' } as Answers) },
 ];
 

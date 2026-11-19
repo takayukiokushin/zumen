@@ -107,6 +107,7 @@ function questionsOf(d: Device): Question[] {
           : 'ケーブルの機器側の端末から、機器（手前のPC・LBSがあれば、その手前）までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」「DS＋LBS＋VCS」など）。付かないときは「なし」',
     });
   return [
+    fromQuestion(d.p, d.group, d.base),
     {
       id: has,
       group: d.group,
@@ -125,9 +126,34 @@ function questionsOf(d: Device): Question[] {
   ];
 }
 
+/**
+ * 接続元の質問（第18弾 F-②）：「母線から」（初めから選ばれている）か、すでに入力した、ほかの機器の開閉器の二次側から。
+ * 選択肢の「ほかの機器の開閉器」は、入力画面が、入力の内容から、自動で作る（rows.ts の sectionRows）ので、ここには「母線から」だけ書く。
+ * 選べる開閉器が1つも無いときは、この質問は出さない。AIは答えない（選択肢が、入力の内容で変わるため）。
+ */
+export const fromQuestion = (p: string, group: string, showIf?: Condition): Question => ({
+  id: `${p}From`,
+  noAi: true,
+  noTrend: true,
+  group,
+  label: 'どこから接続しますか？',
+  type: 'select',
+  options: [{ value: 'bus', label: '母線から' }],
+  defaultValue: 'bus',
+  dropdown: true,
+  ...(showIf ? { showIf } : {}),
+  ask: 'always',
+  help: 'ふつうは「母線から」。ほかの機器の開閉器の二次側から分かれて出ているときだけ、その開閉器を選ぶ（自分より前に入力した機器の開閉器だけ選べる。たとえば、1台のVCBの二次側から、3台の変圧器へ、ケーブルで分かれる場合）。選べる開閉器が無いときは、この質問は出ない',
+});
+
 /** 機器ごとの質問の組：その質問IDの後ろに入れる。電動機は、ケーブルの質問がすでにあるので、「ケーブルのあとの開閉器」だけを足す（母線から接続するときだけ） */
 export const DEVICE_CABLE_QUESTIONS: { after: string; questions: Question[] }[] = [
   ...DEVICES.map((d) => ({ after: d.after, questions: questionsOf(d) })),
+  {
+    // 電動機：接続元が「母線から分岐して接続する」のとき。選んだ接続元の質問のすぐあとに出す
+    after: 'motorSourceTr',
+    questions: [fromQuestion('motor', 'motor', { key: 'motorSource', eq: 'bus' })],
+  },
   {
     after: 'motorFuseCurrent',
     questions: cableSwitchSlots({

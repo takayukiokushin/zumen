@@ -107,7 +107,7 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     if (motor({ hasMotor: 'no' }) !== '' || motor({}) !== '') fail('電動機が「ない」のに、電動機の入力欄を出しています');
     // 接続元を選ぶまでは、続き（ケーブル・開閉器）の質問は出さない
     if (motor({ hasMotor: 'yes' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource') fail(`電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes' })}）`);
-    if (motor({ hasMotor: 'yes', motorSource: 'bus' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource,motorCable,motorSwitch,motorSwitch2') fail(`接続元を選んだあとの、電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes', motorSource: 'bus' })}）`);
+    if (motor({ hasMotor: 'yes', motorSource: 'bus' }) !== 'motorCount,motorStartMethod,motorCapacity,motorRatedVoltage,motorPlace,motorSource,motorFrom,motorCable,motorSwitch,motorSwitch2') fail(`接続元を選んだあとの、電動機の入力欄の順番が違います（${motor({ hasMotor: 'yes', motorSource: 'bus' })}）`);
     if (withAutoValues({ hasMotor: 'yes', transformerCount: 2 } as Answers).motorSource !== undefined) fail('電動機の接続元は、最初は空欄のはずです');
     const opts = (QUESTIONS.find((q) => q.id === 'motorStartMethod')?.options ?? []).map((o) => o.value).join(',');
     if (opts !== '直入れ始動,リアクトル始動,コンドルファ始動,インバータ始動,スターデルタ始動') fail(`始動方式の選択肢の順番が違います（${opts}）`);
