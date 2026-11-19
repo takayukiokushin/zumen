@@ -206,7 +206,10 @@ export function rebuildWithOverrides(
     const top = [...gen.values()].filter((g) => !g.parent);
     const olds = top.filter((g) => known.has(sameName(g.id)));
     const centre = (g: DocSymbol) => ({ x: g.x + defOf(g).box.w / 2, y: g.y + defOf(g).box.h / 2 });
-    const news = top.filter((g) => !known.has(sameName(g.id)));
+    // （前に手で動かした記録が、取ってあった機器 ＝ 入力を変えて、また現れた機器は、記録の位置にすでに置いてあるので、ここでは動かさない。
+    // 動かすと、二重に動いて、記録した位置が、ずれる）（第18弾 C-3）
+    const placed = new Set(movedNames.filter((n) => ov.moved[n]!.dx !== 0 || ov.moved[n]!.dy !== 0));
+    const news = top.filter((g) => !known.has(sameName(g.id)) && !placed.has(sameName(g.id)));
     // 線でつながっている新しい機器（ZCT と、その横の GR・DGR など）は、1つの組にして、同じ量だけ動かす。
     // 別々に動かすと、動かす量がわずかにずれて、2つをつなぐ線が、斜めになる（第17弾 項目7の調査2）
     const group = new Map<string, string>(news.map((g) => [sameName(g.id), sameName(g.id)]));
