@@ -17,10 +17,12 @@ const linkSwitchOptions = (first: boolean): Choice[] => [
   { value: 'ds-vcb-vcs', label: 'DS＋VCB＋VCS' },
   { value: 'vcb-vcs', label: 'VCB＋VCS' },
   { value: 'lbs-vcs', label: 'LBS＋VCS' },
+  // ケーブルのあとに付く、気中開閉器（PASなどを含む）。パターン5：母線 → DS → VCB → ケーブル → AS → 別の電気室（第18弾 F-③）
+  { value: 'as', label: 'AS（気中開閉器）' },
 ];
-/** 何段目まであるか（k段目の質問を出す条件。段の数は、「変圧器の二次側」から送り出すときだけ選べる） */
+/** 何段目まであるか（k段目の質問を出す条件。段の数は、どの分岐位置でも選べる。第18弾 F-③） */
 const stageCond = (k: number): Condition => ({
-  all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }],
+  all: [{ key: 'areaNo', gt: 1 }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }],
 });
 
 /** 質問の定義：表題欄、エリア間の接続（分岐する位置・ケーブル・送り出す側の開閉器。送り先ごとに、送り出す側の欄で入力する） */
@@ -93,7 +95,7 @@ export const AREAS_QUESTIONS: Question[] = [
     type: 'select',
     options: [1, 2, 3, 4].map((n) => ({ value: String(n), label: `${n}段` })),
     defaultValue: '1',
-    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }] },
+    showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
     help: '1段は、「開閉器 → 線（電線またはケーブル）」の1組。1段目は、下の「この送り先へは、ケーブルでつなぎますか？」「送り出しに開閉器はありますか？」で答える。2段以上のときは、2段目からの質問が、このあと（いちばん下）に出る',
   },

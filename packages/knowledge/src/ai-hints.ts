@@ -752,7 +752,7 @@ export const AI_HINTS: Record<string, string> = {
     '受電設備が2か所以上のとき、送り出す側のエリアから、このエリア（2か所目以降）へ向かう線の、送り出す側の点に、開閉器が付いているかどうかと、その種類を選ぶ項目です。' +
     '送り先（2か所目以降のエリア）ごとに答えます（キーは、送り先の番号つき。例：a3:linkSwitch は、3か所目へ向かう線の、送り出す側の開閉器です）。' +
     '選べる値は、none（なし。' +
-    '母線から直接）・ds（DS）・vcb（VCB）・lbs（LBS）・vcs（VCS）・ds-vcb（DS＋VCB）・ds-vcb-vcs（DS＋VCB＋VCS）・vcb-vcs（VCB＋VCS）・lbs-vcs（LBS＋VCS）です。' +
+    '母線から直接）・ds（DS）・vcb（VCB）・lbs（LBS）・vcs（VCS）・ds-vcb（DS＋VCB）・ds-vcb-vcs（DS＋VCB＋VCS）・vcb-vcs（VCB＋VCS）・lbs-vcs（LBS＋VCS）・as（AS＝気中開閉器。ケーブルのあとの2段目以降に付くことが多い）です。' +
     '図面では、送り出す側のエリアから、このエリアへ向かう線の途中に、その開閉器を描きます。' +
     '開閉器が書かれていないときは、none のままにしてください。' +
     'メモに、送り出しの開閉器が書かれているときだけ、その種類を選んでください。',
@@ -920,7 +920,7 @@ export const AI_HINTS: Record<string, string> = {
  */
 AI_HINTS.linkStageCount =
   '送り出しの、段の数（1〜4）を選ぶ項目です。1段は、「開閉器 → 線（電線またはケーブル）」の1組です。' +
-  '分岐の位置（linkTap）が tr-secondary（変圧器の二次側）のときだけ答えます。最初は1段です。' +
+  '最初は1段です。' +
   'メモや図に、開閉器と線が、何組も続いているときだけ、その段数を答えてください（2段目からは、link2Switch・link2Cable…のように、段の番号つきの項目で答えます）。' +
   '書かれていないときは、答えに入れないでください（1段になります）。';
 for (const k of [2, 3, 4]) {

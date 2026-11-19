@@ -959,7 +959,7 @@ export const SENDOUT: Placement[] = [
     const fuse = k === 1 ? '{linkFuseText}' : `{link${k}FuseText}`;
     const suffix = k === 1 ? '' : `-${k}`;
     // 2段目以降は、段の数が足りているときだけ
-    const here: Condition = k === 1 ? { key: 'areaNo', gt: 1 } : { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }] };
+    const here: Condition = k === 1 ? { key: 'areaNo', gt: 1 } : { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }] };
     return [
       { role: `sendout-ds${suffix}`, symbolId: 'ds', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['ds', 'ds-vcb', 'ds-vcb-vcs'] }] }, labelTemplate: ['DS'] },
       { role: `sendout-vcb${suffix}`, symbolId: 'vcb', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] }, labelTemplate: ['VCB'] },
@@ -967,6 +967,7 @@ export const SENDOUT: Placement[] = [
         role: `sendout-lbs${suffix}`, symbolId: 'lbs-pf', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['lbs', 'lbs-vcs'] }] }, labelTemplate: ['LBS', fuse],
         ...(k === 1 ? { note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く' } : {}),
       },
+      { role: `sendout-as${suffix}`, symbolId: 'as', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'as' }] }, labelTemplate: ['AS'] },
       { role: `sendout-vcs${suffix}`, symbolId: 'vcs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcs', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'] }] }, labelTemplate: ['VCS'] },
     ];
   }),

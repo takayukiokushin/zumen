@@ -930,9 +930,9 @@ console.log('\n■ 変圧器の二次側から送り出す（何台目か＋開�
     const one = draw({ 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes' });
     const empty = draw({ 'a2:linkStageCount': '1', 'a2:linkSwitch': 'vcb', 'a2:linkCable': 'yes' });
     if (JSON.stringify(one) !== JSON.stringify(empty)) fail('段の数が「1段」のときと、空のときで、図面が違います');
-    // 「変圧器の二次側」でないときは、段の数は無視する（1段）
+    // どの分岐位置でも、段の数が効く（第18弾 F-③。以前は、「変圧器の二次側」のときだけ）：母線から、3段ならば、2段目まで描かれる
     const bus = draw({ 'a2:linkTap': 'bus', 'a2:linkStageCount': '3', 'a2:link2Switch': 'vcb', 'a2:linkSwitch': 'ds' });
-    if (bus.symbols.some((x) => x.role.endsWith('sendout-vcb-2'))) fail('「変圧器の二次側」でないのに、2段目が描かれています');
+    if (!bus.symbols.some((x) => x.role.endsWith('sendout-vcb-2'))) fail('母線からでも、2段目が描かれていません');
   }
   // 送り出しの途中に付ける機器（段階3-1）：変圧器の出口の次にVT、1段目の開閉器の次にCT・ZPD(OVGR付き)、1段目の線の次にGC。上から順に並ぶ。0個のときは、これまでと同じ
   {

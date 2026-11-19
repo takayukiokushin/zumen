@@ -207,6 +207,33 @@ for (const n of [2, 3, 5, 8]) {
   drawFeed('2か所目のエリアで、VCBの二次側から分かれる', raw);
 }
 
+/* ---- エリア間の接続：どの分岐位置でも、段を重ねられる・ケーブルのあとにASを付けられる（パターン5。第18弾 F-③） ---- */
+{
+  const TAPS = ['ds-source', 'ds-vcb', 'vcb-load', 'bus', 'tr-secondary'];
+  let n = 0;
+  for (const tap of TAPS) {
+    for (const stages of [1, 2, 3, 4]) {
+      for (const first of ['none', 'ds-vcb', 'lbs']) {
+        const raw: Raw = { areaCount: '2', transformerCount: '1', 'a2:linkTap': tap, 'a2:linkStageCount': String(stages), 'a2:linkSwitch': first, 'a2:linkCable': 'yes', 'a2:linkCableInstallation': 'buried', 'a2:linkCableStructure': 'CVT' };
+        const sw = ['as', 'lbs', 'ds', 'vcs'];
+        for (let k = 2; k <= stages; k++) {
+          raw[`a2:link${k}Switch`] = sw[(k - 2) % sw.length]!;
+          raw[`a2:link${k}Cable`] = k % 2 === 0 ? 'yes' : 'no';
+          raw[`a2:link${k}CableInstallation`] = k % 2 === 0 ? 'overhead' : 'none';
+        }
+        n++;
+        drawFeed(`エリア間（${tap}・${stages}段・1段目 ${first}${stages >= 2 ? '・2段目 AS' : ''}）`, raw, (_doc, comp) => {
+          const made = comp.filter((i) => i.kind === 'sendout' && /sendout-as/.test(i.role)).length;
+          return stages >= 2 && made !== 1 ? `ASが ${made}つ描かれました（1つのはず）` : null;
+        });
+      }
+    }
+  }
+  // 3か所目のエリアが、2か所目から分岐する（段あり）
+  drawFeed('3か所目が、2か所目から、2段（DS＋VCB → ケーブル → AS）で分岐', { areaCount: '3', transformerCount: '1', 'a3:linkFrom': '2', 'a3:linkTap': 'bus', 'a3:linkStageCount': '2', 'a3:linkSwitch': 'ds-vcb', 'a3:linkCable': 'yes', 'a3:link2Switch': 'as', 'a3:link2Cable': 'yes' });
+  console.log(`  エリア間の段（分岐位置 5 × 段数 4 × 1段目 3）${n}通り＋3か所目`);
+}
+
 // でたらめな組み合わせ：機器の種類・台数・ケーブル・開閉器・接続元を、でたらめに選んで、図面が崩れない
 {
   const SCALE = Math.max(1, Number(process.env.FUZZ_COUNT ?? 1));

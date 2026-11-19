@@ -962,9 +962,8 @@ export function linkPartsByKind(view: Answers): { ct: number[]; vt: number[] } {
   return { ct, vt };
 }
 
-/** 送り出しの段の数（1〜4）。「変圧器の二次側」から送り出すときだけ、2段以上にできる。答えが無い・おかしいときは1段 */
+/** 送り出しの段の数（1〜4）。どの分岐位置でも、2段以上にできる（第18弾 F-③）。答えが無い・おかしいときは1段 */
 export function linkStageCountOf(view: Answers): number {
-  if (view.linkTap !== 'tr-secondary') return 1;
   const n = Math.round(Number(view.linkStageCount ?? 1));
   return Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 1;
 }
