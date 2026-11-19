@@ -1,6 +1,6 @@
 import { rotatedBox } from '@zumen/layout';
 import { followAutoWires } from './wireFollow.ts';
-import { applyAnchors, baselineOf, defOf, freshId, moveItem, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
+import { applyAnchors, baselineOf, defOf, freshId, moveItem, moveItems, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
 import type { AddedItem, Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire, FrameEdit, Overrides, Placement, SymbolEdit } from './doc.ts';
 
 /**
@@ -206,19 +206,60 @@ export function rebuildWithOverrides(
     const top = [...gen.values()].filter((g) => !g.parent);
     const olds = top.filter((g) => known.has(sameName(g.id)));
     const centre = (g: DocSymbol) => ({ x: g.x + defOf(g).box.w / 2, y: g.y + defOf(g).box.h / 2 });
-    for (const n of top.filter((g) => !known.has(sameName(g.id)))) {
-      const c = centre(n);
+    const news = top.filter((g) => !known.has(sameName(g.id)));
+    // 線でつながっている新しい機器（ZCT と、その横の GR・DGR など）は、1つの組にして、同じ量だけ動かす。
+    // 別々に動かすと、動かす量がわずかにずれて、2つをつなぐ線が、斜めになる（第17弾 項目7の調査2）
+    const group = new Map<string, string>(news.map((g) => [sameName(g.id), sameName(g.id)]));
+    const find = (n: string): string => {
+      while (group.get(n) !== n) n = group.get(n)!;
+      return n;
+    };
+    // 線のつなぎ先が、PASの中の機器（ZCT など）のときは、その入れ物（PAS）の名前で見る
+    const topName = (n: string): string => {
+      let g = gen.get(n);
+      for (let i = 0; g?.parent && i < 5; i++) g = gen.get(sameName(g.parent));
+      return g ? sameName(g.id) : n;
+    };
+    for (const it of generated.items) {
+      if (it.kind !== 'wire' || !it.at1 || !it.at2) continue;
+      const a = topName(sameName(it.at1.item));
+      const b = topName(sameName(it.at2.item));
+      if (group.has(a) && group.has(b)) group.set(find(a), find(b));
+    }
+    // 組に、線でつながっているもとからある機器（主回路の上下の機器など）があれば、その機器の動きに合わせる
+    // （近いだけで選ぶと、横に出た枝の機器が選ばれ、主回路の機器と動き方が違って、縦の線が斜めになる）
+    const linkedOld = new Map<string, Set<string>>();
+    for (const it of generated.items) {
+      if (it.kind !== 'wire' || !it.at1 || !it.at2) continue;
+      const a = topName(sameName(it.at1.item));
+      const b = topName(sameName(it.at2.item));
+      for (const [n, o] of [[a, b], [b, a]] as const) {
+        if (!group.has(n) || !known.has(o)) continue;
+        const k = find(n);
+        linkedOld.set(k, (linkedOld.get(k) ?? new Set()).add(o));
+      }
+    }
+    const members = new Map<string, DocSymbol[]>();
+    for (const n of news) members.set(find(sameName(n.id)), [...(members.get(find(sameName(n.id))) ?? []), n]);
+    for (const [key, list] of members.entries()) {
+      // 組の中で、もとからある機器にいちばん近いものを探し、その機器と同じ量だけ、組ぜんぶを動かす
       let best: { g: DocSymbol; d: number } | null = null;
-      for (const o of olds) {
-        const oc = centre(o);
-        const d = Math.hypot(oc.x - c.x, oc.y - c.y);
-        if (!best || d < best.d) best = { g: o, d };
+      const linked = linkedOld.get(key);
+      const candidates = linked ? olds.filter((o) => linked.has(sameName(o.id))) : olds;
+      for (const n of list) {
+        const c = centre(n);
+        for (const o of candidates.length > 0 ? candidates : olds) {
+          const oc = centre(o);
+          const d = Math.hypot(oc.x - c.x, oc.y - c.y);
+          if (!best || d < best.d) best = { g: o, d };
+        }
       }
       const w = best ? actual(sameName(best.g.id)) : undefined;
       if (!best || !w) continue;
       const dx = w.x - best.g.x;
       const dy = w.y - best.g.y;
-      if (dx !== 0 || dy !== 0) work = moveItem(work, n.id, dx, dy);
+      // 組をまとめて動かす（PASについている GR・DGR は、PASと一緒に動くので、1つずつ動かすと二重に動いてしまう）
+      if (dx !== 0 || dy !== 0) work = moveItems(work, list.map((n) => n.id), dx, dy);
     }
   }
   const movedIds = movedNames.map((n) => actual(n)!.id);

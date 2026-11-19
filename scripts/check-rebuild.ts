@@ -67,6 +67,12 @@ const ADDS: [string, Record<string, string>][] = [
   ['蓄電池', { hasBattery: 'yes' }],
   ['補助変圧器', { hasAuxTr: 'yes' }],
   ['電動機', { hasMotor: 'yes' }],
+  // 地絡継電器（GR・DGR）・ZCTの位置の変更・途中の開閉器：新しく増える機器が、線でつながった組（ZCTとGR・DGRなど）になる（第17弾 項目7の調査2）
+  ['GR', { mainGroundRelay: 'gr', hasZpd: 'yes' }],
+  ['DGR（ZCTを母線の一次側）', { mainGroundRelay: 'dgr', hasZpd: 'yes', mainZctPos: 'bus-primary' }],
+  ['途中のPGS（屋側・GR）', { midSwitch: 'yes', midKind: 'pgs', midPlace: 'wall', midControl: 'gr' }],
+  ['途中のPAS（構内柱・DGR）', { midSwitch: 'yes', midKind: 'pas', midPlace: 'pole', midControl: 'dgr' }],
+  ['途中のAS（離れた場所）', { midSwitch: 'yes', midKind: 'as', midPlace: 'away' }],
 ];
 
 console.log('■ 手で直した図面に、機器を足しても、崩れない（縮小・拡大のあと）');
