@@ -265,7 +265,7 @@ export const api = {
    * 1回ずつの通信は短いので、外から入る設定（Cloudflare）の、約100秒の制限に、引っかからない。
    * signal で中断すると、サーバーの読み取りも、やめてもらう。
    */
-  analyze: async (body: { images: { mediaType: string; data: string }[]; answers: Answers }, signal?: AbortSignal, onStage?: (stageNo: number) => void) => {
+  analyze: async (body: { images: { mediaType: string; data: string }[]; answers: Answers; lang?: string }, signal?: AbortSignal, onStage?: (stageNo: number) => void) => {
     // 頼むとき（写真を送る）は、通信が遅くても、時間がかかる。決めた時間では打ち切らず、呼び出した側の「やめる」に任せる
     const { jobId } = await call<{ jobId: string }>('/api/analyze', { method: 'POST', body: JSON.stringify(body), signal: signal ?? new AbortController().signal });
     return waitForJob(jobId, signal, onStage);

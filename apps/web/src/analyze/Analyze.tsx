@@ -8,6 +8,7 @@ import type { AiApplied } from './applied.ts';
 import { useT } from '../i18n/useT.ts';
 import { tr } from '../i18n/index.ts';
 import { Rich } from '../i18n/Rich.tsx';
+import { useSettings } from '../settings/settings.tsx';
 
 interface Props {
   answers: Answers;
@@ -50,6 +51,7 @@ function toBase64(file: File): Promise<string> {
  */
 export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onStatus, onGoToHearing, onGoToDrawing }: Props) {
   const t = useT();
+  const { settings } = useSettings();
   const [images, setImages] = useState<Picked[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +136,8 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
         {
           images: images.map((i) => ({ mediaType: i.mediaType, data: i.data })),
           answers,
+          // 画面の言葉。AIが書く質問・注意書きを、この言葉にしてもらう
+          lang: settings.lang,
         },
         mine.ctl.signal,
         (n) => setStage((cur) => Math.max(cur, n)),

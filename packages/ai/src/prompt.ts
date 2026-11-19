@@ -157,7 +157,7 @@ ${symbols}
 }
 
 /** 既に分かっている回答を、読み取りの手がかりとして渡す */
-export function buildUserPrompt(known: Record<string, unknown>): string {
+export function buildUserPrompt(known: Record<string, unknown>, lang?: string): string {
   const entries = Object.entries(known).filter(([, v]) => v !== undefined && v !== null && v !== '');
   const knownText = entries.length
     ? `すでに分かっている項目（これは読み取り直さなくてよい）:\n${entries
@@ -169,5 +169,16 @@ export function buildUserPrompt(known: Record<string, unknown>): string {
 
 ${knownText}
 
-読み取れた項目だけを answers に入れ、読み取れなかったものは空欄のままにしてください。`;
+読み取れた項目だけを answers に入れ、読み取れなかったものは空欄のままにしてください。${languageNote(lang)}`;
+}
+
+/** 利用者が選んでいる言葉（日本語以外）。AIが書く文章（質問・注意書き・根拠）を、その言葉で書いてもらう（項目のIDと、選ぶ値は、そのまま） */
+const LANGUAGE_NAME: Record<string, string> = { en: 'English（英語）', fr: 'français（フランス語）', zh: '简体中文（中国語）', ko: '한국어（韓国語）' };
+export function languageNote(lang?: string): string {
+  const name = lang ? LANGUAGE_NAME[lang] : undefined;
+  if (!name) return '';
+  return `
+
+利用者は、画面の言葉に ${name} を選んでいます。questions の where・ask・why、notes、evidence の text は、${name} で書いてください。
+項目のID（key・questionId）と、選択式の項目の値は、指示文に書いてある文字のままにしてください（翻訳しない）。メモに書かれていた名称・型番・数値は、そのまま書き写してください。`;
 }

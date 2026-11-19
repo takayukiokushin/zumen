@@ -118,6 +118,7 @@ app.post('/api/analyze', requireAuth, async (c) => {
   const body = (await c.req.json().catch(() => null)) as {
     images?: { mediaType: string; data: string }[];
     answers?: Answers;
+    lang?: string;
   } | null;
   if (!body) return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
   if (!body.images?.length) return c.json({ error: '画像が選ばれていません。画像を1枚以上選んでから、もう一度お試しください。' }, 400);
@@ -140,7 +141,9 @@ app.post('/api/analyze', requireAuth, async (c) => {
   // 結果は、画面が、GET /api/analyze/:id で受け取る
   const answers = body.answers ?? {};
   const images = body.images;
-  const job = startJob(who, (signal, setStage) => analyze(images, answers, signal, setStage));
+  // 画面の言葉（決まった5つだけ受け付ける）
+  const lang = ['ja', 'en', 'fr', 'zh', 'ko'].includes(String(body.lang)) ? String(body.lang) : undefined;
+  const job = startJob(who, (signal, setStage) => analyze(images, answers, signal, setStage, lang));
   return c.json({ jobId: job.id }, 202);
 });
 

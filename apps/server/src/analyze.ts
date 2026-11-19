@@ -120,6 +120,8 @@ export async function analyze(
   clientGone?: AbortSignal,
   /** いま何をしているか（画面の進み具合の表示に使う）。実際の AI の答えの届き方から決める */
   onStage?: (stage: AnalyzeStage) => void,
+  /** 利用者が選んでいる、画面の言葉（ja・en・fr・zh・ko）。AIが書く質問・注意書きを、この言葉にする */
+  lang?: string,
 ): Promise<AnalyzeResponse> {
   validateImages(images);
 
@@ -130,7 +132,7 @@ export async function analyze(
           ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: img.data } }
           : { type: 'image', source: { type: 'base64', media_type: img.mediaType as 'image/png', data: img.data } },
     ),
-    { type: 'text', text: buildUserPrompt(answers) },
+    { type: 'text', text: buildUserPrompt(answers, lang) },
   ];
 
   // 全体の打ち切り（時間切れ）と、画面側がやめた（接続が切れた）ときの中断を、まとめて渡す
