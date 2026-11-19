@@ -66,11 +66,25 @@ export const AREAS_QUESTIONS: Question[] = [
       { value: 'vcb-load', label: 'VCBの負荷側（CTの下）' },
       { value: 'bus', label: '高圧母線（変圧器の手前）' },
       { value: 'tr-secondary', label: '変圧器の二次側' },
+      { value: 'device', label: 'ほかの機器の開閉器の二次側' },
     ],
     showIf: { key: 'areaNo', gt: 1 },
     ask: 'always',
     required: true,
     help: 'このエリア（送り出す側）の、どこから、この送り先へ線を出すか。変圧器の手前は、高圧母線として扱う。「変圧器の二次側」を選ぶと、何台目の変圧器かを、次の質問で選ぶ（二次側が高圧のとき）',
+  },
+  {
+    // 「ほかの機器の開閉器の二次側」から送り出すときだけ（第18弾 F-③）。選択肢は、送り出す側のエリアに入力した機器の開閉器から、入力画面が自動で作る
+    id: 'linkDevice',
+    noAi: true,
+    noTrend: true,
+    group: 'link',
+    label: 'どの開閉器の二次側ですか？',
+    type: 'select',
+    options: [],
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'device' }] },
+    ask: 'always',
+    help: '送り出す側のエリアの、変圧器・コンデンサ・発電機・電動機の列にある開閉器から選ぶ（手前・あとの開閉器と、手前のPC・LBS・VCS）。その開閉器の列のすぐ右に、送り出しの開閉器・ケーブルの端末を並べる',
   },
   {
     // 「変圧器の二次側」から送り出すときだけ（第13弾 項目55 修正19）。台数より大きい番号は、最後の台に寄せる

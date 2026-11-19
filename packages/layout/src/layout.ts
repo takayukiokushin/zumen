@@ -123,6 +123,9 @@ const FRAME_HALF = 200;
 const LANE_GAP = 120;
 /** 高圧母線から下がる列どうしの間隔（記号の脇に文字を書くぶん広めに取る） */
 const PARALLEL_GAP = 160;
+/** ほかの機器の開閉器の二次側から、別のエリアへ出す線：開閉器の列から、送り出しの並びまでの横の距離と、並びが占める幅（第18弾 F-③） */
+const DEV_STACK_OFFSET = 150;
+const DEV_STACK_WIDTH = 130;
 /** 結線せずに置くものを、主回路からどれだけ下に離すか */
 const FREE_GAP = 56;
 /** 並列に入る機器（励磁突入電流抑制開閉器）を、主回路の縦線から左へ離す距離（記号の中心まで） */
@@ -159,6 +162,8 @@ interface AreaTaps {
   bus?: { x: number; y: number };
   /** 変圧器の二次側の出口（何台目か＝配列の番号＋1）。三巻線変圧器（出口が決まっていない）は、null */
   trOut?: ({ x: number; y: number; /** その出口から、低圧の回線が下へ出ているか */ lv: boolean } | null)[];
+  /** 並列の機器の列にある開閉器の、二次側の出口（「役割:何件目」ごと）。ほかの機器の開閉器の二次側から、別のエリアへ出す線の、出る位置（第18弾 F-③） */
+  devOut?: Record<string, { x: number; y: number; /** 送り出しの並び（開閉器・ケーブルの端末）を置く、縦線の位置 */ stackX: number }>;
   /** 主回路のいちばん下 */
   end: number;
 }
@@ -242,6 +247,14 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   let feederAnchorY: number | null = null;
   /** 変圧器ごとの低圧側の出口（1台目から順に）。低圧の回線はここからぶら下げる */
   const transformerOut: { x: number; y: number }[] = [];
+  /** 置いた並列の機器の、下の出口の位置（「役割:何件目」ごと） */
+  const placedByUnit = new Map<string, { x: number; exitY: number }>();
+  /** 開閉器（役割:何件目）の二次側から出る並びの、縦線の位置 */
+  const stackXOf = new Map<string, number>();
+  /** 並列の機器の列の、いちばん左の位置 */
+  let laneMinX = SPINE;
+  /** 別のエリアへ出す線の並びがあるか（結線せずに置くものは、その並びの縦線に当たらないよう、左へ寄せる） */
+  let hasLinkOut = false;
   /** 低圧の回線が下へ出ている変圧器（0始まり）。送り出しの線の、つなぎ方に使う */
   let trWithLv: Map<number, number[]> = new Map();
   /** 下の出口を決めていない変圧器（三巻線変圧器）の番号（0始まり） */
@@ -271,6 +284,42 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     const feedOf = new Map<number, string>();
     for (const p of parallels) if (p.feedFrom && hereKeys.has(p.feedFrom) && !feedOf.has(p.lane ?? 0)) feedOf.set(p.lane ?? 0, p.feedFrom);
     const rootLanes = lanes.filter((l) => !feedOf.has(l));
+    // ほかの機器の開閉器の二次側から、別のエリアへ出す線の、並び（開閉器・ケーブルの端末）を置く位置：
+    // 同じ開閉器の列から分かれて出る列のうち、より低い位置の開閉器から分かれる列の、さらに右（それより高い位置の開閉器から分かれる列の手前）。
+    // 横に出る線が、ほかの列の縦の線と交わらない（低い所から出る線ほど、元の列の近く）。置く場所の分だけ、列のあいだを広げる
+    const laneOfUnit = new Map(parallels.map((p) => [unitKey(p), p.lane ?? 0]));
+    const parentLane = new Map<number, number>();
+    for (const [l, key] of feedOf) {
+      const pl = laneOfUnit.get(key);
+      if (pl !== undefined) parentLane.set(l, pl);
+    }
+    const childOf = (l: number, anc: number): number | undefined => {
+      let c = l;
+      for (let n = 0; n < 20 && parentLane.has(c); n++) {
+        const up = parentLane.get(c)!;
+        if (up === anc) return c;
+        c = up;
+      }
+      return undefined;
+    };
+    const rowOfUnit = new Map(parallels.map((p) => [unitKey(p), p.row ?? 0]));
+    /** 開閉器（役割:何件目）の二次側から出る並びを、どの列のすぐ右に置くか */
+    const outAfter = new Map<string, number>();
+    const outCount = new Map<number, number>();
+    const outNum = new Map<string, number>();
+    for (const p of parallels.filter((x) => x.linkOut)) {
+      const l0 = p.lane ?? 0;
+      let cur = l0;
+      for (const l of lanes.filter((x) => x > l0)) {
+        const child = childOf(l, l0);
+        if (child === undefined) break;
+        if ((rowOfUnit.get(feedOf.get(child) ?? '') ?? 0) > (p.row ?? 0)) cur = l;
+        else break;
+      }
+      outAfter.set(unitKey(p), cur);
+      outCount.set(cur, (outCount.get(cur) ?? 0) + (p.linkOut ?? 1));
+      outNum.set(unitKey(p), p.linkOut ?? 1);
+    }
     // 直前の分岐（試験端子・OCR・ZPDなど）の下端より下に引く。母線を描くときは、さらに余裕を持たせる
     const before = started ? pendingGap : GAP;
     const busY = spineY + (lanes.length > 1 ? Math.max(before + 8, BUS_CLEAR) : before);
@@ -296,10 +345,14 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const set = tr ? feederLanes.get(tr.unit ?? 0) : undefined;
       return set ? feederLaneGaps([...set].sort((a, b) => a - b)).reduce((a, b) => a + b, 0) : 0;
     };
+    /** 送り出しの並びを、その列の右に置くときの、列からの距離。変圧器の下に、低圧の回線が並ぶ列は、その幅と文字をよける */
+    const devOffsetOf = (lane: number): number => Math.max(DEV_STACK_OFFSET, spanUnder(lane) / 2 + 130);
     const colX: number[] = [0];
     for (let j = 1; j < lanes.length; j++) {
       const widen = LANE_GAP + spanUnder(lanes[j - 1]!) / 2 + spanUnder(lanes[j]!) / 2;
-      colX.push(colX[j - 1]! + Math.max(PARALLEL_GAP, widen));
+      // この列の開閉器の二次側から、別のエリアへ線を出すとき：すぐ右に、送り出しの並びを置く広さを空ける
+      const linkOut = outCount.has(lanes[j - 1]!) ? devOffsetOf(lanes[j - 1]!) + DEV_STACK_WIDTH * outCount.get(lanes[j - 1]!)! : 0;
+      colX.push(colX[j - 1]! + Math.max(PARALLEL_GAP, widen, linkOut));
     }
     // 横の位置は、母線から出る列（root）の真ん中を、主回路の縦線にそろえる（分かれて出る列は、元の列の右に並ぶ）
     const rootX0 = colX[lanes.indexOf(rootLanes[0]!)] ?? 0;
@@ -307,6 +360,16 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     const colCenter = feedOf.size === 0 ? ((colX[0] ?? 0) + (colX.at(-1) ?? 0)) / 2 : (rootX0 + rootX1) / 2;
     const laneX = (lane: number) => (lanes.length <= 1 ? SPINE : SPINE + (colX[lanes.indexOf(lane)] ?? 0) - colCenter);
 
+    laneMinX = Math.min(...lanes.map((l) => laneX(l)));
+    hasLinkOut = outAfter.size > 0;
+    // 送り出しの並びの縦線の位置：置く列の、すぐ右（同じ列の右に、2つ以上置くときは、幅ずつ右へ）
+    const nth = new Map<number, number>();
+    // 低い位置の開閉器から出る並びほど、列の近くに（横に出る線が、ほかの並びの縦線と交わらない）
+    for (const [key, after] of [...outAfter].sort((a, b) => (rowOfUnit.get(b[0]) ?? 0) - (rowOfUnit.get(a[0]) ?? 0))) {
+      const i = nth.get(after) ?? 0;
+      nth.set(after, i + (outNum.get(key) ?? 1));
+      stackXOf.set(key, laneX(after) + devOffsetOf(after) + i * DEV_STACK_WIDTH);
+    }
     busInfo = { x: rootLanes.length > 1 ? laneX(rootLanes.at(-1)!) : SPINE, y: busY };
     wires.push({ x1: SPINE, y1: spineY, x2: SPINE, y2: busY, dashed: pendingDashed });
     if (rootLanes.length > 1) {
@@ -356,7 +419,6 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
 
     let deepest = busY;
     /** 置いた機器の、下の出口の位置（分かれて出る列の、分かれる元になる）と、元ごとの、横の線をここまで引いた、右の端 */
-    const placedByUnit = new Map<string, { x: number; exitY: number }>();
     const feedReach = new Map<string, number>();
     for (const lane of lanes) {
       let ly = busY;
@@ -980,7 +1042,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     }
     fy += FREE_GAP;
 
-    let fx = SPINE - ((frees.length - 1) * FREE_SPACING) / 2;
+    // 別のエリアへ出す線の並びがあるときは、その縦線に当たらないよう、列のいちばん左より、さらに左に並べる
+    let fx = hasLinkOut ? laneMinX - 60 - (frees.length - 1) * FREE_SPACING : SPINE - ((frees.length - 1) * FREE_SPACING) / 2;
     for (const item of frees) {
       const def = getSymbol(item.symbolId);
       const sym = add(item, def, fx - def.box.w / 2, fy, 0, 'right');
@@ -1013,6 +1076,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     }
   }
   for (const w of wires) ext(Math.min(w.x1, w.x2), Math.min(w.y1, w.y2), Math.max(w.x1, w.x2), Math.max(w.y1, w.y2));
+  // 別のエリアへ出す線の並びを置く場所（開閉器の列の右）も、このエリアの範囲に入れる（エリアのあいだのすきまの線と、重ならないように）
+  for (const x of stackXOf.values()) ext(x - 20, spineY, x + DEV_STACK_WIDTH - 20, spineY);
 
   // 枠（受電設備の範囲）は、中身がはみ出さない幅に広げる。
   // ただし結線せずに置いたもの（発電機・太陽光など）は受電設備の外なので数えない
@@ -1052,6 +1117,7 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     breakerEntry: portY('main-breaker', 'in'),
     breakerExit: portY('main-breaker', 'out', 'sec'),
     bus: busInfo,
+    devOut: Object.fromEntries([...placedByUnit].map(([k, v]) => [k, { x: v.x, y: v.exitY, stackX: stackXOf.get(k) ?? v.x + DEV_STACK_OFFSET }])),
     trOut: Array.from({ length: transformerOut.length }, (_, t) => (transformerOut[t] && !transformerNoOut.has(t) ? { ...transformerOut[t]!, lv: trWithLv.has(t) } : null)),
     end: spineY,
   };
@@ -1425,7 +1491,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
    * 間にほかのエリアがあっても、その上を通るので、エリアの中を横切らない。
    * 同じ位置から出る線は、1本の縦線（幹）を共有し、高さごとに横へ分かれる。
    */
-  type LinkInfo = { n: number; from: number; sx: number; sy: number; /** 送り出しの段（1段目から順に）ごとの、線（ケーブル／電線）の様子。最後の段が、送り先のエリアへ向かう */ stages: { cable: boolean; dashed: boolean; label: string[] }[]; /** 変圧器の二次側から出すとき、出口の高さ（低圧の回線が無いときだけ。ここから分岐の高さまで、線を引く） */ feedFrom?: number; label: string[]; dashed: boolean; cable: boolean; /** 送り先名称（送り出し側の端末の近くに書く） */ name: string[] };
+  type LinkInfo = { n: number; from: number; sx: number; sy: number; /** 送り出しの段（1段目から順に）ごとの、線（ケーブル／電線）の様子。最後の段が、送り先のエリアへ向かう */ stages: { cable: boolean; dashed: boolean; label: string[] }[]; /** 変圧器の二次側から出すとき、出口の高さ（低圧の回線が無いときだけ。ここから分岐の高さまで、線を引く） */ feedFrom?: number; /** ほかの機器の開閉器の二次側から出すとき（第18弾 F-③）。dx：開閉器の列から、送り出しの並びの縦線までの距離 */ dev?: boolean; stackDx?: number; label: string[]; dashed: boolean; cable: boolean; /** 送り先名称（送り出し側の端末の近くに書く） */ name: string[] };
   const linkInfos: LinkInfo[] = [];
   for (const part of parts) {
     const link = part.link?.link;
@@ -1454,12 +1520,14 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
       const idx = Math.max(0, Math.min(t.trOut.length - 1, (link.trNo ?? 1) - 1));
       trTap = t.trOut[idx] ?? undefined;
     }
+    // ほかの機器の開閉器の二次側：その開閉器の出口（列の位置と高さ）から出す（第18弾 F-③）
+    const devPt = link.tap === 'device' && link.devRef ? t.devOut?.[link.devRef] : undefined;
     // 主回路の縦線から右へ出る線が、右にある機器（トリップコイルなど）や文字を突き抜けるときは、近くの空いた高さへずらす
     if (y !== undefined) y = clearRunY(src.result, y, t.bus ? t.bus.y - 8 : t.end);
     // 位置が決まらないときは、高圧母線の右端（母線が無ければ、主回路の末端）から出る
-    const sy = (trTap ? trTap.y + TAP_OFFSET : (y ?? (t.bus ? t.bus.y : t.end))) + dys[link.from]!;
-    const sx = trTap ? trTap.x : y !== undefined ? 0 : t.bus ? t.bus.x : 0;
-    linkInfos.push({ n: part.n, from: link.from, sx, sy, stages: link.stages && link.stages.length > 0 ? link.stages : [{ cable: link.cable !== false, dashed: link.dashed, label: part.link?.label ?? [] }], feedFrom: trTap && !trTap.lv ? trTap.y + dys[link.from]! : undefined, label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
+    const sy = (trTap ? trTap.y + TAP_OFFSET : devPt ? devPt.y : (y ?? (t.bus ? t.bus.y : t.end))) + dys[link.from]!;
+    const sx = trTap ? trTap.x : devPt ? devPt.x : y !== undefined ? 0 : t.bus ? t.bus.x : 0;
+    linkInfos.push({ n: part.n, from: link.from, sx, sy, stages: link.stages && link.stages.length > 0 ? link.stages : [{ cable: link.cable !== false, dashed: link.dashed, label: part.link?.label ?? [] }], feedFrom: trTap && !trTap.lv ? trTap.y + dys[link.from]! : undefined, ...(devPt ? { dev: true, stackDx: devPt.stackX - devPt.x + linkInfos.filter((l) => l.dev && l.from === link.from && l.sx === devPt.x && Math.abs(l.sy - (devPt.y + dys[link.from]!)) < 0.5).length * DEV_STACK_WIDTH } : {}), label: part.link?.label ?? [], dashed: link.dashed, cable: link.cable !== false, name: link.cable !== false ? (link.name ?? []) : [] });
   }
   // 同じエリアから出る線のうち、主回路の同じ縦線から、ごく近い高さ（8以内）で出るものは、間に記号が無い、同じ場所なので、同じ高さにそろえる
   // （2本の横線が、数ピクセルの間隔で並んで、太い1本に見えないように）
@@ -1472,14 +1540,14 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     }
   }
   /** 同じエリアの、同じ高さから出る線の組（幹） */
-  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 上から出る線ほど小さい番号（記号のIDの末尾に使う。並びの順を変えても、IDが変わらないように） */ under: boolean; /** 変圧器の真下に、送り出しの並びを置く（変圧器の二次側から出す、単純な線のとき。第18弾 F-③） */ inArea: boolean; oid: number; /** 同じエリアから出るケーブルの線の、左から数えた順番と、本数（同じ高さからは、近いエリアへの線が先） */ gi: number; gn: number };
+  type Trunk = { from: number; sy: number; cable: boolean; links: LinkInfo[]; index: number; /** 上から出る線ほど小さい番号（記号のIDの末尾に使う。並びの順を変えても、IDが変わらないように） */ under: boolean; /** 変圧器の真下に、送り出しの並びを置く（変圧器の二次側から出す、単純な線のとき。第18弾 F-③） */ inArea: boolean; /** ほかの機器の開閉器の二次側から出る（その列のすぐ右に、並びを置く） */ devArea: boolean; oid: number; /** 同じエリアから出るケーブルの線の、左から数えた順番と、本数（同じ高さからは、近いエリアへの線が先） */ gi: number; gn: number };
   const trunks: Trunk[] = [];
   for (const li of linkInfos) {
     // ケーブルでつなぐ線は、1本ずつ、別の幹にする（ケーブルは、線ごとに別の物なので、端末も、線の数だけ描く）。
     // ふつうの線でつなぐ線は、同じ位置から出るものを、1つの幹にまとめる
     let tr = li.cable || li.stages.length > 1 ? undefined : trunks.find((x) => x.from === li.from && !x.cable && Math.abs(x.sy - li.sy) < 0.5);
     if (!tr) {
-      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, oid: 0, under: false, inArea: false, gi: 0, gn: 1 };
+      tr = { from: li.from, sy: li.sy, cable: li.cable, links: [], index: trunks.filter((x) => x.from === li.from).length, oid: 0, under: false, inArea: false, devArea: li.dev === true, gi: 0, gn: 1 };
       trunks.push(tr);
     }
     tr.links.push(li);
@@ -1555,7 +1623,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     return PART_GC_DX + getSymbol('gc').box.w / 2 + LABEL_GAP + labelWidth(g.main.label);
   };
   /** この幹に、送り出しの縦の並び（開閉器・ZCT・ケーブルの端末）を作るか。開閉器があるときのほか、ケーブルでつなぐだけのときも、端末は、必ず下向きにするため */
-  const stackedTrunk = (tr: Trunk): boolean => sendoutsOfDest(destOf(tr)).length > 0 || partsOfDest(destOf(tr)).length > 0 || relaysOfDest(destOf(tr)).length > 0 || tr.cable || tr.links[0]!.stages.slice(0, -1).some((x) => x.cable);
+  const stackedTrunk = (tr: Trunk): boolean => tr.devArea || sendoutsOfDest(destOf(tr)).length > 0 || partsOfDest(destOf(tr)).length > 0 || relaysOfDest(destOf(tr)).length > 0 || tr.cable || tr.links[0]!.stages.slice(0, -1).some((x) => x.cable);
   /** 送り出しの縦の並びを作る幹が、1本でもあるエリアか */
   const stackedArea = (area: number): boolean => trunks.some((x) => x.from === area && stackedTrunk(x));
   /**
@@ -1566,7 +1634,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
    * 同じエリアから出る、ほかの線が、すきまに置くものになるときは、そのエリアの線は、すべて、これまでどおり（真下に置くものと、すきまに置くものが混ざると、線が交わるため）
    */
   for (const f of new Set(trunks.map((x) => x.from))) {
-    const mine = trunks.filter((x) => x.from === f && stackedTrunk(x));
+    const mine = trunks.filter((x) => x.from === f && stackedTrunk(x) && !x.devArea);
     const part = parts[f];
     if (mine.length === 0 || !part || trunks.some((x) => x.from === f && !stackedTrunk(x))) continue;
     const dy = dys[f]!;
@@ -1614,11 +1682,14 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     for (const p of mine) {
       p.under = p.cable && mine.some((q) => q.cable && q.sy < p.sy - 0.5 && destOf(q) < destOf(p));
     }
-    // 変圧器の真下に置くときは、左の変圧器から出る線ほど、左（ケーブルは、深く、外側の縦線を通る。右の線の下を通るので、線が交わらない）
-    if (mine.every((x) => x.inArea || !stackedTrunk(x))) mine.sort((a, b) => a.links[0]!.sx - b.links[0]!.sx || a.sy - b.sy);
-    else
     // 低い所から出る線ほど左。同じ高さからは、下を通す線（遠いエリアへ）を左に、遠い順。そのあと、上から回す線を、近い順
-    mine.sort((a, b) => b.sy - a.sy || Number(b.under) - Number(a.under) || (a.under ? destOf(b) - destOf(a) : destOf(a) - destOf(b)));
+    const gapFirst = (a: Trunk, b: Trunk) => b.sy - a.sy || Number(b.under) - Number(a.under) || (a.under ? destOf(b) - destOf(a) : destOf(a) - destOf(b));
+    // 変圧器の真下・開閉器の列の右に置く線は、すきまに置く線より、左（ケーブルは、深く、外側の縦線を通る。すきまの線の並びの下を通るので、線が交わらない）。
+    // その中では、左の列から出る線ほど、左
+    const xOf = (t: Trunk) => t.links[0]!.sx + (t.devArea ? (t.links[0]!.stackDx ?? DEV_STACK_OFFSET) : 0);
+    const inside = mine.filter((x) => x.inArea || x.devArea).sort((a, b) => xOf(a) - xOf(b) || a.sy - b.sy);
+    const outside = mine.filter((x) => !(x.inArea || x.devArea)).sort(gapFirst);
+    mine.splice(0, mine.length, ...inside, ...outside);
     mine.forEach((x, i) => { x.index = i; });
     const cables = mine.filter((x) => x.cable);
     cables.forEach((x, i) => { x.gi = i; x.gn = cables.length; });
@@ -1765,13 +1836,13 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     if (useStack) {
       const gr = groundOfDest(destOf(tr));
       // 変圧器の真下に置くときは、変圧器の列の位置（sx）。ほかは、エリアのすきま
-      const xs = tr.inArea ? sx : stackX(tr);
+      const xs = tr.devArea ? sx + (tr.links[0]!.stackDx ?? DEV_STACK_OFFSET) : tr.inArea ? sx : stackX(tr);
       // 同じエリアから、高さの違う幹が複数あるときは、2本目からは、ケーブルの端末のIDに印を付ける（開閉器のIDは、送り先の番号つきなので、印は要らない）
       const sfx = tr.oid === 0 ? '' : `-${tr.links[0]!.n + 1}`;
       // 同じ位置から出る2本目以降のケーブルは、前の線の縦の並びの位置から、右へ分かれる（同じ線を、重ねて引かない）
       const prevCable = tr.cable && tr.gi > 0 ? trunks.find((x) => x.cable && x.from === tr.from && x.gi === tr.gi - 1) : undefined;
       // （前の線から分かれるのは、同じ位置（同じ変圧器の二次側など）から出る線だけ。違う変圧器の出口から出る線は、自分の出口から、横へ出る）
-      const prev = prevCable && !prevCable.inArea && !tr.inArea && Math.abs(prevCable.sy - tr.sy) < 0.5 && Math.abs(prevCable.links[0]!.sx - tr.links[0]!.sx) < 0.5 ? prevCable : undefined;
+      const prev = prevCable && !prevCable.inArea && !tr.inArea && !prevCable.devArea && !tr.devArea && Math.abs(prevCable.sy - tr.sy) < 0.5 && Math.abs(prevCable.links[0]!.sx - tr.links[0]!.sx) < 0.5 ? prevCable : undefined;
       const startX = prev ? stackX(prev) : sx;
       // （変圧器の真下に置くときは、横へは出ない。変圧器の出口から、そのまま真下へ）
       if (!tr.inArea) {
@@ -2019,7 +2090,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
         y += extra;
       }
       // 変圧器の真下に置いたとき：ケーブルは、まわりの記号・文字・線の、いちばん下を通って、横へ出る（変圧器の隣の列や、文字と重ならない）
-      if (tr.inArea) {
+      if (tr.inArea || tr.devArea) {
         const xl = xs + 1;
         const xr = gx - 1;
         let low = y;
@@ -2149,7 +2220,7 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
     const dashedTrunk = tr.links.every((l) => l.dashed);
     if (useStack) {
       // 並びの下の端から、右へ（ケーブル。ケーブルでないときは、ふつうの線）、そこから、いちばん高い横線の高さまで上へ
-      seg(tr.inArea ? sx : stackX(tr), endY, gx, endY, tr.cable && dashedTrunk);
+      seg(tr.devArea ? sx + (tr.links[0]!.stackDx ?? DEV_STACK_OFFSET) : tr.inArea ? sx : stackX(tr), endY, gx, endY, tr.cable && dashedTrunk);
       seg(gx, endY, gx, topY, tr.cable && dashedTrunk);
     } else {
       // ふつうの線でつなぐとき（ケーブルでなく、開閉器も無いとき）は、端末も点線も無く、ふつうの線だけ

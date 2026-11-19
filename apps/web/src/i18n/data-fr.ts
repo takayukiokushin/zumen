@@ -948,5 +948,8 @@ const data: Record<string, string> = {
   "区分開閉器から、この開閉器までのケーブル。受電設備までの「引込ケーブル」は、これとは別に、これまでどおり": "Le câble entre l’interrupteur de section et cet interrupteur. Le câble de branchement vers l’installation de réception reste distinct, comme avant.",
   "ケーブル（区分開閉器 → この開閉器）": "Câble (interrupteur de section → cet interrupteur)",
   "VCTの置き場所が「主遮断装置（VCB・LBS）より下」になっていますが、区分開閉器が「なし」で、引込ケーブルが電力会社のものなので、その位置には置けません（財産分界点が、責任分界点より下流になるため）。「ケーブルの次」として描いています。置き場所を選び直してください。": "La position du VCT est réglée sous le dispositif de coupure principal (VCB / LBS), mais sans interrupteur de section et avec un câble de branchement appartenant au distributeur, il ne peut pas y être placé (le point de démarcation de propriété serait en aval du point de démarcation de responsabilité). Il est dessiné « après le câble ». Choisissez à nouveau la position.",
+  "ほかの機器の開閉器の二次側": "Côté secondaire de l'interrupteur d'un autre appareil",
+  "どの開閉器の二次側ですか？": "Côté secondaire de quel interrupteur ?",
+  "送り出す側のエリアの、変圧器・コンデンサ・発電機・電動機の列にある開閉器から選ぶ（手前・あとの開閉器と、手前のPC・LBS・VCS）。その開閉器の列のすぐ右に、送り出しの開閉器・ケーブルの端末を並べる": "Choisir parmi les interrupteurs des colonnes transformateur / condensateur / générateur / moteur de la zone d'envoi (interrupteurs avant et après le câble, et PC / LBS / VCS avant). L'interrupteur de départ et les extrémités du câble sont placés immédiatement à droite de la colonne de cet interrupteur.",
 };
 export default data;

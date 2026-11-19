@@ -1,7 +1,7 @@
 import type { Answers } from './condition.ts';
 import { evaluate } from './condition.ts';
 import { countOf, maxCountOf } from './counts.ts';
-import { areaCountOf, areaKey, areaView, effectiveAnswers, feedChoices, indexedKey, linkFromOf, viewAt, visibleQuestions } from './engine.ts';
+import { areaCountOf, areaKey, areaView, effectiveAnswers, feedChoices, indexedKey, linkDeviceChoices, linkFromOf, viewAt, visibleQuestions } from './engine.ts';
 import type { AskOptions } from './engine.ts';
 import { QUESTIONS, QUESTION_GROUPS } from './questions.ts';
 import type { Question, QuestionGroup } from './questions.ts';
@@ -96,6 +96,12 @@ export function sectionRows(ctx: RowsContext, group: QuestionGroup, area: number
         const choices = feedChoices(view, fm[1]!, i);
         if (choices.length === 0) return [];
         return [{ key: keyOf(q.id, i), question: { ...q, options: [...(q.options ?? []), ...choices] }, unit: i, area }];
+      }
+      // 送り出しの分岐元（ほかの機器の開閉器の二次側）：選択肢は、送り出す側のエリアに入力した、すべての機器の開閉器から作る（第18弾 F-③）
+      if (q.id === 'linkDevice') {
+        const from = ctx.views[linkFromOf(view, area)];
+        const choices = from ? linkDeviceChoices(from) : [];
+        return [{ key: keyOf(q.id, i), question: { ...q, options: choices }, unit: i, area }];
       }
       return [{ key: keyOf(q.id, i), question: q, unit: i, area }];
     });

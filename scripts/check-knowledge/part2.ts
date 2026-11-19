@@ -646,7 +646,7 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const fromOpts = (n: number) => (from?.options ?? []).filter((o) => evaluate(o.showIf, { areaNo: n })).map((o) => o.value).join(',');
   ok(fromOpts(3) === '1,2' && fromOpts(2) === '1', `分岐元の選択肢が違います（3か所目：${fromOpts(3)}）`);
   const tap = QUESTIONS.find((q) => q.id === 'linkTap')?.options?.map((o) => o.value).join(',');
-  ok(tap === 'ds-source,ds-vcb,vcb-load,bus,tr-secondary', `分岐の位置の選択肢が違います（${tap}）`);
+  ok(tap === 'ds-source,ds-vcb,vcb-load,bus,tr-secondary,device', `分岐の位置の選択肢が違います（${tap}）`);
   // 「変圧器の二次側」を選んだときだけ、「何台目の変圧器か」を聞く（初期値は1台目。第13弾 項目55 修正19）
   const trQ = (a: Answers) => visibleQuestions(withDerived({ areaCount: 2, 'a2:areaIntake': 'ds-vcb', ...a } as Answers), {}).some((q) => q.id === 'linkSourceTr');
   const eff2 = (a: Answers) => areaView(withAutoValues({ areaCount: 2, ...a } as Answers), 1);

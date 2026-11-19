@@ -22,7 +22,8 @@ for (const q of QUESTIONS) {
   for (const key of referencedKeys(q.showIf)) {
     if (!questionIds.has(key) && !VIEW_KEYS.has(key)) fail(`質問 ${q.id} の表示条件が未定義の質問 ${key} を参照しています`);
   }
-  if (q.type === 'select' && !q.options?.length) fail(`質問 ${q.id} は選択式なのに選択肢がありません`);
+  // （linkDevice は、選択肢を、入力画面が、入力の内容から作る）
+  if (q.type === 'select' && !q.options?.length && q.id !== 'linkDevice') fail(`質問 ${q.id} は選択式なのに選択肢がありません`);
 }
 
 const allPlacements = [

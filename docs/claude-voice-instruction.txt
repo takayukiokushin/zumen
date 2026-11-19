@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v1qnidju",
+  "version": "vrg4zq8",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v1qnidju）
+# 項目の一覧（版：vrg4zq8）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -270,7 +270,7 @@
 【エリア間の接続（送り出し）】
 （エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:linkFrom））
 - linkFrom：どのエリアから分岐しますか｜数（1〜9）
-- linkTap：分岐する位置は｜ds-source=DSの電源側（DSの手前） ／ ds-vcb=DSとVCBの間 ／ vcb-load=VCBの負荷側（CTの下） ／ bus=高圧母線（変圧器の手前） ／ tr-secondary=変圧器の二次側
+- linkTap：分岐する位置は｜ds-source=DSの電源側（DSの手前） ／ ds-vcb=DSとVCBの間 ／ vcb-load=VCBの負荷側（CTの下） ／ bus=高圧母線（変圧器の手前） ／ tr-secondary=変圧器の二次側 ／ device=ほかの機器の開閉器の二次側
 - linkSourceTr：何台目の変圧器の二次側ですか｜数（1〜8）｜条件：linkTap=tr-secondary
 - linkStageCount：何段つなぎますか｜1=1段 ／ 2=2段 ／ 3=3段 ／ 4=4段
 - linkCable：この送り先へは、ケーブルでつなぎますか｜yes/no

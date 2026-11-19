@@ -954,5 +954,8 @@ const data: Record<string, string> = {
   "区分開閉器から、この開閉器までのケーブル。受電設備までの「引込ケーブル」は、これとは別に、これまでどおり": "The cable from the sectionalizing switch to this switch. The service cable to the receiving equipment is separate, as before.",
   "ケーブル（区分開閉器 → この開閉器）": "Cable (sectionalizing switch → this switch)",
   "VCTの置き場所が「主遮断装置（VCB・LBS）より下」になっていますが、区分開閉器が「なし」で、引込ケーブルが電力会社のものなので、その位置には置けません（財産分界点が、責任分界点より下流になるため）。「ケーブルの次」として描いています。置き場所を選び直してください。": "The VCT position is set below the main breaking device (VCB / LBS), but with no sectionalizing switch and a utility-owned service cable it cannot be placed there (the property demarcation point would fall downstream of the responsibility demarcation point). It is drawn as “after the cable”. Please choose the position again.",
+  "ほかの機器の開閉器の二次側": "Secondary side of another device's switch",
+  "どの開閉器の二次側ですか？": "Secondary side of which switch?",
+  "送り出す側のエリアの、変圧器・コンデンサ・発電機・電動機の列にある開閉器から選ぶ（手前・あとの開閉器と、手前のPC・LBS・VCS）。その開閉器の列のすぐ右に、送り出しの開閉器・ケーブルの端末を並べる": "Choose from the switches in the transformer / capacitor / generator / motor columns of the sending area (the switches before and after the cable, and the PC / LBS / VCS before it). The outgoing switch and the cable terminals are placed immediately to the right of that switch's column.",
 };
 export default data;

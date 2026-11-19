@@ -765,6 +765,8 @@ export interface PlacedItem {
    * その列のすべての機器に付く。分かれる元は、自分より前の列の開閉器だけ（第18弾 F-②）
    */
   feedFrom?: string;
+  /** この開閉器の二次側から、別のエリアへ出る線の数（その列のすぐ右に、送り出しの並びを、その数だけ置く広さを空ける。第18弾 F-③） */
+  linkOut?: number;
   /**
    * 高圧母線から並列にぶら下がるときの「段」（Placement.row と同じ）。
    * 同じ段の機器は、どの列でも同じ高さに揃う。
@@ -812,6 +814,8 @@ export interface PlacedItem {
     tap: string;
     /** tap が tr-secondary のとき、何台目の変圧器か（1始まり） */
     trNo?: number;
+    /** tap が device（ほかの機器の開閉器の二次側）のとき、その開閉器（「役割:何件目」。送り出す側のエリアの役割の名前のまま。第18弾 F-③） */
+    devRef?: string;
     /** 送り出しの段ごとの、線の様子（1段目から順に）。最後の段が、送り先のエリアへ向かう */
     stages?: { cable: boolean; dashed: boolean; label: string[] }[];
     /** ケーブルでつなぐか（false のときは、ケーブルの図記号を描かず、ふつうの線でつなぐ） */
@@ -1122,6 +1126,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
                 from: linkFromOf(view, n),
                 tap: String(view.linkTap ?? 'bus'),
                 trNo: view.linkTap === 'tr-secondary' ? Math.max(1, Math.round(Number(view.linkSourceTr ?? 1)) || 1) : undefined,
+                devRef: view.linkTap === 'device' && isAnswered(view.linkDevice) ? `${linkFromOf(view, n) === 0 ? '' : `a${linkFromOf(view, n) + 1}:`}${String(view.linkDevice)}` : undefined,
                 cable: lastStage.cable,
                 dashed: lastStage.dashed,
                 // 2段以上のとき、段ごとの線の様子（最後の段は、cable・dashed と同じ）
@@ -1148,6 +1153,13 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
       });
     }
   }
+  // ほかの機器の開閉器の二次側から、別のエリアへ出す線：その開閉器に印を付ける（元の列の右に、並びを置く広さを、空けるため）
+  for (const l of out) {
+    const ref = l.kind === 'link' ? l.link?.devRef : undefined;
+    if (!ref) continue;
+    const src = out.find((i) => i.kind === 'parallel' && `${i.role}:${i.unit ?? 0}` === ref);
+    if (src) src.linkOut = (src.linkOut ?? 0) + 1;
+  }
   return blank ? dropOrphans(out) : out;
 }
 
@@ -1160,6 +1172,33 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
 const FEED_SOURCE_ROLE = /^((tr|cap|gen)-cable-(up|dn)[123]|(tr|cap)-(pc|lbs)|cap-vcs|motor-(ds|vcb|lbs|lbs-plain|vcs)|motor-cable-dn[123])$/;
 const FEED_DEVICE_ROLE: Record<string, string> = { tr: 'transformer', cap: 'capacitor', gen: 'generator', motor: 'motor' };
 const FEED_SWITCH_NAME: Record<string, string> = { ds: 'DS', vcb: 'VCB', lbs: 'LBS', 'lbs-pf': 'LBS', vcs: 'VCS', as: 'AS', pc: 'PC' };
+
+/** 開閉器の項目（役割・記号・件）を、選択肢の名前の符号にする（feed:機器:何台目:開閉器:位置:何つ目） */
+function feedLabelOf(i: PlacedItem): string {
+  const dev = i.role.startsWith('tr') ? 'tr' : i.role.startsWith('cap') ? 'cap' : i.role.startsWith('gen') ? 'gen' : 'motor';
+  const m = /(up|dn)([123])$/.exec(i.role);
+  const pos = m ? m[1]! : /^motor/.test(i.role) ? 'mup' : 'own';
+  const k = m ? m[2]! : '0';
+  const sw = FEED_SWITCH_NAME[/^(?:tr|cap)-(pc)$/.test(i.role) ? 'pc' : i.symbolId] ?? i.symbolId.toUpperCase();
+  return `feed:${dev}:${(i.unit ?? 0) + 1}:${sw}:${pos}:${k}`;
+}
+
+/** そのエリアの、並列の機器の列にある開閉器（分かれる元にできるもの）を、列・段の順に */
+function deviceSwitches(view: Answers): PlacedItem[] {
+  const clean: Answers = {};
+  for (const [k, v] of Object.entries(view)) if (!/^(tr|cap|gen|motor)From(__\d+)?$/.test(k)) clean[k] = v;
+  return composeChain(withAutoValues(normalizeAnswers(clean)), [...TRANSFORMER, ...EXTRAS])
+    .filter((i) => i.kind === 'parallel' && i.lane !== undefined && FEED_SOURCE_ROLE.test(i.role))
+    .sort((a, b) => (a.lane ?? 0) - (b.lane ?? 0) || (a.row ?? 0) - (b.row ?? 0));
+}
+
+/**
+ * 別のエリアへ出す線（送り先）の、分岐元に選べる開閉器：送り出す側のエリア（sourceView）の、すべての機器の開閉器（第18弾 F-③）。
+ * 値は「役割:何件目」（送り出す側のエリアの役割の名前のまま）。無ければ、空
+ */
+export function linkDeviceChoices(sourceView: Answers): { value: string; label: string }[] {
+  return deviceSwitches(sourceView).map((i) => ({ value: `${i.role}:${i.unit ?? 0}`, label: feedLabelOf(i) }));
+}
 
 /**
  * 機器（p：tr・cap・gen・motor の、unit 件目＝0始まり）が、接続元として選べる開閉器（自分より前の列の開閉器だけ）。
