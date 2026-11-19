@@ -213,7 +213,11 @@ button.trend-chip:hover { text-decoration: underline; }
 :where(html[data-uw~="700"]) .canvas-blank-note .wide-only { display: none; }
 :where(html[data-uw~="700"]) .canvas-blank-note .narrow-only { display: inline; }
 .canvas-blank-note { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: min(360px, 80%); margin: 0; text-align: center; line-height: 1.7; color: var(--muted, #666); background: var(--panel, #fff); border: 1px dashed var(--rule, #bbb); border-radius: 8px; padding: 10px 14px; pointer-events: none; z-index: 1; }
-.canvas-wrap { overflow: auto; background: var(--paper); padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
+/* 図面は、枠より小さいときは、真ん中に置く。枠より大きいときは、左から置いて、右へスクロールで見せる。
+   （「justify-content: center」だと、大きい図面の左側が、枠の外にはみ出して、スクロールしても見えなくなる。第18弾 B-1）
+   そこで、左寄せにして、図面の左右の余白を auto にする（余りがあるときだけ、左右に均等に配られる） */
+.canvas-wrap { overflow: auto; background: var(--paper); padding: 20px; display: flex; justify-content: flex-start; align-items: flex-start; }
+.canvas-wrap > .canvas, .canvas-wrap > .sheet-view { margin-inline: auto; }
 .canvas { background: #fff; border: 1px solid var(--rule); width: auto; max-width: none; flex: 0 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
 .canvas .item { cursor: move; }
 .canvas .item:hover { color: var(--draw-accent); }

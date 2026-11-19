@@ -196,6 +196,35 @@ try {
         await tabs.nth(i).click({ force: true, timeout: 1500 }).catch(() => {});
         await sleep(800);
         rec(`${names[i]}のタブ`, await measure(page, c.touch));
+        // 図面のタブ：拡大しても、図面の左右・上下の端まで、スクロールで行ける（大きい図面の左側が、枠の外にはみ出して見えなくならない。第18弾 B-1）
+        if (names[i] === '図面') {
+          const zin = page.locator('.zoom-group button').nth(1);
+          for (let k = 0; k < 6; k++) {
+            if (!(await zin.isVisible().catch(() => false)) || (await zin.isDisabled().catch(() => true))) break;
+            await zin.click({ force: true, timeout: 1000 }).catch(() => {});
+            await sleep(120);
+          }
+          const reach = await page.evaluate(() => {
+            const wr = document.querySelector('.canvas-wrap') as HTMLElement | null;
+            const sv = wr?.querySelector('svg.canvas') as SVGElement | null;
+            if (!wr || !sv) return null;
+            wr.scrollLeft = 0;
+            wr.scrollTop = 0;
+            const a = wr.getBoundingClientRect();
+            const s0 = sv.getBoundingClientRect();
+            const left = s0.left - a.left;
+            const top = s0.top - a.top;
+            wr.scrollLeft = wr.scrollWidth;
+            wr.scrollTop = wr.scrollHeight;
+            const s1 = sv.getBoundingClientRect();
+            return { left, top, right: a.right - s1.right, bottom: a.bottom - s1.bottom };
+          });
+          screens++;
+          if (reach && (reach.left < -1 || reach.top < -1 || reach.right < -1 || reach.bottom < -1)) {
+            failed++;
+            problems.push(`${name}／図面：拡大すると、図面の端まで、スクロールで行けません（左${Math.round(reach.left)}・上${Math.round(reach.top)}・右${Math.round(reach.right)}・下${Math.round(reach.bottom)}。マイナスの分が見えません）`);
+          }
+        }
       }
       if (n === 0) {
         failed++;
