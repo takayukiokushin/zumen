@@ -181,7 +181,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   /** 「レイアウトを縮小」で、これ以上縮められないときの知らせ */
   const [layoutNote, setLayoutNote] = useState<string | null>(null);
   /** 入力内容が変わって、手で直した図面を作り直したときの知らせ（「操作を戻す」で元に戻せる） */
-  const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; lost: boolean } | null>(null);
+  const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; overlapIds: string[]; lost: boolean } | null>(null);
   /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
   const lastArrow = useRef<{ id: string; at: number } | null>(null);
   /** 直前の、まとめられる操作（文字の大きさのつまみを動かし続けるなど）の種類と時刻 */
@@ -573,7 +573,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
    */
   const regenerate = () => {
     const legacy = doc.edited === true && !doc.base;
-    const { doc: fresh, report } = legacy ? { doc: generated, report: { kept: false, dormant: 0, overlaps: 0 } } : rebuildWithOverrides(generated, doc);
+    const { doc: fresh, report } = legacy ? { doc: generated, report: { kept: false, dormant: 0, overlaps: 0, overlapIds: [] } } : rebuildWithOverrides(generated, doc);
     // 印刷の向きとレイヤーは、作り直しても、引き継ぐ
     const withOrientation: Doc = carryOver(fresh, doc);
     setHistory((h) => commit(h, withOrientation));
@@ -1484,6 +1484,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             onZoom={setZoom}
             zoomRef={zoomApi}
             issues={issues ?? []}
+            overlapIds={rebuiltNote?.overlapIds}
           />
           </>
           )}

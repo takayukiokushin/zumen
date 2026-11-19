@@ -694,7 +694,7 @@ export const zh: Dict = {
   'editor.rebuiltLost': '此图纸为旧格式，无法提取手动修改的内容，因此未能保留手动修改。可通过“撤销操作”恢复原状。',
   'editor.rebuiltKept': '手动修改的内容已原样保留。',
   'editor.rebuiltDormant': '当前输入中已不存在的设备所对应的部分（{n}项）已保留（该设备恢复后会重新套用）。',
-  'editor.rebuiltOverlap': '手动移动过的符号中，有 {n} 个与其他符号重叠。请确认位置。',
+  'editor.rebuiltOverlap': '手动移动过的符号中，有 {n} 个与其他符号重叠。请确认位置（重叠的符号用红色虚线圈出；关闭此提示后，圈线也会消失）。',
   'editor.rebuiltUndo': '可通过“撤销操作”恢复原状。',
   'editor.rebuiltUndo2': '可通过“撤销操作”恢复为原来的图纸。',
   'editor.issuesLeft': '还有 {n} 处未能修正完（图纸上已用红色标记标出）',

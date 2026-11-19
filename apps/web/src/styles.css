@@ -827,6 +827,7 @@ button.with-icon svg { flex: 0 0 auto; }
 .canvas .issue-mark circle { fill: none; stroke: #d2334a; stroke-width: 1.6; }
 .canvas .issue-mark line { stroke: #d2334a; stroke-width: 1.8; }
 .canvas .issue-mark .dot { fill: #d2334a; stroke: none; }
+.canvas .rebuilt-overlap { fill: none; stroke: #d2334a; stroke-width: 1.8; stroke-dasharray: 5 3; }
 
 /* ---- 版の表示 ---- */
 .login-version { margin: 6px 0 0; text-align: center; font-size: calc(11px * var(--text-scale)); color: var(--muted); }

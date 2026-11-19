@@ -697,7 +697,7 @@ export const en: Dict = {
   'editor.rebuiltLost': 'This diagram is in an old format from which manual edits cannot be extracted, so your manual edits could not be kept. You can restore it with “Undo”.',
   'editor.rebuiltKept': 'Your manual edits have been kept as they were.',
   'editor.rebuiltDormant': 'Edits for equipment not in the current input ({n} items) are kept aside (they apply again if that equipment comes back).',
-  'editor.rebuiltOverlap': '{n} of the symbols you moved by hand overlap other symbols. Please check their positions.',
+  'editor.rebuiltOverlap': '{n} of the symbols you moved by hand overlap other symbols. Please check their positions (the overlapping symbols are outlined with a red dotted line, which disappears when you close this notice).',
   'editor.rebuiltUndo': 'You can restore it with “Undo”.',
   'editor.rebuiltUndo2': 'You can go back to the original diagram with “Undo”.',
   'editor.issuesLeft': 'Issues that could not be fixed: {n} (marked in red on the diagram)',

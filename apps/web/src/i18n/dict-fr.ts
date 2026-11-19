@@ -698,7 +698,7 @@ export const fr: Dict = {
   'editor.rebuiltLost': 'Ce schéma est dans un ancien format dont les retouches manuelles ne peuvent pas être extraites : elles n’ont pas pu être conservées. Vous pouvez revenir en arrière avec « Annuler ».',
   'editor.rebuiltKept': 'Vos retouches manuelles ont été conservées telles quelles.',
   'editor.rebuiltDormant': 'Les retouches des appareils absents de la saisie actuelle ({n}) sont mises de côté (elles seront réappliquées si ces appareils reviennent).',
-  'editor.rebuiltOverlap': '{n} symbole(s) déplacé(s) à la main chevauchent d’autres symboles. Vérifiez leur position.',
+  'editor.rebuiltOverlap': '{n} symbole(s) déplacé(s) à la main chevauchent d’autres symboles. Vérifiez leur position (les symboles qui se chevauchent sont entourés d’un pointillé rouge, qui disparaît quand vous fermez cet avis).',
   'editor.rebuiltUndo': 'Vous pouvez revenir en arrière avec « Annuler ».',
   'editor.rebuiltUndo2': 'Vous pouvez revenir au schéma précédent avec « Annuler ».',
   'editor.issuesLeft': '{n} point(s) n’ont pas pu être corrigés (signalés par des marques rouges sur le schéma)',

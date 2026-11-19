@@ -24,7 +24,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answersSpread } from './check-drawing/common.ts';
-import { digest, fromLayout } from '../apps/web/src/editor/doc.ts';
+import { digest, fromLayout, moveItem } from '../apps/web/src/editor/doc.ts';
 import { buildComposition } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
 
@@ -387,6 +387,59 @@ try {
     if (errs.length > 0) {
       failed++;
       problems.push(`${name}：画面の中でエラーが出ました（${[...new Set(errs)].slice(0, 2).join(' | ')}）`);
+    }
+    await ctx.close();
+  }
+  // 作り直したとき、手で動かした記号が重なっていたら、その記号を、赤い点線で囲み、お知らせを閉じると、消える（第18弾 C-5）
+  {
+    const created3 = await (
+      await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '重なりの検査', answers: answersSpread }) })
+    ).json() as { id: string; updatedAt: string };
+    const comp3 = buildComposition(answersSpread);
+    const gen3 = fromLayout(layout(comp3, answersSpread), 'stale');
+    const tops = gen3.items.filter((i) => i.kind === 'symbol' && !i.parent && i.y > 100) as { id: string; x: number; y: number }[];
+    const moved3 = { ...moveItem(gen3, tops[0]!.id, tops[1]!.x - tops[0]!.x, tops[1]!.y - tops[0]!.y), edited: true, base: gen3.base };
+    const pr3 = await fetch(`${base}/api/projects/${created3.id}`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '重なりの検査', answers: answersSpread, drawing: moved3, baseUpdatedAt: created3.updatedAt, force: true }) });
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await ctx.addInitScript(() => {
+      try {
+        localStorage.setItem('zumen.helpSeen', '1');
+        localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+      } catch {}
+    });
+    const page = await ctx.newPage();
+    page.setDefaultTimeout(6000);
+    screens++;
+    try {
+      if (!pr3.ok) throw new Error('重なりの検査の案件に、図面を保存できませんでした');
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '重なりの検査' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(3).click({ force: true, timeout: 1500 });
+      await sleep(1200);
+      const marks = await page.locator('svg.canvas rect.rebuilt-overlap').count();
+      if (marks < 2) {
+        failed++;
+        problems.push(`重なりの検査：作り直したあと、重なった記号が、赤い点線で囲まれていません（${marks}個）`);
+      } else {
+        await page.locator('.stale-note button').first().click({ timeout: 2000 });
+        await sleep(300);
+        const after = await page.locator('svg.canvas rect.rebuilt-overlap').count();
+        if (after !== 0) {
+          failed++;
+          problems.push(`重なりの検査：お知らせを閉じても、赤い点線の囲みが残っています（${after}個）`);
+        }
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`重なりの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 80)}）`);
     }
     await ctx.close();
   }

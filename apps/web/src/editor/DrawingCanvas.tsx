@@ -100,6 +100,8 @@ interface Props {
   onResizeEnd?: (id: string, rect: { x: number; y: number; w: number; h: number }) => void;
   /** 「結線を整える」で直しきれなかったところ。赤い印で知らせる */
   issues?: Issue[];
+  /** 作り直したあと、手で動かした記号が重なっているとき、その記号（と、かかっている記号）の id。赤い点線で囲む */
+  overlapIds?: string[];
 }
 
 /** 吸い付く範囲の、画面上の大きさ（ピクセル）。拡大・縮小しても、同じ感覚になるよう、図面の長さには直して使う */
@@ -167,7 +169,7 @@ function scrollWithOuter(sc: HTMLElement, dx: number, dy: number) {
   if (Math.abs(restX) >= 0.5) outerScroller(sc, 'x').scrollLeft += restX;
 }
 
-export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, viewOnly = false, activeIds, wireDashed = false, zoom, onZoom, issues = [] }: Props) {
+export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, viewOnly = false, activeIds, wireDashed = false, zoom, onZoom, issues = [], overlapIds = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -1430,6 +1432,14 @@ export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, 
               </g>
             );
           })}
+
+        {/* 作り直したあと、手で動かした記号が重なっているところを、赤い点線で囲む */}
+        {overlapIds.map((oid) => {
+          const it = view.items.find((i) => i.id === oid && i.kind === 'symbol');
+          if (!it) return null;
+          const b = itemBounds(it);
+          return <rect key={`ov-${oid}`} className="rebuilt-overlap" x={b.x0 - 3} y={b.y0 - 3} width={b.x1 - b.x0 + 6} height={b.y1 - b.y0 + 6} rx={3} pointerEvents="none" />;
+        })}
 
         {/* 直しきれなかったところに、赤い印を出す */}
         {issues.map((is, i) => (

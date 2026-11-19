@@ -125,6 +125,8 @@ export interface RebuildReport {
   dormant: number;
   /** 重ねたあと、ほかの記号と重なっている、手で動かした（足した）記号の数 */
   overlaps: number;
+  /** 重なっている記号（手で動かした記号と、それがかかっている記号）の id。図面の上に、印を出すのに使う（第18弾 C-5） */
+  overlapIds: string[];
 }
 
 /** 記号の絵が占める範囲 */
@@ -355,13 +357,19 @@ export function rebuildWithOverrides(
   const touched = new Set<string>([...movedIds, ...newSymbols.map((s) => s.id)]);
   const all = work.items.filter((it): it is DocSymbol => it.kind === 'symbol' && !it.parent);
   let overlaps = 0;
+  const overlapIds = new Set<string>();
   for (const s of all) {
     if (!touched.has(s.id)) continue;
     const a = boxOf(s);
-    if (all.some((o) => o.id !== s.id && (() => {
+    const hit = all.filter((o) => {
+      if (o.id === s.id) return false;
       const b = boxOf(o);
       return a.x0 < b.x1 - 1 && a.x1 > b.x0 + 1 && a.y0 < b.y1 - 1 && a.y1 > b.y0 + 1;
-    })())) overlaps++;
+    });
+    if (hit.length === 0) continue;
+    overlaps++;
+    overlapIds.add(s.id);
+    for (const o of hit) overlapIds.add(o.id);
   }
 
   // 手で動かした・幅を変えた枠を、自動で作った枠の上に重ねる
@@ -391,5 +399,5 @@ export function rebuildWithOverrides(
     // レイヤー（停電範囲図など）は、元の図面を作り直しても、そのまま引き継ぐ
     ...(current?.layers !== undefined ? { layers: current.layers } : {}),
   };
-  return { doc, report: { kept, dormant, overlaps } };
+  return { doc, report: { kept, dormant, overlaps, overlapIds: [...overlapIds] } };
 }

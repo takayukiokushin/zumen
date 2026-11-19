@@ -116,6 +116,26 @@ const INPUT: { name: string; run: (a: Answers, r: Rnd) => Answers }[] = [
   { name: '途中の開閉器', run: (a, r) => dropHiddenChoices({ ...a, midSwitch: 'yes', midKind: pick(['pas', 'pgs', 'as'], r), midPlace: 'pole' } as Answers) },
 ];
 
+// 重なりの印：手で動かした記号が、ほかの記号に重なったとき、重なっている記号の id が、報告に入る（第18弾 C-5）
+{
+  const a0 = answersOf(rng(7), 1);
+  const base = gen(a0);
+  const top = syms(base).filter((x) => !x.symbolId.startsWith('cable') && x.y > 100);
+  const s0 = top[0]!;
+  const s1 = top[1]!;
+  const cur = { ...moveItem(base, s0.id, s1.x - s0.x, s1.y - s0.y), edited: true, base: base.base };
+  const r = rebuildWithOverrides(gen(a0), cur);
+  if (r.report.overlaps < 1 || !r.report.overlapIds.includes(s0.id) || !r.report.overlapIds.includes(s1.id)) {
+    console.error(`  NG: 手で重ねた記号が、重なりの報告に入っていません（${r.report.overlaps}件／${r.report.overlapIds.join(',')}）`);
+    process.exit(1);
+  }
+  const quiet = rebuildWithOverrides(gen(a0), { ...base, edited: true, base: base.base });
+  if (quiet.report.overlapIds.length !== 0) {
+    console.error('  NG: 重なっていないのに、重なりの報告が出ています');
+    process.exit(1);
+  }
+}
+
 console.log('■ 手で直した図面を、入力の変更のあとに作り直しても、崩れない（第18弾）');
 let runs = 0;
 let bad = 0;
