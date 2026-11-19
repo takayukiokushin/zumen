@@ -26,6 +26,8 @@ interface Props {
    * 1つの項目の必須項目をすべて入力すると、次の項目が開く。一度開いた項目は、この画面を開いているあいだは閉じない
    */
   stepwise?: boolean;
+  /** 見出しの行に添えるもの（使える高さが小さい画面で、目次・いまの構成の切り替えを置く） */
+  headExtra?: React.ReactNode;
   /** 「全部の項目を開く」を押したとき */
   onOpenAll?: () => void;
   /** 「図面を開く」を押したとき（すべての必須項目が終わったときの案内から） */
@@ -51,7 +53,7 @@ interface Block {
 export const AREA_COLOR_COUNT = 5;
 const areaColorClass = (index: number) => `area-c${(index % AREA_COLOR_COUNT) + 1}`;
 
-export function HearingForm({ answers, effective, onChange, showNav = true, sketchRead = false, stepwise = false, onOpenAll, onOpenDrawing }: Props) {
+export function HearingForm({ answers, effective, onChange, showNav = true, sketchRead = false, stepwise = false, headExtra, onOpenAll, onOpenDrawing }: Props) {
   const t = useT();
   const tx = useTx();
   /** 過去の案件の傾向（参考表示）。同じ受電の形の案件で数える */
@@ -443,6 +445,7 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
       <main className="form" ref={formRef}>
         <div className="form-head">
           <h2>{t('hearing.items')}</h2>
+          {headExtra && <div className="panel-toggles">{headExtra}</div>}
           {stepwise && onOpenAll && (
             <button type="button" className="btn" title={t('hearing.stepOpenAllNote')} onClick={onOpenAll}>
               {t('hearing.stepOpenAll')}

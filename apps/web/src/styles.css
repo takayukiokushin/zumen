@@ -587,8 +587,8 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]) .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
   :where(html[data-uw~="700"]) .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* スマホを横向きにした画面（html の data-short が on：指で操作する端末で、高さ500px以下・幅700px超）：
-   上の帯が、高さの半分近くを取らないよう、右側（使い方〜ログアウト）の行を、「隠す・出す」ボタンで隠せるようにし、出すときは1行に並べる。
+/* 使える高さが小さい画面（html の data-short が on：実効の高さ＝画面の高さ÷画面全体の倍率 が640px以下。スマホの横向き・高さの小さい窓・大きい倍率）：
+   上の帯が、高さの半分近くを取らないよう、右側（使い方〜ログアウト）の行を、「隠す・出す」ボタンで隠し（最初は隠す）、出すときは1行に並べる。
    4つのタブは、これまでどおり1行・1段のまま（名前を2行に割らない） */
   :where(html[data-short="on"]) .tabbar > .tabbar-toggle { display: block; flex: 1 1 100%; padding: calc(7px * var(--text-scale)) 4px; font-size: calc(11px * var(--text-scale)); color: var(--ink-2); background: transparent; border: 0; border-top: 1px solid var(--rule-soft); border-radius: 0; text-align: center; min-height: 0; }
   :where(html[data-short="on"]) .tabbar-right[data-open="false"] { display: none; }
@@ -597,6 +597,15 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-short="on"]) .tabbar-right > button.icon-btn { flex: 0 0 auto; padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(10.5px * var(--ctl-scale)); }
   :where(html[data-short="on"]) .tabbar-right > .who { min-width: 0; flex: 0 1 auto; overflow: hidden; }
   :where(html[data-short="on"]) .tabbar-right .who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 使える高さが小さい画面（コンパクト表示）：4つのタブは、必ず1行に等分する（4つ目が2段目に折り返して、帯が高くならないように）。
+     名前は、足りなければ、その中で折り返す（第17弾 項目7の調査4） */
+  :where(html[data-short="on"]) .tabbar > button:not(.tabbar-toggle), :where(html[data-short="on"]) .tabbar > .tab-wrap { flex: 1 1 0; min-width: 0; }
+  :where(html[data-short="on"]) .tabbar .tab-wrap button { width: 100%; }
+  :where(html[data-short="on"]) .tabbar > button:not(.tabbar-toggle), :where(html[data-short="on"]) .tabbar .tab-wrap button { min-width: 0; padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); white-space: normal; line-height: 1.2; font-size: calc(13px * var(--text-scale)); overflow-wrap: anywhere; }
+  /* 目次・いまの構成の切り替えは、入力欄の見出しの行に出す（上の帯の段を減らす）。見出しの行の中では、右に寄せて、折り返せる */
+  :where(html[data-short="on"]) .form-head .panel-toggles { display: flex; flex-wrap: wrap; gap: calc(6px * var(--text-scale)); }
+  /* 実効幅700px以下は、目次・いまの構成の欄そのものを出さないので、切り替えも出さない */
+  :where(html[data-uw~="700"]) .form-head .panel-toggles { display: none; }
 
 /* きわめて狭い画面（実効幅300以下。スマホで、画面全体を160%にしたときなど）：4つのタブを、2つずつ2段に並べる。
    1段に4つ並べると、1つの幅が50px足らずになり、日本語は1文字ずつ縦に並び、英語・フランス語は、右にはみ出す */
@@ -1083,6 +1092,11 @@ main.form .repeat-block > .fields { padding: calc(10px * var(--text-scale)) calc
   :where(html[data-uw~="700"]) .projectbar .jobname { flex: 1 1 0; min-width: 3em; max-width: none; margin: 0; font-size: calc(12.5px * var(--text-scale)); }
   /* 保存の状態の文字は、1行に収めるため、スマホでは出さない（保存ボタンの色と、ツールチップで分かる） */
   :where(html[data-uw~="700"]) .projectbar .saved { display: none; }
+  /* 使える高さが小さい画面（コンパクト表示。第17弾 項目7の調査4）も、案件の帯を1行にする（フランス語などで、2段に折り返さないように） */
+  :where(html[data-short="on"]) .projectbar { gap: calc(4px * var(--text-scale)); padding-left: calc(8px * var(--text-scale)); padding-right: calc(8px * var(--text-scale)); flex-wrap: nowrap; }
+  :where(html[data-short="on"]) .projectbar button { min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: calc(4px * var(--ctl-scale)) calc(8px * var(--ctl-scale)); font-size: calc(12px * var(--ctl-scale)); }
+  :where(html[data-short="on"]) .projectbar .jobname { flex: 1 1 0; min-width: 3em; max-width: none; margin: 0; font-size: calc(12.5px * var(--text-scale)); }
+  :where(html[data-short="on"]) .projectbar .saved { display: none; }
 
 /* 画面の実効幅（画面の幅 ÷ 画面全体の倍率）が 400px 以下のとき（html の data-uw に 400 が入る） */
   :where(html[data-uw~="400"]) .projectbar button { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); font-size: calc(11px * var(--ctl-scale)); }

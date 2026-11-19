@@ -4,6 +4,7 @@ import { useDialogs } from './Dialogs.tsx';
 import { useT } from './i18n/useT.ts';
 import type { Key } from './i18n/index.ts';
 import { GearIcon, InfoIcon } from './icons.tsx';
+import { useShortScreen } from './settings/settings.tsx';
 
 /**
  * 上の帯。左にタブ、右端に社名・設定・ログアウト（㉙）。
@@ -77,8 +78,11 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
   const t = useT();
   const { ask } = useDialogs();
   const [rightOpen, setRightOpen] = useState(loadOpen);
+  // 使える高さが小さい画面（コンパクト表示）では、「使い方〜ログアウト」の行は、最初は畳む。開いた状態は、覚えない（開き直すと、また畳む）
+  const short = useShortScreen();
+  const [shortOpen, setShortOpen] = useState(false);
   const toggleRight = () =>
-    setRightOpen((v) => {
+    short ? setShortOpen((v) => !v) : setRightOpen((v) => {
       try {
         localStorage.setItem(OPEN_KEY, v ? 'off' : 'on');
       } catch {
@@ -86,6 +90,7 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
       }
       return !v;
     });
+  const open = short ? shortOpen : rightOpen;
   /** タブの名前。改行の位置があるものは、前半と、後半（狭い画面では、後半を、2行目に出す）に分ける */
   const labelOf = (id: Tab, label: Key, suffix = ''): React.ReactNode => {
     const sp = SPLIT[id];
@@ -119,12 +124,12 @@ export function TabBar({ user, tab, onTab, enabled, onSettings, onHelp, onUsers,
       )}
 
       {/* スマホだけ：「使い方〜ログアウト」の行を、隠す・出す（めったに押さないので、操作する場所を広げられる） */}
-      <button type="button" className="tabbar-toggle" aria-expanded={rightOpen} onClick={toggleRight}>
-        {rightOpen ? t('nav.menuHide') : t('nav.menuShow')}
+      <button type="button" className="tabbar-toggle" aria-expanded={open} onClick={toggleRight}>
+        {open ? t('nav.menuHide') : t('nav.menuShow')}
       </button>
 
       {/* 右側のまとまり。幅が足りないときは、まとまりごと2段目に回る（画面の外に出ない） */}
-      <div className="tabbar-right" data-open={rightOpen ? 'true' : 'false'}>
+      <div className="tabbar-right" data-open={open ? 'true' : 'false'}>
       <button type="button" className="icon-btn" title={t('help.button')} aria-label={t('help.button')} onClick={onHelp}>
         <InfoIcon size={1.6} />
         <span>{t('help.button')}</span>

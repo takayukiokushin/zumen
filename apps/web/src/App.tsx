@@ -7,6 +7,7 @@ import type { Lock, User } from './session/api.ts';
 import { Login } from './session/Login.tsx';
 import { ProjectBar } from './projects/ProjectBar.tsx';
 import { HearingForm } from './HearingForm.tsx';
+import { useShortScreen } from './settings/settings.tsx';
 import { ColResizer, FORM_MIN, NAV_SPEC, PREVIEW_SPEC, loadPanelWidth, savePanelWidth, setPanelAccount } from './ColResizer.tsx';
 import { KeepScroll, newScrollStore } from './KeepScroll.tsx';
 import { CompositionPreview } from './CompositionPreview.tsx';
@@ -123,6 +124,18 @@ export function App() {
     savePanelWidth(spec, next);
     (changed === 'nav' ? setPreviewW : setNavW)(next);
   };
+  // 使える高さが小さい画面（コンパクト表示）では、目次・いまの構成の切り替えを、入力欄の見出しの行に出す（上の帯の段を減らす）
+  const short = useShortScreen();
+  const panelToggles = (
+    <>
+      <button type="button" className="panel-toggle" aria-pressed={!showNav} onClick={() => setShowNav((v) => !v)}>
+        {showNav ? `◀ ${t('hearing.hideNav')}` : `▶ ${t('hearing.showNav')}`}
+      </button>
+      <button type="button" className="panel-toggle" aria-pressed={!showPreview} onClick={() => setShowPreview((v) => !v)}>
+        {showPreview ? `${t('hearing.hidePreview')} ▶` : `◀ ${t('hearing.showPreview')}`}
+      </button>
+    </>
+  );
   // ログインの確認が終わって、利用者が分かったとき（別の利用者に替わったときも）、その利用者の幅を読み直す
   const accountId = user?.id;
   useEffect(() => {
@@ -902,25 +915,13 @@ export function App() {
             />
           ) : tab === 'analyze' ? null : (
             <KeepScroll store={hearingScroll.current} projectId={projectId} className="hearing-pane">
-              <div className="panel-bar">
-                <button type="button" className="panel-toggle" aria-pressed={!showNav} onClick={() => setShowNav((v) => !v)}>
-                  {showNav ? `◀ ${t('hearing.hideNav')}` : `▶ ${t('hearing.showNav')}`}
-                </button>
-                <button
-                  type="button"
-                  className="panel-toggle"
-                  aria-pressed={!showPreview}
-                  onClick={() => setShowPreview((v) => !v)}
-                >
-                  {showPreview ? `${t('hearing.hidePreview')} ▶` : `◀ ${t('hearing.showPreview')}`}
-                </button>
-              </div>
+              {!short && <div className="panel-bar">{panelToggles}</div>}
               <div
                 ref={appBox}
                 className={`app${showNav ? '' : ' no-nav'}${showPreview ? '' : ' no-preview'}`}
                 style={{ '--nav-w': `${navW}px`, '--preview-w': `${previewW}px` } as React.CSSProperties}
               >
-                <HearingForm key={projectId ?? 'none'} answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} sketchRead={sketchRead} stepwise={isStepStart(answers)} onOpenAll={() => updateAnswers((prev) => openStartMode(prev))} onOpenDrawing={() => setTab('drawing')} />
+                <HearingForm key={projectId ?? 'none'} headExtra={short ? panelToggles : undefined} answers={answers} effective={effective} onChange={updateAnswers} showNav={showNav} sketchRead={sketchRead} stepwise={isStepStart(answers)} onOpenAll={() => updateAnswers((prev) => openStartMode(prev))} onOpenDrawing={() => setTab('drawing')} />
                 {showPreview && <CompositionPreview answers={effective} />}
                 {showNav && (
                   <ColResizer

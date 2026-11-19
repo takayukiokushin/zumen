@@ -148,14 +148,33 @@ function applyWidth(uiScale: number): void {
   if (el.dataset.uw !== v) el.dataset.uw = v;
 }
 
-/** スマホを横向きにした画面（指で操作する端末で、高さが500px以下。幅は700pxより広い）か。上の帯が高さを取りすぎないよう、右側の行を、隠せる・1行にする */
-export function isShortLandscape(): boolean {
+/** 「使える高さが小さい画面」とみなす高さ（実効の高さ ＝ 画面の高さ ÷ 画面全体の倍率）の上限（px）。第17弾 項目7の調査4 */
+export const SHORT_MAX_HEIGHT = 640;
+
+/**
+ * 使える高さが小さい画面か。上の帯が、高さの半分以上を取らないよう、右側の行を畳み、タブを1行にし、目次・いまの構成の切り替えを、入力欄の見出しの行へ移す（コンパクト表示）。
+ * 実効の高さ（画面の高さ ÷ 画面全体の倍率）が 640px 以下のとき。幅は問わない（実効幅700px以下の狭い画面でも、高さが小さければ、右側の行を、最初は畳む）。
+ * 例：スマホの横向き、高さ800pxの窓で、画面全体を130%・160%にしたとき
+ */
+export function isShortScreen(ui: number): boolean {
   if (typeof window === 'undefined') return false;
-  try {
-    return window.innerWidth > 700 && window.innerHeight <= 500 && window.matchMedia('(pointer: coarse)').matches;
-  } catch {
-    return false;
-  }
+  const u = ui > 0 ? ui : 1;
+  return window.innerHeight / u <= SHORT_MAX_HEIGHT;
+}
+
+/** コンパクト表示（html の data-short が on）かを、画面の描き直しに使う。大きさ・設定が変わると、自動で変わる */
+export function useShortScreen(): boolean {
+  const read = () => typeof document !== 'undefined' && document.documentElement.dataset.short === 'on';
+  const [on, setOn] = useState(read);
+  useEffect(() => {
+    const el = document.documentElement;
+    const sync = () => setOn(read());
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(el, { attributes: true, attributeFilter: ['data-short'] });
+    return () => mo.disconnect();
+  }, []);
+  return on;
 }
 
 /** 設定を実際の画面に効かせる。CSS側はこの印と変数だけを見る */
@@ -163,7 +182,7 @@ function applyToDocument(s: Settings): void {
   const el = document.documentElement;
   const ui = effectiveUiScale(s.uiScale);
   applyWidth(ui);
-  const short = isShortLandscape() ? 'on' : 'off';
+  const short = isShortScreen(ui) ? 'on' : 'off';
   if (el.dataset.short !== short) el.dataset.short = short;
   el.dataset.theme = s.theme;
   el.dataset.bold = s.bold ? 'on' : 'off';

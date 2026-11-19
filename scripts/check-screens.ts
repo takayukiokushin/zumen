@@ -221,8 +221,16 @@ try {
         if (!form) return null;
         const sc = /(auto|scroll)/.test(getComputedStyle(form).overflowY) ? form : ((form.closest('.app') as HTMLElement | null) ?? form);
         const zoom = Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1;
-        return { has: !!padEl, h: padEl ? padEl.getBoundingClientRect().height / zoom : 0, want: Math.max(0, sc.clientHeight / 2 - parseFloat(getComputedStyle(form).paddingBottom)) };
+        return { has: !!padEl, h: padEl ? padEl.getBoundingClientRect().height / zoom : 0, want: Math.max(0, sc.clientHeight / 2 - parseFloat(getComputedStyle(form).paddingBottom)), short: document.documentElement.dataset.short === 'on', formTop: form.getBoundingClientRect().top, vh: window.innerHeight };
       });
+      // 使える高さが小さい画面（コンパクト表示）：上の帯が、高さの55%を超えない（入力欄が、高さの45%以上、見える）。実効幅700px以下の狭い画面は、全体が上下に動く作りなので、対象外
+      if (pad && pad.short && c.w / c.scale > 700) {
+        screens++;
+        if (pad.formTop / pad.vh > 0.55) {
+          failed++;
+          problems.push(`${name}／入力：上の帯が高すぎます（画面の高さの${Math.round((pad.formTop / pad.vh) * 100)}%。入力欄が、${Math.round((1 - pad.formTop / pad.vh) * 100)}%しか見えません）`);
+        }
+      }
       // 画面がせまい・大きく拡大していて、入力欄そのものが開けなかったとき（上の帯だけで画面が埋まる）は、調べない
       if (pad) screens++;
       if (pad && !pad.has) {
