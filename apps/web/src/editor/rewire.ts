@@ -14,6 +14,7 @@
 import { rotatedBox } from '@zumen/layout';
 import { defOf, groupOf, newWireId, portsOf } from './doc.ts';
 import type { Anchor, Doc, DocItem, DocSymbol, DocWire } from './doc.ts';
+import { isHvCableWire, isZctSymbol } from './hvCable.ts';
 
 /** 線の上に離したと見なす、横（縦）のずれの範囲 */
 export const INSERT_RANGE = 10;
@@ -152,6 +153,24 @@ export interface InsertTarget {
  * 記号の中心が、線の長さの範囲に入り、線との横（縦）のずれが INSERT_RANGE 以内
  */
 export function insertTarget(doc: Doc, id: string, dx: number, dy: number): InsertTarget | null {
+  const t = findTarget(doc, id, dx, dy);
+  // 高圧ケーブルの途中には、ZCT 以外は入れない（第18弾 D）。線は割らず、記号は、そこへ動かすだけにする
+  if (t && cableRefuses(doc, id, t.wire)) return null;
+  return t;
+}
+
+const cableRefuses = (doc: Doc, id: string, wireId: string): boolean => {
+  const it = doc.items.find((x) => x.id === id);
+  return !!it && it.kind === 'symbol' && !isZctSymbol(it.symbolId) && isHvCableWire(doc, wireId);
+};
+
+/** 記号を、ここへ動かして離すと、高圧ケーブルの途中に入ろうとして、断られるか（断られるなら、利用者に理由を知らせる） */
+export function cableInsertRefused(doc: Doc, id: string, dx: number, dy: number): boolean {
+  const t = findTarget(doc, id, dx, dy);
+  return !!t && cableRefuses(doc, id, t.wire);
+}
+
+function findTarget(doc: Doc, id: string, dx: number, dy: number): InsertTarget | null {
   const it = doc.items.find((x) => x.id === id);
   if (!it || it.kind !== 'symbol' || it.parent || groupOf(doc, id).length !== 1) return null;
   const moved: DocSymbol = { ...it, x: it.x + dx, y: it.y + dy };

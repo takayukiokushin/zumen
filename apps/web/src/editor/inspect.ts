@@ -4,6 +4,7 @@ import type { Key } from '../i18n/index.ts';
 import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, clampTextSize, SHEET_PAD, layoutTitle, rotatedBox, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
+import { cableViolations } from './hvCable.ts';
 import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf, refreshFans } from './doc.ts';
 
 /**
@@ -22,7 +23,7 @@ import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, li
  * 直しきれなかったものは、図面の上に印を出して知らせる。
  */
 
-export type IssueKind = 'floating' | 'stray' | 'through' | 'overlap' | 'skew' | 'paper' | 'gap';
+export type IssueKind = 'floating' | 'stray' | 'through' | 'overlap' | 'skew' | 'paper' | 'gap' | 'cableMid';
 
 export interface Issue {
   kind: IssueKind;
@@ -69,6 +70,7 @@ const emptyCount = (): Record<IssueKind, number> => ({
   skew: 0,
   paper: 0,
   gap: 0,
+  cableMid: 0,
 });
 
 /* ------------------------------------------------------------------ */
@@ -1150,6 +1152,17 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
       if (branchesInsideParent(doc, w, x, y)) continue;
       issues.push({ kind: 'floating', message: tr('insp.floating'), x, y, itemId: w.id });
     }
+  }
+
+  // 高圧ケーブルの途中に、ZCT 以外が入っている・つながっている（動かさない。印を出して、利用者が直す）（第18弾 D）
+  for (const v of cableViolations(doc)) {
+    issues.push({
+      kind: 'cableMid',
+      message: v.kind === 'symbol' ? tr('insp.cableMidSymbol', { abbr: getSymbol(v.symbolId!).abbr }) : tr('insp.cableMidWire'),
+      x: v.x,
+      y: v.y,
+      itemId: v.itemId,
+    });
   }
 
   // 記号を突き抜けている線（回路の上に重ねて描く印は、線が通ってよいので、数えない）

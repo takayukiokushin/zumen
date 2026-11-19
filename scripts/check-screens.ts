@@ -24,8 +24,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answersSpread } from './check-drawing/common.ts';
-import { digest, fromLayout, moveItem } from '../apps/web/src/editor/doc.ts';
-import { buildComposition } from '../packages/knowledge/src/index.ts';
+import { digest, fromLayout, moveItem, replaceSymbol } from '../apps/web/src/editor/doc.ts';
+import { buildComposition, dropHiddenChoices, effectiveAnswers } from '../packages/knowledge/src/index.ts';
+import { hvStretches } from '../apps/web/src/editor/hvCable.ts';
 import { layout } from '../packages/layout/src/index.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -440,6 +441,63 @@ try {
     } catch (e) {
       failed++;
       problems.push(`重なりの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 80)}）`);
+    }
+    await ctx.close();
+  }
+  // すでに、高圧ケーブルの途中に、ZCT 以外が入っている図面を開くと、赤い印と知らせが出て、閉じると消える（第18弾 D）
+  {
+    const ans = dropHiddenChoices({ ...answersSpread, areaCount: '1', cableInstallation: 'overhead', mainGroundRelay: 'dgr', hasZpd: 'yes', mainZctPos: 'cable', midSwitch: 'no' } as typeof answersSpread);
+    const eff = effectiveAnswers(ans);
+    const g4 = fromLayout(layout(buildComposition(eff), eff));
+    const zid = hvStretches(g4).find((s) => s.mid.length > 0)?.mid[0];
+    const created4 = await (
+      await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'ケーブルの検査', answers: ans }) })
+    ).json() as { id: string; updatedAt: string };
+    const basis4 = digest(JSON.stringify(buildComposition(eff).map((i) => [i.role, i.symbolId, i.label, i.unit ?? 0])));
+    const stuck = { ...replaceSymbol({ ...g4, basis: basis4 }, zid ?? '', 'vcb'), edited: true, base: g4.base };
+    const pr4 = await fetch(`${base}/api/projects/${created4.id}`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'ケーブルの検査', answers: ans, drawing: stuck, baseUpdatedAt: created4.updatedAt, force: true }) });
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    await ctx.addInitScript(() => {
+      try {
+        localStorage.setItem('zumen.helpSeen', '1');
+        localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+      } catch {}
+    });
+    const page = await ctx.newPage();
+    page.setDefaultTimeout(6000);
+    screens++;
+    try {
+      if (!zid) throw new Error('ケーブルの途中の ZCT が見つかりませんでした');
+      if (!pr4.ok) throw new Error('ケーブルの検査の案件に、図面を保存できませんでした');
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: 'ケーブルの検査' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(3).click({ force: true, timeout: 1500 });
+      await sleep(1200);
+      const marks = await page.locator('svg.canvas .issue-mark').count();
+      const note = await page.locator('.layer-note', { hasText: '高圧ケーブルの途中' }).count();
+      if (marks < 1 || note < 1) {
+        failed++;
+        problems.push(`ケーブルの検査：途中に VCB が入っている図面を開いても、赤い印（${marks}個）か知らせ（${note}件）が出ません`);
+      } else {
+        await page.locator('.layer-note', { hasText: '高圧ケーブルの途中' }).locator('button').first().click({ timeout: 2000 });
+        await sleep(300);
+        const after = await page.locator('svg.canvas .issue-mark').count();
+        if (after !== 0) {
+          failed++;
+          problems.push(`ケーブルの検査：知らせを閉じても、赤い印が残っています（${after}個）`);
+        }
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`ケーブルの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 80)}）`);
     }
     await ctx.close();
   }

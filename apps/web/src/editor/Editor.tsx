@@ -29,7 +29,8 @@ import type { AreaRect, ArrowDir, CrossSize, GroundSize, LinkShape } from '@zume
 import type { GroundAnchor } from './layers.ts';
 import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
-import { moveWithInsert } from './rewire.ts';
+import { cableViolations, newCableViolation } from './hvCable.ts';
+import { cableInsertRefused, moveWithInsert } from './rewire.ts';
 import { addFan, dedupeIds, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
 
 /** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
@@ -182,6 +183,10 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const [layoutNote, setLayoutNote] = useState<string | null>(null);
   /** 入力内容が変わって、手で直した図面を作り直したときの知らせ（「操作を戻す」で元に戻せる） */
   const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; overlapIds: string[]; lost: boolean } | null>(null);
+  /** 高圧ケーブルの途中に、ZCT 以外をつなごうとして、断ったときの知らせ（第18弾 D） */
+  const [cableNote, setCableNote] = useState<string | null>(null);
+  /** 開いた図面に、すでに、高圧ケーブルの途中へのつなぎがあるとき、その場所（赤い印を出す）。知らせを閉じると消える */
+  const [cableAlert, setCableAlert] = useState<Issue[] | null>(null);
   /** 直前に矢印キーで動かした要素と時刻（続けて押したときに、操作を1つにまとめる） */
   const lastArrow = useRef<{ id: string; at: number } | null>(null);
   /** 直前の、まとめられる操作（文字の大きさのつまみを動かし続けるなど）の種類と時刻 */
@@ -619,6 +624,13 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     return () => heavy.bind(null);
   });
 
+  /** 図面を開いたとき、高圧ケーブルの途中に、ZCT 以外がつながっていないか見て、あれば、赤い印と知らせを出す（動かさない）（第18弾 D） */
+  useEffect(() => {
+    const vs = cableViolations(doc);
+    setCableAlert(vs.length > 0 ? vs.map((v) => ({ kind: 'cableMid' as const, message: '', x: v.x, y: v.y, itemId: v.itemId })) : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /**
    * 入力内容が変わったら、ボタンを押さなくても、自動で図面に反映する。
    * （どの回答から作った図面かは、Doc.basis に覚えてある。違っていたら、いまの回答で作り直す）
@@ -756,7 +768,10 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
 
   const onPaletteClick = (symbolId: string) => {
     if (selectedSymbol) {
-      apply(replaceSymbol(doc, selectedSymbol.id, symbolId));
+      const next = replaceSymbol(doc, selectedSymbol.id, symbolId);
+      // 高圧ケーブルの途中にある ZCT を、ZCT 以外に差し替えるときは、断る
+      if (newCableViolation(doc, next)) setCableNote(t('editor.cableRefused'));
+      else apply(next);
     } else {
       const b = docBounds(doc);
       const { doc: next, id } = addSymbol(doc, symbolId, (b.x0 + b.x1) / 2, b.y1 + 60);
@@ -1151,6 +1166,24 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         </p>
       )}
 
+      {cableNote && (
+        <p className="layer-note" role="status">
+          <b>{cableNote}</b>
+          <button type="button" className="btn" onClick={() => setCableNote(null)}>
+            {t('common.close')}
+          </button>
+        </p>
+      )}
+
+      {cableAlert && (
+        <p className="layer-note" role="status">
+          <b>{t('editor.cableFound', { n: cableAlert.length })}</b>
+          <button type="button" className="btn" onClick={() => setCableAlert(null)}>
+            {t('common.close')}
+          </button>
+        </p>
+      )}
+
       {rebuiltNote && (
         <p className="stale-note" role="status">
           <Rich text={t('editor.rebuilt')} />
@@ -1419,15 +1452,26 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               if (locked && activeId !== null) editLayer((d) => moveLayerItems(d, activeId, ids, dx, dy));
               // 1つの記号を、別の線の上で離したときは、線を割って入れる（Alt を押しながらのときは、入れない）
               else {
+                if (!noAuto && ids.length === 1 && cableInsertRefused(doc, ids[0]!, dx, dy)) setCableNote(t('editor.cableRefused'));
                 const next = moveWithInsert(doc, ids, dx, dy, (d) => (ids.length === 1 ? moveItem(d, ids[0]!, dx, dy) : moveItems(d, ids, dx, dy)), noAuto);
                 // 線に入れたとき、文字が近くの記号に重なったら、重ならない場所へ動かす（重なっていなければ、動かさない）
                 apply(ids.length === 1 ? nudgeSymbolLabel(next, ids[0]!) : next);
               }
             }}
-            onWireEnd={(id, end, dx, dy) => apply(moveWireEnd(doc, id, end, dx, dy))}
+            onWireEnd={(id, end, dx, dy) => {
+              const next = moveWireEnd(doc, id, end, dx, dy);
+              // 線の端を、高圧ケーブルの途中へ動かしたときは、断る
+              if (newCableViolation(doc, next)) setCableNote(t('editor.cableRefused'));
+              else apply(next);
+            }}
             onResizeEnd={(id, rect) => apply(setItemRect(doc, id, rect))}
             onAddWire={(x1, y1, x2, y2, opts) => {
               const { doc: next, id } = addWire(doc, x1, y1, x2, y2, { ...opts, dashed: wireDashed });
+              // 線の端が、高圧ケーブルの途中につくときは、線を引かずに、断る
+              if (newCableViolation(doc, next)) {
+                setCableNote(t('editor.cableRefused'));
+                return;
+              }
               apply(next);
               // 線を引くモードは続ける（次の線を、続けて引ける）。やめるときは、Esc キーか「線を引く」をもう一度押す
               setSelectedId(id);
@@ -1483,7 +1527,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             zoom={zoom}
             onZoom={setZoom}
             zoomRef={zoomApi}
-            issues={issues ?? []}
+            issues={[...(issues ?? []), ...(cableAlert ?? [])]}
             overlapIds={rebuiltNote?.overlapIds}
           />
           </>
