@@ -520,7 +520,10 @@ try {
     await page.route('**/api/analyze', (r: any) => (r.request().method() === 'POST' ? r.fulfill({ json: { jobId: 'job-x' } }) : r.continue()));
     await page.route('**/api/analyze/job-x', (r: any) => {
       const m = r.request().method();
-      if (m === 'GET') return r.fulfill({ json: { state: 'done', result: { answers: { areaCount: '8', siteName: 'テスト工場' }, uncertain: [], evidence: {}, notes: [], questions: [] } } });
+      if (m === 'GET') return r.fulfill({ json: { state: 'done', result: { answers: { areaCount: '8', siteName: 'テスト工場' }, uncertain: ['siteName'], evidence: { siteName: 'メモの左上の「テスト工場」' }, notes: [], questions: [
+        { questionId: 'sectionalizer', where: '図の最上部、電柱のすぐ下の開閉器', ask: '区分開閉器は、PAS・PGS・UGSのどれですか', why: '種類で、その下のケーブルの有無が変わるため' },
+        { questionId: '', where: '図の右下の余白', ask: '「要確認」と書いてあります。何を確認しますか', why: 'どの機器のことか分からないため' },
+      ] } } });
       return r.fulfill({ json: {} });
     });
     screens++;
@@ -544,8 +547,40 @@ try {
       await page.waitForSelector('details.sketch-group', { timeout: 12000 });
       const groups = await page.locator('details.sketch-group').count();
       const opened = await page.locator('details.sketch-group[open]').count();
-      const count = await page.locator('.sketch-count').innerText();
+      const count = await page.locator('.sketch-count').last().innerText();
       const fieldsInOpen = await page.locator('details.sketch-group[open] .field, details.sketch-group[open] .fields > *').count();
+      // AIからの質問：1つ1つ枠に分かれ、4つの部分が出て、対応する項目は、入力欄で答えられる。答えると、件数が増える
+      const aiCards = await page.locator('section.sketch-ai').first().locator('li.ai-q').count();
+      const confirmCards = await page.locator('section.sketch-ai').nth(1).locator('li.ai-q').count();
+      const firstText = await page.locator('li.ai-q').first().innerText();
+      const parts = ['どの部分', '分からないこと', 'なぜ聞くか', '答え'].filter((w) => !firstText.includes(w));
+      const noItemBtn = await page.locator('li.ai-q').nth(1).locator('button', { hasText: '入力画面を開く' }).count();
+      if (aiCards !== 2 || confirmCards !== 1 || parts.length > 0 || noItemBtn !== 1) {
+        failed++;
+        problems.push(`読み取りの検査：AIからの質問が、枠に分かれて出ていません（質問 ${aiCards}枠・確認 ${confirmCards}枠・足りない見出し ${parts.join('、') || 'なし'}・対応しない質問の案内 ${noItemBtn}）`);
+      } else {
+        const card = page.locator('li.ai-q').first();
+        const sel = card.locator('select');
+        if ((await sel.count()) > 0) await sel.selectOption({ index: 3 });
+        else await card.locator('.fields button').nth(1).click({ timeout: 2000 });
+        await sleep(300);
+        const doneCards = await page.locator('section.sketch-ai').first().locator('li.ai-q.done').count();
+        const cnt = await page.locator('section.sketch-ai').first().locator('.sketch-count').innerText();
+        if (doneCards !== 1 || !/全2問中\s*1問/.test(cnt)) {
+          failed++;
+          problems.push(`読み取りの検査：AIの質問に答えても、回答済みになりません（回答済み ${doneCards}枠・「${cnt.replace(/\s+/g, ' ')}」）`);
+        }
+      }
+      // スマホの大きさでも、横にはみ出さず、文字が切れない（押す部品の大きさは、指で操作する端末の検査で見る）
+      await page.setViewportSize({ width: 390, height: 844 });
+      await sleep(300);
+      const mm = await measure(page, false);
+      const bits = [mm.docOverflow ? '画面が横にはみ出す' : '', mm.over.length ? `はみ出す部品 ${mm.over.join('、')}` : '', mm.small.length ? `44px未満 ${mm.small.join('、')}` : '', mm.clipped.length ? `文字が切れる ${mm.clipped.join('、')}` : ''].filter(Boolean);
+      if (bits.length > 0) {
+        failed++;
+        problems.push(`読み取りの検査（スマホ）：${bits.join('／')}`);
+      }
+      await page.setViewportSize({ width: 1280, height: 900 });
       if (groups !== 8 || opened !== 1 || !/全\d+問中\s*0問/.test(count) || fieldsInOpen < 1) {
         failed++;
         problems.push(`読み取りの検査：8エリアの結果が、まとまりと件数で出ていません（まとまり ${groups}個・開いている ${opened}個・「${count.replace(/\s+/g, ' ')}」）`);

@@ -7,6 +7,7 @@ import { Field } from '../Field.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
 import { displayValue, labelOf } from './AnalysisReview.tsx';
 import type { AiApplied } from './applied.ts';
+import { SketchQuestions } from './SketchQuestions.tsx';
 
 /**
  * スケッチの読み取りが終わったあとの画面（読み取った内容は、終わったときに、自動で反映してある。第14弾 項目6）。
@@ -43,7 +44,9 @@ export function SketchResult({
   // 読み取った内容を足したうえで、必須なのに答えが無いものを、確認事項にする（最初に出たものは、答えたあとも出したままにする）
   const firstMissing = useMemo(() => missingRequiredFields({ ...current, ...(result.answers as Answers) }), []); // eslint-disable-line react-hooks/exhaustive-deps
   const nowMissing = missingRequiredFields(current);
-  const rows = [...firstMissing, ...nowMissing.filter((m) => !firstMissing.some((f) => f.key === m.key))];
+  // AIが質問した項目は、「AIからの質問」のほうに出すので、ここからは外す（二重に聞かない）
+  const asked = new Set(result.questions.filter((q) => q.questionId).map((q) => q.questionId));
+  const rows = [...firstMissing, ...nowMissing.filter((m) => !firstMissing.some((f) => f.key === m.key))].filter((m) => !asked.has(m.key));
   const stillMissing = nowMissing.length > 0;
   // 入力画面と同じ、エリアごとのまとまりにする（1か所目と、全体の項目は、1つ目。2か所目以降は、それぞれ別）
   const groups = (() => {
@@ -94,6 +97,8 @@ export function SketchResult({
           </button>
         </div>
       </section>
+
+      <SketchQuestions result={result} current={current} onSetAnswer={onSetAnswer} onGoToHearing={onGoToHearing} />
 
       {rows.length > 0 && (
         <section className="panel">

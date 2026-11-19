@@ -1510,3 +1510,16 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 .sketch-group > summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 0 calc(12px * var(--text-scale)); cursor: pointer; }
 .sketch-group > summary .done { color: #1a7f37; }
 .sketch-group > .fields { padding: 0 calc(12px * var(--text-scale)) calc(12px * var(--text-scale)); }
+
+/* スケッチ読み取りのあと：AIからの質問・自信がない読み取り。1つ1つ枠に分ける（第18弾 E-②） */
+.ai-qs { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(12px * var(--text-scale)); }
+.ai-q { border: 1px solid var(--line, #d0d4da); border-left: 5px solid #d9822b; border-radius: 8px; padding: calc(12px * var(--text-scale)); background: var(--panel, transparent); }
+.ai-q.done { border-left-color: #1a7f37; opacity: 0.85; }
+.ai-q header { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(8px * var(--text-scale)); margin-bottom: calc(6px * var(--text-scale)); }
+.ai-q header .no { font-size: 0.85em; opacity: 0.75; }
+.ai-q header .ok { color: #1a7f37; font-weight: 600; margin-left: auto; }
+.ai-q dl { margin: 0 0 calc(8px * var(--text-scale)); display: grid; grid-template-columns: max-content 1fr; gap: calc(4px * var(--text-scale)) calc(12px * var(--text-scale)); }
+.ai-q dt { font-weight: 600; opacity: 0.8; }
+.ai-q dd { margin: 0; overflow-wrap: anywhere; }
+.ai-q-ack { display: flex; align-items: center; gap: 8px; margin-top: calc(8px * var(--text-scale)); min-height: 44px; }
+@media (max-width: 560px) { .ai-q dl { grid-template-columns: 1fr; } }

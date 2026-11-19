@@ -57,11 +57,12 @@ export function buildAnalysisSchema(): JsonSchema {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['questionId', 'ask', 'why'],
+          required: ['questionId', 'where', 'ask', 'why'],
           properties: {
-            questionId: { type: 'string', description: '対応する質問のID。該当が無ければ空文字' },
-            ask: { type: 'string', description: '利用者に見せる質問文' },
-            why: { type: 'string', description: 'なぜ判断できないのか' },
+            questionId: { type: 'string', description: '対応する質問のID。該当が無ければ空文字。2か所目以降・2件目以降の書き方は、answers と同じ' },
+            where: { type: 'string', description: 'どの部分の話か。図面・メモの、どの記載・どの機器・どのあたりかを、具体的に書く（「不明」だけは不可）' },
+            ask: { type: 'string', description: '利用者に見せる質問文。何が分からないのかが、これだけで伝わるように書く' },
+            why: { type: 'string', description: 'なぜ聞くのか（なぜ判断できないのか。答え次第で、図面のどこが変わるか）' },
           },
         },
       },
@@ -74,7 +75,7 @@ export interface AnalysisResult {
   uncertain: string[];
   evidence: Record<string, string>;
   notes: string[];
-  questions: { questionId: string; ask: string; why: string }[];
+  questions: { questionId: string; ask: string; why: string; /** どの部分の話か（スケッチ読み取りだけ。音声入力では無いこともある） */ where?: string }[];
 }
 
 /** AIが返した「項目ID＋値」の並びを、アプリの確認画面で使う形（AnalysisResult）に直す */
@@ -115,7 +116,7 @@ export function parseAnalysisOutput(raw: unknown): { result: AnalysisResult; rej
     for (const q of obj.questions) {
       const r = (q ?? {}) as Record<string, unknown>;
       if (typeof r.ask !== 'string' || r.ask.trim() === '') continue;
-      questions.push({ questionId: typeof r.questionId === 'string' ? r.questionId : '', ask: r.ask, why: typeof r.why === 'string' ? r.why : '' });
+      questions.push({ questionId: typeof r.questionId === 'string' ? r.questionId : '', where: typeof r.where === 'string' ? r.where : '', ask: r.ask, why: typeof r.why === 'string' ? r.why : '' });
     }
   }
   const notes = strings(obj.notes);
