@@ -1,4 +1,4 @@
-import { areaKey, areaView, buildComposition, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
+import { areaKey, areaView, buildComposition, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, PER_UNIT_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
 import type { Answers, Condition, Placement, Value } from '@zumen/knowledge';
 import { layout } from '@zumen/layout';
 import { getSymbol } from '@zumen/symbols';
@@ -87,6 +87,8 @@ interface RoleInfo {
   countKey?: string;
   /** 台数のある機器を出す・出さないを決める「あり／なし」の質問（コンデンサの「あり」など。最後の1台を消したとき「なし」にする） */
   groupKey?: string;
+  /** 台ごとの「あり／なし」の質問（変圧器のPC・LBS・ケーブルなど。その部品を消したとき、その台だけ「なし」にする） */
+  unitKey?: string;
 }
 
 let rolesCache: Map<string, RoleInfo> | null = null;
@@ -108,7 +110,8 @@ function roleTable(): Map<string, RoleInfo> {
       symbolIds,
       ...(common.length === 1 && countKeys.size === 0 && QUESTION_IDS.has(common[0]!) ? { presenceKey: common[0]! } : {}),
       ...(countKeys.size === 1 ? { countKey: [...countKeys][0]! } : {}),
-      ...(common.length === 1 && countKeys.size === 1 && QUESTION_IDS.has(common[0]!) ? { groupKey: common[0]! } : {}),
+      ...(common.length === 1 && countKeys.size === 1 && QUESTION_IDS.has(common[0]!) && !PER_UNIT_QUESTION_IDS.has(common[0]!) ? { groupKey: common[0]! } : {}),
+      ...(countKeys.size === 1 && common.filter((k) => PER_UNIT_QUESTION_IDS.has(k)).length === 1 ? { unitKey: common.filter((k) => PER_UNIT_QUESTION_IDS.has(k))[0]! } : {}),
     });
   }
   rolesCache = table;
@@ -170,6 +173,10 @@ interface Candidate {
   count?: { key: string; area: number; remove?: number; conn?: string };
   /** 最後の1台を消したとき、「なし」にする質問（コンデンサの「あり」など） */
   lastGroupKey?: string;
+  /** 台の本体を消したとき：その台のまわりの部品も、いっしょに消えたものとして扱う（どの台か） */
+  carry?: { area: number; countKey: string; no: number };
+  /** いっしょに消えたものとして扱う記号の名前（ケーブルの反対側の端末） */
+  carryNames?: string[];
   /** 変えたあとの、この機器の文字（確かめる） */
   label?: { name: string; lines: string[] };
 }
@@ -233,12 +240,31 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
 
   // 消した記号：「あり／なし」を「なし」に。最後の台なら、台数を1つ減らす（後ろの台から）
   const removed = [...ov.removed].sort((a, b) => (repeatOf(splitArea(b).rest, table)?.no ?? 0) - (repeatOf(splitArea(a).rest, table)?.no ?? 0));
+  /** 台の本体を消したとき、いっしょに消えたものとして扱う、その台のまわりの部品の名前 */
+  const carried = new Set<string>();
   for (const name of removed) {
     const { area, rest } = splitArea(name);
     const sym = baseNames.get(name) ?? name;
     const rep = repeatOf(rest, table);
-    if (rep) cands.push({ kind: 'removed', symbol: nameJaOf(sym), count: { key: rep.info.countKey!, area, remove: rep.no }, ...(rep.info.groupKey ? { lastGroupKey: qKey(rep.info.groupKey, area) } : {}) });
-    else if (table.get(rest)?.presenceKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey(table.get(rest)!.presenceKey!, area)]: 'no' } });
+    if (rep && UNIT_MAIN.has(rep.info.role)) {
+      cands.push({ kind: 'removed', symbol: nameJaOf(sym), count: { key: rep.info.countKey!, area, remove: rep.no }, ...(rep.info.groupKey ? { lastGroupKey: qKey(rep.info.groupKey, area) } : {}), carry: { area, countKey: rep.info.countKey!, no: rep.no } });
+    } else if (rep) {
+      // 台のまわりの部品：ケーブルの端末 → その台の「ケーブル：なし」／開閉器（1〜3つ目）→ その欄を「なし」（最後の欄のとき）／PC・LBS・VCSなど → その台の「なし」
+      const uk = (key: string) => qKey(indexedKey(key, rep.no - 1), area);
+      const slot = /^(tr|cap|gen)-cable-(up|dn)([123])$/.exec(rep.info.role);
+      const head = /^(tr|cap|gen)-cable-(source|site)$/.exec(rep.info.role);
+      const slotKey = (k: number) => `${slot![1]}Cable${slot![2] === 'up' ? 'Up' : 'Dn'}${k}`;
+      if (slot) {
+        const k = Number(slot[3]);
+        const next = String(toEffective(raw)[uk(slotKey(k + 1))] ?? 'none');
+        if (k === 3 || next === 'none') cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(slotKey(k))]: 'none' } });
+      } else if (head) {
+        // ケーブルの端末を1つ消した → そのケーブルを消した。反対側の端末も、いっしょに消えたものとして扱う（開閉器・PCなどは、別に消す）
+        const nm = (role: string) => `${area > 0 ? `a${area + 1}:` : ''}${role}${rep.no > 1 ? `-${rep.no}` : ''}`;
+        cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(`${head[1]}HasCable`)]: 'no' }, carryNames: [nm(`${head[1]}-cable-source`), nm(`${head[1]}-cable-site`)] });
+      }
+      else if (rep.info.unitKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(rep.info.unitKey)]: 'no' } });
+    } else if (table.get(rest)?.presenceKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey(table.get(rest)!.presenceKey!, area)]: 'no' } });
   }
 
   // 足した記号：「あり／なし」を「あり」に。台数を1つ増やす
@@ -267,6 +293,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     const pool = new Map(addedCount);
     for (const [n, s] of baseNames) {
       if (genPairs.get(n) === s) continue;
+      if (carried.has(n)) continue; // 消した台のまわりの部品は、台といっしょに消える
       const cur = curByName.get(n);
       if (cur === s) return false; // 手で直していないのに、消える・変わる
     }
@@ -284,6 +311,15 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
 
   let lastGen: Doc | null = null;
   for (const c of cands) {
+    carried.clear();
+    for (const n of c.carryNames ?? []) carried.add(n);
+    if (c.carry) {
+      for (const n of baseNames.keys()) {
+        const sp = splitArea(n);
+        const r = repeatOf(sp.rest, table);
+        if (r && sp.area === c.carry.area && r.info.countKey === c.carry.countKey && r.no === c.carry.no) carried.add(n);
+      }
+    }
     const set: Answers = { ...(c.set ?? {}) };
     // 台数：いまの台数から決める（最後の台を消したときだけ、1つ減らす）
     if (c.count) {
@@ -434,6 +470,39 @@ function renameDeep<T>(v: T, ren: (name: string) => string, renKey: (k: string) 
   return v;
 }
 
+/** 図面の記号の名前（id・親・線のつなぎ先・控え・レイヤーの印）を、ren で付け替える */
+function renameDoc(doc: Doc, ren: (id: string) => string): Doc {
+  const renName = (id: string): string => sameName(ren(id));
+  const renKey = (k: string): string =>
+    k
+      .split('>')
+      .map((e) => {
+        const at = e.lastIndexOf('.');
+        return `${renName(e.slice(0, at))}${e.slice(at)}`;
+      })
+      .sort()
+      .join('>');
+  const items = doc.items.map((it) => {
+    if (it.kind === 'symbol') return { ...it, id: ren(it.id), ...(it.parent ? { parent: ren(it.parent) } : {}) };
+    if (it.kind === 'wire') {
+      return {
+        ...it,
+        ...(it.at1 ? { at1: { ...it.at1, item: ren(it.at1.item) } } : {}),
+        ...(it.at2 ? { at2: { ...it.at2, item: ren(it.at2.item) } } : {}),
+        ...(it.fan?.item ? { fan: { ...it.fan, item: ren(it.fan.item) } } : {}),
+      };
+    }
+    return it;
+  });
+  const base = doc.base && {
+    ...doc.base,
+    symbols: Object.fromEntries(Object.entries(doc.base.symbols).map(([name, b]) => [renName(name), b])),
+    wires: doc.base.wires.map(renKey),
+  };
+  const layers = doc.layers ? renameDeep(doc.layers, renName, renKey) : doc.layers;
+  return { ...doc, items, ...(base ? { base } : {}), ...(layers ? { layers } : {}) };
+}
+
 /**
  * 途中の台を消したとき、消した台を「いちばん後ろの台」と入れ替えた形にする（答えの台ごとのキー・接続元の参照・図面の記号の名前）。
  * こうすると、「最後の台を消した」のと同じになり、あとの処理（台数を1つ減らす）が、そのまま使える。
@@ -480,35 +549,38 @@ function shiftUnit(raw: Answers, doc: Doc, area: number, countKey: string, j: nu
     const had = am[2] !== rep.info.role;
     return `${am[1] ?? ''}${rep.info.role}${had || no > 1 ? `-${no}` : ''}`;
   };
-  const renName = (id: string): string => sameName(ren(id));
-  const renKey = (k: string): string =>
-    k
-      .split('>')
-      .map((e) => {
-        const at = e.lastIndexOf('.');
-        return `${renName(e.slice(0, at))}${e.slice(at)}`;
-      })
-      .sort()
-      .join('>');
-  const items = doc.items.map((it) => {
-    if (it.kind === 'symbol') return { ...it, id: ren(it.id), ...(it.parent ? { parent: ren(it.parent) } : {}) };
-    if (it.kind === 'wire') {
-      return {
-        ...it,
-        ...(it.at1 ? { at1: { ...it.at1, item: ren(it.at1.item) } } : {}),
-        ...(it.at2 ? { at2: { ...it.at2, item: ren(it.at2.item) } } : {}),
-        ...(it.fan?.item ? { fan: { ...it.fan, item: ren(it.fan.item) } } : {}),
-      };
-    }
-    return it;
-  });
-  const base = doc.base && {
-    ...doc.base,
-    symbols: Object.fromEntries(Object.entries(doc.base.symbols).map(([name, b]) => [renName(name), b])),
-    wires: doc.base.wires.map(renKey),
+  return { raw: out, doc: renameDoc(doc, ren) };
+}
+
+
+/**
+ * ケーブルの前後の開閉器（1〜3つ目）の、途中の欄を消したとき、消した欄を「いちばん後ろの欄」と入れ替えた形にする
+ * （後ろの欄は、1つずつ前へつまる）。あとは、「最後の欄を消した」のと同じ。
+ */
+function shiftSlot(raw: Answers, doc: Doc, area: number, unit: number, p: string, side: 'Up' | 'Dn', k: number, last: number, table: Map<string, RoleInfo>): { raw: Answers; doc: Doc } {
+  const out: Answers = { ...raw };
+  const key = (m: number) => qKey(indexedKey(`${p}Cable${side}${m}`, unit), area);
+  const vals = Array.from({ length: last }, (_, i) => raw[key(i + 1)]);
+  for (let m = 1; m <= last; m++) {
+    const from = m < k ? m : m < last ? m + 1 : k; // k より前はそのまま。k 以降は1つ前へ。いちばん後ろには、消した欄の値
+    const v = vals[from - 1];
+    if (v === undefined) delete out[key(m)];
+    else out[key(m)] = v;
+  }
+  const role = `${p}-cable-${side.toLowerCase()}`;
+  const ren = (id: string): string => {
+    const am = /^(a\d+:)?(.*)$/.exec(id)!;
+    if ((am[1] ? Number(am[1].slice(1, -1)) - 1 : 0) !== area) return id;
+    const rep = repeatOf(am[2]!, table);
+    const m = rep ? new RegExp(`^${role}([123])$`).exec(rep.info.role) : null;
+    if (!rep || !m || rep.no !== unit + 1) return id;
+    const old = Number(m[1]);
+    const no = old === k ? last : old > k && old <= last ? old - 1 : old;
+    if (no === old) return id;
+    const had = am[2] !== rep.info.role;
+    return `${am[1] ?? ''}${role}${no}${had ? `-${rep.no}` : ''}`;
   };
-  const layers = doc.layers ? renameDeep(doc.layers, renName, renKey) : doc.layers;
-  return { raw: out, doc: { ...doc, items, ...(base ? { base } : {}), ...(layers ? { layers } : {}) } };
+  return { raw: out, doc: renameDoc(doc, ren) };
 }
 
 /**
@@ -526,9 +598,24 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
     const ov = collectOverrides(curDoc);
     const eff = toEffective(curRaw);
     let hit: { area: number; countKey: string; j: number; n: number } | null = null;
+    let slotHit: { area: number; unit: number; p: string; side: 'Up' | 'Dn'; k: number; last: number } | null = null;
     for (const name of ov.removed) {
       const { area, rest } = splitArea(name);
       const rep = repeatOf(rest, table);
+      // ケーブルの前後の開閉器の、途中の欄を消したとき
+      const sm = rep ? /^(tr|cap|gen)-cable-(up|dn)([123])$/.exec(rep.info.role) : null;
+      if (rep && sm) {
+        const p = sm[1]!;
+        const side = sm[2] === 'up' ? 'Up' : 'Dn';
+        const k = Number(sm[3]);
+        let last = 0;
+        for (let m = 1; m <= 3; m++) if (String(eff[qKey(indexedKey(`${p}Cable${side}${m}`, rep.no - 1), area)] ?? 'none') !== 'none') last = m;
+        if (k < last) {
+          slotHit = { area, unit: rep.no - 1, p, side, k, last };
+          break;
+        }
+        continue;
+      }
       // 台の本体（機器の記号そのもの）を消したときだけ。ケーブルの端末・開閉器など、台のまわりの部品は、ここでは扱わない
       if (!rep || !UNIT_MAIN.has(rep.info.role)) continue;
       const countKey = rep.info.countKey!;
@@ -537,6 +624,13 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
         hit = { area, countKey, j: rep.no, n };
         break;
       }
+    }
+    if (slotHit) {
+      const r = shiftSlot(curRaw, curDoc, slotHit.area, slotHit.unit, slotHit.p, slotHit.side, slotHit.k, slotHit.last, table);
+      curRaw = r.raw;
+      curDoc = r.doc;
+      shifted = true;
+      continue;
     }
     if (!hit) break;
     const r = shiftUnit(curRaw, curDoc, hit.area, hit.countKey, hit.j, hit.n, table);

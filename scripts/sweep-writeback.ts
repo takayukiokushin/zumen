@@ -57,6 +57,62 @@ function answersOf(rnd: Rnd, area: number): Answers {
   }
   return a;
 }
+/** ケーブル・開閉器・PC・LBS などをたくさん付けた案件にする（ふつうの乱数では、ほとんど出ないため） */
+function enrich(a: Answers, rnd: Rnd, area: number): Answers {
+  const out: Record<string, unknown> = { ...a };
+  const pick = <T,>(l: T[]): T => l[Math.floor(rnd() * l.length)]!;
+  const SW = ['none', 'ds', 'vcb', 'lbs', 'vcs', 'as'];
+  const slots = (p: string, side: 'Up' | 'Dn', k: string) => {
+    const used: string[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const c = SW.filter((x) => x === 'none' || !used.includes(x));
+      const v = i === 1 ? pick(SW.slice(1)) : pick(c);
+      out[k + `${p}Cable${side}${i}`] = v;
+      if (v === 'none') break;
+      used.push(v);
+    }
+  };
+  for (let ar = 0; ar < area; ar++) {
+    const k = ar === 0 ? '' : `a${ar + 1}:`;
+    const n = 1 + Math.floor(rnd() * 3);
+    out[`${k}transformerCount`] = String(n);
+    for (let u = 0; u < n; u++) {
+      const uk = (id: string) => `${k}${id}${u === 0 ? '' : `__${u + 1}`}`;
+      out[uk('trHasCable')] = rnd() < 0.7 ? 'yes' : 'no';
+      out[uk('trHasPc')] = rnd() < 0.4 ? 'yes' : 'no';
+      out[uk('trHasLbs')] = rnd() < 0.4 ? 'yes' : 'no';
+      for (const side of ['Up', 'Dn'] as const) {
+        const used: string[] = [];
+        for (let i = 1; i <= 3; i++) {
+          const c = SW.filter((x) => x === 'none' || !used.includes(x));
+          const v = i === 1 ? pick(SW.slice(1)) : pick(c);
+          out[uk(`trCable${side}${i}`)] = v;
+          if (v === 'none') break;
+          used.push(v);
+        }
+      }
+      out[uk('trCableInstallation')] = 'buried';
+      out[uk('trCableStructure')] = 'CVT';
+    }
+    if (rnd() < 0.7) {
+      out[`${k}hasCapacitor`] = 'yes';
+      out[`${k}capacitorCount`] = String(1 + Math.floor(rnd() * 2));
+      for (let u = 0; u < Number(out[`${k}capacitorCount`]); u++) {
+        const uk = (id: string) => `${k}${id}${u === 0 ? '' : `__${u + 1}`}`;
+        out[uk('capHasCable')] = rnd() < 0.6 ? 'yes' : 'no';
+        out[uk('capHasPc')] = rnd() < 0.5 ? 'yes' : 'no';
+        out[uk('capHasLbs')] = rnd() < 0.5 ? 'yes' : 'no';
+        out[uk('capHasVcs')] = rnd() < 0.4 ? 'yes' : 'no';
+        out[uk('capCableUp1')] = pick(SW.slice(1));
+        out[uk('capCableDn1')] = pick(SW);
+        out[uk('capCableInstallation')] = 'buried';
+        out[uk('capCableStructure')] = 'CVT';
+      }
+    }
+  }
+  void slots;
+  return dropHiddenChoices(out as Answers);
+}
 const baseOf = (id: string) => (/^a\d+:/.test(id) ? '【2か所目以降】' : '') + sameName(id).replace(/^a\d+:/, '').replace(/-\d+$/, '');
 const topSyms = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol');
 
@@ -76,6 +132,7 @@ for (let id = 0; id < N; id++) {
   let doc0: Doc;
   try {
     raw = answersOf(rnd, area);
+    if (process.env.SWEEP_RICH) raw = enrich(raw, rnd, area);
     doc0 = tidyDoc(dedupeIds({ ...gen(raw), edited: true }));
     if (!doc0.base) doc0 = { ...doc0, base: gen(raw).base };
   } catch {
@@ -94,7 +151,8 @@ for (let id = 0; id < N; id++) {
         const g = buildGenerated(toEff(r.answers));
         // 途中の台を消すと、後ろの台の名前がつまるので、名前ではなく、同じ種類の記号の数が、1つ減ったかで見る
         const count = (d: Doc) => d.items.filter((i) => i.kind === 'symbol' && baseOf(i.id) === role).length;
-        const still = count(g) >= count(doc0);
+        const total = (d: Doc) => d.items.filter((i) => i.kind === 'symbol').length;
+        const still = count(g) >= count(doc0) && total(g) >= total(doc0);
         tally(role, still ? '反映されたが図面に残った' : '反映された');
       } else if (r.rejected.length > 0) {
         tally(role, '断られた');

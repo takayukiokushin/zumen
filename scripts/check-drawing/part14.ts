@@ -280,3 +280,84 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  先頭の変圧器（1台目）を消す → 2台目・3台目の答えが、1台目・2台目へつまる');
   }
 }
+
+/* 台のまわりの部品（PC・LBS・ケーブルの端末・ケーブル前後の開閉器）を消したとき、その台の答えに書き戻す（第18弾 追加） */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const unit = (u: number): Answers => {
+    const k = (id: string) => (u === 0 ? id : `${id}__${u + 1}`);
+    return {
+      [k('trConnection')]: 'tr-3p-dy',
+      [k('trCapacity')]: 300,
+      [k('trVoltage')]: '6600/210V',
+      [k('trHasPc')]: 'yes',
+      [k('trHasLbs')]: 'yes',
+      [k('trHasCable')]: 'yes',
+      [k('trCableUp1')]: 'ds',
+      [k('trCableUp2')]: 'vcb',
+      [k('trCableUp3')]: 'lbs',
+      [k('trCableDn1')]: 'lbs',
+      [k('trCableInstallation')]: 'buried',
+      [k('trCableStructure')]: 'CVT',
+    };
+  };
+  const raw: Answers = { ...answersSpread, areaCount: '1', transformerCount: 2, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no', ...unit(0), ...unit(1) };
+  const d0 = buildGenerated(toEff(raw));
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const del = (d: Doc, ...names: string[]) => {
+    let cur = d;
+    for (const n of names) {
+      const s = find(cur, n);
+      if (!s) {
+        fail(`図面に ${n} がありません（検査の前提が崩れています）`);
+        return null;
+      }
+      cur = removeItem(cur, s.id);
+    }
+    return { ...cur, edited: true };
+  };
+  const count = (d: Doc) => d.items.filter((i) => i.kind === 'symbol').length;
+
+  // 2台目のPCを消す → 2台目の「PC」だけ「なし」
+  {
+    const d = del(d0, 'tr-pc-2');
+    const r = d && writeBack(raw, d, toEff);
+    if (!r || r.answers.trHasPc__2 !== 'no') fail(`2台目のPCを消しても、2台目の「PC」が「なし」になっていません（${r?.answers.trHasPc__2}／${JSON.stringify(r?.rejected)}）`);
+    else if (r.answers.trHasPc !== 'yes') fail('2台目のPCを消したら、1台目のPCまで変わりました');
+    else if (count(buildGenerated(toEff(r.answers))) !== count(d0) - 1) fail('2台目のPCを消したら、PC以外の記号まで変わりました');
+    else console.log('  2台目のPCを消す → 2台目の「PC」だけが「なし」になる');
+  }
+  // ケーブルの手前の開閉器（2つ目）を消す → 3つ目が2つ目へつまる
+  {
+    const d = del(d0, 'tr-cable-up2');
+    const r = d && writeBack(raw, d, toEff);
+    if (!r || r.answers.trCableUp1 !== 'ds' || r.answers.trCableUp2 !== 'lbs' || (r.answers.trCableUp3 ?? 'none') !== 'none') {
+      fail(`ケーブルの手前の開閉器（2つ目）を消したら、3つ目が2つ目へつまるはずが、違います（${r?.answers.trCableUp1}・${r?.answers.trCableUp2}・${r?.answers.trCableUp3}／${JSON.stringify(r?.rejected)}）`);
+    } else if (r.answers.trCableUp2__2 !== 'vcb') fail('1台目の開閉器を消したら、2台目の開閉器まで変わりました');
+    else if (find(r.doc, 'tr-cable-up3')) fail('書き戻したあとの図面に、つめる前の3つ目が残っています');
+    else console.log('  ケーブルの手前の開閉器（2つ目）を消す → 3つ目が2つ目へつまる（2台目は変わらない）');
+  }
+  // ケーブルの前後の部品を、すべて消す → その台の「ケーブル：なし」
+  {
+    const d = del(d0, 'tr-cable-source', 'tr-cable-site', 'tr-cable-up1', 'tr-cable-up2', 'tr-cable-up3', 'tr-cable-dn1');
+    const r = d && writeBack(raw, d, toEff);
+    if (!r || r.answers.trHasCable !== 'no') fail(`ケーブルと前後の開閉器をすべて消しても、「ケーブル：なし」になっていません（${r?.answers.trHasCable}／${JSON.stringify(r?.rejected)}）`);
+    else if (r.answers.trHasCable__2 !== 'yes') fail('1台目のケーブルを消したら、2台目のケーブルまで変わりました');
+    else console.log('  ケーブルと、前後の開閉器を、すべて消す → その台の「ケーブル：なし」（2台目は変わらない）');
+  }
+  // ケーブルの端末だけを消す（前後の開閉器は残す）→ ケーブルだけ「なし」にはできないので、書き戻さない
+  {
+    const d = del(d0, 'tr-cable-source');
+    const r = d && writeBack(raw, d, toEff);
+    if (r && (r.applied.length > 0 || r.answers.trHasCable !== 'yes')) fail('ケーブルの端末だけを消したのに、書き戻しています（前後の開閉器が残るので、書き戻せない）');
+    else console.log('  ケーブルの端末だけを消す（開閉器は残す）→ 書き戻さない（図面にだけ残る）');
+  }
+  // 変圧器の本体を消す（ケーブル・開閉器は残っていても）→ その台ごと消える
+  {
+    const d = del(d0, 'transformer-2');
+    const r = d && writeBack(raw, d, toEff);
+    if (!r || Number(r.answers.transformerCount) !== 1) fail(`変圧器の本体を消しても、台数が減っていません（${r?.answers.transformerCount}／${JSON.stringify(r?.rejected)}）`);
+    else console.log('  変圧器の本体を消す（その台のケーブル・開閉器が残っていても）→ 台数が減る');
+  }
+}
