@@ -168,9 +168,20 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
   if (!pas) fail('区分開閉器（PAS）が、自動の図面にありません');
   else {
     const r = writeBack(raw, { ...removeItem(d0, pas.id), edited: true }, toEff);
-    if (r && r.applied.length > 0) fail(`図面で区分開閉器（PAS）を消したとき、入力に書き戻していません（なのに、書き戻した知らせが出ています：${r.applied.map((a) => a.question).join('、')}）`);
-    else if (r && r.answers.sectionalizer !== 'pas') fail('図面で区分開閉器（PAS）を消したとき、入力の区分開閉器が、勝手に変わっています');
-    else console.log('  図面で区分開閉器（PAS）を消しても、「書き戻した」という偽の知らせは出ない（入力の答えは、そのまま。図面にだけ、消えた形で残る）');
+    const names = (d: Doc) => new Set(d.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => sameName(i.id)));
+    if (!r || r.answers.sectionalizer !== 'none') fail(`図面で区分開閉器（PAS）を消したのに、入力が「区分開閉器：なし」になっていません（${r?.answers.sectionalizer}／${JSON.stringify(r?.rejected)}）`);
+    else if (!r.applied.some((a) => a.to === 'なし' || /なし/.test(a.to))) fail('書き戻した内容の知らせに、区分開閉器が出ていません');
+    else {
+      // 「なし」にすると自動で増える部品（地上キャビネット・DS・分界点の安全装置）は、図面に出さない（消したまま。必要なら、手で足す）
+      const auto = names(buildGenerated(toEff(r.answers)));
+      const grew = [...auto].filter((n) => !names(d0).has(n));
+      const shown = grew.filter((n) => names(r.doc).has(n));
+      if (grew.length === 0) fail('区分開閉器を「なし」にしても、自動で増える部品がありません（検査の前提が変わりました）');
+      else if (shown.length > 0) fail(`区分開閉器を消したら、描いていない部品が図面に出ました（${shown.join('・')}）`);
+      else if (names(r.doc).has('pas')) fail('書き戻したあとの図面に、区分開閉器が残っています');
+      else if (!names(r.doc).has('transformer')) fail('区分開閉器を消したら、ほかの記号まで消えました');
+      else console.log(`  図面で区分開閉器（PAS）を消す → 入力が「区分開閉器：なし」になる。自動で増える部品（${grew.join('・')}）は、図面に出さず、消したままにする`);
+    }
   }
 }
 

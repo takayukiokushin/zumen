@@ -1,4 +1,4 @@
-import { areaKey, areaView, buildComposition, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, PER_UNIT_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
+import { areaKey, areaView, buildComposition, CHAIN_BY_FORM, referencedKeys, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, PER_UNIT_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
 import type { Answers, Condition, Placement, Value } from '@zumen/knowledge';
 import { layout } from '@zumen/layout';
 import { getSymbol } from '@zumen/symbols';
@@ -118,6 +118,20 @@ function roleTable(): Map<string, RoleInfo> {
   return table;
 }
 
+/** 区分開閉器（PAS・PGS・UGS）の有無で出る・出ない、または形の変わる部品の役割（区分開閉器を消したとき、いっしょに消える・入れ替わる） */
+let sectionalRolesCache: Set<string> | null = null;
+function sectionalRoles(): Set<string> {
+  if (sectionalRolesCache) return sectionalRolesCache;
+  const all: Placement[] = [...UPSTREAM, ...DOWNSTREAM, ...SENDOUT, ...TRANSFORMER, ...EXTRAS, ...Object.values(CHAIN_BY_FORM).flat()];
+  const out = new Set<string>();
+  for (const p of all) {
+    const keys = referencedKeys(p.when);
+    if (keys.has('hasPas') || keys.has('sectionalizer')) out.add(p.role);
+  }
+  sectionalRolesCache = out;
+  return out;
+}
+
 const Q = new Map(QUESTIONS.map((q) => [q.id, q]));
 const QUESTION_IDS: ReadonlySet<string> = new Set(Q.keys());
 const questionLabel = (id: string): string => Q.get(id)?.label ?? id;
@@ -177,6 +191,10 @@ interface Candidate {
   carry?: { area: number; countKey: string; no: number };
   /** いっしょに消えたものとして扱う記号の名前（ケーブルの反対側の端末） */
   carryNames?: string[];
+  /** 区分開閉器を消したとき：答えを変えると、図面に描いていない部品（地上キャビネット・DS・分界点の安全装置）が自動で増える。それは図面に出さず、消したままにする */
+  suppressNew?: boolean;
+  /** 区分開閉器まわりの部品（いっしょに消える・入れ替わる）を、いっしょに消えたものとして扱う（どのエリアか） */
+  carrySectional?: { area: number };
   /** 変えたあとの、この機器の文字（確かめる） */
   label?: { name: string; lines: string[] };
 }
@@ -242,6 +260,9 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
   const removed = [...ov.removed].sort((a, b) => (repeatOf(splitArea(b).rest, table)?.no ?? 0) - (repeatOf(splitArea(a).rest, table)?.no ?? 0));
   /** 台の本体を消したとき、いっしょに消えたものとして扱う、その台のまわりの部品の名前 */
   const carried = new Set<string>();
+  /** いま確かめている答えの変更で、自動で増える部品のうち、図面に出さないもの */
+  let suppressNow = false;
+  const suppressed = new Set<string>();
   for (const name of removed) {
     const { area, rest } = splitArea(name);
     const sym = baseNames.get(name) ?? name;
@@ -277,6 +298,10 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
         cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(head[1] === 'motor' ? 'motorCable' : `${head[1]}HasCable`)]: 'no' }, carryNames: [nm(`${head[1]}-cable-source`), nm(`${head[1]}-cable-site`)] });
       }
       else if (rep.info.unitKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(rep.info.unitKey)]: 'no' } });
+    } else if (sectionalRoles().has(rest) && rest === 'pas') {
+      // 区分開閉器を消した → 「区分開閉器：なし」。まわりの部品（分界点の線・構内柱・内蔵の機器）は、いっしょに消える。
+      // 「なし」にすると自動で増える部品は、図面に出さない（消したままにする。必要なら、手で足す）
+      cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey('sectionalizer', area)]: 'none' }, suppressNew: true, carrySectional: { area } });
     } else if (rest === 'cable-head-source' || rest === 'cable-head-site') {
       // 引込ケーブルの端末：「引込ケーブル：なし」。反対側の端末も、いっしょに消えたものとして扱う
       const nm = (role: string) => `${area > 0 ? `a${area + 1}:` : ''}${role}`;
@@ -321,15 +346,29 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
         pool.set(s, pool.get(s)! - 1); // 手で足した記号が、自動の図面に出るようになった
         continue;
       }
+      if (suppressNow && !baseNames.has(n)) {
+        suppressed.add(n); // 自動で増える部品：図面には出さない
+        continue;
+      }
       return false;
     }
     return true;
   };
 
   let lastGen: Doc | null = null;
+  const suppressedAll = new Set<string>();
   for (const c of cands) {
     carried.clear();
+    suppressed.clear();
+    suppressNow = c.suppressNew === true;
     for (const n of c.carryNames ?? []) carried.add(n);
+    if (c.carrySectional) {
+      const roles = sectionalRoles();
+      for (const n of baseNames.keys()) {
+        const sp = splitArea(n);
+        if (sp.area === c.carrySectional.area && roles.has(sp.rest.replace(/-\d+$/, '')) ) carried.add(n);
+      }
+    }
     if (c.carry) {
       for (const n of baseNames.keys()) {
         const sp = splitArea(n);
@@ -380,6 +419,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     if (ok) {
       acc = trial;
       accepted.push({ ...c, set });
+      for (const n of suppressed) suppressedAll.add(n);
       lastGen = gen;
     } else if (c.kind !== 'relabel') {
       rejected.push({ kind: c.kind, symbol: c.symbol });
@@ -443,7 +483,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     return {
       ...o,
       moved,
-      removed: o.removed.filter((n) => !vanished.has(n)),
+      removed: [...o.removed.filter((n) => !vanished.has(n)), ...[...suppressedAll].filter((n) => genNames.has(n))],
       wiresRemoved: o.wiresRemoved.filter((k) => !keyNames(k).some((n) => vanished.has(n))),
       added: addedKept,
     };
