@@ -92,7 +92,9 @@ for (let id = 0; id < N; id++) {
         tally(role, '対応する入力が無い');
       } else if (r.applied.length > 0) {
         const g = buildGenerated(toEff(r.answers));
-        const still = g.items.some((i) => i.kind === 'symbol' && sameName(i.id) === sameName(s.id));
+        // 途中の台を消すと、後ろの台の名前がつまるので、名前ではなく、同じ種類の記号の数が、1つ減ったかで見る
+        const count = (d: Doc) => d.items.filter((i) => i.kind === 'symbol' && baseOf(i.id) === role).length;
+        const still = count(g) >= count(doc0);
         tally(role, still ? '反映されたが図面に残った' : '反映された');
       } else if (r.rejected.length > 0) {
         tally(role, '断られた');

@@ -110,15 +110,15 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     ok(r2 !== null && r2.doc.items.filter((i) => i.kind === 'symbol' && sameName(i.id) === 'site-la').length === 1 && r2.doc.items.filter((i) => i.kind === 'symbol' && i.symbolId === 'la').length === 2, 'LAが増えすぎています（PAS内蔵のLAと、手で足したものが重なっている）（手で足したものと、自動で出たものが重なっている）');
   }
 
-  // 7. 台数：最後の台を消す → 台数を1つ減らす。最初の台を消しても、書き戻さない
+  // 7. 台数：最後の台を消す → 台数を1つ減らす。最初の台を消したときも、台数を減らし、残りの台の答えを前へつめる（以前は、書き戻さなかった）
   {
     const d0 = fresh();
     const r = writeBack(raw, edited(removeItem(d0, sym(d0, 'transformer-2')!.id)), toEff);
     ok(Number(r?.answers.transformerCount) === 1, `最後の台を消しても、台数が減っていません（${r?.answers.transformerCount}／${JSON.stringify(r?.rejected)}）`);
     ok(r !== null && sym(r.doc, 'transformer-2') === undefined && sym(r.doc, 'transformer') !== undefined, '書き戻したあとの図面の、変圧器の数が違います');
     const first = writeBack(raw, edited(removeItem(d0, sym(d0, 'transformer')!.id)), toEff);
-    ok(first !== null && Number(first.answers.transformerCount) === 2, '最初の台を消したのに、台数を減らしています（どの台か決められない）');
-    ok(first !== null && first.leftovers.some((l) => l.kind === 'removed'), '書き戻さなかった「消した記号」が、図面にだけ残るものに出ていません');
+    ok(first !== null && Number(first.answers.transformerCount) === 1, `最初の台を消しても、台数が減っていません（${first?.answers.transformerCount}）`);
+    ok(first !== null && !first.leftovers.some((l) => l.kind === 'removed'), '書き戻したのに、「消した記号」が図面にだけ残っています');
   }
 
   // 8. 台数：変圧器を1台足す → 台数を増やし、足した台の結線方式も入る
@@ -216,5 +216,67 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else if (r.answers.hasCapacitor !== 'no') fail('2か所目のコンデンサを消したら、1か所目の入力が変わりました');
     else if (namesOf(buildGenerated(toEff(r.answers))).split(',').filter((n) => !/capacitor/.test(n)).join(',') !== namesOf(d0).split(',').filter((n) => !/capacitor/.test(n)).join(',')) fail('2か所目のコンデンサを消したら、ほかの記号まで変わりました');
     else console.log('  2か所目のコンデンサを消す → 2か所目の「コンデンサ」が「なし」になる（ほかは変わらない）');
+  }
+}
+
+/* 途中の台を消したとき：後ろの台の答えが、1つずつ前へつまる（第18弾 追加）。手で動かした位置・接続元の参照も、つめた番号についていく */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const raw: Answers = {
+    ...answersSpread,
+    areaCount: '1',
+    transformerCount: 3,
+    trUsage: '動力',
+    trUsage__2: '電灯',
+    trUsage__3: '空調',
+    trConnection: 'tr-3p-dy',
+    trConnection__2: 'tr-3p-dy',
+    trConnection__3: 'tr-3p-dy',
+    trCapacity: 300,
+    trCapacity__2: 500,
+    trCapacity__3: 750,
+    trVoltage: '6600/210V',
+    trVoltage__2: '6600/210V',
+    trVoltage__3: '6600/210V',
+    hasCapacitor: 'no',
+    hasPv: 'no',
+    hasGenerator: 'no',
+  };
+  const d0 = buildGenerated(toEff(raw));
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const t2 = find(d0, 'transformer-2');
+  const t3 = find(d0, 'transformer-3');
+  if (!t2 || !t3) fail('変圧器が3台の図面に、2台目・3台目がありません');
+  else {
+    // 3台目を、手で動かしてから、2台目を消す
+    const moved = moveItem(d0, t3.id, 12, 8);
+    const r = writeBack(raw, { ...removeItem(moved, t2.id), edited: true }, toEff);
+    if (!r) fail('途中の変圧器（2台目）を消しても、書き戻しが動いていません');
+    else {
+      const a = r.answers;
+      if (Number(a.transformerCount) !== 2) fail(`2台目を消したのに、台数が2台になっていません（${a.transformerCount}）`);
+      else if (a.trCapacity !== 300 || a.trCapacity__2 !== 750) fail(`2台目を消したら、3台目の容量が2台目へつまるはずが、違います（${a.trCapacity}・${a.trCapacity__2}）`);
+      else if (a.trUsage !== '動力' || a.trUsage__2 !== '空調') fail(`2台目を消したら、3台目の用途が2台目へつまるはずが、違います（${a.trUsage}・${a.trUsage__2}）`);
+      else {
+        const after = r.doc;
+        const n2 = find(after, 'transformer-2');
+        const n3 = find(after, 'transformer-3');
+        const g = buildGenerated(toEff(a));
+        const g2 = find(g, 'transformer-2');
+        if (n3) fail('書き戻したあとの図面に、3台目が残っています');
+        else if (!n2 || !g2) fail('書き戻したあとの図面に、2台目（つめた台）がありません');
+        else if (Math.abs(n2.x - (g2.x + 12)) > 2 || Math.abs(n2.y - (g2.y + 8)) > 2) fail(`手で動かした3台目の位置が、つめた2台目に引き継がれていません（ずれ ${Math.round(n2.x - g2.x)}・${Math.round(n2.y - g2.y)}。動かしたのは 12・8）`);
+        else if (r.leftovers.some((l) => l.kind === 'removed')) fail('書き戻したのに、「消した記号」が図面にだけ残っています');
+        else console.log('  途中の変圧器（2台目）を消す → 台数が減り、3台目の答え（容量・用途）が2台目へつまる。手で動かした位置も、ついていく');
+      }
+    }
+  }
+  // 1台目を消す（先頭）：2台目・3台目が、1台目・2台目になる
+  const t1 = find(d0, 'transformer');
+  if (t1) {
+    const r = writeBack(raw, { ...removeItem(d0, t1.id), edited: true }, toEff);
+    if (!r || Number(r.answers.transformerCount) !== 2 || r.answers.trCapacity !== 500 || r.answers.trCapacity__2 !== 750) fail(`1台目を消したら、2台目・3台目の答えが前へつまるはずが、違います（${r?.answers.transformerCount}・${r?.answers.trCapacity}・${r?.answers.trCapacity__2}）`);
+    else console.log('  先頭の変圧器（1台目）を消す → 2台目・3台目の答えが、1台目・2台目へつまる');
   }
 }

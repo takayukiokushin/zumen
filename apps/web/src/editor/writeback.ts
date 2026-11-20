@@ -1,4 +1,4 @@
-import { areaKey, buildComposition, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, indexedKey, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
+import { areaKey, areaView, buildComposition, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
 import type { Answers, Condition, Placement, Value } from '@zumen/knowledge';
 import { layout } from '@zumen/layout';
 import { getSymbol } from '@zumen/symbols';
@@ -199,7 +199,7 @@ const withKeys = (a: Answers, set: Answers): Answers => {
  * @param doc いまの図面
  * @param toEffective 画面が図面を作るときに使う、既定値などを足した答えにする関数
  */
-export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers): WritebackResult | null {
+function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers): WritebackResult | null {
   if (!doc.base || doc.edited !== true) return null;
   const ov = collectOverrides(doc);
   if (!hasOverrides(ov)) return null;
@@ -396,6 +396,159 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
   });
   const rebuilt = carryOver(next.doc, doc);
   return { answers: acc, doc: rebuilt, applied, rejected, leftovers: leftoversOf(rebuilt.overrides) };
+}
+
+
+/* ------------------------------------------------------------------ */
+/* 途中の台を消したとき：後ろの台を、前へつめる                                  */
+/* ------------------------------------------------------------------ */
+
+/** 台の番号の入れ替え：消した台（j）を、いちばん後ろ（n）へ回し、後ろの台を1つずつ前へつめる（1始まり） */
+const unitMap = (no: number, j: number, n: number): number => (no === j ? n : no > j ? no - 1 : no);
+
+/** 繰り返す機器の、本体の記号（これを消すと、その台を消したことになる） */
+const UNIT_MAIN: ReadonlySet<string> = new Set(['transformer', 'capacitor', 'generator', 'motor', 'aux-tr', 'ct', 'relay', 'relay-tt', 'vct-pole', 'vct-indoor', 'ds-vt', 'ds-vt-pf', 'site-vt', 'site-vt-pf']);
+
+/** 件数の質問（countKey）で繰り返すグループの、台ごとの質問のID */
+function unitQuestionIds(countKey: string): string[] {
+  const g = QUESTION_GROUPS.find((x) => x.repeatCountKey === countKey);
+  if (!g) return [];
+  return QUESTIONS.filter((q) => q.group === g.id && q.id !== countKey && !q.shared).map((q) => q.id);
+}
+
+/** 「役割:何台目（0始まり）」の形の値（接続元など）か */
+const REF = /^([a-z0-9-]+):(\d+)$/;
+
+/** 図面の記録（レイヤーの印など）の中の、機器の名前を付け替える（near・target・item・key の名前だけ） */
+function renameDeep<T>(v: T, ren: (name: string) => string, renKey: (k: string) => string): T {
+  if (Array.isArray(v)) return v.map((x) => renameDeep(x, ren, renKey)) as T;
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if ((k === 'near' || k === 'target' || k === 'item') && typeof x === 'string') out[k] = ren(x);
+      else if (k === 'key' && typeof x === 'string' && x.includes('>')) out[k] = renKey(x);
+      else out[k] = renameDeep(x, ren, renKey);
+    }
+    return out as T;
+  }
+  return v;
+}
+
+/**
+ * 途中の台を消したとき、消した台を「いちばん後ろの台」と入れ替えた形にする（答えの台ごとのキー・接続元の参照・図面の記号の名前）。
+ * こうすると、「最後の台を消した」のと同じになり、あとの処理（台数を1つ減らす）が、そのまま使える。
+ * 後ろの台は、1つずつ前の番号になる（答え・図面の手直しの記録も、一緒に付け替える）。
+ */
+function shiftUnit(raw: Answers, doc: Doc, area: number, countKey: string, j: number, n: number, table: Map<string, RoleInfo>): { raw: Answers; doc: Doc } {
+  const out: Answers = { ...raw };
+  for (const id of unitQuestionIds(countKey)) {
+    const vals = Array.from({ length: n }, (_, u) => raw[qKey(indexedKey(id, u), area)]);
+    for (let u = 1; u <= n; u++) {
+      const key = qKey(indexedKey(id, unitMap(u, j, n) - 1), area);
+      if (vals[u - 1] === undefined) delete out[key];
+      else out[key] = vals[u - 1]!;
+    }
+  }
+  // 接続元など、「役割:何台目」で台を指している答え
+  const areaOfKey = (key: string): number => {
+    const m = /^a(\d+):/.exec(key);
+    const own = m ? Number(m[1]) - 1 : 0;
+    // エリア間の接続の「分岐元の開閉器」は、送り出す側のエリアの機器を指す
+    return /(^|:)linkDevice$/.test(key) || /(^|:)linkSourceTr$/.test(key) ? linkFromOf(areaView(raw, own), own) : own;
+  };
+  for (const [key, value] of Object.entries(out)) {
+    if (/(^|:)linkSourceTr$/.test(key) && countKey === 'transformerCount' && areaOfKey(key) === area) {
+      const v = Math.round(Number(value));
+      if (Number.isFinite(v) && v >= 1 && v <= n) out[key] = unitMap(v, j, n);
+      continue;
+    }
+    if (typeof value !== 'string') continue;
+    const m = REF.exec(value);
+    if (!m || areaOfKey(key) !== area) continue;
+    const info = table.get(m[1]!);
+    if (info?.countKey !== countKey) continue;
+    out[key] = `${m[1]}:${unitMap(Number(m[2]) + 1, j, n) - 1}`;
+  }
+
+  // 図面の記号の名前（id・親・線のつなぎ先・控え・レイヤーの印）
+  const ren = (id: string): string => {
+    const am = /^(a\d+:)?(.*)$/.exec(id)!;
+    if ((am[1] ? Number(am[1].slice(1, -1)) - 1 : 0) !== area) return id;
+    const rep = repeatOf(am[2]!, table);
+    if (!rep || rep.info.countKey !== countKey) return id;
+    const no = unitMap(rep.no, j, n);
+    const had = am[2] !== rep.info.role;
+    return `${am[1] ?? ''}${rep.info.role}${had || no > 1 ? `-${no}` : ''}`;
+  };
+  const renName = (id: string): string => sameName(ren(id));
+  const renKey = (k: string): string =>
+    k
+      .split('>')
+      .map((e) => {
+        const at = e.lastIndexOf('.');
+        return `${renName(e.slice(0, at))}${e.slice(at)}`;
+      })
+      .sort()
+      .join('>');
+  const items = doc.items.map((it) => {
+    if (it.kind === 'symbol') return { ...it, id: ren(it.id), ...(it.parent ? { parent: ren(it.parent) } : {}) };
+    if (it.kind === 'wire') {
+      return {
+        ...it,
+        ...(it.at1 ? { at1: { ...it.at1, item: ren(it.at1.item) } } : {}),
+        ...(it.at2 ? { at2: { ...it.at2, item: ren(it.at2.item) } } : {}),
+        ...(it.fan?.item ? { fan: { ...it.fan, item: ren(it.fan.item) } } : {}),
+      };
+    }
+    return it;
+  });
+  const base = doc.base && {
+    ...doc.base,
+    symbols: Object.fromEntries(Object.entries(doc.base.symbols).map(([name, b]) => [renName(name), b])),
+    wires: doc.base.wires.map(renKey),
+  };
+  const layers = doc.layers ? renameDeep(doc.layers, renName, renKey) : doc.layers;
+  return { raw: out, doc: { ...doc, items, ...(base ? { base } : {}), ...(layers ? { layers } : {}) } };
+}
+
+/**
+ * 図面で直した内容を、「設備を入力して作成」の答えに書き戻す（本体は writeBackCore）。
+ * 途中の台（変圧器・コンデンサなど）を消したときは、先に、後ろの台を前へつめてから書き戻す。
+ */
+export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers): WritebackResult | null {
+  if (!doc.base || doc.edited !== true) return null;
+  const table = roleTable();
+  let curRaw = raw;
+  let curDoc = doc;
+  let shifted = false;
+  // 消した台のうち、途中の台（後ろに台がある）を、1つずつ、いちばん後ろへ回す
+  for (let guard = 0; guard < 12; guard++) {
+    const ov = collectOverrides(curDoc);
+    const eff = toEffective(curRaw);
+    let hit: { area: number; countKey: string; j: number; n: number } | null = null;
+    for (const name of ov.removed) {
+      const { area, rest } = splitArea(name);
+      const rep = repeatOf(rest, table);
+      // 台の本体（機器の記号そのもの）を消したときだけ。ケーブルの端末・開閉器など、台のまわりの部品は、ここでは扱わない
+      if (!rep || !UNIT_MAIN.has(rep.info.role)) continue;
+      const countKey = rep.info.countKey!;
+      const n = countOf(eff[qKey(countKey, area)], 1, maxCountOf(countKey));
+      if (rep.no < n && n > 1) {
+        hit = { area, countKey, j: rep.no, n };
+        break;
+      }
+    }
+    if (!hit) break;
+    const r = shiftUnit(curRaw, curDoc, hit.area, hit.countKey, hit.j, hit.n, table);
+    curRaw = r.raw;
+    curDoc = r.doc;
+    shifted = true;
+  }
+  const res = writeBackCore(curRaw, curDoc, toEffective);
+  if (!shifted) return res;
+  // 入れ替えたあと、ひとつも書き戻せなかった・断られたものがあるときは、入れ替えずに、そのまま扱う（答えも図面も、もとのまま）
+  if (!res || res.applied.length === 0 || res.rejected.length > 0) return writeBackCore(raw, doc, toEffective);
+  return res;
 }
 
 /** 入力には出ない、手で直した内容の件数 */
