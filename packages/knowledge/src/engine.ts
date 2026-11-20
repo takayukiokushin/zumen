@@ -472,6 +472,8 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.cableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.cableInstallation)) ?? '';
   d.cableSpecLine = cableSpec(answers.cableVoltage, answers.cableCrossSection, answers.cableLength, answers.cableLengthApprox);
 
+  // 送り出しの、最後の段のケーブルの有無（受け側の端末は、これで出る・出ないが決まる。以前は、1段目のケーブルの有無で決めていたので、2段以上のとき、食い違った）
+  d.linkLastCable = String(answers[`${linkStagePrefix(linkStageCountOf(answers))}Cable`] ?? 'yes') === 'no' ? 'no' : 'yes';
   // 2か所目以降のエリアの、前のエリアからのケーブルの注記
   d.linkCableInstallationLabel = pickOwn(CABLE_INSTALLATION_LABEL, String(answers.linkCableInstallation)) ?? '';
   d.linkCableSpecLine = cableSpec(answers.linkCableVoltage, answers.linkCableCrossSection, answers.linkCableLength, answers.linkCableLengthApprox);
@@ -1001,6 +1003,7 @@ export function linkFromOf(view: Answers, area: number): number {
 export const VIEW_KEYS: ReadonlySet<string> = new Set([
   'pcsMode',
   'areaNo',
+  'linkLastCable',
   'linkSenderZpd',
   'linkGroundStage',
   LINK_PART_CT_COUNT,

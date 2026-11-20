@@ -1,4 +1,4 @@
-import { areaKey, areaView, buildComposition, CHAIN_BY_FORM, referencedKeys, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, PER_UNIT_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
+import { areaCountOf, areaKey, areaView, buildComposition, CHAIN_BY_FORM, referencedKeys, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, linkStageCountOf, linkStagePrefix, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, PER_UNIT_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
 import type { Answers, Condition, Placement, Value } from '@zumen/knowledge';
 import { layout } from '@zumen/layout';
 import { getSymbol } from '@zumen/symbols';
@@ -193,6 +193,12 @@ interface Candidate {
   carryNames?: string[];
   /** 区分開閉器を消したとき：答えを変えると、図面に描いていない部品（地上キャビネット・DS・分界点の安全装置）が自動で増える。それは図面に出さず、消したままにする */
   suppressNew?: boolean;
+  /** エリア間の接続のケーブル：どの送り先か決められないとき、候補を並べる（同じ名前の組のうち、最初に当てはまったものだけを使う） */
+  alt?: string;
+  /** この記号が、答えを変えたあとの図面から、無くなっていること（候補の確かめ） */
+  mustVanish?: string;
+  /** エリア間のケーブルの端末（送り出し側・受け側）が、いっしょに消えるものとして扱う */
+  heads?: boolean;
   /** 区分開閉器まわりの部品（いっしょに消える・入れ替わる）を、いっしょに消えたものとして扱う（どのエリアか） */
   carrySectional?: { area: number };
   /** 変えたあとの、この機器の文字（確かめる） */
@@ -262,6 +268,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
   const carried = new Set<string>();
   /** いま確かめている答えの変更で、自動で増える部品のうち、図面に出さないもの */
   let suppressNow = false;
+  let headsNow = false;
   const suppressed = new Set<string>();
   for (const name of removed) {
     const { area, rest } = splitArea(name);
@@ -302,6 +309,32 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
       // 区分開閉器を消した → 「区分開閉器：なし」。まわりの部品（分界点の線・構内柱・内蔵の機器）は、いっしょに消える。
       // 「なし」にすると自動で増える部品は、図面に出さない（消したままにする。必要なら、手で足す）
       cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey('sectionalizer', area)]: 'none' }, suppressNew: true, carrySectional: { area } });
+    } else if (/^sendout-(ds|vcb|lbs|vcs|as)(-\d+)?$/.test(rest) ) {
+      // エリア間の接続の、送り出しの開閉器（k段目）：その開閉器を、組み合わせから外す（「DS＋VCB」からDSを消すと「VCB」）
+      const m = /^sendout-(ds|vcb|lbs|vcs|as)(?:-(\d+))?$/.exec(rest)!;
+      const k = m[2] ? Number(m[2]) : 1;
+      const key = qKey(`${linkStagePrefix(k)}Switch`, area);
+      const cur = String(toEffective(raw)[key] ?? 'none');
+      const left = (cur === 'none' ? [] : cur.split('-')).filter((x) => x !== m[1]);
+      const next = left.length === 0 ? 'none' : left.join('-');
+      if (cur !== 'none' && left.length < cur.split('-').length && (Q.get('linkSwitch')?.options ?? []).some((o) => String(o.value) === next)) {
+        cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [key]: next } });
+      }
+    } else if (/^cable-head-(send|site)(?:-(\d+))?(?:-s(\d+))?$/.test(rest) && (area > 0 || /cable-head-send|-s\d+$/.test(rest))) {
+      // エリア間の接続のケーブルの端末：その段のケーブルを「なし」にする。どの送り先の線か決められないときは、候補を順に確かめる
+      const m = /^cable-head-(send|site)(?:-(\d+))?(?:-s(\d+))?$/.exec(rest)!;
+      const isRecvLast = m[1] === 'site' && !m[3] && area > 0;
+      const dests = isRecvLast ? [area] : m[2] ? [Number(m[2]) - 1] : Array.from({ length: Math.max(0, areaCountOf(toEffective(raw)) - 1) }, (_, i) => i + 1);
+      for (const d of dests) {
+        if (d < 1) continue;
+        const last = linkStageCountOf(areaView(toEffective(raw), d));
+        // 段の指定がある端末は、その段。ないもの（最後の段の端末・受け側の端末）は、最後の段から1段目へ、順に確かめる
+        // （受け側の端末は、1段目のケーブルの有無で出る・出ないが決まる作りのため）
+        const stages = m[3] ? [Number(m[3])] : Array.from({ length: last }, (_, i) => last - i);
+        for (const stage of stages) {
+          cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey(`${linkStagePrefix(stage)}Cable`, d)]: 'no' }, alt: name, mustVanish: name, heads: true });
+        }
+      }
     } else if (rest === 'cable-head-source' || rest === 'cable-head-site') {
       // 引込ケーブルの端末：「引込ケーブル：なし」。反対側の端末も、いっしょに消えたものとして扱う
       const nm = (role: string) => `${area > 0 ? `a${area + 1}:` : ''}${role}`;
@@ -336,6 +369,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     for (const [n, s] of baseNames) {
       if (genPairs.get(n) === s) continue;
       if (carried.has(n)) continue; // 消した台のまわりの部品は、台といっしょに消える
+      if (headsNow && /(^|:)cable-head-(send|site)/.test(n)) continue; // エリア間のケーブルを「なし」にすると、両端の端末が消える
       const cur = curByName.get(n);
       if (cur === s) return false; // 手で直していないのに、消える・変わる
     }
@@ -357,10 +391,13 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
 
   let lastGen: Doc | null = null;
   const suppressedAll = new Set<string>();
+  const altDone = new Set<string>();
+  const rejectedAlt = new Map<string, RejectedChange>();
   for (const c of cands) {
     carried.clear();
     suppressed.clear();
     suppressNow = c.suppressNew === true;
+    headsNow = c.heads === true;
     for (const n of c.carryNames ?? []) carried.add(n);
     if (c.carrySectional) {
       const roles = sectionalRoles();
@@ -407,11 +444,13 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     }
     if (Object.keys(set).length === 0) continue;
 
+    if (c.alt && altDone.has(c.alt)) continue;
     const trial = withKeys(acc, set);
     const gen = buildGenerated(toEffective(trial));
     const pairs = new Map<string, string>();
     for (const it of gen.items) if (it.kind === 'symbol') pairs.set(sameName(it.id), it.symbolId);
     let ok = explained(pairs);
+    if (ok && c.mustVanish && pairs.has(sameName(c.mustVanish))) ok = false;
     if (ok && c.label) {
       const g = gen.items.find((it) => it.kind === 'symbol' && sameName(it.id) === c.label!.name);
       ok = g?.kind === 'symbol' && JSON.stringify(g.label) === JSON.stringify(c.label.lines);
@@ -419,12 +458,17 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     if (ok) {
       acc = trial;
       accepted.push({ ...c, set });
+      if (c.alt) altDone.add(c.alt);
       for (const n of suppressed) suppressedAll.add(n);
       lastGen = gen;
     } else if (c.kind !== 'relabel') {
-      rejected.push({ kind: c.kind, symbol: c.symbol });
+      // 候補を並べているもの（送り先が決められない端末）は、どれも当てはまらなかったときだけ、1つ断る
+      if (!c.alt) rejected.push({ kind: c.kind, symbol: c.symbol });
+      else if (!rejectedAlt.has(c.alt)) rejectedAlt.set(c.alt, { kind: c.kind, symbol: c.symbol });
     }
   }
+
+  for (const [k, r] of rejectedAlt) if (!altDone.has(k)) rejected.push(r);
 
   /* ---- 結果 ---- */
   const applied: AppliedChange[] = [];

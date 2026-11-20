@@ -428,3 +428,53 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  引込ケーブルの端末を1つ消す → 「引込ケーブル：なし」（反対側の端末もいっしょに消える）');
   }
 }
+
+/* エリア間の接続の、送り出しの開閉器・ケーブルの端末を消したとき（第18弾 追加） */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const raw: Answers = {
+    ...answersSpread,
+    areaCount: '2',
+    'a2:linkTap': 'bus',
+    'a2:linkStageCount': '2',
+    'a2:linkSwitch': 'ds-vcb',
+    'a2:linkCable': 'yes',
+    'a2:linkCableInstallation': 'buried',
+    'a2:linkCableStructure': 'CVT',
+    'a2:link2Switch': 'as',
+    'a2:link2Cable': 'yes',
+  };
+  const d0 = buildGenerated(toEff(raw));
+  const del = (name: string): Doc | null => {
+    const s = find(d0, name);
+    if (!s) {
+      fail(`エリア間の接続の図面に ${name} がありません（検査の前提が崩れています）`);
+      return null;
+    }
+    return { ...removeItem(d0, s.id), edited: true };
+  };
+  // 送り出しの開閉器「DS＋VCB」から、DSを消す
+  {
+    const d = del('a2:sendout-ds');
+    const r = d && writeBack(raw, d, toEff);
+    if (!r || r.answers['a2:linkSwitch'] !== 'vcb') fail(`送り出しの「DS＋VCB」からDSを消しても、「VCB」になっていません（${r?.answers['a2:linkSwitch']}／${JSON.stringify(r?.rejected)}）`);
+    else console.log('  エリア間の接続の送り出し「DS＋VCB」から、DSを消す → 「VCB」になる');
+  }
+  // 1段目のケーブルの端末（途中の段）を消す → 1段目のケーブルが「なし」
+  {
+    const d = del('cable-head-send-s1');
+    const r = d && writeBack(raw, d, toEff);
+    if (!r || r.answers['a2:linkCable'] !== 'no') fail(`1段目のケーブルの端末を消しても、1段目のケーブルが「なし」になっていません（${r?.answers['a2:linkCable']}／${JSON.stringify(r?.rejected)}）`);
+    else if (r.answers['a2:link2Cable'] !== 'yes') fail('1段目のケーブルを消したら、2段目のケーブルまで変わりました');
+    else console.log('  エリア間の接続の1段目のケーブルの端末を消す → 1段目のケーブルが「なし」（2段目は変わらない）');
+  }
+  // 最後の段のケーブルの、受け側の端末を消す → 2段目のケーブルが「なし」
+  {
+    const d = del('a2:cable-head-site');
+    const r = d && writeBack(raw, d, toEff);
+    if (!r || r.answers['a2:link2Cable'] !== 'no') fail(`最後の段のケーブルの端末を消しても、2段目のケーブルが「なし」になっていません（${r?.answers['a2:link2Cable']}／${JSON.stringify(r?.rejected)}）`);
+    else console.log('  エリア間の接続の最後の段のケーブルの、受け側の端末を消す → 2段目のケーブルが「なし」');
+  }
+}

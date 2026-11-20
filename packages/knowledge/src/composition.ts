@@ -872,8 +872,8 @@ export const AREA_CHAIN: Placement[] = [
     role: 'cable-head-site',
     symbolId: 'cable-head',
     kind: 'series',
-    when: { all: [{ key: 'linkCable', ne: 'no' }, { not: { key: 'areaForm', eq: 'apartment-pole' } }] },
-    note: 'エリアの枠の中の、ケーブルを受ける端末',
+    when: { all: [{ key: 'linkLastCable', ne: 'no' }, { not: { key: 'areaForm', eq: 'apartment-pole' } }] },
+    note: 'エリアの枠の中の、ケーブルを受ける端末（最後の段のケーブルがあるとき）',
   },
   {
     // このエリアの受電側にも電柱があって、PAS（区分開閉器）が付いている場合（2か所目以降だけ）。ASとは別の機器
