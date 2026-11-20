@@ -388,3 +388,32 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  1組だけのCTを消す → 組数が「0（なし）」になる');
   }
 }
+
+/* 電動機の開閉器、引込ケーブルの端末を消したとき（第18弾 追加） */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const rawM: Answers = { ...answersSpread, areaCount: '1', hasMotor: 'yes', motorCount: '1', motorSource: 'bus', motorSwitch: 'ds-vcb', motorSwitch2: 'none', motorCable: 'no' };
+  const dM = buildGenerated(toEff(rawM));
+  const ds = find(dM, 'motor-ds');
+  const vcb = find(dM, 'motor-vcb');
+  if (!ds || !vcb) fail('電動機の開閉器（DS＋VCB）が、自動の図面にありません');
+  else {
+    const r1 = writeBack(rawM, { ...removeItem(dM, ds.id), edited: true }, toEff);
+    const r2 = writeBack(rawM, { ...removeItem(dM, vcb.id), edited: true }, toEff);
+    if (r1?.answers.motorSwitch !== 'vcb') fail(`電動機のDSを消したのに、開閉器が「VCBだけ」になっていません（${r1?.answers.motorSwitch}／${JSON.stringify(r1?.rejected)}）`);
+    else if (r2?.answers.motorSwitch !== 'ds') fail(`電動機のVCBを消したのに、開閉器が「DSだけ」になっていません（${r2?.answers.motorSwitch}／${JSON.stringify(r2?.rejected)}）`);
+    else console.log('  電動機の「DS＋VCB」から、DSを消す → VCBだけ／VCBを消す → DSだけ');
+  }
+  const rawC: Answers = { ...answersSpread, areaCount: '1', sectionalizer: 'pas', cableInstallation: 'overhead' };
+  const dC = buildGenerated(toEff(rawC));
+  const h = find(dC, 'cable-head-source');
+  if (!h) fail('引込ケーブルの端末が、自動の図面にありません');
+  else {
+    const r = writeBack(rawC, { ...removeItem(dC, h.id), edited: true }, toEff);
+    if (r?.answers.cableInstallation !== 'none') fail(`引込ケーブルの端末を消したのに、「引込ケーブル：なし」になっていません（${r?.answers.cableInstallation}／${JSON.stringify(r?.rejected)}）`);
+    else if (find(r.doc, 'cable-head-site')) fail('書き戻したあとの図面に、反対側の端末が残っています');
+    else console.log('  引込ケーブルの端末を1つ消す → 「引込ケーブル：なし」（反対側の端末もいっしょに消える）');
+  }
+}

@@ -251,10 +251,22 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     } else if (rep) {
       // 台のまわりの部品：ケーブルの端末 → その台の「ケーブル：なし」／開閉器（1〜3つ目）→ その欄を「なし」（最後の欄のとき）／PC・LBS・VCSなど → その台の「なし」
       const uk = (key: string) => qKey(indexedKey(key, rep.no - 1), area);
-      const slot = /^(tr|cap|gen)-cable-(up|dn)([123])$/.exec(rep.info.role);
-      const head = /^(tr|cap|gen)-cable-(source|site)$/.exec(rep.info.role);
+      const slot = /^(tr|cap|gen|motor)-cable-(up|dn)([123])$/.exec(rep.info.role);
+      const head = /^(tr|cap|gen|motor)-cable-(source|site)$/.exec(rep.info.role);
       const slotKey = (k: number) => `${slot![1]}Cable${slot![2] === 'up' ? 'Up' : 'Dn'}${k}`;
-      if (rep.info.role === 'relay-tt') cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk('relayTest')]: 'no' } });
+      const msw = String(toEffective(raw)[uk('motorSwitch')] ?? 'none');
+      const motorTo: Record<string, Record<string, string>> = {
+        'motor-ds': { ds: 'none', 'ds-vcb': 'vcb' },
+        'motor-vcb': { vcb: 'none', 'ds-vcb': 'ds' },
+        'motor-lbs': { lbs: 'none' },
+        'motor-lbs-plain': { 'lbs-plain': 'none' },
+        'motor-mccb': { mccb: 'none' },
+      };
+      if (motorTo[rep.info.role]) {
+        const to = motorTo[rep.info.role]![msw];
+        if (to) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk('motorSwitch')]: to } });
+      } else if (rep.info.role === 'motor-vcs') cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk('motorSwitch2')]: 'none' } });
+      else if (rep.info.role === 'relay-tt') cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk('relayTest')]: 'no' } });
       else if (slot) {
         const k = Number(slot[3]);
         const next = String(toEffective(raw)[uk(slotKey(k + 1))] ?? 'none');
@@ -262,9 +274,13 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
       } else if (head) {
         // ケーブルの端末を1つ消した → そのケーブルを消した。反対側の端末も、いっしょに消えたものとして扱う（開閉器・PCなどは、別に消す）
         const nm = (role: string) => `${area > 0 ? `a${area + 1}:` : ''}${role}${rep.no > 1 ? `-${rep.no}` : ''}`;
-        cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(`${head[1]}HasCable`)]: 'no' }, carryNames: [nm(`${head[1]}-cable-source`), nm(`${head[1]}-cable-site`)] });
+        cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(head[1] === 'motor' ? 'motorCable' : `${head[1]}HasCable`)]: 'no' }, carryNames: [nm(`${head[1]}-cable-source`), nm(`${head[1]}-cable-site`)] });
       }
       else if (rep.info.unitKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(rep.info.unitKey)]: 'no' } });
+    } else if (rest === 'cable-head-source' || rest === 'cable-head-site') {
+      // 引込ケーブルの端末：「引込ケーブル：なし」。反対側の端末も、いっしょに消えたものとして扱う
+      const nm = (role: string) => `${area > 0 ? `a${area + 1}:` : ''}${role}`;
+      cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey('cableInstallation', area)]: 'none' }, carryNames: [nm('cable-head-source'), nm('cable-head-site')] });
     } else if (table.get(rest)?.presenceKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey(table.get(rest)!.presenceKey!, area)]: 'no' } });
   }
 
@@ -612,7 +628,7 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
       const { area, rest } = splitArea(name);
       const rep = repeatOf(rest, table);
       // ケーブルの前後の開閉器の、途中の欄を消したとき
-      const sm = rep ? /^(tr|cap|gen)-cable-(up|dn)([123])$/.exec(rep.info.role) : null;
+      const sm = rep ? /^(tr|cap|gen|motor)-cable-(up|dn)([123])$/.exec(rep.info.role) : null;
       if (rep && sm) {
         const p = sm[1]!;
         const side = sm[2] === 'up' ? 'Up' : 'Dn';

@@ -110,6 +110,20 @@ function enrich(a: Answers, rnd: Rnd, area: number): Answers {
       }
     }
   }
+  // 電動機（高圧母線から）
+  out.hasMotor = 'yes';
+  out.motorCount = String(1 + Math.floor(rnd() * 2));
+  out.motorSource = 'bus';
+  for (let u = 0; u < Number(out.motorCount); u++) {
+    const uk = (id: string) => `${id}${u === 0 ? '' : `__${u + 1}`}`;
+    out[uk('motorSource')] = 'bus';
+    out[uk('motorSwitch')] = pick(['none', 'ds', 'vcb', 'ds-vcb', 'lbs', 'lbs-plain']);
+    out[uk('motorSwitch2')] = pick(['none', 'vcs']);
+    out[uk('motorCable')] = rnd() < 0.6 ? 'yes' : 'no';
+    out[uk('motorCableDn1')] = pick(['none', 'lbs', 'vcb']);
+    out[uk('motorCableInstallation')] = 'buried';
+    out[uk('motorCableStructure')] = 'CVT';
+  }
   void slots;
   return dropHiddenChoices(out as Answers);
 }
