@@ -361,3 +361,30 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  変圧器の本体を消す（その台のケーブル・開閉器が残っていても）→ 台数が減る');
   }
 }
+
+/* CT・VTの組を消したとき（第18弾 追加）：組数が減る。1組だけのときは「0（なし）」。継電器の「CT n組目」は、つめた番号についていく */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const raw3: Answers = { ...answersSpread, areaCount: '1', ctSetCount: '3', relayCount: '2', relayAt: 'ct-1', relayAt__2: 'ct-3', relayType: 'ocr', relayType__2: 'ocr' };
+  const d3 = buildGenerated(toEff(raw3));
+  const c2 = find(d3, 'ct-2');
+  if (!c2) fail('CTが3組の図面に、2組目がありません');
+  else {
+    const r = writeBack(raw3, { ...removeItem(d3, c2.id), edited: true }, toEff);
+    if (!r || Number(r.answers.ctSetCount) !== 2) fail(`CTの2組目を消しても、組数が2組になっていません（${r?.answers.ctSetCount}／${JSON.stringify(r?.rejected)}）`);
+    else if (r.answers.relayAt__2 !== 'ct-2') fail(`CTの2組目を消したら、「CT 3組目」についていた継電器が「CT 2組目」へつまるはずが、違います（${r.answers.relayAt__2}）`);
+    else if (r.answers.relayAt !== 'ct-1') fail('CTの2組目を消したら、1組目の継電器まで変わりました');
+    else console.log('  CTの2組目を消す → 組数が2組になり、「CT 3組目」の継電器は「CT 2組目」へつまる');
+  }
+  const raw1: Answers = { ...answersSpread, areaCount: '1', ctSetCount: '1', relayCount: '1', relayAt: 'none' };
+  const d1 = buildGenerated(toEff(raw1));
+  const c1 = find(d1, 'ct');
+  if (!c1) fail('CTが1組の図面に、CTがありません');
+  else {
+    const r = writeBack(raw1, { ...removeItem(d1, c1.id), edited: true }, toEff);
+    if (!r || String(r.answers.ctSetCount) !== '0') fail(`1組だけのCTを消しても、組数が「0（なし）」になっていません（${r?.answers.ctSetCount}／${JSON.stringify(r?.rejected)}）`);
+    else console.log('  1組だけのCTを消す → 組数が「0（なし）」になる');
+  }
+}

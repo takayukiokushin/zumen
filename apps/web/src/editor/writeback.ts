@@ -254,7 +254,8 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
       const slot = /^(tr|cap|gen)-cable-(up|dn)([123])$/.exec(rep.info.role);
       const head = /^(tr|cap|gen)-cable-(source|site)$/.exec(rep.info.role);
       const slotKey = (k: number) => `${slot![1]}Cable${slot![2] === 'up' ? 'Up' : 'Dn'}${k}`;
-      if (slot) {
+      if (rep.info.role === 'relay-tt') cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk('relayTest')]: 'no' } });
+      else if (slot) {
         const k = Number(slot[3]);
         const next = String(toEffective(raw)[uk(slotKey(k + 1))] ?? 'none');
         if (k === 3 || next === 'none') cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [uk(slotKey(k))]: 'none' } });
@@ -328,9 +329,10 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
       if (c.count.remove !== undefined) {
         if (c.count.remove !== n) continue;
         if (n <= 1) {
-          // 最後の1台：台数は1より減らせないので、機器そのものを「なし」にする（あるものだけ）
-          if (!c.lastGroupKey) continue;
-          set[c.lastGroupKey] = 'no';
+          // 最後の1台：機器そのものを「なし」にする（コンデンサなど）。VT・CTの組数は、「0（なし）」を選べる
+          if (c.lastGroupKey) set[c.lastGroupKey] = 'no';
+          else if ((Q.get(c.count.key)?.options ?? []).some((o) => String(o.value) === '0')) set[ck] = '0';
+          else continue;
         } else set[ck] = n - 1;
       } else {
         if (n + 1 > maxCountOf(c.count.key)) continue;
@@ -443,7 +445,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
 const unitMap = (no: number, j: number, n: number): number => (no === j ? n : no > j ? no - 1 : no);
 
 /** 繰り返す機器の、本体の記号（これを消すと、その台を消したことになる） */
-const UNIT_MAIN: ReadonlySet<string> = new Set(['transformer', 'capacitor', 'generator', 'motor', 'aux-tr', 'ct', 'relay', 'relay-tt', 'vct-pole', 'vct-indoor', 'ds-vt', 'ds-vt-pf', 'site-vt', 'site-vt-pf']);
+const UNIT_MAIN: ReadonlySet<string> = new Set(['transformer', 'capacitor', 'generator', 'motor', 'aux-tr', 'ct', 'relay', 'vct-pole', 'vct-indoor', 'ds-vt', 'ds-vt-pf', 'site-vt', 'site-vt-pf']);
 
 /** 件数の質問（countKey）で繰り返すグループの、台ごとの質問のID */
 function unitQuestionIds(countKey: string): string[] {
@@ -526,6 +528,13 @@ function shiftUnit(raw: Answers, doc: Doc, area: number, countKey: string, j: nu
     return /(^|:)linkDevice$/.test(key) || /(^|:)linkSourceTr$/.test(key) ? linkFromOf(areaView(raw, own), own) : own;
   };
   for (const [key, value] of Object.entries(out)) {
+    // 継電器の「どこについているか」（CT n組目・VT n組目）は、CT・VTの組が前へつまると、つめた番号についていく
+    if ((countKey === 'ctSetCount' || countKey === 'vtSetCount') && typeof value === 'string' && areaOfKey(key) === area && /^(a\d+:)?relayAt(__\d+)?$/.test(key)) {
+      const pre = countKey === 'ctSetCount' ? 'ct' : 'vt';
+      const rm = new RegExp(`^${pre}-(\\d+)$`).exec(value);
+      if (rm) out[key] = `${pre}-${unitMap(Number(rm[1]), j, n)}`;
+      continue;
+    }
     if (/(^|:)linkSourceTr$/.test(key) && countKey === 'transformerCount' && areaOfKey(key) === area) {
       const v = Math.round(Number(value));
       if (Number.isFinite(v) && v >= 1 && v <= n) out[key] = unitMap(v, j, n);
