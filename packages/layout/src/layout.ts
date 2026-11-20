@@ -2050,10 +2050,11 @@ export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout 
           }
         } else if (st.cable) {
           // 途中の段のケーブル：下向きの端末と、向かい側の端末（180°回す）を並べる。注記は、向かい側の端末の右に書く。埋設は、2つの端末のあいだを点線にする
-          const hs = `${base}cable-head-send${sfx}-${k}`;
+          // （名前は、-s1 のように「s」を付ける。-1 や -3 だけだと、最終段の端末・3か所目への端末と、手で直した図面の作り直しで取り違える）
+          const hs = `${base}cable-head-send${sfx}-s${k}`;
           stackPut(hs, hs, 'cable-head', []);
           if (k === groundStage && zctPos === 'cable') putZct();
-          const hr = `${base}cable-head-site${sfx}-${k}`;
+          const hr = `${base}cable-head-site${sfx}-s${k}`;
           stackPut(hr, hr, 'cable-head', st.label, { rotate: 180, dashedIn: st.dashed });
         }
         if (k === groundStage && zctPos === 'cable' && (last || !st.cable)) putZct();

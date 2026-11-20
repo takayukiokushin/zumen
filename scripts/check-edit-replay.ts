@@ -156,9 +156,8 @@ const INPUT: { name: string; run: (a: Answers, r: Rnd) => Answers }[] = [
     name: 'エリア間の接続の段を替える',
     run: (a, r) => {
       if (Number(a.areaCount ?? 1) < 2) return a;
-      // 段を替える（2段以上）と、手で直した図面の作り直しで、ケーブルの端末の記号の、手で動かした位置が、保たれない（第18弾 F-③ で見つけた、以前からの問題。
-      // 直すまでは、ふだんの検査では、1段のときだけ試す。2段以上は、環境変数 EDIT_REPLAY_STAGES=1 で試せる）
-      const stages = process.env.EDIT_REPLAY_STAGES ? 1 + Math.floor(r() * 4) : 1;
+      // 段は、1〜4段を試す（途中の段のケーブル端末の名前が、最終段の端末などと取り違えられていた問題は、直した。第18弾 F-③ のあとの修正）
+      const stages = 1 + Math.floor(r() * 4);
       const out: Record<string, unknown> = { ...a, 'a2:linkTap': pick(['ds-source', 'ds-vcb', 'vcb-load', 'bus', 'tr-secondary'], r), 'a2:linkStageCount': String(stages), 'a2:linkSwitch': pick(['none', 'ds-vcb', 'lbs'], r), 'a2:linkCable': 'yes' };
       for (let k = 2; k <= stages; k++) {
         out[`a2:link${k}Switch`] = pick(['as', 'lbs', 'ds', 'vcb'], r);

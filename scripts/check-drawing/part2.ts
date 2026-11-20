@@ -916,8 +916,8 @@ console.log('\n■ 変圧器の二次側から送り出す（何台目か＋開�
     const roleY = (r: string) => ds3.symbols.find((x) => x.role.endsWith(r))?.y ?? NaN;
     const order = ['sendout-ds', 'sendout-vcb-2', 'sendout-vcs-2', 'sendout-zct', 'sendout-lbs-3'].map(roleY);
     if (order.some((v) => !Number.isFinite(v)) || order.some((v, i) => i > 0 && !(v > order[i - 1]!))) fail(`3段の並び（DS→VCB→VCS→ZCT→LBS）が、上から順になっていません（${order.map((v) => Math.round(v)).join('→')}）`);
-    else if (ds3.symbols.filter((x) => /^cable-head-(send(-\d+)?|site-\d+)$/.test(x.role)).length !== 3) fail(`3段（1段目のケーブル＝端末2つ、2段目は電線、3段目のケーブル＝端末1つ）の、送り出し側のケーブルの端末が、3つになっていません（${ds3.symbols.filter((x) => /^cable-head-(send(-\d+)?|site-\d+)$/.test(x.role)).length}）`);
-    else if (!ds3.symbols.some((x) => /^cable-head-site-\d+$/.test(x.role) && x.rotate === 180)) fail('途中の段のケーブルの、向かい側の端末（180°）がありません');
+    else if (ds3.symbols.filter((x) => /^cable-head-(send(-\d+)?|(send|site)-s\d+)$/.test(x.role)).length !== 3) fail(`3段（1段目のケーブル＝端末2つ、2段目は電線、3段目のケーブル＝端末1つ）の、送り出し側のケーブルの端末が、3つになっていません（${ds3.symbols.filter((x) => /^cable-head-(send(-\d+)?|(send|site)-s\d+)$/.test(x.role)).length}）`);
+    else if (!ds3.symbols.some((x) => /^cable-head-site-s\d+$/.test(x.role) && x.rotate === 180)) fail('途中の段のケーブルの、向かい側の端末（180°）がありません');
     else if (ys(/sendout-trip-coil/).length !== 1 || ys(/sendout-ground-relay/).length !== 1) fail('地絡継電器（GR）とTCが、1組ずつ描かれていません');
     else {
       // TCは、2段目のVCB（地絡継電器が付く段）の高さにある
@@ -943,7 +943,7 @@ console.log('\n■ 変圧器の二次側から送り出す（何台目か＋開�
     };
     const dp = draw(parted);
     const sy = (r: string) => dp.symbols.find((x) => x.role.endsWith(r))?.y ?? NaN;
-    const order = ['sendout-part-1-vt', 'sendout-vcb', 'sendout-part-2-ct', 'sendout-part-3-zpd', 'cable-head-send-1', 'sendout-part-4-gc', 'sendout-ds-2', 'sendout-part-5-vt'].map(sy);
+    const order = ['sendout-part-1-vt', 'sendout-vcb', 'sendout-part-2-ct', 'sendout-part-3-zpd', 'cable-head-send-s1', 'sendout-part-4-gc', 'sendout-ds-2', 'sendout-part-5-vt'].map(sy);
     if (order.some((v) => !Number.isFinite(v))) fail(`途中の機器が、描かれていません（${order.map((v) => Math.round(v)).join('・')}）`);
     else if (order.some((v, i) => i > 0 && !(v > order[i - 1]! - 20))) fail(`途中の機器が、上から順に並んでいません（${order.map((v) => Math.round(v)).join('・')}）`);
     else if (dp.symbols.filter((x) => /sendout-part-\d+-vt-pf$/.test(x.role) && x.symbolId === 'pf' && x.rotate === 270).length !== 2) fail('VTには、必ずPFが付いて（横向きに）描かれるはずです');
