@@ -1,4 +1,4 @@
-import { buildComposition, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, indexedKey, maxCountOf, parseTransformerLabel, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
+import { areaKey, buildComposition, CHAIN_BY_FORM, DOWNSTREAM, EXTRAS, indexedKey, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
 import type { Answers, Condition, Placement, Value } from '@zumen/knowledge';
 import { layout } from '@zumen/layout';
 import { getSymbol } from '@zumen/symbols';
@@ -29,6 +29,8 @@ export interface AppliedChange {
   question: string;
   /** 何台目か（0＝台ごとの質問ではない。1以上＝その台） */
   unit: number;
+  /** 何か所目のエリアか（0＝1か所目、またはエリアごとの質問ではない。1以上＝2か所目以降） */
+  area: number;
   from: string;
   to: string;
 }
@@ -83,6 +85,8 @@ interface RoleInfo {
   presenceKey?: string;
   /** 台数の質問（繰り返す機器） */
   countKey?: string;
+  /** 台数のある機器を出す・出さないを決める「あり／なし」の質問（コンデンサの「あり」など。最後の1台を消したとき「なし」にする） */
+  groupKey?: string;
 }
 
 let rolesCache: Map<string, RoleInfo> | null = null;
@@ -104,6 +108,7 @@ function roleTable(): Map<string, RoleInfo> {
       symbolIds,
       ...(common.length === 1 && countKeys.size === 0 && QUESTION_IDS.has(common[0]!) ? { presenceKey: common[0]! } : {}),
       ...(countKeys.size === 1 ? { countKey: [...countKeys][0]! } : {}),
+      ...(common.length === 1 && countKeys.size === 1 && QUESTION_IDS.has(common[0]!) ? { groupKey: common[0]! } : {}),
     });
   }
   rolesCache = table;
@@ -132,6 +137,17 @@ function transformerUnit(name: string): number {
   return m ? Number(m[1]) - 1 : -1;
 }
 
+/** 図面の名前（a2:transformer-2 など）から、何か所目のエリアか（0始まり）と、エリアの接頭辞を除いた名前に分ける */
+function splitArea(name: string): { area: number; rest: string } {
+  const m = /^a(\d+):(.*)$/.exec(name);
+  return m ? { area: Number(m[1]) - 1, rest: m[2]! } : { area: 0, rest: name };
+}
+
+/** 入力の質問のキーを、そのエリアの答えのキーにする（エリアごとに答える質問だけ。1か所目と、エリアごとでない質問は、そのまま） */
+function qKey(key: string, area: number): string {
+  return area > 0 && PER_AREA_QUESTION_IDS.has(key.split('__')[0]!) ? areaKey(key, area) : key;
+}
+
 /** 機器名から、繰り返す機器の「役割」と何台目か（1始まり）を読み取る */
 function repeatOf(name: string, table: Map<string, RoleInfo>): { info: RoleInfo; no: number } | null {
   const direct = table.get(name);
@@ -151,7 +167,9 @@ interface Candidate {
   /** 変える答え（undefined＝消す） */
   set?: Answers;
   /** 台数を変えるとき：remove＝消した台の番号（1始まり。最後の台のときだけ）／ 無ければ1台増やす（conn＝足した台の結線方式） */
-  count?: { key: string; remove?: number; conn?: string };
+  count?: { key: string; area: number; remove?: number; conn?: string };
+  /** 最後の1台を消したとき、「なし」にする質問（コンデンサの「あり」など） */
+  lastGroupKey?: string;
   /** 変えたあとの、この機器の文字（確かめる） */
   label?: { name: string; lines: string[] };
 }
@@ -200,25 +218,27 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
 
   // 変圧器：記号の差し替え、文字の書き換え
   for (const [name, e] of Object.entries(ov.moved)) {
-    const unit = transformerUnit(name);
+    const { area, rest } = splitArea(name);
+    const unit = transformerUnit(rest);
     if (unit < 0) continue;
     if (e.symbolId && (CONN_SYMBOLS.has(e.symbolId) || e.symbolId === 'tr-blank')) {
       cands.push({
         kind: 'replaced',
         symbol: nameJaOf(e.symbolId),
-        set: { [indexedKey('trConnection', unit)]: e.symbolId === 'tr-blank' ? undefined : e.symbolId },
+        set: { [qKey(indexedKey('trConnection', unit), area)]: e.symbolId === 'tr-blank' ? undefined : e.symbolId },
       });
     }
     if (e.label) cands.push({ kind: 'relabel', symbol: nameJaOf(e.symbolId ?? baseNames.get(name) ?? 'transformer'), set: {}, label: { name, lines: e.label } });
   }
 
   // 消した記号：「あり／なし」を「なし」に。最後の台なら、台数を1つ減らす（後ろの台から）
-  const removed = [...ov.removed].sort((a, b) => (repeatOf(b, table)?.no ?? 0) - (repeatOf(a, table)?.no ?? 0));
+  const removed = [...ov.removed].sort((a, b) => (repeatOf(splitArea(b).rest, table)?.no ?? 0) - (repeatOf(splitArea(a).rest, table)?.no ?? 0));
   for (const name of removed) {
+    const { area, rest } = splitArea(name);
     const sym = baseNames.get(name) ?? name;
-    const rep = repeatOf(name, table);
-    if (rep) cands.push({ kind: 'removed', symbol: nameJaOf(sym), count: { key: rep.info.countKey!, remove: rep.no } });
-    else if (table.get(name)?.presenceKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [table.get(name)!.presenceKey!]: 'no' } });
+    const rep = repeatOf(rest, table);
+    if (rep) cands.push({ kind: 'removed', symbol: nameJaOf(sym), count: { key: rep.info.countKey!, area, remove: rep.no }, ...(rep.info.groupKey ? { lastGroupKey: qKey(rep.info.groupKey, area) } : {}) });
+    else if (table.get(rest)?.presenceKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey(table.get(rest)!.presenceKey!, area)]: 'no' } });
   }
 
   // 足した記号：「あり／なし」を「あり」に。台数を1つ増やす
@@ -232,7 +252,7 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
     if (keys.size === 1 && counts.size === 0) cands.push({ kind: 'added', symbol: nameJaOf(S), set: { [[...keys][0]!]: 'yes' } });
     else if (counts.size === 1 && keys.size === 0) {
       const ck = [...counts][0]!;
-      cands.push({ kind: 'added', symbol: nameJaOf(S), count: { key: ck, ...(ck === 'transformerCount' && S !== 'tr-blank' ? { conn: S } : {}) } });
+      cands.push({ kind: 'added', symbol: nameJaOf(S), count: { key: ck, area: 0, ...(ck === 'transformerCount' && S !== 'tr-blank' ? { conn: S } : {}) } });
     }
   }
 
@@ -267,24 +287,30 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
     const set: Answers = { ...(c.set ?? {}) };
     // 台数：いまの台数から決める（最後の台を消したときだけ、1つ減らす）
     if (c.count) {
-      const n = countOf(toEffective(acc)[c.count.key], 1, maxCountOf(c.count.key));
+      const ck = qKey(c.count.key, c.count.area);
+      const n = countOf(toEffective(acc)[ck], 1, maxCountOf(c.count.key));
       if (c.count.remove !== undefined) {
-        if (c.count.remove !== n || n <= 1) continue;
-        set[c.count.key] = n - 1;
+        if (c.count.remove !== n) continue;
+        if (n <= 1) {
+          // 最後の1台：台数は1より減らせないので、機器そのものを「なし」にする（あるものだけ）
+          if (!c.lastGroupKey) continue;
+          set[c.lastGroupKey] = 'no';
+        } else set[ck] = n - 1;
       } else {
         if (n + 1 > maxCountOf(c.count.key)) continue;
-        set[c.count.key] = n + 1;
-        if (c.count.conn) set[indexedKey('trConnection', n)] = c.count.conn;
+        set[ck] = n + 1;
+        if (c.count.conn) set[qKey(indexedKey('trConnection', n), c.count.area)] = c.count.conn;
       }
     }
 
     // 文字の書き換えは、そのときの結線方式で読み取る
     if (c.label) {
-      const unit = transformerUnit(c.label.name);
-      const conn = String(toEffective(acc)[indexedKey('trConnection', unit)] ?? '');
+      const { area, rest } = splitArea(c.label.name);
+      const unit = transformerUnit(rest);
+      const conn = String(toEffective(acc)[qKey(indexedKey('trConnection', unit), area)] ?? '');
       const parsed = parseTransformerLabel(c.label.lines, conn, unit);
       if (!parsed) continue;
-      Object.assign(set, parsed);
+      for (const [k, v] of Object.entries(parsed)) set[qKey(k, area)] = v;
     }
     if (Object.keys(set).length === 0) continue;
 
@@ -310,12 +336,13 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
   const applied: AppliedChange[] = [];
   for (const c of accepted) {
     for (const k of Object.keys(c.set ?? {})) {
-      const unitM = /^(.*?)(?:__(\d+))?$/.exec(k)!;
+      const areaM = /^a(\d+):(.*)$/.exec(k);
+      const unitM = /^(.*?)(?:__(\d+))?$/.exec(areaM ? areaM[2]! : k)!;
       const id = unitM[1]!;
       const from = valueText(id, eff0[k]);
       const to = valueText(id, toEffective(acc)[k]);
       if (from === to) continue;
-      applied.push({ question: questionLabel(id), unit: unitM[2] ? Number(unitM[2]) : 0, from, to });
+      applied.push({ question: questionLabel(id), unit: unitM[2] ? Number(unitM[2]) : 0, area: areaM ? Number(areaM[1]) - 1 : 0, from, to });
     }
   }
 

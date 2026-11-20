@@ -57,7 +57,7 @@ function answersOf(rnd: Rnd, area: number): Answers {
   }
   return a;
 }
-const baseOf = (id: string) => sameName(id).replace(/^a\d+:/, '').replace(/-\d+$/, '');
+const baseOf = (id: string) => (/^a\d+:/.test(id) ? '【2か所目以降】' : '') + sameName(id).replace(/^a\d+:/, '').replace(/-\d+$/, '');
 const topSyms = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol');
 
 type Cat = '反映された' | '対応する入力が無い' | '断られた' | '反映されたが図面に残った' | '落ちた';

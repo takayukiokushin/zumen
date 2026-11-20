@@ -173,3 +173,48 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  図面で区分開閉器（PAS）を消しても、「書き戻した」という偽の知らせは出ない（入力の答えは、そのまま。図面にだけ、消えた形で残る）');
   }
 }
+
+/* 2か所目以降のエリアの部品を消しても、入力（そのエリアの答え）に書き戻す（第18弾 追加）：
+   これまでは、部品の名前に「a2:」が付くため、書き戻しの対象にならなかった */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const raw: Answers = {
+    ...answersSpread,
+    areaCount: '2',
+    transformerCount: 1,
+    hasCapacitor: 'no',
+    hasPv: 'no',
+    hasGenerator: 'no',
+    'a2:transformerCount': 2,
+    'a2:trConnection': 'tr-3p-dy',
+    'a2:trConnection__2': 'tr-3p-dy',
+    'a2:hasCapacitor': 'yes',
+    'a2:capacitorCount': 1,
+    'a2:hasLa': 'yes',
+  };
+  const d0 = buildGenerated(toEff(raw));
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const namesOf = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => sameName(i.id)).sort().join(',');
+  // 2か所目の、最後の変圧器を消す → 2か所目の台数が減る（1か所目は変わらない）
+  const t2 = find(d0, 'a2:transformer-2');
+  if (!t2) fail('2か所目の2台目の変圧器が、自動の図面にありません');
+  else {
+    const r = writeBack(raw, { ...removeItem(d0, t2.id), edited: true }, toEff);
+    if (!r || Number(r.answers['a2:transformerCount']) !== 1) fail(`2か所目の最後の変圧器を消しても、2か所目の台数が減っていません（${r?.answers['a2:transformerCount']}）`);
+    else if (Number(r.answers.transformerCount) !== 1) fail('2か所目の変圧器を消したら、1か所目の台数が変わりました');
+    else if (!r.applied.some((a) => a.area === 1)) fail('書き戻した内容の知らせに、2か所目であることが出ていません');
+    else if (find(r.doc, 'a2:transformer-2')) fail('書き戻したあとの図面に、消した変圧器が残っています');
+    else console.log('  2か所目の変圧器を消す → 2か所目の台数が減る（1か所目は変わらない）');
+  }
+  // 2か所目のコンデンサを消す → 2か所目のコンデンサが「なし」になる（1か所目は変わらない）
+  const cap = find(d0, 'a2:capacitor');
+  if (!cap) fail('2か所目のコンデンサが、自動の図面にありません');
+  else {
+    const r = writeBack(raw, { ...removeItem(d0, cap.id), edited: true }, toEff);
+    if (!r || r.answers['a2:hasCapacitor'] !== 'no') fail(`2か所目のコンデンサを消しても、入力が「なし」になっていません（${r?.answers['a2:hasCapacitor']}）`);
+    else if (r.answers.hasCapacitor !== 'no') fail('2か所目のコンデンサを消したら、1か所目の入力が変わりました');
+    else if (namesOf(buildGenerated(toEff(r.answers))).split(',').filter((n) => !/capacitor/.test(n)).join(',') !== namesOf(d0).split(',').filter((n) => !/capacitor/.test(n)).join(',')) fail('2か所目のコンデンサを消したら、ほかの記号まで変わりました');
+    else console.log('  2か所目のコンデンサを消す → 2か所目の「コンデンサ」が「なし」になる（ほかは変わらない）');
+  }
+}

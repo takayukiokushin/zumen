@@ -885,6 +885,7 @@ export const zh: Dict = {
   'wb.applied.note': '以手工修改的图纸为准。图纸的外观不会改变。',
   'wb.undo': '撤销',
   'wb.close': '关闭',
+  'wb.area': '（第{n}处）',
   'wb.unit': '（第{n}台）',
   'wb.rej.replaced': '由于其他符号也会随之改变，“{name}”的替换未反映到输入中（图纸上保持不变）。',
   'wb.rej.relabel': '“{name}”的文字修改未反映到输入中（图纸上保持不变）。',

@@ -887,6 +887,7 @@ export const ko: Dict = {
   'wb.applied.note': '직접 고친 도면을 우선합니다. 도면의 모양은 바뀌지 않습니다.',
   'wb.undo': '취소',
   'wb.close': '닫기',
+  'wb.area': '({n}번째 구역)',
   'wb.unit': '({n}번째)',
   'wb.rej.replaced': '“{name}”(으)로 바꾼 내용은 다른 기호도 함께 바뀌므로 입력에 반영하지 않았습니다(도면에는 그대로 남습니다).',
   'wb.rej.relabel': '“{name}”의 문자 수정은 입력에 반영하지 않았습니다(도면에는 그대로 남습니다).',

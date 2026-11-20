@@ -52,6 +52,7 @@ export function WritebackBanner({
             {(foldApplied ? applied.slice(0, 1) : applied).map((a, i) => (
               <li key={i}>
                 {tx(a.question)}
+                {a.area > 0 ? t('wb.area', { n: a.area + 1 }) : ''}
                 {a.unit > 0 ? t('wb.unit', { n: a.unit }) : ''}：{tx(a.from)} → {tx(a.to)}
               </li>
             ))}

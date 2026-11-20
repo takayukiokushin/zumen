@@ -889,6 +889,7 @@ export const fr: Dict = {
   'wb.applied.note': 'Le dessin modifié à la main est prioritaire. Son apparence ne change pas.',
   'wb.undo': 'Annuler',
   'wb.close': 'Fermer',
+  'wb.area': ' (zone {n})',
   'wb.unit': ' (n° {n})',
   'wb.rej.replaced': 'Le remplacement par « {name} » n’a pas été reporté dans la saisie, car d’autres symboles changeraient aussi (il reste sur le dessin).',
   'wb.rej.relabel': 'La modification du texte de « {name} » n’a pas été reportée dans la saisie (elle reste sur le dessin).',

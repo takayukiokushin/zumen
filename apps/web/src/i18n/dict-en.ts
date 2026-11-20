@@ -888,6 +888,7 @@ export const en: Dict = {
   'wb.applied.note': 'The drawing you edited by hand takes priority. The drawing itself does not change.',
   'wb.undo': 'Undo',
   'wb.close': 'Close',
+  'wb.area': ' (area {n})',
   'wb.unit': ' (unit {n})',
   'wb.rej.replaced': 'Replacing with “{name}” was not applied to the input, because other symbols would also change (it stays on the drawing).',
   'wb.rej.relabel': 'The text change on “{name}” was not applied to the input (it stays on the drawing).',
