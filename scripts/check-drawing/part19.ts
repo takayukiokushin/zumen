@@ -125,6 +125,11 @@ console.log('\n■ 線の上に乗せる記号（VCT・CT・ZCT）：自動作�
       const ow = getSymbol(id).onWire!;
       const stub = wiresOf(r.doc).filter((w) => !wiresOf(d).some((o) => o.id === w.id));
       if (stub.length !== 1 || Math.abs(stub[0]!.x1 - (s.x + ow.x)) > 0.01) bad.push(`${id}：足したとき、軸の位置に短い線が足されていません`);
+      // 足した直後の短い線の端は、「つながっていない端」として数えない。ふつうの線（短い線の印が無いもの）は、これまでどおり数える
+      const floatingOf = (dd: Doc) => inspectDrawing(dd, 'A3', 'landscape').filter((i) => i.kind === 'floating').length;
+      if (floatingOf(r.doc) !== floatingOf(d)) bad.push(`${id}：足した直後の短い線の端が、「つながっていない端」として数えられています`);
+      const plainStub = { ...r.doc, items: r.doc.items.map((i) => (i.kind === 'wire' && i.stub === r.id ? ({ ...i, stub: undefined } as DocWire) : i)) } as Doc;
+      if (floatingOf(plainStub) !== floatingOf(d) + 2) bad.push(`${id}：短い線の印が無いふつうの線は、つながっていない端として数えるはずです`);
       // 近くの縦の線に、軸がぴったり合う（動かす手助け）
       const wire = wiresOf(d).find((w) => Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y2 - w.y1) > 30)!;
       const raw = wire.x1 - (s.x + ow.x) + 3;

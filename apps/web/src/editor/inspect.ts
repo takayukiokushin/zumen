@@ -1165,6 +1165,8 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
 
   // つながっていない端
   for (const w of wires) {
+    // 「記号を追加」で、線の上に乗せる記号（VCT・CT・ZCT）と一緒に足した短い線は、端が自由なのがふつう（これから線をつなぐ・伸ばす）ので、数えない（第20弾 項目8）
+    if (w.stub) continue;
     for (const end of [1, 2] as const) {
       if (end === 1 ? w.at1 : w.at2) continue;
       const x = end === 1 ? w.x1 : w.x2;
