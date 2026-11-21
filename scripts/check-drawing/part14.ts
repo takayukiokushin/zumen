@@ -501,3 +501,49 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  1台目の近くにPCを足す → 1台目の「PC」だけが「あり」になる');
   }
 }
+
+/* ケーブルの手前・あとに開閉器を足したとき：その台の開閉器の欄に入る。何つ目かは、すでにある開閉器との上下の並びで決まる（第18弾 追加） */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const raw: Answers = {
+    ...answersSpread,
+    areaCount: '1',
+    transformerCount: '1',
+    trHasCable: 'yes',
+    trCableUp1: 'ds',
+    trCableUp2: 'lbs',
+    trCableDn1: 'lbs',
+    trCableInstallation: 'buried',
+    trCableStructure: 'CVT',
+    hasCapacitor: 'no',
+    hasPv: 'no',
+    hasGenerator: 'no',
+  };
+  const d0 = buildGenerated(toEff(raw));
+  const src = find(d0, 'tr-cable-source');
+  const up1 = find(d0, 'tr-cable-up1');
+  const up2 = find(d0, 'tr-cable-up2');
+  const site = find(d0, 'tr-cable-site');
+  if (!src || !up1 || !up2 || !site) fail('ケーブルの手前に2つ開閉器がある図面に、必要な記号がありません');
+  else {
+    // ケーブルの手前の、DSとLBSのあいだに、VCBを足す → 2つ目になり、LBSは3つ目へ
+    const mid = (up1.y + up2.y) / 2;
+    const r = writeBack(raw, { ...addSymbol(d0, 'vcb', up1.x, mid).doc, edited: true }, toEff);
+    if (r?.answers.trCableUp1 !== 'ds' || r.answers.trCableUp2 !== 'vcb' || r.answers.trCableUp3 !== 'lbs') {
+      fail(`ケーブルの手前の、DSとLBSのあいだにVCBを足したら、DS・VCB・LBSの順になるはずが、違います（${r?.answers.trCableUp1}・${r?.answers.trCableUp2}・${r?.answers.trCableUp3}／${JSON.stringify(r?.rejected)}）`);
+    } else if (!find(r.doc, 'tr-cable-up3') || find(r.doc, 'tr-cable-up3')?.symbolId !== 'lbs-pf') fail('書き戻したあとの図面で、LBSが3つ目の位置に来ていません');
+    else if (!find(r.doc, 'tr-cable-up2') || find(r.doc, 'tr-cable-up2')?.symbolId !== 'vcb') fail('書き戻したあとの図面で、足したVCBが2つ目の記号になっていません');
+    else console.log('  ケーブルの手前の、DSとLBSのあいだに、VCBを足す → DS・VCB・LBSの順になる（LBSは3つ目へ）');
+    // ケーブルのあとに、ASを足す → あとの開閉器（2つ目）に入る
+    const dn1 = find(d0, 'tr-cable-dn1');
+    const r2 = writeBack(raw, { ...addSymbol(d0, 'as', site.x, (dn1?.y ?? site.y) + 40).doc, edited: true }, toEff);
+    if (r2?.answers.trCableDn1 !== 'lbs' || r2.answers.trCableDn2 !== 'as') fail(`ケーブルのあとの、LBSの下にASを足したら、あとの開閉器が「LBS・AS」になるはずが、違います（${r2?.answers.trCableDn1}・${r2?.answers.trCableDn2}／${JSON.stringify(r2?.rejected)}）`);
+    else console.log('  ケーブルのあとの、LBSの下に、ASを足す → あとの開閉器が「LBS・AS」になる');
+    // 同じ開閉器（DS）が、すでにあるところへ、DSを足す → 迷うので、書き戻さない
+    const r3 = writeBack(raw, { ...addSymbol(d0, 'ds', up1.x, up1.y - 60).doc, edited: true }, toEff);
+    if (r3 && r3.applied.some((a) => /開閉器/.test(a.question))) fail('同じ開閉器（DS）が、すでにあるのに、書き戻しています');
+    else console.log('  ケーブルの手前に、すでにあるDSをもう一度足す → 書き戻さない（図面にだけ残る）');
+  }
+}

@@ -195,7 +195,7 @@ for (let id = 0; id < N; id++) {
   }
   // 足す・差し替える（SWEEP_MODE=add / replace）
   if (process.env.SWEEP_MODE === 'add') {
-    const TYPES = ['ds', 'vcb', 'lbs-pf', 'la', 'vt', 'ct', 'sc', 'sr', 'zct', 'pc', 'as', 'pas', 'relay-ocr', 'zpd', 'tr-3p-yd', 'generator', 'motor', 'vcs', 'cable-head', 'tr-blank'];
+    const TYPES = process.env.SWEEP_TYPES ? process.env.SWEEP_TYPES.split(',') : ['ds', 'vcb', 'lbs-pf', 'la', 'vt', 'ct', 'sc', 'sr', 'zct', 'pc', 'as', 'pas', 'relay-ocr', 'zpd', 'tr-3p-yd', 'generator', 'motor', 'vcs', 'cable-head', 'tr-blank'];
     for (const t of TYPES) {
       const key = `足す:${t}`;
       try {

@@ -3,7 +3,7 @@ import type { Answers, Condition, Placement, Value } from '@zumen/knowledge';
 import { layout } from '@zumen/layout';
 import { getSymbol } from '@zumen/symbols';
 import { digest, fromLayout, sameName } from './doc.ts';
-import type { Doc, Overrides } from './doc.ts';
+import type { Doc, DocSymbol, Overrides } from './doc.ts';
 import { carryOver } from './layers.ts';
 import { collectOverrides, hasOverrides, rebuildWithOverrides } from './overrides.ts';
 
@@ -230,10 +230,10 @@ const withKeys = (a: Answers, set: Answers): Answers => {
  * @param doc いまの図面
  * @param toEffective 画面が図面を作るときに使う、既定値などを足した答えにする関数
  */
-function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers): WritebackResult | null {
+function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers, force = false): WritebackResult | null {
   if (!doc.base || doc.edited !== true) return null;
   const ov = collectOverrides(doc);
-  if (!hasOverrides(ov)) return null;
+  if (!hasOverrides(ov) && !force) return null;
 
   const table = roleTable();
   const base = doc.base;
@@ -512,7 +512,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     }
   }
 
-  if (accepted.length === 0 || !lastGen) {
+  if (!force && (accepted.length === 0 || !lastGen)) {
     return { answers: raw, doc, applied: [], rejected, leftovers: leftoversOf(ov) };
   }
 
@@ -720,6 +720,101 @@ function shiftSlot(raw: Answers, doc: Doc, area: number, unit: number, p: string
   return { raw: out, doc: renameDoc(doc, ren) };
 }
 
+
+/* ------------------------------------------------------------------ */
+/* ケーブルの前後に開閉器を足したとき                                          */
+/* ------------------------------------------------------------------ */
+
+/** 足した記号 → ケーブル前後の開閉器の欄の値 */
+const SLOT_VALUE: Record<string, string> = { ds: 'ds', vcb: 'vcb', 'lbs-pf': 'lbs', lbs: 'lbs-plain', vcs: 'vcs', as: 'as' };
+/** 台の本体 → 質問IDの先頭 */
+const UNIT_P: Record<string, string> = { transformer: 'tr', capacitor: 'cap', generator: 'gen', motor: 'motor' };
+
+/**
+ * 台のケーブルの手前（上）・あと（下）に、開閉器を足したとき、その台の開閉器の欄（1〜3つ目）に入れる。
+ * 手前・あとは、足した位置が、ケーブルの端末の上か下かで、何つ目かは、すでにある開閉器との上下の並びで決める。
+ * 迷うとき（ケーブルの途中・同じ開閉器がすでにある・3つを超える）は、何もしない（図面にだけ残る）。
+ * 欄が1つ増えると、あとの欄の記号の名前が1つずつ後ろへずれるので、図面の記号の名前も付け替え、足した記号は、その欄の記号として扱う。
+ */
+function insertSwitches(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers, table: Map<string, RoleInfo>): { raw: Answers; doc: Doc; applied: AppliedChange[] } | null {
+  let curRaw = raw;
+  let curDoc = doc;
+  const applied: AppliedChange[] = [];
+  for (let guard = 0; guard < 8; guard++) {
+    const ov = collectOverrides(curDoc);
+    const eff = toEffective(curRaw);
+    const adds = ov.added.filter((a) => a.kind === 'symbol' && !a.item.parent && SLOT_VALUE[a.item.symbolId] !== undefined) as Extract<Overrides['added'][number], { kind: 'symbol' }>[];
+    let did = false;
+    for (const a of adds) {
+      const v = SLOT_VALUE[a.item.symbolId]!;
+      const find = (name: string) => curDoc.items.find((i): i is Extract<Doc['items'][number], { kind: 'symbol' }> => i.kind === 'symbol' && sameName(i.id) === name);
+      let best: { d: number; p: string; area: number; no: number; side: 'Up' | 'Dn'; idx: number; vals: string[] } | null = null;
+      for (const it of curDoc.items) {
+        if (it.kind !== 'symbol') continue;
+        const sp = splitArea(sameName(it.id));
+        const rep = repeatOf(sp.rest, table);
+        if (!rep || !UNIT_MAIN.has(rep.info.role) || !UNIT_P[rep.info.role] || sp.rest.replace(/-\d+$/, '') !== rep.info.role) continue;
+        const p = UNIT_P[rep.info.role]!;
+        const uk = (k: string) => qKey(indexedKey(k, rep.no - 1), sp.area);
+        if (String(eff[uk(p === 'motor' ? 'motorCable' : `${p}HasCable`)] ?? '') !== 'yes') continue;
+        const nm = (role: string) => `${sp.area > 0 ? `a${sp.area + 1}:` : ''}${role}${rep.no > 1 ? `-${rep.no}` : ''}`;
+        const src = find(nm(`${p}-cable-source`));
+        const site = find(nm(`${p}-cable-site`));
+        if (!src || !site) continue;
+        const ay = a.item.y;
+        const side: 'Up' | 'Dn' | null = ay < Math.min(src.y, site.y) ? 'Up' : ay > Math.max(src.y, site.y) && ay < it.y ? 'Dn' : null;
+        if (!side || (p === 'motor' && side === 'Up')) continue;
+        const vals: string[] = [];
+        for (let k = 1; k <= 3; k++) {
+          const x = String(eff[uk(`${p}Cable${side}${k}`)] ?? 'none');
+          if (x === 'none') break;
+          vals.push(x);
+        }
+        if (vals.length >= 3 || vals.includes(v)) continue;
+        const above = vals.filter((_, i) => {
+          const sy = find(nm(`${p}-cable-${side.toLowerCase()}${i + 1}`));
+          return sy ? sy.y < ay : false;
+        }).length;
+        const d = (Math.abs(a.item.x - src.x) * 3) ** 2 + (ay - (side === 'Up' ? src.y : site.y)) ** 2;
+        if (!best || d < best.d) best = { d, p, area: sp.area, no: rep.no, side, idx: above, vals };
+      }
+      if (!best) continue;
+      const { p, area, no, side, idx, vals } = best;
+      const uk = (k: string) => qKey(indexedKey(k, no - 1), area);
+      const next = [...vals.slice(0, idx), v, ...vals.slice(idx)];
+      const out: Answers = { ...curRaw };
+      for (let k = 1; k <= 3; k++) out[uk(`${p}Cable${side}${k}`)] = next[k - 1] ?? 'none';
+      const roleBase = `${p}-cable-${side.toLowerCase()}`;
+      const prefix = area > 0 ? `a${area + 1}:` : '';
+      const newName = `${prefix}${roleBase}${idx + 1}${no > 1 ? `-${no}` : ''}`;
+      const ren = (id: string): string => {
+        if (id === a.item.id) return newName;
+        const am = /^(a\d+:)?(.*)$/.exec(id)!;
+        if ((am[1] ? Number(am[1].slice(1, -1)) - 1 : 0) !== area) return id;
+        const rep = repeatOf(am[2]!, table);
+        const m = rep ? new RegExp(`^${roleBase}([123])$`).exec(rep.info.role) : null;
+        if (!rep || !m || rep.no !== no) return id;
+        const old = Number(m[1]);
+        if (old < idx + 1) return id;
+        return `${am[1] ?? ''}${roleBase}${old + 1}${am[2] !== rep.info.role ? `-${rep.no}` : ''}`;
+      };
+      const renamed = renameDoc(curDoc, ren);
+      const item = renamed.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === newName);
+      if (!item || !renamed.base) continue;
+      // 足した記号は、その欄の記号として扱う（自動で作ったものとして、控えに入れる。位置は、足したままの場所）
+      const baseSyms = { ...renamed.base.symbols, [sameName(newName)]: { symbolId: item.symbolId, x: item.x, y: item.y, rotate: item.rotate, label: [...item.label], labelDx: item.labelDx, labelDy: item.labelDy, ...(item.values ? { values: { ...item.values } } : {}) } };
+      curDoc = { ...renamed, base: { ...renamed.base, symbols: baseSyms } };
+      const qk = `${p}Cable${side}${idx + 1}`;
+      applied.push({ question: questionLabel(qk), unit: no > 1 ? no : 0, area, from: valueText(qk, eff[uk(qk)] ?? 'none'), to: valueText(qk, v) });
+      curRaw = out;
+      did = true;
+      break;
+    }
+    if (!did) break;
+  }
+  return applied.length > 0 ? { raw: curRaw, doc: curDoc, applied } : null;
+}
+
 /**
  * 図面で直した内容を、「設備を入力して作成」の答えに書き戻す（本体は writeBackCore）。
  * 途中の台（変圧器・コンデンサなど）を消したときは、先に、後ろの台を前へつめてから書き戻す。
@@ -775,7 +870,14 @@ export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => A
     curDoc = r.doc;
     shifted = true;
   }
-  const res = writeBackCore(curRaw, curDoc, toEffective);
+  // ケーブルの前後に足した開閉器を、その台の開閉器の欄に入れる
+  const pre = insertSwitches(curRaw, curDoc, toEffective, table);
+  if (pre) {
+    curRaw = pre.raw;
+    curDoc = pre.doc;
+  }
+  const core = writeBackCore(curRaw, curDoc, toEffective, pre !== null);
+  const res = core && pre ? { ...core, applied: [...pre.applied, ...core.applied] } : core;
   if (!shifted) return res;
   // 入れ替えたあと、ひとつも書き戻せなかった・断られたものがあるときは、入れ替えずに、そのまま扱う（答えも図面も、もとのまま）
   if (!res || res.applied.length === 0 || res.rejected.length > 0) return writeBackCore(raw, doc, toEffective);
