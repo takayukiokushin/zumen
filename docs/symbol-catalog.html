@@ -198,8 +198,8 @@
     <h1>単線結線図 記号カタログ</h1>
     <p class="lede">高圧受電設備の単線結線図で使う図記号を、記号マスタ（データ）から描き起こしたものです。作図エンジン・記号パレット・PDF出力はすべてこの同じ定義を参照します。</p>
     <div class="stats">
-      <div class="stat"><b>76</b><span>記号</span></div>
-      <div class="stat"><b>76</b><span>確定</span></div>
+      <div class="stat"><b>77</b><span>記号</span></div>
+      <div class="stat"><b>77</b><span>確定</span></div>
       <div class="stat"><b>0</b><span>見本待ち</span></div>
       <div class="stat"><b>0</b><span>要確認</span></div>
     </div>
@@ -229,7 +229,7 @@
         <button type="button" class="toggle" id="t-grid" aria-pressed="true">方眼</button>
       </div>
     </div>
-    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>13</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>20</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池・電動機<i>5</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
+    <nav class="navchips" aria-label="カテゴリ"><a class="navchip" href="#cat-incoming">引込元・引込点<i>6</i></a><a class="navchip" href="#cat-boundary">責任分界点<i>4</i></a><a class="navchip" href="#cat-switchgear">開閉器・遮断器<i>14</i></a><a class="navchip" href="#cat-instrument">計器用変成器・計器<i>9</i></a><a class="navchip" href="#cat-protection">保護継電器・避雷器・接地<i>20</i></a><a class="navchip" href="#cat-transformer">変圧器<i>13</i></a><a class="navchip" href="#cat-compensation">高圧進相設備<i>2</i></a><a class="navchip" href="#cat-source">発電機・太陽光・蓄電池・電動機<i>5</i></a><a class="navchip" href="#cat-wiring">結線要素<i>2</i></a><a class="navchip" href="#cat-enclosure">外枠（キュービクル・電気室）<i>2</i></a></nav>
   </div>
 
   <p class="empty" id="empty" hidden>該当する記号がありません。</p>
@@ -546,7 +546,7 @@
     <section class="group" id="cat-switchgear" data-cat="switchgear">
       <header class="group-head">
         <h2>開閉器・遮断器</h2>
-        <span class="count">13</span>
+        <span class="count">14</span>
       </header>
       <div class="grid">
       <article class="card card--confirmed" id="sym-as" data-search="気中開閉器  as as 電力会社 引込元 屋側" data-status="confirmed">
@@ -761,6 +761,36 @@
           
           <p class="statusnote">見本図面のとおり、左上がりの可動刃の上に傾けた長方形のヒューズ。上下とも丸・横バーは付けません。</p>
           <p class="note">変圧器の手前に入るパターン、PAS〜VCT間のLAの上部に入るパターンがある。記載例「PC 7200V 50A F×2」。</p>
+          
+        </div>
+      </article>
+      <article class="card card--confirmed" id="sym-pc-pas-la" data-search="高圧カットアウト（構内柱の外づけla用） 高圧カットアウト pc pc-pas-la カットアウトスイッチ pas外づけla 構内柱" data-status="confirmed">
+        <div class="tile"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54.4 73.6" width="92.47999999999999" height="125.11999999999999" role="img" aria-label="高圧カットアウト（構内柱の外づけLA用）">
+  <g transform="translate(8 8)" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="19.2" y1="0" x2="19.2" y2="9.6" stroke-width="1" />
+    <line x1="19.2" y1="48" x2="6.4" y2="9.6" stroke-width="1" />
+    <polygon points="21.374,40.609 12.574,14.209 4.226,16.991 13.026,43.391" fill="none" stroke-width="1" />
+    <line x1="19.2" y1="48" x2="19.2" y2="57.6" stroke-width="1" />
+    <g class="ports">
+      <circle cx="19.2" cy="0" r="2.2" fill="currentColor" stroke="none" class="port" />
+      <circle cx="19.2" cy="57.6" r="2.2" fill="currentColor" stroke="none" class="port" />
+    </g>
+  </g>
+</svg></div>
+        <div class="card-body">
+          <div class="card-head">
+            <span class="abbr">PC</span>
+            <h3>高圧カットアウト（構内柱の外づけLA用）</h3>
+            <span class="badge badge--confirmed">確定</span>
+          </div>
+          <p class="optional">既定では図面に描かない（指示があったときだけ配置）</p>
+          <p class="formal">高圧カットアウト</p>
+          <p class="idline"><code>pc-pas-la</code> ・ 接続点 2 ・ <span class="alt">pc の別表記</span></p>
+          
+          <div class="chips"><span class="chips-label">入力項目</span><span class="chip">定格電圧<i>V</i></span><span class="chip">定格電流<i>A</i></span><span class="chip">ヒューズの定格電流<i>A</i></span><span class="chip">ヒューズ本数<i>本</i></span></div>
+          
+          <p class="statusnote">構内柱の外づけLAの手前のPC専用。ふつうのPCの80%の大きさ（試しの大きさ。見た目を見て、調整する）。</p>
+          <p class="note">PAS・PGSの二次側に付く外づけのLAの電源側に入る。変圧器・コンデンサの手前のPCは、ふつうのPC（pc）を使う。</p>
           
         </div>
       </article>

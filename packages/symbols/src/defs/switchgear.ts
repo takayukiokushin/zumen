@@ -322,6 +322,39 @@ const switchgearRaw: SymbolDef[] = [
     note: '変圧器の手前に入るパターン、PAS〜VCT間のLAの上部に入るパターンがある。記載例「PC 7200V 50A F×2」。',
   },
   {
+    // 構内柱（PAS・PGS）の外づけの避雷器（LA）の手前に付くPC専用（第20弾 項目1）。ふつうのPCを、70%に縮めた形。
+    // 避雷器（LA）の図記号が小さめなので、つり合うように小さくしてある。変圧器・コンデンサなどの手前のPC（pc）は、変えない
+    id: 'pc-pas-la',
+    labelLines: ['PC', '{ratedVoltage}V', '{ratedCurrent}A', 'F:{fuseCurrent}A'],
+    abbr: 'PC',
+    nameJa: '高圧カットアウト（構内柱の外づけLA用）',
+    nameFormal: '高圧カットアウト',
+    category: 'switchgear',
+    tags: ['カットアウトスイッチ', 'PAS外づけLA', '構内柱'],
+    altOf: 'pc',
+    optional: true,
+    box: { w: 33.6, h: 50.4 },
+    shapes: [
+      vline(16.8, 0, 8.4),
+      line(16.8, 42, 5.6, 8.4),
+      tiltedBar(15.05, 36.75, 7.35, 13.65, 3.85),
+      vline(16.8, 42, 50.4),
+    ],
+    ports: [
+      { id: 'in', x: 16.8, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 16.8, y: 50.4, dir: 'down', role: 'line' },
+    ],
+    fields: [
+      RATED_VOLTAGE,
+      RATED_CURRENT,
+      { key: 'fuseCurrent', label: 'ヒューズの定格電流', type: 'number', unit: 'A', help: '図面の記載例: F:50A' },
+      { key: 'fuseCount', label: 'ヒューズ本数', type: 'number', unit: '本', defaultValue: 2, help: '図面の記載例: F×2' },
+    ],
+    status: 'confirmed',
+    statusNote: '構内柱の外づけLAの手前のPC専用。ふつうのPCの70%の大きさ（試しの大きさ。見た目を見て、調整する）。',
+    note: 'PAS・PGSの二次側に付く外づけのLAの電源側に入る。変圧器・コンデンサの手前のPCは、ふつうのPC（pc）を使う。',
+  },
+  {
     id: 'vcb',
     labelLines: ['VCB', '{ratedVoltage}V', '{ratedCurrent}A'],
     abbr: 'VCB',

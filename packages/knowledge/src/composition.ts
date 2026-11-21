@@ -176,6 +176,8 @@ export interface Placement {
   separate?: boolean;
   /** 直前の分岐（開閉器）の真下に、縦につなげて置く（LAの上に開閉器が付くとき：開閉器の下にLA） */
   hang?: boolean;
+  /** hang のとき、直前の分岐との縦の間隔（既定より狭くしたいとき。構内柱の外づけLAのPCとLA：PASのまわりは狭い） */
+  hangGap?: number;
   /** 件数が0のときは、1件も出さない（継電器：0個もありうる）。ふつうは、最低1件出す */
   zeroOk?: boolean;
   /** 位置を答える質問のID（CT：主遮断装置の一次側・二次側など）。答えを PlacedItem.pos に入れ、並びに使う */
@@ -426,7 +428,7 @@ export const UPSTREAM: Placement[] = [
     // 構内柱の外づけの避雷器（第20弾 項目1）：PASの二次側から左へ線を出して、真下に折れ、上からPC（あれば）、LA、接地の順に縦に並べる。
     // PAS内蔵のLAとは別（接地記号も、LA自身のもの。PASの枠の接地記号は、内蔵LAの接地で、最大1つのまま）
     role: 'pas-ext-pc',
-    symbolId: 'pc',
+    symbolId: 'pc-pas-la',
     kind: 'branch-left',
     upright: true,
     separate: true,
@@ -441,6 +443,7 @@ export const UPSTREAM: Placement[] = [
     upright: true,
     separate: true,
     hang: true,
+    hangGap: 2,
     when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'sectionalizer', ne: 'ugs' }, { key: 'pasExtLa', eq: 'yes' }, { key: 'pasExtLaPc', eq: 'yes' }] },
     labelTemplate: ['LA'],
   },

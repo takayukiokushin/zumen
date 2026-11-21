@@ -808,6 +808,8 @@ export interface PlacedItem {
   upright?: boolean;
   /** 直前の分岐（開閉器）の真下に、縦につなげて置く（LAの上に開閉器が付くとき） */
   hang?: boolean;
+  /** hang のとき、直前の分岐との縦の間隔 */
+  hangGap?: number;
   /** kind==='link' のとき、前のエリアからのつなぎ方 */
   link?: {
     /** どのエリアから分岐するか（0始まり） */
@@ -1335,6 +1337,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           ...(p.tapFrom ? { tap: String(a[p.tapFrom] ?? p.tapDefault ?? 'ct-bus'), separate: true } : {}),
           ...(p.upright ? { upright: true } : {}),
           ...(p.hang ? { hang: true } : {}),
+          ...(p.hangGap !== undefined ? { hangGap: p.hangGap } : {}),
           ...(p.posFrom ? { pos: String(a[p.posFrom] ?? '') } : {}),
           ...(p.refFrom ? { ref: String(a[p.refFrom] ?? '') } : {}),
           note: p.note,

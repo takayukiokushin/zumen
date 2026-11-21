@@ -957,5 +957,6 @@ const data: Record<string, string> = {
   "PAS・PGSの外に、別に取り付ける避雷器（PAS内蔵のLAとは別。両方付くこともある）。PASの二次側から左へ線を出して、避雷器を縦に描く。避雷器には、独立した接地記号が付く": "Un parafoudre monté séparément à l’extérieur du PAS/PGS (distinct du LA intégré au PAS ; les deux peuvent coexister). Une ligne part vers la gauche du côté secondaire du PAS et le parafoudre est dessiné à la verticale. Il possède son propre symbole de terre indépendant.",
   "外づけのLAの電源側に、PC（高圧カットアウト）はありますか？": "Y a-t-il un PC (coupe-circuit haute tension) côté source du LA externe ?",
   "外づけのLAの手前（電源側）に付くのは、PCだけ（ほかの開閉器は付かない）。付けると、PASの二次側から、PC、LAの順に、縦に並ぶ": "Seul un PC peut être placé en amont (côté source) du LA externe (aucun autre appareil). Une fois ajouté, le PC puis le LA sont alignés à la verticale depuis le côté secondaire du PAS.",
+  "高圧カットアウト（構内柱の外づけLA用）": "Coupe-circuit haute tension (pour parafoudre externe sur poteau)",
 };
 export default data;

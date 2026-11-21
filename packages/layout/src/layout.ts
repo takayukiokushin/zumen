@@ -868,8 +868,9 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       const hx = up.sym.x + upOut.x;
       const hy = up.sym.y + upOut.y;
       const hin = portOf(def, 'in') ?? def.ports[0]!;
-      const hsym = add(item, def, hx - hin.x, hy + HANG_GAP - hin.y, 0, dir > 0 ? 'right' : 'left');
-      wires.push({ x1: hx, y1: hy, x2: hx, y2: hy + HANG_GAP });
+      const gap = item.hangGap ?? HANG_GAP;
+      const hsym = add(item, def, hx - hin.x, hy + gap - hin.y, 0, dir > 0 ? 'right' : 'left');
+      wires.push({ x1: hx, y1: hy, x2: hx, y2: hy + gap });
       const hLabelBottom = hsym.label.length ? hsym.labelAt.y + (hsym.label.length - 1) * LABEL_LINE + 4 : -Infinity;
       branchBottom = Math.max(branchBottom, hsym.y + def.box.h, hLabelBottom);
       pendingGap = Math.max(GAP, branchBottom - spineY + 10);

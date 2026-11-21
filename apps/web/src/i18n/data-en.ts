@@ -963,5 +963,6 @@ const data: Record<string, string> = {
   "PAS・PGSの外に、別に取り付ける避雷器（PAS内蔵のLAとは別。両方付くこともある）。PASの二次側から左へ線を出して、避雷器を縦に描く。避雷器には、独立した接地記号が付く": "A lightning arrester mounted separately outside the PAS/PGS (separate from the PAS built-in LA; both may be present). A line goes left from the PAS secondary side, and the arrester is drawn vertically. The arrester has its own independent earth symbol.",
   "外づけのLAの電源側に、PC（高圧カットアウト）はありますか？": "Is there a PC (high-voltage cutout) on the source side of the external LA?",
   "外づけのLAの手前（電源側）に付くのは、PCだけ（ほかの開閉器は付かない）。付けると、PASの二次側から、PC、LAの順に、縦に並ぶ": "Only a PC can be placed in front of (on the source side of) the external LA (no other switch). When added, the PC and then the LA are lined up vertically from the PAS secondary side.",
+  "高圧カットアウト（構内柱の外づけLA用）": "High-voltage cutout (for external LA on premises pole)",
 };
 export default data;

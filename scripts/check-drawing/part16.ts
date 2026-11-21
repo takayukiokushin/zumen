@@ -8,6 +8,7 @@ import { inspectDrawing } from '../../apps/web/src/editor/inspect.ts';
 import { buildComposition, dropHiddenChoices } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { findLabelCollisions, layout } from '../../packages/layout/src/index.ts';
+import { getSymbol } from '../../packages/symbols/src/index.ts';
 import { answersSpread, fail } from './common.ts';
 
 console.log('\n■ 構内柱の外づけの避雷器（LA）：PASの左に縦に並び、PAS内蔵のLAとは別に選べる');
@@ -29,11 +30,23 @@ console.log('\n■ 構内柱の外づけの避雷器（LA）：PASの左に縦�
             bad.push(`${name}：PASがありません`);
             continue;
           }
+          const inner = d.symbols.find((x) => x.id === 'pas-la');
+          if (inner && la[0] && (inner.symbolId !== la[0].symbolId || (inner as { scale?: number }).scale !== (la[0] as { scale?: number }).scale)) bad.push(`${name}：内蔵LAと外づけLAの、図記号・大きさが違います`);
           if (la.length !== 1) bad.push(`${name}：外づけのLAが${la.length}個です`);
           else if (la[0]!.x + 5 >= pas.x) bad.push(`${name}：外づけのLAが、PASの左にありません`);
           else if (la[0]!.y <= pas.y) bad.push(`${name}：外づけのLAが、PASより下にありません`);
           if (pcs.length !== (pc === 'yes' ? 1 : 0)) bad.push(`${name}：PCの数が違います（${pcs.length}個）`);
           else if (pcs[0] && la[0] && !(pcs[0].y < la[0].y)) bad.push(`${name}：PCが、LAの上にありません`);
+          // 外づけLA専用のPCは、ふつうのPCを70%に縮めた専用の図記号（pc-pas-la）。変圧器などの手前のPC（pc）は、変えない
+          if (pcs[0] && pcs[0].symbolId !== 'pc-pas-la') bad.push(`${name}：外づけLAのPCが、専用の小さいPC（pc-pas-la）ではありません（${pcs[0].symbolId}）`);
+          // PASのまわりは狭いので、PCとLAの縦の間隔（つなぐ線の長さ）は、短くしてある（4以下）
+          if (pcs[0] && la[0]) {
+            const pcd = getSymbol(pcs[0].symbolId);
+            const lad = getSymbol(la[0].symbolId);
+            const pcOut = pcd.ports.find((p) => p.dir === 'down') ?? pcd.ports[pcd.ports.length - 1]!;
+            const gap = la[0].y + lad.ports[0]!.y - (pcs[0].y + pcOut.y);
+            if (gap > 4) bad.push(`${name}：PCとLAのあいだが、広すぎます（${Math.round(gap)}）`);
+          }
           // 内蔵のLAは、外づけとは別（PASの文字に、「LA内蔵」が、内蔵のときだけ出る）
           const hasText = (pas.label ?? []).some((l: string) => /LA/.test(l));
           if (hasText !== (builtin === 'yes')) bad.push(`${name}：PASの「LA内蔵」の文字が、内蔵LAの答えと合っていません`);
@@ -44,6 +57,13 @@ console.log('\n■ 構内柱の外づけの避雷器（LA）：PASの左に縦�
         }
       }
     }
+  }
+  // 変圧器の手前のPCは、ふつうのPC（pc）のまま（外づけLA専用のPCとは別）
+  {
+    const t = dropHiddenChoices({ ...answersSpread, areaCount: '1', sectionalizer: 'pas', pasExtLa: 'yes', pasExtLaPc: 'yes', transformerCount: '1', trHasPc: 'yes' } as Answers);
+    const dd = layout(buildComposition(t), t);
+    const trPc = dd.symbols.find((x) => x.id === 'tr-pc');
+    if (!trPc || trPc.symbolId !== 'pc') bad.push(`変圧器の手前のPCが、ふつうのPC（pc）ではありません（${trPc?.symbolId ?? 'なし'}）`);
   }
   // 外づけのLAが無いとき、UGSのとき：何も出ない
   const none = dropHiddenChoices({ ...answersSpread, areaCount: '1', sectionalizer: 'pas', pasExtLa: 'no' } as Answers);
