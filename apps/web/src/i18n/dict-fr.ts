@@ -169,6 +169,7 @@ export const fr: Dict = {
   'editor.set.added': 'Interrupteur de sectionnement ({name}) ajouté sous le schéma. Le symbole sélectionné reste inchangé.',
   'editor.selected': 'Sélection',
   'editor.labelText': 'Texte sur le schéma',
+  'editor.labelMoveHint': 'Faites glisser le texte entouré de pointillés sur le dessin pour déplacer uniquement le texte. Si vous déplacez le symbole, le texte revient à sa position standard.',
   'editor.ratings': 'Valeurs nominales',
   'editor.ratings.help': 'Saisissez les valeurs : elles s’insèrent automatiquement dans le texte ci-dessous.',
   'editor.ratings.manual': 'Ce texte vient du tracé automatique ou a été saisi à la main : les champs ne sont pas utilisés.',

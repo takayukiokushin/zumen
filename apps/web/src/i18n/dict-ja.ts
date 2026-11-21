@@ -169,6 +169,7 @@ export const ja = {
   'editor.set.added': '区分開閉器（{name}）を、図面の下に追加しました。選んでいた記号は、そのままです。',
   'editor.selected': '選んでいるもの',
   'editor.labelText': '図面に書く文字',
+  'editor.labelMoveHint': '図面の上の、点線で囲まれた文字をドラッグすると、文字だけを動かせます。記号を動かすと、文字は元の位置（標準の位置）に戻ります。',
   'editor.ratings': '定格・数値の入力',
   'editor.ratings.help': '数字を入れると、下の文字に自動で入ります。',
   'editor.ratings.manual': 'この記号の文字は、自動作図または手で書いたものなので、入力欄は使えません。',

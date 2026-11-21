@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { tr } from '../i18n/index.ts';
 import { FONT_FAMILY, shapesToSvg } from '@zumen/symbols';
-import { boldStrokeWidth, AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
+import { boldStrokeWidth, labelRect, AREA_MIN, ARROW_HEAD_HALF, LINK_STROKE, DOT_RADIUS, LABEL_FONT, LABEL_LINE, OVERLAY_RED, areaLabelAt, areaSvg, arrowFromTail, arrowLabelAt, arrowSvg, arrowTail, clampTextSize, dotSvg, linkPath, linkSvg, crossPointsAttr, groundBounds, groundFromTip, groundLabelAt, groundLabelBounds, groundSvg, groundTip, labelWidth } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, PointAssist } from './doc.ts';
 import { snap } from '@zumen/layout';
 import { insertTarget } from './rewire.ts';
@@ -19,6 +19,8 @@ interface Props {
   /** ドラッグが終わったときに一度だけ呼ぶ（元に戻すの単位をドラッグ1回にするため）。複数選んでいるときは、まとめて動かす */
   /** noAuto：Alt キーを押しながら離した（線に割って入れない） */
   onMoveEnd: (ids: string[], dx: number, dy: number, noAuto?: boolean) => void;
+  /** 選んでいる記号の文字だけを動かし終えたとき（記号は動かさない。第20弾 項目3） */
+  onLabelMove?: (id: string, dx: number, dy: number) => void;
   /** 線の端を動かして伸縮したとき */
   onWireEnd: (id: string, end: 1 | 2, dx: number, dy: number) => void;
   /** 線を引き終えたとき */
@@ -169,10 +171,12 @@ function scrollWithOuter(sc: HTMLElement, dx: number, dy: number) {
   if (Math.abs(restX) >= 0.5) outerScroller(sc, 'x').scrollLeft += restX;
 }
 
-export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, viewOnly = false, activeIds, wireDashed = false, zoom, onZoom, issues = [], overlapIds = [] }: Props) {
+export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, fanPicks = [], onMoveEnd, onLabelMove, onWireEnd, onAddWire, onResizeEnd, mode, crosses = [], crossPreview, groundScale = 1, grounds = [], areas = [], dots = [], arrows = [], links = [], linkShape = 'normal', onLinkAdd, onDotAdd, onDotMove, onArrowClick, onArrowAdd, onArrowTail, onAreaDraw, onAreaChange, onGroundAdd, onGroundMiss, onGroundTip, onGroundAnchor, onCrossClick, onCrossRemove, onCrossWire, onMarkMoveEnd, locked = false, viewOnly = false, activeIds, wireDashed = false, zoom, onZoom, issues = [], overlapIds = [] }: Props) {
   const selectedId = selectedIds.length === 1 ? selectedIds[0]! : null;
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
+  /** 文字だけを動かしている最中（第20弾 項目3） */
+  const [labelDrag, setLabelDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
   const [resize, setResize] = useState<Resize | null>(null);
   /** 接地のマークを置いている途中：1回目にクリックした、つなぐ場所 */
   const [groundStart, setGroundStart] = useState<{ x: number; y: number; anchor: GroundAnchor } | null>(null);
@@ -540,6 +544,12 @@ export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, 
 
   const onPointerMove = (e: React.PointerEvent) => {
     altRef.current = e.altKey;
+    // 文字だけを動かしている最中
+    if (labelDrag && start.current) {
+      const q = toDrawing(e);
+      setLabelDrag({ id: labelDrag.id, dx: Math.round(q.x - start.current.x), dy: Math.round(q.y - start.current.y) });
+      return;
+    }
     // 範囲で選んでいる最中：少し動いたら、枠を出す
     const bd = bandRef.current;
     if (bd) {
@@ -669,6 +679,14 @@ export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, 
   };
 
   const onPointerUp = () => {
+    // 文字だけを動かし終えた：動かした分を、文字の位置にする（記号は動かさない）
+    if (labelDrag) {
+      const { id, dx, dy } = labelDrag;
+      setLabelDrag(null);
+      start.current = null;
+      if (dx !== 0 || dy !== 0) onLabelMove?.(id, dx, dy);
+      return;
+    }
     // 範囲で選び終わった：囲んだ範囲にまるごと入っている要素を選ぶ（追加のときは、いまの選びに加える）。動かしていなければ、選びを外す
     const bd = bandRef.current;
     if (bd) {
@@ -956,23 +974,50 @@ export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, 
                 {...(def.color ? { stroke: def.color, color: def.color } : {})}
                 dangerouslySetInnerHTML={{ __html: shapesToSvg(def.shapes, '') }}
               />
-              {it.label.length > 0 && (
-                <text
-                  x={it.x + it.labelDx}
-                  y={it.y + it.labelDy}
-                  fontSize={LABEL_FONT}
-                  textAnchor={it.labelAnchor}
-                  fontFamily={FONT_FAMILY}
-                  fill={def.color ?? 'currentColor'}
-                  stroke="none"
-                >
-                  {it.label.map((l, i) => (
-                    <tspan key={i} x={it.x + it.labelDx} dy={i === 0 ? 0 : LABEL_LINE}>
-                      {l}
-                    </tspan>
-                  ))}
-                </text>
-              )}
+              {it.label.length > 0 && (() => {
+                // 記号を1つだけ選んでいるとき、その文字を囲み、つかんで、文字だけを動かせる（第20弾 項目3）
+                const ld = labelDrag && labelDrag.id === it.id ? labelDrag : null;
+                const lx = it.x + it.labelDx + (ld?.dx ?? 0);
+                const ly = it.y + it.labelDy + (ld?.dy ?? 0);
+                const grab = !viewOnly && !locked && mode === 'select' && selectedIds.length === 1 && selectedIds[0] === it.id;
+                const lr = grab ? labelRect({ x: lx, y: ly, anchor: it.labelAnchor }, it.label) : null;
+                return (
+                  <>
+                    <text
+                      x={lx}
+                      y={ly}
+                      fontSize={LABEL_FONT}
+                      textAnchor={it.labelAnchor}
+                      fontFamily={FONT_FAMILY}
+                      fill={def.color ?? 'currentColor'}
+                      stroke="none"
+                    >
+                      {it.label.map((l, i) => (
+                        <tspan key={i} x={lx} dy={i === 0 ? 0 : LABEL_LINE}>
+                          {l}
+                        </tspan>
+                      ))}
+                    </text>
+                    {lr && (
+                      <rect
+                        className="selection label-grab"
+                        x={lr.x0 - 2}
+                        y={lr.y0 - 2}
+                        width={lr.x1 - lr.x0 + 4}
+                        height={lr.y1 - lr.y0 + 4}
+                        fill="transparent"
+                        pointerEvents="all"
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          (e.target as Element).setPointerCapture?.(e.pointerId);
+                          start.current = toDrawing(e);
+                          setLabelDrag({ id: it.id, dx: 0, dy: 0 });
+                        }}
+                      />
+                    )}
+                  </>
+                );
+              })()}
               <rect x={it.x} y={it.y} width={def.box.w} height={def.box.h} fill="transparent" stroke="none" />
             </g>
           );

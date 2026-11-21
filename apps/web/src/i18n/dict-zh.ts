@@ -166,6 +166,7 @@ export const zh: Dict = {
   'editor.set.added': '已在图纸下方添加区分开关（{name}）。原先选中的符号保持不变。',
   'editor.selected': '所选对象',
   'editor.labelText': '写在图纸上的文字',
+  'editor.labelMoveHint': '拖动图纸上虚线框内的文字，可以只移动文字。移动符号后，文字会回到标准位置。',
   'editor.ratings': '额定值与数值输入',
   'editor.ratings.help': '在此输入数字，会自动填入下方文字。',
   'editor.ratings.manual': '此文字来自自动绘图或为手动输入，因此不使用输入栏。',

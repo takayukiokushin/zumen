@@ -168,6 +168,7 @@ export const en: Dict = {
   'editor.set.added': 'Added the sectionalizing switch ({name}) under the diagram. The symbol you had selected is unchanged.',
   'editor.selected': 'Selection',
   'editor.labelText': 'Text on the diagram',
+  'editor.labelMoveHint': 'Drag the text inside the dashed frame on the drawing to move only the text. When you move the symbol, the text returns to its standard position.',
   'editor.ratings': 'Ratings and values',
   'editor.ratings.help': 'Type numbers here; they go into the text below automatically.',
   'editor.ratings.manual': 'This text came from auto-drawing or was typed by hand, so the fields are not used.',

@@ -5,7 +5,7 @@ import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, clampTextSize, SHEET_PAD, layoutT
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
 import { cableViolations } from './hvCable.ts';
-import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf, refreshFans } from './doc.ts';
+import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf, refreshFans, standardLabelOffset } from './doc.ts';
 
 /**
  * 図面全体を見まわして、おかしなところを直す。
@@ -927,6 +927,29 @@ export function nudgeSymbolLabel(doc: Doc, id: string): Doc {
   }
   if (best.dx === 0 && best.dy === 0) return doc;
   return { ...doc, items: doc.items.map((it) => (it.id === id && it.kind === 'symbol' ? { ...it, labelDx: it.labelDx + best.dx, labelDy: it.labelDy + best.dy } : it)) };
+}
+
+/**
+ * 記号を動かしたあとの、文字の位置を整える（第20弾 項目3）。
+ * 動かした記号（と、その中の部品）の文字を、まず「標準の位置」に戻し、そこでも、ほかの記号・文字に重なるときだけ、
+ * 重ならない場所へ逃がす（nudgeSymbolLabel）。手で動かした文字も、記号を動かすと、標準の位置に戻る。
+ * 自分では動かしていない記号（線が伸び縮みして、つられて動いたもの）の文字は、そのまま。
+ */
+export function settleLabels(doc: Doc, ids: string[]): Doc {
+  const targets = new Set<string>();
+  for (const id of ids) for (const g of groupOf(doc, id)) targets.add(g);
+  const withLabel = doc.items.filter((it): it is DocSymbol => it.kind === 'symbol' && targets.has(it.id) && it.label.length > 0);
+  if (withLabel.length === 0) return doc;
+  let cur: Doc = {
+    ...doc,
+    items: doc.items.map((it) => {
+      if (it.kind !== 'symbol' || !targets.has(it.id) || it.label.length === 0) return it;
+      const std = standardLabelOffset(doc, it);
+      return it.labelDx === std.dx && it.labelDy === std.dy ? it : { ...it, labelDx: std.dx, labelDy: std.dy };
+    }),
+  };
+  for (const it of withLabel) cur = nudgeSymbolLabel(cur, it.id);
+  return cur;
 }
 
 /**

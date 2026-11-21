@@ -42,6 +42,8 @@ function buildSetItems(
   for (const it of made.items) {
     if (it.kind === 'symbol') {
       const s: DocSymbol = { ...it, id: ren(it.id), x: it.x + dx, y: it.y + dy };
+      // 区分開閉器の文字は、完成形の位置が、標準の位置（動かしたあと、ここに戻る）
+      if (it.id === pasOld) s.labelStd = { dx: it.labelDx, dy: it.labelDy };
       // 継電器（GR・DGR）は、区分開閉器の子にする（スロットは無い）
       if (/^relay-(gr|dgr)$/.test(it.symbolId)) s.parent = pasNew;
       else if (it.parent) s.parent = ren(it.parent);
@@ -115,7 +117,7 @@ export function swapSectionalizerSet(doc: Doc, pasId: string, set: Sectionalizer
   const old = pas.label;
   const keep = old.filter((l, i) => !(i === 0 && /^(PAS|PGS|UGS)$/.test(l)) && !isBuiltinTextLine(l));
   const label = [...(/^(PAS|PGS|UGS)$/.test(old[0] ?? '') || old.length === 0 ? [head] : []), ...keep, ...tail];
-  const newPas: DocSymbol = { ...pas, symbolId: madePas.symbolId, x: madePas.x, y: madePas.y, label, labelDx: madePas.labelDx, labelDy: madePas.labelDy, labelAnchor: madePas.labelAnchor };
+  const newPas: DocSymbol = { ...pas, symbolId: madePas.symbolId, x: madePas.x, y: madePas.y, label, labelDx: madePas.labelDx, labelDy: madePas.labelDy, labelAnchor: madePas.labelAnchor, ...(madePas.labelStd ? { labelStd: madePas.labelStd } : {}) };
   // 入力欄から作った文字（values）は、文字を作り直したので、持ち越さない
   delete (newPas as { values?: unknown }).values;
   const items: DocItem[] = [

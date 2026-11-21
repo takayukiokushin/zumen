@@ -10,7 +10,7 @@ import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
 import { buildSheetSvg } from './exportSheet.ts';
 import { UndoIcon, ZoomIcon } from '../icons.tsx';
-import { chooseSheet, issueLabel, nudgeSymbolLabel } from './inspect.ts';
+import { chooseSheet, issueLabel, nudgeSymbolLabel, settleLabels } from './inspect.ts';
 import type { HeavyApi } from './useHeavyJob.tsx';
 import type { HeavyKind, HeavyRequest, HeavyResult } from './heavy.ts';
 import type { Issue, IssueKind } from './inspect.ts';
@@ -32,7 +32,7 @@ import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { cableViolations, newCableViolation } from './hvCable.ts';
 import { cableInsertRefused, moveWithInsert } from './rewire.ts';
-import { addFan, dedupeIds, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
+import { addFan, dedupeIds, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveLabel, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
 
 /** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
 const AREA_KIND_LABEL = { outage: 'area.kind.outage', live: 'area.kind.live', applied: 'area.kind.applied' } as const;
@@ -732,7 +732,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         const [ux, uy] = ARROW_MOVE[e.key]!;
         const step = e.shiftKey ? ARROW_STEP * ARROW_SHIFT_TIMES : ARROW_STEP;
         const moved = selection.length === 1 ? moveItem(doc, selection[0]!, ux * step, uy * step) : moveItems(doc, selection, ux * step, uy * step);
-        const next: Doc = { ...moved, edited: true, basis: doc.basis };
+        const next: Doc = { ...settleLabels(moved, selection), edited: true, basis: doc.basis };
         const now = Date.now();
         const last = lastArrow.current;
         const arrowKey = selection.join(',');
@@ -1485,10 +1485,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               else {
                 if (!noAuto && ids.length === 1 && cableInsertRefused(doc, ids[0]!, dx, dy)) setCableNote(t('editor.cableRefused'));
                 const next = moveWithInsert(doc, ids, dx, dy, (d) => (ids.length === 1 ? moveItem(d, ids[0]!, dx, dy) : moveItems(d, ids, dx, dy)), noAuto);
-                // 線に入れたとき、文字が近くの記号に重なったら、重ならない場所へ動かす（重なっていなければ、動かさない）
-                apply(ids.length === 1 ? nudgeSymbolLabel(next, ids[0]!) : next);
+                // 動かした記号の文字は、標準の位置に戻し、そこでも重なるときだけ、重ならない場所へ逃がす（手で動かした文字も、標準に戻る）
+                apply(settleLabels(next, ids));
               }
             }}
+            onLabelMove={(id, dx, dy) => apply(moveLabel(doc, id, dx, dy))}
             onWireEnd={(id, end, dx, dy) => {
               const next = moveWireEnd(doc, id, end, dx, dy);
               // 線の端を、高圧ケーブルの途中へ動かしたときは、断る
@@ -1987,6 +1988,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                     value={selectedSymbol.label.join('\n')}
                     onChange={(e) => apply(nudgeSymbolLabel(setLabel(doc, selectedSymbol.id, e.target.value.split('\n')), selectedSymbol.id))}
                   />
+                  {selectedSymbol.label.length > 0 && <p className="hint">{t('editor.labelMoveHint')}</p>}
                 </>
               ) : selected.kind === 'text' ? (
                 <p className="hint">{t('editor.textInWindow')}</p>

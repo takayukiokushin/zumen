@@ -167,6 +167,7 @@ export const ko: Dict = {
   'editor.set.added': '구분 개폐기({name})를 도면 아래에 더했습니다. 골라 두었던 기호는 그대로입니다.',
   'editor.selected': '고른 것',
   'editor.labelText': '도면에 쓰는 글자',
+  'editor.labelMoveHint': '도면 위의 점선으로 둘러싸인 글자를 끌면 글자만 움직일 수 있습니다. 기호를 움직이면 글자는 원래 위치(표준 위치)로 돌아갑니다.',
   'editor.ratings': '정격·수치 입력',
   'editor.ratings.help': '숫자를 입력하면 아래 글자에 자동으로 들어갑니다.',
   'editor.ratings.manual': '이 글자는 자동 작도 또는 직접 입력한 것이라 입력란을 사용하지 않습니다.',

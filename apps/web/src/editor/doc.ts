@@ -44,6 +44,11 @@ export interface DocSymbol {
   labelDx: number;
   labelDy: number;
   labelAnchor: 'start' | 'middle' | 'end';
+  /**
+   * 文字の標準の位置（記号の原点からのずれ）。自動作図の記号は、自動作図が決めた位置（Baseline）が標準なので、持たない。
+   * 手で足したセット（区分開閉器の完成形）のように、自動作図の位置が無い記号が、自分の標準の位置を覚えておくためのもの
+   */
+  labelStd?: { dx: number; dy: number };
 }
 
 /** 線の端がつながっている先。位置ではなく相手で覚える */
@@ -1342,6 +1347,26 @@ export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { d
     labelAnchor: 'start',
   };
   return { doc: { ...doc, items: [...doc.items, item] }, id };
+};
+
+/**
+ * 記号の文字の「標準の位置」（記号の原点からのずれ）（第20弾 項目3）。
+ *  1. 記号が自分で覚えている標準（labelStd）
+ *  2. 自動作図で出た記号は、自動作図が決めた位置（同じ記号・同じ向きのままのとき）
+ *  3. それ以外（手で足した記号・差し替えた記号）は、記号の右隣（「記号を追加」と同じ）
+ */
+export function standardLabelOffset(doc: Doc, it: DocSymbol): { dx: number; dy: number } {
+  if (it.labelStd) return it.labelStd;
+  const b = doc.base?.symbols[sameName(it.id)];
+  if (b && b.symbolId === it.symbolId && b.rotate === it.rotate) return { dx: b.labelDx, dy: b.labelDy };
+  const o = sideLabelOrigin(getSymbol(it.symbolId), 'right', 10, LABEL_FONT * 0.85);
+  return { dx: o.x, dy: o.y };
+}
+
+/** 文字だけを、(dx, dy) 動かす（記号は動かさない）。動かした位置は、図面と一緒に保存される */
+export const moveLabel = (doc: Doc, id: string, dx: number, dy: number): Doc => {
+  if (dx === 0 && dy === 0) return doc;
+  return { ...doc, items: doc.items.map((it) => (it.kind === 'symbol' && it.id === id && it.label.length > 0 ? { ...it, labelDx: it.labelDx + dx, labelDy: it.labelDy + dy } : it)) };
 };
 
 export const addText = (doc: Doc, x: number, y: number, text: string): { doc: Doc; id: string } => {
