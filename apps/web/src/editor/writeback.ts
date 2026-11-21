@@ -46,6 +46,8 @@ export interface RejectedChange {
 export interface Leftover {
   kind: 'moved' | 'relabel' | 'replaced' | 'removed' | 'wireRemoved' | 'addedSymbol' | 'addedText' | 'addedWire' | 'frames';
   n: number;
+  /** 記号の名前（日本語。消した・差し替えた・足した・文字を直した記号。同じ名前は、まとめる） */
+  names?: string[];
 }
 
 export interface WritebackResult {
@@ -515,7 +517,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
   }
 
   if (!force && (accepted.length === 0 || !lastGen)) {
-    return { answers: raw, doc, applied: [], rejected, leftovers: leftoversOf(ov) };
+    return { answers: raw, doc, applied: [], rejected, leftovers: leftoversOf(ov, doc.base) };
   }
 
   const gen = buildGenerated(toEffective(acc));
@@ -563,7 +565,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     };
   });
   const rebuilt = carryOver(next.doc, doc);
-  return { answers: acc, doc: rebuilt, applied, rejected, leftovers: leftoversOf(rebuilt.overrides) };
+  return { answers: acc, doc: rebuilt, applied, rejected, leftovers: leftoversOf(rebuilt.overrides, rebuilt.base) };
 }
 
 
@@ -902,20 +904,32 @@ function writeBackOnce(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
   return res;
 }
 
-/** 入力には出ない、手で直した内容の件数 */
-export function leftoversOf(ov: Overrides | undefined): Leftover[] {
+/** 記号の名前の一覧（同じ名前は1つにまとめる。名前が分からないものは、出さない） */
+const uniqueNames = (l: (string | undefined)[]): string[] => [...new Set(l.filter((x): x is string => !!x))];
+
+/** 入力には出ない、手で直した内容の件数（と、消した・差し替えた・足した記号の名前） */
+export function leftoversOf(ov: Overrides | undefined, base?: Doc['base']): Leftover[] {
   if (!ov) return [];
   const out: Leftover[] = [];
-  const push = (kind: Leftover['kind'], n: number) => {
-    if (n > 0) out.push({ kind, n });
+  const push = (kind: Leftover['kind'], n: number, names?: string[]) => {
+    if (n > 0) out.push({ kind, n, ...(names && names.length > 0 ? { names } : {}) });
   };
-  const moved = Object.values(ov.moved);
-  push('moved', moved.filter((e) => e.dx !== 0 || e.dy !== 0 || e.rotate !== undefined || e.dLabelDx !== undefined || e.dLabelDy !== undefined).length);
-  push('replaced', moved.filter((e) => e.symbolId !== undefined).length);
-  push('relabel', moved.filter((e) => e.label !== undefined || e.values !== undefined).length);
-  push('removed', ov.removed.length);
+  const symName = (name: string): string | undefined => {
+    const id = base?.symbols[name]?.symbolId;
+    return id ? nameJaOf(id) : undefined;
+  };
+  const moved = Object.entries(ov.moved);
+  push('moved', moved.filter(([, e]) => e.dx !== 0 || e.dy !== 0 || e.rotate !== undefined || e.dLabelDx !== undefined || e.dLabelDy !== undefined).length);
+  push(
+    'replaced',
+    moved.filter(([, e]) => e.symbolId !== undefined).length,
+    uniqueNames(moved.filter(([, e]) => e.symbolId !== undefined).map(([n, e]) => (symName(n) ? `${symName(n)}→${nameJaOf(e.symbolId!)}` : undefined))),
+  );
+  push('relabel', moved.filter(([, e]) => e.label !== undefined || e.values !== undefined).length, uniqueNames(moved.filter(([, e]) => e.label !== undefined || e.values !== undefined).map(([n]) => symName(n))));
+  push('removed', ov.removed.length, uniqueNames(ov.removed.map(symName)));
   push('wireRemoved', ov.wiresRemoved.length);
-  push('addedSymbol', ov.added.filter((a) => a.kind === 'symbol').length);
+  const addedSyms = ov.added.filter((a) => a.kind === 'symbol');
+  push('addedSymbol', addedSyms.length, uniqueNames(addedSyms.map((a) => (a.kind === 'symbol' ? nameJaOf(a.item.symbolId) : undefined))));
   push('addedText', ov.added.filter((a) => a.kind === 'text').length);
   push('addedWire', ov.added.filter((a) => a.kind === 'wire').length);
   push('frames', Object.keys(ov.frames ?? {}).length);

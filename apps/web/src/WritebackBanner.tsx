@@ -82,7 +82,10 @@ export function WritebackBanner({
           {open && (
             <ul className="wb-list">
               {leftovers.map((l) => (
-                <li key={l.kind}>{t(`wb.left.${l.kind}` as Key, { n: l.n })}</li>
+                <li key={l.kind}>
+                  {t(`wb.left.${l.kind}` as Key, { n: l.n })}
+                  {l.names && l.names.length > 0 ? `：${l.names.slice(0, 8).map((x) => x.split('→').map((y) => tx(y)).join('→')).join('・')}${l.names.length > 8 ? t('wb.left.more') : ''}` : ''}
+                </li>
               ))}
               <li>{t('wb.left.note')}</li>
             </ul>

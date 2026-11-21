@@ -896,6 +896,7 @@ export const ko: Dict = {
   'wb.left.title': '도면에서 고친 내용 중 입력 화면에는 나오지 않는 것이 {n}건 있습니다.',
   'wb.left.show': '내용 보기',
   'wb.left.hide': '내용 닫기',
+  'wb.left.more': ' 외',
   'wb.left.note': '직접 고친 도면을 우선하여 도면에 그대로 남깁니다.',
   'wb.left.moved': '기호의 위치·방향·문자 위치를 고친 것: {n}건',
   'wb.left.replaced': '기호를 다른 종류로 바꾼 것: {n}건',

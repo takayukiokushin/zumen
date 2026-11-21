@@ -894,6 +894,7 @@ export const zh: Dict = {
   'wb.left.title': '图纸上有{n}项手工修改不会出现在输入界面中。',
   'wb.left.show': '查看内容',
   'wb.left.hide': '收起内容',
+  'wb.left.more': '等',
   'wb.left.note': '以手工修改的图纸为准，这些内容保留在图纸上。',
   'wb.left.moved': '修改了符号位置、方向或文字位置：{n}项',
   'wb.left.replaced': '替换为其他种类的符号：{n}项',

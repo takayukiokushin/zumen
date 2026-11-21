@@ -898,6 +898,7 @@ export const ja = {
   'wb.left.title': '図面で手直しした内容のうち、入力画面には出ないものが、{n}件あります。',
   'wb.left.show': '内容を見る',
   'wb.left.hide': '内容を閉じる',
+  'wb.left.more': ' ほか',
   'wb.left.note': '手で直した図面を優先して、図面にそのまま残します。',
   'wb.left.moved': '記号の位置・向き・文字の位置を直したもの：{n}件',
   'wb.left.replaced': '記号を別の種類に差し替えたもの：{n}件',

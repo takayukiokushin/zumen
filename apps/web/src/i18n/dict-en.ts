@@ -897,6 +897,7 @@ export const en: Dict = {
   'wb.left.title': '{n} change(s) made on the drawing do not appear on the input screen.',
   'wb.left.show': 'Show details',
   'wb.left.hide': 'Hide details',
+  'wb.left.more': ' and more',
   'wb.left.note': 'The drawing you edited by hand takes priority; these stay on the drawing as they are.',
   'wb.left.moved': 'Symbol position, direction or text position changed: {n}',
   'wb.left.replaced': 'Symbols replaced with another type: {n}',

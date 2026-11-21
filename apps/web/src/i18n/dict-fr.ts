@@ -898,6 +898,7 @@ export const fr: Dict = {
   'wb.left.title': '{n} modification(s) faite(s) sur le dessin n’apparaissent pas dans l’écran de saisie.',
   'wb.left.show': 'Voir le détail',
   'wb.left.hide': 'Masquer le détail',
+  'wb.left.more': ' et autres',
   'wb.left.note': 'Le dessin modifié à la main est prioritaire ; ces éléments restent tels quels sur le dessin.',
   'wb.left.moved': 'Position, orientation ou texte de symboles modifiés : {n}',
   'wb.left.replaced': 'Symboles remplacés par un autre type : {n}',

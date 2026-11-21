@@ -547,3 +547,23 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  ケーブルの手前に、すでにあるDSをもう一度足す → 書き戻さない（図面にだけ残る）');
   }
 }
+
+/* 入力に対応する項目が無い部品を消したとき：書き戻さず、図面にだけ残り、「図面にだけ残る変更」の知らせに、部品の名前が出る（第18弾 追加） */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const raw: Answers = { ...answersSpread, areaCount: '1' };
+  const d0 = buildGenerated(toEff(raw));
+  const mb = d0.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === 'main-breaker');
+  const ip = d0.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === 'incoming-point');
+  if (!mb || !ip) fail('主遮断装置・引込点が、自動の図面にありません');
+  else {
+    const d = { ...removeItem(removeItem(d0, mb.id), ip.id), edited: true };
+    const r = writeBack(raw, d, toEff);
+    const rem = r?.leftovers.find((l) => l.kind === 'removed');
+    if (!r || r.applied.length > 0) fail('入力に項目が無い部品（主遮断装置・引込点）を消したのに、入力が変わりました');
+    else if (!rem || rem.n !== 2) fail(`図面にだけ残る変更に、消した記号が2件と出ていません（${JSON.stringify(rem)}）`);
+    else if (!rem.names || rem.names.length < 2 || rem.names.some((n) => !n)) fail(`図面にだけ残る変更の知らせに、消した部品の名前が出ていません（${JSON.stringify(rem.names)}）`);
+    else console.log(`  入力に項目が無い部品（主遮断装置・引込点）を消す → 書き戻さず、図面にだけ残る。知らせに、部品の名前が出る（${rem.names.join('・')}）`);
+  }
+}

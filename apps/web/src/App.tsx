@@ -356,7 +356,7 @@ export function App() {
       return;
     }
     // 書き戻すものが無い（または、取り消した内容と同じ）。図面にだけ残る内容を知らせる
-    const leftovers = r.applied.length > 0 ? leftoversOf(collectOverrides(drawing)) : r.leftovers;
+    const leftovers = r.applied.length > 0 ? leftoversOf(collectOverrides(drawing), drawing.base) : r.leftovers;
     setWb(r.rejected.length > 0 || leftovers.length > 0 ? { result: { ...r, applied: [], leftovers }, undo: null } : null);
   };
 
