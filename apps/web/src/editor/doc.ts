@@ -1298,6 +1298,18 @@ export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
   const { values: oldValues, ...oldRest } = old;
   // 入力欄から文字を作っていた記号は、差し替え先の記号の入力欄で作り直す
   const next: DocSymbol = { ...oldRest, symbolId, ...(oldValues ? labelFromFields(getSymbol(symbolId)) : {}) };
+  // 区分開閉器どうし（PAS・PGS・UGS）の差し替え：1行目の名前の文字（「PAS」など）を、差し替え先の名前にする
+  // （記号は PGS なのに、文字が「PAS」のまま残らないように。手で書き換えた文字は、そのまま）
+  const sectionName = (sid: string): string | null => {
+    const d = getSymbol(sid);
+    const b = d.altOf ?? d.id;
+    return b === 'pas' || b === 'pgs' || b === 'ugs' ? b.toUpperCase() : null;
+  };
+  const fromName = sectionName(old.symbolId);
+  const toName = sectionName(symbolId);
+  if (fromName && toName && fromName !== toName && next.label[0] === fromName) {
+    next.label = [toName, ...next.label.slice(1)];
+  }
   const newPorts = portsOf(next);
   if (oldPorts.length === 0 || newPorts.length === 0) {
     return applyAnchors({ ...doc, items: doc.items.map((it) => (it.id === id ? next : it)) });

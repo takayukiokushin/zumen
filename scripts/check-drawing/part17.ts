@@ -203,3 +203,35 @@ console.log('\n■ 区分開閉器のリスト：選んでいる区分開閉器�
   }
   if (bad.length > 0) fail(`区分開閉器の入れ替えに問題が ${bad.length}件あります（例：${bad.slice(0, 4).join(' ／ ')}）`);
 }
+
+console.log('\n■ 区分開閉器どうしの差し替え：名前の文字も、差し替え先に合わせる（第20弾・書き戻しの残り ①）');
+{
+  const bad: string[] = [];
+  const syms = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol');
+  const base = fromLayout(layout(buildComposition(answersSpread), answersSpread));
+  const { doc, id } = addSectionalizerSet(base, SECTIONALIZER_SETS.find((s) => s.id === 'pas-dgr-vt-la')!);
+  const at = (d: Doc) => syms(d).find((s) => s.id === id)!;
+  const first = at(doc).label[0];
+  if (first !== 'PAS') bad.push(`足した直後の名前の文字が PAS ではありません（${first}）`);
+  for (const to of ['pgs', 'ugs', 'pas'] as const) {
+    const r = replaceSymbol(doc, id, to);
+    const l = at(r).label;
+    if (l[0] !== to.toUpperCase()) bad.push(`${to} に差し替えたのに、名前の文字が ${to.toUpperCase()} になりません（${l[0]}）`);
+    if (l.slice(1).join('|') !== at(doc).label.slice(1).join('|')) bad.push(`${to} に差し替えたら、2行目以降の文字が変わりました`);
+  }
+  // PGS → PAS の往復で、元に戻る
+  const round = replaceSymbol(replaceSymbol(doc, id, 'pgs'), id, 'pas');
+  if (at(round).label[0] !== 'PAS') bad.push('PAS → PGS → PAS で、名前の文字が元に戻りません');
+  // 手で書き換えた名前の文字（PAS・PGS・UGS 以外）は、そのまま
+  const hand: Doc = { ...doc, items: doc.items.map((i) => (i.id === id && i.kind === 'symbol' ? { ...i, label: ['手書きの名前', ...i.label.slice(1)] } : i)) };
+  if (at(replaceSymbol(hand, id, 'pgs')).label[0] !== '手書きの名前') bad.push('手で書き換えた名前の文字が、差し替えで消えました');
+  // 区分開閉器でない記号の差し替えでは、文字は動かない
+  const ds = syms(base).find((s) => s.symbolId === 'ds');
+  if (ds) {
+    const r = replaceSymbol(base, ds.id, 'lbs');
+    const a = syms(r).find((s) => s.id === ds.id)!;
+    if (a.label.join('|') !== ds.label.join('|')) bad.push('DS → LBS の差し替えで、文字が変わりました');
+  }
+  if (bad.length > 0) fail(`区分開閉器の差し替えの名前の文字に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
+  else console.log('  PAS・PGS・UGS どうしの差し替えで、1行目の名前の文字が変わる（2行目以降・手書きの名前・ほかの記号は、そのまま）');
+}
