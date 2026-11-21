@@ -40,6 +40,7 @@ export function scaleSymbol(def: SymbolDef, k: number, over: Partial<SymbolDef> 
     shapes: def.shapes.map((s) => scaleShape(s, k)),
     ports: def.ports.map((p) => ({ ...p, x: r(p.x * k), y: r(p.y * k) })),
     ...(def.slots ? { slots: def.slots.map((s) => ({ ...s, x: r(s.x * k), y: r(s.y * k) })) } : {}),
+    ...(def.onWire ? { onWire: { x: r(def.onWire.x * k), y: r(def.onWire.y * k), y2: r(def.onWire.y2 * k) } } : {}),
     ...(def.markCenter ? { markCenter: { x: r(def.markCenter.x * k), y: r(def.markCenter.y * k) } } : {}),
     ...(def.labelBody ? { labelBody: { x0: r(def.labelBody.x0 * k), x1: r(def.labelBody.x1 * k), top: r(def.labelBody.top * k) } } : {}),
     ...over,

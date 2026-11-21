@@ -71,6 +71,8 @@ export interface DocWire {
   at1?: Anchor;
   /** 終点のつなぎ先 */
   at2?: Anchor;
+  /** 「記号を追加」で、線の上に乗せる記号（VCT・CT・ZCT）と一緒に足した短い線の印（記号の id）。記号を、別の線の上に置いたら、要らなくなるので、消す */
+  stub?: string;
   /**
    * つないでいた記号が消されて、つなぎ先を失った線。
    * 「結線を整える」で、つなぎ直せなかった行き止まりの線を見分けて消すための印
@@ -313,6 +315,8 @@ export interface Doc {
   vacated?: { y0: number; y1: number; x0?: number; x1?: number }[];
   /** 自動で作った図面の控え。手で直した内容を取り出す基準になる */
   base?: Baseline;
+  /** 図面データの形の版（LAYOUT_V）。無ければ1 */
+  layoutV?: number;
   /** 手で直した内容の記録（作り直すたびに更新する）。対象の機器がいまの入力に無いものも、ここに残る */
   overrides?: Overrides;
   /** 印刷する向き。利用者が選んだとき（縦・横のボタン）だけ入る。無ければ、図面の形に合わせて自動で決まる */
@@ -354,6 +358,12 @@ export function makeWire(x1: number, y1: number, x2: number, y2: number, at1: An
 }
 
 /** 自動レイアウトの結果を、編集できる形に取り込む */
+/**
+ * 図面データの形の版。2＝VCT・CT・ZCTが「線の上に乗せる記号」になった（第20弾 項目2）。
+ * 版の無い（1の）保存済みの図面は、開いたとき、新しい形に直す（onwireMigrate.ts）
+ */
+export const LAYOUT_V = 2;
+
 export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
   const items: DocItem[] = [];
   for (const f of drawing.frames) {
@@ -386,7 +396,7 @@ export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
   }
   // 作りたてなので edited は false。回答が変われば作り直してよい印
   const doc = tidyDoc({ items, basis, edited: false });
-  return { ...doc, base: baselineOf(doc) };
+  return { ...doc, base: baselineOf(doc), layoutV: LAYOUT_V };
 }
 
 /* ------------------------------------------------------------------ */
@@ -669,6 +679,12 @@ export function applyAnchors(doc: Doc): Doc {
         w.x2 = it.x1 + (vertical ? 0 : COLLAPSED);
         w.y2 = it.y1 + (vertical ? COLLAPSED : 0);
         return w;
+      }
+
+      // 両端がつないである線の、計算の端数（0.00000000000003 など。記号の大きさが小数になって出る）で、縦・横の線が、斜めと見なされないようにする
+      if (p1 && p2) {
+        if (w.x1 !== w.x2 && Math.abs(w.x1 - w.x2) < 1e-6) w.x2 = w.x1;
+        if (w.y1 !== w.y2 && Math.abs(w.y1 - w.y2) < 1e-6) w.y2 = w.y1;
       }
 
       // 反対側が自由なら、まっすぐのまま伸び縮みさせる
@@ -1252,6 +1268,30 @@ export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
   const old = doc.items.find((it) => it.id === id);
   if (!old || old.kind !== 'symbol' || old.symbolId === symbolId) return doc;
 
+  // 線の上に乗せる記号どうし（VCT・CT・ZCT）の差し替え：線が通る軸を合わせて置く（二次側の接続点は、同じ名前・同じ役割のものへ）
+  const oldOn = defOf(old).onWire;
+  const newOn = getSymbol(symbolId).onWire;
+  if (oldOn && newOn && old.rotate % 360 === 0) {
+    const { values: ov0, ...oldRest0 } = old;
+    const next0: DocSymbol = { ...oldRest0, symbolId, x: old.x + oldOn.x - newOn.x, y: old.y + oldOn.y - newOn.y, ...(ov0 ? labelFromFields(getSymbol(symbolId)) : {}) };
+    const oldP = getSymbol(old.symbolId).ports;
+    const newP = getSymbol(symbolId).ports;
+    const mapPort = (id: string): string | undefined => {
+      const role = oldP.find((p) => p.id === id)?.role;
+      return newP.find((p) => p.id === id)?.id ?? newP.find((p) => p.role === role)?.id;
+    };
+    return applyAnchors({
+      ...doc,
+      items: doc.items.map((it) => {
+        if (it.id === id) return next0;
+        if (it.kind !== 'wire') return it;
+        const w = { ...it };
+        if (w.at1?.item === id) w.at1 = mapPort(w.at1.port) ? { item: id, port: mapPort(w.at1.port)! } : undefined;
+        if (w.at2?.item === id) w.at2 = mapPort(w.at2.port) ? { item: id, port: mapPort(w.at2.port)! } : undefined;
+        return w;
+      }),
+    });
+  }
   const oldPorts = portsOf(old);
   const { values: oldValues, ...oldRest } = old;
   // 入力欄から文字を作っていた記号は、差し替え先の記号の入力欄で作り直す
@@ -1346,7 +1386,12 @@ export const addSymbol = (doc: Doc, symbolId: string, x: number, y: number): { d
     labelDy: sideLabelOrigin(def, 'right', 10, LABEL_FONT * 0.85).y,
     labelAnchor: 'start',
   };
-  return { doc: { ...doc, items: [...doc.items, item] }, id };
+  // 線の上に乗せる記号（VCT・CT・ZCT）は、線が無いと浮いてしまうので、以前の縦線と同じ位置・長さの、短い線を一緒に足す（要らなければ、線を消す）
+  const ow = def.onWire;
+  const wire: DocWire[] = ow
+    ? [{ kind: 'wire', id: freshIdIn({ ...doc, items: [...doc.items, item] }, 'wire'), x1: item.x + ow.x, y1: item.y + ow.y, x2: item.x + ow.x, y2: item.y + ow.y2, stub: id }]
+    : [];
+  return { doc: { ...doc, items: [...doc.items, item, ...wire] }, id };
 };
 
 /**
@@ -1362,6 +1407,26 @@ export function standardLabelOffset(doc: Doc, it: DocSymbol): { dx: number; dy: 
   const o = sideLabelOrigin(getSymbol(it.symbolId), 'right', 10, LABEL_FONT * 0.85);
   return { dx: o.x, dy: o.y };
 }
+
+/**
+ * 線の上に乗せる記号（VCT・CT・ZCT）を動かしたあと、「記号を追加」で一緒に足した短い線が、別の縦の線と重なっていたら、その短い線を消す
+ * （別の線の上に置いたので、短い線は要らない。残すと、線が二重になる）。
+ */
+export const dropRedundantStub = (doc: Doc, ids: string[]): Doc => {
+  const drop = new Set<string>();
+  for (const id of ids) {
+    const sym = doc.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === id);
+    if (!sym || !defOf(sym).onWire) continue;
+    for (const w of doc.items) {
+      if (w.kind !== 'wire' || w.stub !== id) continue;
+      const covered = doc.items.some((o) => o.kind === 'wire' && o.id !== w.id && !o.stub && Math.abs(o.x1 - o.x2) < 0.01 && Math.abs(o.x1 - w.x1) <= 1.5 && Math.min(o.y1, o.y2) <= Math.min(w.y1, w.y2) + 0.5 && Math.max(o.y1, o.y2) >= Math.max(w.y1, w.y2) - 0.5);
+      // 動かして、短い線が、記号の軸から外れたとき（線が軸の上に無い）は、ふつうの線として残す
+      const onAxis = Math.abs(w.x1 - (sym.x + defOf(sym).onWire!.x)) <= 1.5;
+      if (covered && onAxis) drop.add(w.id);
+    }
+  }
+  return drop.size === 0 ? doc : { ...doc, items: doc.items.filter((i) => !drop.has(i.id)) };
+};
 
 /** 文字だけを、(dx, dy) 動かす（記号は動かさない）。動かした位置は、図面と一緒に保存される */
 export const moveLabel = (doc: Doc, id: string, dx: number, dy: number): Doc => {
@@ -1531,7 +1596,9 @@ export function assistMove(doc: Doc, id: string, rawDx: number, rawDy: number, r
   if (target?.kind === 'wire') return assistWireMove(doc, target, rawDx, rawDy, range);
   if (!target || target.kind !== 'symbol') return { dx: snap(rawDx), dy: snap(rawDy) };
 
-  const pts = portsOf(target);
+  // 線の上に乗せる記号（VCT・CT・ZCT）：線が通る軸を、「接続点」のように扱う（近くの縦の線に、軸がぴったり合う）
+  const ow = defOf(target).onWire;
+  const pts = ow && target.rotate % 360 === 0 ? [...portsOf(target), { id: '(axis)', x: target.x + ow.x, y: target.y + ow.y, dir: 'up' as const, role: 'line' as const }] : portsOf(target);
   const wantX: Candidate[] = [];
   const wantY: Candidate[] = [];
 

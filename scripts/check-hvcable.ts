@@ -8,7 +8,7 @@
  *
  *   node --experimental-strip-types scripts/check-hvcable.ts
  */
-import { addSymbol, addWire, docBounds, fromLayout, portsOf, replaceSymbol } from '../apps/web/src/editor/doc.ts';
+import { addSymbol, addWire, docBounds, dropRedundantStub, fromLayout, moveItem, portsOf, replaceSymbol } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol, DocWire } from '../apps/web/src/editor/doc.ts';
 import { cableViolations, hvStretches, isZctSymbol, newCableViolation } from '../apps/web/src/editor/hvCable.ts';
 import { inspectDrawing } from '../apps/web/src/editor/inspect.ts';
@@ -16,6 +16,7 @@ import { cableInsertRefused, insertTarget } from '../apps/web/src/editor/rewire.
 import { buildComposition, dropHiddenChoices, effectiveAnswers, evaluate, missingRequiredFields } from '../packages/knowledge/src/index.ts';
 import type { Answers } from '../packages/knowledge/src/index.ts';
 import { layout } from '../packages/layout/src/index.ts';
+import { getSymbol } from '../packages/symbols/src/index.ts';
 
 const SCALE = Math.max(1, Number(process.env.FUZZ_COUNT ?? 1));
 function rng(seed: number) {
@@ -122,13 +123,15 @@ if (zcts < 10) fail(`ケーブルの途中の ZCT が、ほとんど見つかり
     const dy = my - vm.y;
     if (insertTarget(v.doc, v.id, dx, dy) !== null) fail('VCB が、高圧ケーブルの線を割って入れてしまいます');
     if (!cableInsertRefused(v.doc, v.id, dx, dy)) fail('VCB を高圧ケーブルの線の上へ動かしても、断る判断が出ません');
-    // ZCT は入る
+    // ZCT は、ケーブルの線の上に置ける（線の上に乗せる記号なので、線は割らない。第20弾 項目2）
     const z = addSymbol(d, 'zct', 400, 400);
-    const zm = mid(z.doc, z.id);
-    const zdx = mx - zm.x;
-    const zdy = my - zm.y;
-    if (insertTarget(z.doc, z.id, zdx, zdy) === null) fail('ZCT が、高圧ケーブルの線に入れなくなっています');
+    const zow = getSymbol('zct').onWire!;
+    const zs = z.doc.items.find((i) => i.id === z.id) as DocSymbol;
+    const zdx = mx - (zs.x + zow.x);
+    const zdy = my - (zs.y + getSymbol('zct').box.h / 2);
+    if (insertTarget(z.doc, z.id, zdx, zdy) !== null) fail('線の上に乗せる記号の ZCT が、高圧ケーブルの線を割って入っています');
     if (cableInsertRefused(z.doc, z.id, zdx, zdy)) fail('ZCT を高圧ケーブルの線の上へ動かしたとき、断られています');
+    if (newCableViolation(d, dropRedundantStub(moveItem(z.doc, z.id, zdx, zdy), [z.id]))) fail('ZCT を高圧ケーブルの線の上に置いたのに、断る対象になっています');
     // 線を、ケーブルの途中へ
     const w1 = addWire(d, mx + 60, my, mx, my, { assist: false });
     if (!newCableViolation(d, w1.doc)) fail('高圧ケーブルの途中へつなぐ線を、断れません');
@@ -138,16 +141,16 @@ if (zcts < 10) fail(`ケーブルの途中の ZCT が、ほとんど見つかり
     // ZCT を ZCT 以外に差し替える
     const zid = st.mid.find((m) => isZctSymbol((d.items.find((i) => i.id === m) as DocSymbol).symbolId));
     if (zid) {
-      if (!newCableViolation(d, replaceSymbol(d, zid, 'vcb'))) fail('ケーブルの途中の ZCT を、VCB に差し替えるのを、断れません');
+      if (!newCableViolation(d, replaceSymbol(d, zid, 'ct'))) fail('ケーブルの途中の ZCT を、CT に差し替えるのを、断れません');
     }
     // すでに入っている図面：点検で、印と説明が出る（動かさない）
-    const stuck = replaceSymbol(d, zid ?? st.mid[0]!, 'vcb');
+    const stuck = replaceSymbol(d, zid ?? st.mid[0]!, 'ct');
     const found = cableViolations(stuck);
-    if (found.length === 0) fail('ケーブルの途中に VCB が入っている図面を、見つけられません');
+    if (found.length === 0) fail('ケーブルの途中に CT が入っている図面を、見つけられません');
     const issues = inspectDrawing(stuck, 'A3', 'portrait').filter((i) => i.kind === 'cableMid');
     if (found.length > 0 && issues.length === 0) fail('点検（結線を整える）に、ケーブルの途中の問題が出ません');
     const pos = (doc: Doc) => doc.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((s) => `${s.id}@${s.x},${s.y}`).join(' ');
-    if (pos(stuck) !== pos(replaceSymbol(d, zid ?? st.mid[0]!, 'vcb'))) fail('点検が、図面を動かしています');
+    if (pos(stuck) !== pos(replaceSymbol(d, zid ?? st.mid[0]!, 'ct'))) fail('点検が、図面を動かしています');
     // 低圧（遮蔽層の無い線）は対象外：ケーブルヘッドの無い線の途中は、何も断らない
     const plain = d.items.filter((i): i is DocWire => i.kind === 'wire' && !st.wires.includes(i.id) && !i.dashed && !i.fan && Math.hypot(i.x2 - i.x1, i.y2 - i.y1) > 60)[0];
     if (plain) {

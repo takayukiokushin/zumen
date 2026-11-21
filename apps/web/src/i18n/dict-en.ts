@@ -742,6 +742,8 @@ export const en: Dict = {
   'editor.rebuiltDormant': 'Edits for equipment not in the current input ({n} items) are kept aside (they apply again if that equipment comes back).',
   'editor.rebuiltOverlap': '{n} of the symbols you moved by hand overlap other symbols. Please check their positions (the overlapping symbols are outlined with a red dotted line, which disappears when you close this notice).',
   'editor.cableRefused': 'Nothing except a ZCT can be connected to the middle of an HV cable. Connect it outside the cable heads (terminations).',
+  'editor.onWireRefused': 'Symbols that sit on a wire (VCT, CT, ZCT) and other symbols cannot be swapped for each other. Deselect it and add a new one.',
+  'editor.onWireUpgraded': 'The VCT, CT and ZCT symbols in this drawing were converted to the new “sits on a wire” form. The look is the same and your manual edits are kept. “Undo” cannot go back before this (just save).',
   'editor.cableFound': 'Something other than a ZCT is connected to the middle of an HV cable ({n} place(s)), marked in red. Connect it outside the cable heads (terminations).',
   'editor.rebuiltUndo': 'You can restore it with “Undo”.',
   'editor.rebuiltUndo2': 'You can go back to the original diagram with “Undo”.',

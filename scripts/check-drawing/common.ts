@@ -12,7 +12,9 @@ import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 export type PlacedSymbolLike = ReturnType<typeof layout>['symbols'][number];
 export const portAbs = (s: PlacedSymbolLike, id: string) => {
   const def = getSymbolDef(s.symbolId);
-  const p = def.ports.find((q) => q.id === id)!;
+  // 線の上に乗せる記号（VCT・CT・ZCT）には、入口・出口が無い。以前の入口・出口にあたる、軸の上の点（線が通る、上の端・下の端）を返す
+  const ow = def.onWire;
+  const p = def.ports.find((q) => q.id === id) ?? (ow && (id === 'in' || id === 'out') ? { x: ow.x, y: id === 'in' ? ow.y : ow.y2 } : undefined)!;
   const [rx, ry] = rotatedPort(def.box, p.x, p.y, s.rotate);
   return { x: s.x + rx, y: s.y + ry };
 };

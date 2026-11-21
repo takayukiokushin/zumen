@@ -20,6 +20,7 @@ import { TextWindow } from './TextWindow.tsx';
 import type { Pos } from './FloatingWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
+import { convertDocOnWire, migrateOnWire, needsOnWireMigration } from './onwireMigrate.ts';
 import { addSectionalizerSet, isSectionalizer, setThumb, swapSectionalizerSet } from './sectionalizerSets.ts';
 import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
@@ -32,7 +33,7 @@ import { TextStyleControls } from './TextStyleControls.tsx';
 import { useDialogs } from '../Dialogs.tsx';
 import { cableViolations, newCableViolation } from './hvCable.ts';
 import { cableInsertRefused, moveWithInsert } from './rewire.ts';
-import { addFan, dedupeIds, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, moveItem, moveItems, moveLabel, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
+import { addFan, dedupeIds, refreshFans, addSymbol, addText, addWire, digest, docBounds, fromLayout, dropRedundantStub, moveItem, moveItems, moveLabel, moveWireEnd, removeItem, removeItems, replaceSymbol, resetLabelFromFields, setLabel, resizeInfoOf, setItemRect, setLabelValue, setTextStyle, setWireKind, tidyDoc } from './doc.ts';
 
 /** 赤い枠の種類の、画面の言葉と、文字を書く位置の、画面の言葉 */
 const AREA_KIND_LABEL = { outage: 'area.kind.outage', live: 'area.kind.live', applied: 'area.kind.applied' } as const;
@@ -110,6 +111,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     return fromLayout(layout(composition, answers), basis);
   }, [composition, answers, basis]);
 
+  /** 保存してあった図面を、新しい形に直したか（開いたとき、知らせを出す） */
+  const onWireUpgraded = useRef(false);
   const [history, setHistory] = useState<History>(() => {
     // 手で直していない図面は、いつでも回答から作り直してよい。
     // 手で直したものは、手で直した内容を残したまま、回答が変わっていれば、作り直す（下の useEffect）
@@ -119,7 +122,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     }
     // 保存してあった図面も一度「整える」を通して、結線を接続点に結び直しておく。
     // 自動で作った図面の控えが無い古い図面は、いまの回答から作った図面を控えにする（回答が同じなら、ほぼ同じ図面）
-    const tidy = tidyDoc(dedupeIds(initialDoc));
+    // 縦線のある古い形の VCT・CT・ZCT が入った図面は、新しい形（線の上に乗せる記号。第20弾 項目2）に直す（手で直した内容は、残す）
+    const migrate = needsOnWireMigration(initialDoc);
+    if (migrate) onWireUpgraded.current = true;
+    const start0 = migrate ? (initialDoc.base ? migrateOnWire(initialDoc, generated) : convertDocOnWire(initialDoc)) : initialDoc;
+    const tidy = tidyDoc(dedupeIds(start0));
     return { past: [], present: tidy.base ? tidy : { ...tidy, base: generated.base }, future: [] };
   });
   /** 選んでいる要素（複数のこともある） */
@@ -630,6 +637,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     return () => heavy.bind(null);
   });
 
+  useEffect(() => {
+    if (onWireUpgraded.current) setSetNote(t('editor.onWireUpgraded'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** 図面を開いたとき、高圧ケーブルの途中に、ZCT 以外がつながっていないか見て、あれば、赤い印と知らせを出す（動かさない）（第18弾 D） */
   useEffect(() => {
     const vs = cableViolations(doc);
@@ -790,6 +802,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
 
   const onPaletteClick = (symbolId: string) => {
     if (selectedSymbol) {
+      // 線の上に乗せる記号（VCT・CT・ZCT）と、ほかの記号（接続点で線をつなぐ記号）は、差し替えられない（形のつなぎ方が違う）
+      if (!!getSymbol(selectedSymbol.symbolId).onWire !== !!getSymbol(symbolId).onWire) {
+        setCableNote(t('editor.onWireRefused'));
+        return;
+      }
       const next = replaceSymbol(doc, selectedSymbol.id, symbolId);
       // 高圧ケーブルの途中にある ZCT を、ZCT 以外に差し替えるときは、断る
       if (newCableViolation(doc, next)) setCableNote(t('editor.cableRefused'));
@@ -1486,7 +1503,9 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 if (!noAuto && ids.length === 1 && cableInsertRefused(doc, ids[0]!, dx, dy)) setCableNote(t('editor.cableRefused'));
                 const next = moveWithInsert(doc, ids, dx, dy, (d) => (ids.length === 1 ? moveItem(d, ids[0]!, dx, dy) : moveItems(d, ids, dx, dy)), noAuto);
                 // 動かした記号の文字は、標準の位置に戻し、そこでも重なるときだけ、重ならない場所へ逃がす（手で動かした文字も、標準に戻る）
-                apply(settleLabels(next, ids));
+                // 線の上に乗せる記号（CT・VCT）を、高圧ケーブルの線の上へ動かしたときは、断る（ZCTは、ケーブルに付けてよい）
+                if (!noAuto && ids.length === 1 && newCableViolation(doc, next)) setCableNote(t('editor.cableRefused'));
+                apply(settleLabels(dropRedundantStub(next, ids), ids));
               }
             }}
             onLabelMove={(id, dx, dy) => apply(moveLabel(doc, id, dx, dy))}

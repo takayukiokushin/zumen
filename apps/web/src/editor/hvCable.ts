@@ -98,7 +98,18 @@ export function hvStretches(doc: Doc): HvStretch[] {
       from = { item: s.id, port: ports[0]!.id };
       w = next[0]!;
     }
-    if (end && end.id !== h.id && h.id < end.id && isHighVoltage(h, end)) out.push({ heads: [h.id, end.id], wires: ws, mid });
+    if (end && end.id !== h.id && h.id < end.id && isHighVoltage(h, end)) {
+      // 線の上に乗せる記号（VCT・CT・ZCT）で、ケーブルの線の上に乗っているものも、「あいだにある記号」に入れる
+      const cw = ws.map((id) => doc.items.find((i): i is DocWire => i.kind === 'wire' && i.id === id)).filter((x): x is DocWire => !!x);
+      for (const s of sym.values()) {
+        const ow = defOf(s).onWire;
+        if (!ow || s.rotate % 360 !== 0 || mid.includes(s.id)) continue;
+        const ax = s.x + ow.x;
+        const ay = s.y + defOf(s).box.h / 2;
+        if (cw.some((c) => Math.abs(c.x1 - c.x2) < 0.01 && Math.abs(c.x1 - ax) <= 1.5 && ay > Math.min(c.y1, c.y2) && ay < Math.max(c.y1, c.y2))) mid.push(s.id);
+      }
+      out.push({ heads: [h.id, end.id], wires: ws, mid });
+    }
   }
   return out;
 }
@@ -139,6 +150,12 @@ export function cableViolations(doc: Doc): CableViolation[] {
     for (const id of st.mid) {
       const s = sym.get(id)!;
       if (isZctSymbol(s.symbolId)) continue;
+      const ow = defOf(s).onWire;
+      if (ow) {
+        // 線の上に乗せる記号：線が通る軸の上の、記号の真ん中
+        out.push({ kind: 'symbol', x: s.x + ow.x, y: s.y + defOf(s).box.h / 2, itemId: s.id, symbolId: s.symbolId });
+        continue;
+      }
       const b = portsOf(s);
       const cx = b.reduce((a, p) => a + p.x, 0) / Math.max(1, b.length);
       const cy = b.reduce((a, p) => a + p.y, 0) / Math.max(1, b.length);
@@ -148,6 +165,8 @@ export function cableViolations(doc: Doc): CableViolation[] {
   // ケーブルの線の途中に、端がついている、ほかの線
   for (const w of doc.items) {
     if (w.kind !== 'wire' || cableWires.has(w.id)) continue;
+    // ケーブルの線と、同じ縦の線の上に重なっている線（線の上に乗せる記号の、短い線など）は、途中への接続ではない
+    if (Math.abs(w.x1 - w.x2) < 0.01 && [...cableWires].some((cw) => { const c = byId.get(cw); return !!c && Math.abs(c.x1 - c.x2) < 0.01 && Math.abs(c.x1 - w.x1) <= 1.5; })) continue;
     for (const [x, y] of [[w.x1, w.y1], [w.x2, w.y2]] as const) {
       for (const cw of cableWires) {
         const c = byId.get(cw);

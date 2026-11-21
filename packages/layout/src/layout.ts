@@ -1,4 +1,4 @@
-import { BOUNDARY_SAFETY_LEFT, findSymbol, getSymbol, sideLabelOrigin } from '@zumen/symbols';
+import { BOUNDARY_SAFETY_LEFT, chainFind as findSymbol, chainSymbol as getSymbol, getSymbol as currentSymbol, sideLabelOrigin } from '@zumen/symbols';
 import type { Port, RectShape, SymbolDef } from '@zumen/symbols';
 import { ROW, ROW_COUNT } from '@zumen/knowledge';
 import type { Answers, PlacedItem } from '@zumen/knowledge';
@@ -7,6 +7,7 @@ import type { DrawingArrow, DrawingDot } from './dot.ts';
 import type { DrawingGround } from './ground.ts';
 import type { DrawingLink } from './link.ts';
 import { LABEL_FONT, LABEL_LINE, labelWidth } from './text.ts';
+import { convertOnWire } from './onwire.ts';
 
 /** ケーブルの、機器側の端末（180°回して、頂点をケーブル側＝上に向ける）：電動機・変圧器・コンデンサ・発電機 */
 const isCableSiteRole = (role: string): boolean => role === 'motor-cable-site' || /^(tr|cap|gen)-cable-site$/.test(role);
@@ -1223,9 +1224,10 @@ export function findLabelCollisions(
   margin = LABEL_CLEAR,
 ): string[] {
   const out: string[] = [];
+  // 作図が終わったあとの図面を調べる：記号は、いまの（新しい）形で見る
   const boxes = d.symbols.map((s) => {
-    const rb = rotatedBox(getSymbol(s.symbolId).box, s.rotate);
-    return { id: s.id, abbr: getSymbol(s.symbolId).abbr, rect: { x0: s.x + rb.dx, y0: s.y + rb.dy, x1: s.x + rb.dx + rb.w, y1: s.y + rb.dy + rb.h } };
+    const rb = rotatedBox(currentSymbol(s.symbolId).box, s.rotate);
+    return { id: s.id, abbr: currentSymbol(s.symbolId).abbr, rect: { x0: s.x + rb.dx, y0: s.y + rb.dy, x1: s.x + rb.dx + rb.w, y1: s.y + rb.dy + rb.h } };
   });
   const labeled = d.symbols.filter((s) => s.label.length > 0);
   labeled.forEach((s, i) => {
@@ -1454,7 +1456,18 @@ const LINK_RISE = 40;
  * 2か所以上のときは、エリアごとに配置して、枠の上端をそろえて左から右へ並べ、
  * 前のエリアの指定の位置から、ケーブルの線を引いてつなぐ。
  */
+/**
+ * 構成データを、図面上の座標に落とす。
+ * 位置は、VCT・CT・ZCTの以前の形（縦線・入口・出口あり）で決め、最後に、線の上に乗せる新しい形に直す（onwire.ts）。
+ */
 export function layout(allItems: PlacedItem[], answers: Answers): DrawingLayout {
+  return convertOnWire(layoutAll(allItems, answers));
+}
+
+/** 新しい形に直す前の、自動作図の結果（VCT・CT・ZCTが、以前の形の位置にある）。古い形の図面を作る、試験のためだけに使う */
+export const layoutChain = (allItems: PlacedItem[], answers: Answers): DrawingLayout => layoutAll(allItems, answers);
+
+function layoutAll(allItems: PlacedItem[], answers: Answers): DrawingLayout {
   const areaNos = [...new Set(allItems.map((i) => i.area ?? 0))].sort((a, b) => a - b);
   if (areaNos.length <= 1) return layoutArea(allItems.filter((i) => i.kind !== 'link' && i.kind !== 'sendout'), answers);
 

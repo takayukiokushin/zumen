@@ -556,7 +556,7 @@ try {
       await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'ケーブルの検査', answers: ans }) })
     ).json() as { id: string; updatedAt: string };
     const basis4 = digest(JSON.stringify(buildComposition(eff).map((i) => [i.role, i.symbolId, i.label, i.unit ?? 0])));
-    const stuck = { ...replaceSymbol({ ...g4, basis: basis4 }, zid ?? '', 'vcb'), edited: true, base: g4.base };
+    const stuck = { ...replaceSymbol({ ...g4, basis: basis4 }, zid ?? '', 'ct'), edited: true, base: g4.base };
     const pr4 = await fetch(`${base}/api/projects/${created4.id}`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'ケーブルの検査', answers: ans, drawing: stuck, baseUpdatedAt: created4.updatedAt, force: true }) });
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     await ctx.addInitScript(() => {
@@ -587,7 +587,7 @@ try {
       const note = await page.locator('.layer-note', { hasText: '高圧ケーブルの途中' }).count();
       if (marks < 1 || note < 1) {
         failed++;
-        problems.push(`ケーブルの検査：途中に VCB が入っている図面を開いても、赤い印（${marks}個）か知らせ（${note}件）が出ません`);
+        problems.push(`ケーブルの検査：途中に CT が入っている図面を開いても、赤い印（${marks}個）か知らせ（${note}件）が出ません`);
       } else {
         await page.locator('.layer-note', { hasText: '高圧ケーブルの途中' }).locator('button').first().click({ timeout: 2000 });
         await sleep(300);

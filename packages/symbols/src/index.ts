@@ -4,6 +4,7 @@ import { circle, earth, hline, line, rect, shapesToSvg, text, vline } from './sh
 import { incomingSymbols } from './defs/incoming.ts';
 import { PAS_SCALE, switchgearSymbols } from './defs/switchgear.ts';
 import { scaleSymbol } from './scale.ts';
+import { ON_WIRE_ORIGIN, onWireDefs } from './defs/onwire.ts';
 import { instrumentSymbols } from './defs/instrument.ts';
 import { protectionSymbols } from './defs/protection.ts';
 import { transformerSymbols } from './defs/transformer.ts';
@@ -13,6 +14,7 @@ export * from './shape.ts';
 export * from './types.ts';
 export { scaleSymbol } from './scale.ts';
 export { PAS_SCALE } from './defs/switchgear.ts';
+export { ON_WIRE_ORIGIN } from './defs/onwire.ts';
 export { BOUNDARY_SAFETY_LEFT } from './defs/incoming.ts';
 
 /**
@@ -65,12 +67,46 @@ const insideOf = (src: SymbolDef, id: string, nameJa: string): SymbolDef =>
     tags: [...(src.tags ?? []), 'PAS', 'PGS', '内蔵'],
     note: 'PAS・PGS・UGSの枠の中に入れる、縮めた記号。形は元の記号と同じ',
   });
+
+/**
+ * 線の上に乗せる記号（VCT・CT・ZCT・PAS内蔵のZCT）の、以前の形（縦線・入口・出口の接続点あり。第20弾 項目2より前）。
+ * 自動作図が、主回路に並べる位置を決めるのに使う（決めたあと、新しい形に直す。packages/layout/src/onwire.ts）。画面・図面には出さない。
+ */
+export const CHAIN_SYMBOLS: Readonly<Record<string, SymbolDef>> = {
+  vct: baseOf('vct'),
+  ct: baseOf('ct'),
+  zct: baseOf('zct'),
+  'zct-pas': insideOf(ZCT_PAS_BASE, 'zct-pas', '零相変流器（PAS・PGS内蔵用）'),
+};
+const NEW_ON_WIRE = onWireDefs({ vct: baseOf('vct'), ct: baseOf('ct'), zct: baseOf('zct') });
+
 export const SYMBOLS: readonly SymbolDef[] = [
-  ...BASE_SYMBOLS.map((s) => (s.id === 'zpd-pas' || s.id === 'zpd-pas-boxed' ? scaleSymbol(s, PAS_SCALE) : s)),
-  insideOf(ZCT_PAS_BASE, 'zct-pas', '零相変流器（PAS・PGS内蔵用）'),
+  ...BASE_SYMBOLS.map((s) =>
+    s.id === 'zpd-pas' || s.id === 'zpd-pas-boxed'
+      ? scaleSymbol(s, PAS_SCALE)
+      : s.id === 'vct' || s.id === 'ct' || s.id === 'zct'
+        ? NEW_ON_WIRE[s.id]
+        : s,
+  ),
+  scaleSymbol(NEW_ON_WIRE.zct, PAS_SCALE, {
+    id: 'zct-pas',
+    nameJa: '零相変流器（PAS・PGS内蔵用）',
+    altOf: 'zct',
+    optional: true,
+    tags: [...(NEW_ON_WIRE.zct.tags ?? []), 'PAS', 'PGS', '内蔵'],
+    note: 'PAS・PGS・UGSの枠の中に入れる、縮めた記号。形は元の記号と同じ',
+  }),
   insideOf(baseOf('vt'), 'vt-pas', '計器用変圧器（PAS・PGS内蔵用）'),
   insideOf(baseOf('la'), 'la-pas', '避雷器（PAS・PGS内蔵用）'),
 ];
+
+/** 自動作図が使う記号（以前の形があるものは、以前の形） */
+// （'constructor'・'toString' のような名前を、記号と取り違えないよう、自分で持っているものだけを見る）
+const chainOf = (id: string): SymbolDef | undefined => (Object.hasOwn(CHAIN_SYMBOLS, id) ? CHAIN_SYMBOLS[id] : undefined);
+export const chainSymbol = (id: string): SymbolDef => chainOf(id) ?? getSymbol(id);
+export const chainFind = (id: string): SymbolDef | undefined => chainOf(id) ?? findSymbol(id);
+/** 線の上に乗せる記号（VCT・CT・ZCT・PAS内蔵のZCT）の記号IDか */
+export const isOnWireId = (id: string): boolean => Object.hasOwn(ON_WIRE_ORIGIN, id);
 
 const byId = new Map(SYMBOLS.map((s) => [s.id, s]));
 

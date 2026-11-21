@@ -137,6 +137,12 @@ export interface SymbolDef {
    * 画面・印刷（PDF）のどちらにも、この色で出す
    */
   color?: string;
+  /**
+   * 線の上に乗せる記号（VCT・CT・ZCT）の、線が通る位置（第20弾 項目2）。
+   * この記号には、縦線（主回路の線）も、入口・出口の接続点も無い。記号は、図面の上の線に重ねて置く。
+   * x＝線が通る縦の位置（記号のローカル座標）／y＝（以前の入口の接続点にあたる）基準の高さ（以前の縦線の上の端）。内蔵のスロットに入れるとき、この点をスロットの位置に合わせる。
+   */
+  onWire?: { x: number; y: number; /** 以前の縦線の、下の端の高さ（「記号を追加」で足す、短い線の長さを決める） */ y2: number };
   /** 現場レビューの確認状態 */
   status: SymbolStatus;
   /** 確認状態の補足（何を待っているか、何がOKになったか） */
@@ -173,7 +179,7 @@ export interface SizeRange {
 /** 記号定義のバリデーション（ポートが枠内にあるか等の単純な整合性確認） */
 export function validateSymbol(def: SymbolDef): string[] {
   const errors: string[] = [];
-  if (def.ports.length === 0 && def.category !== 'enclosure' && !def.overlay && !def.decorative) {
+  if (def.ports.length === 0 && def.category !== 'enclosure' && !def.overlay && !def.decorative && !def.onWire) {
     errors.push(`${def.id}: ポートが1つもありません`);
   }
   const ids = new Set<string>();

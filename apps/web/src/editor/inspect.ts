@@ -1193,6 +1193,9 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
     const related = relatedSymbols(doc, w);
     for (const s of symbols) {
       if (related.has(s.id) || getSymbol(s.symbolId).overlay) continue;
+      // 線の上に乗せる記号（VCT・CT・ZCT）：線が、記号の軸を、縦にまっすぐ通っているのは、そのとおりの置き方（突き抜けではない）
+      const ow = getSymbol(s.symbolId).onWire;
+      if (ow && s.rotate % 360 === 0 && Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.x1 - (s.x + ow.x)) <= 1.5) continue;
       const box = symbolBox(s);
       if (!segmentEntersBox(w, box)) continue;
       // 連動の点線が、開閉器の中で止まっているのは、突き抜けていない
