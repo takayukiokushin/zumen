@@ -1,4 +1,4 @@
-import type { SymbolDef } from './types.ts';
+import type { SymbolCategory, SymbolDef } from './types.ts';
 import { validateSymbol } from './types.ts';
 import { circle, earth, hline, line, rect, shapesToSvg, text, vline } from './shape.ts';
 import { incomingSymbols } from './defs/incoming.ts';
@@ -99,6 +99,19 @@ export const SYMBOLS: readonly SymbolDef[] = [
   insideOf(baseOf('vt'), 'vt-pas', '計器用変圧器（PAS・PGS内蔵用）'),
   insideOf(baseOf('la'), 'la-pas', '避雷器（PAS・PGS内蔵用）'),
 ];
+
+/**
+ * 「記号を追加・差し替え」の分類から、外す分類（第20弾 項目5）。
+ * 「結線要素」（母線・地表面の線）は、ふだんの図面では要らず、母線は「結線」「線を引く」で足せ、地表面は描かない。
+ * 利用者の指示がない限り、画面に戻さない。記号の定義は、残してある（保存してある図面に入っているものを、描けるように。
+ * 母線の線の太さは、停電範囲図の×印の太さの元にもなっている）。
+ */
+export const PALETTE_HIDDEN_CATEGORIES: readonly SymbolCategory[] = ['wiring'];
+
+/** 「記号を追加・差し替え」に出す分類（記号マスタに出てくる順。外す分類は除く） */
+export function paletteCategories(): SymbolCategory[] {
+  return [...new Set(SYMBOLS.map((s) => s.category))].filter((c) => !PALETTE_HIDDEN_CATEGORIES.includes(c));
+}
 
 /** 自動作図が使う記号（以前の形があるものは、以前の形） */
 // （'constructor'・'toString' のような名前を、記号と取り違えないよう、自分で持っているものだけを見る）

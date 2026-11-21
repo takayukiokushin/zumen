@@ -1,6 +1,6 @@
 import { pushPast } from './history.ts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@zumen/symbols';
+import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, paletteCategories, symbolToSvg } from '@zumen/symbols';
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
@@ -787,7 +787,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   // 手で選ぶものではないので一覧に出さない
   const palette = paletteCategory === SET_LIST ? [] : SYMBOLS.filter((s) => s.category === paletteCategory && !(s.altOf && s.optional));
   // 「区分開閉器」のリストは、「責任分界点」と「開閉器・遮断器」のあいだ
-  const categories: (SymbolCategory | typeof SET_LIST)[] = [...new Set(SYMBOLS.map((s) => s.category))].flatMap((c) => (c === 'boundary' ? [c, SET_LIST] : [c]));
+  const categories: (SymbolCategory | typeof SET_LIST)[] = paletteCategories().flatMap((c) => (c === 'boundary' ? [c, SET_LIST] : [c]));
   const onSetClick = (set: (typeof SECTIONALIZER_SETS)[number]) => {
     // 区分開閉器（PAS・PGS・UGS）を選んでいるときだけ、その中身（内蔵機器・継電器・制御線）を、入れ替える
     if (selectedSymbol && isSectionalizer(selectedSymbol)) {

@@ -11,7 +11,7 @@ import { buildComposition } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { layout } from '../../packages/layout/src/index.ts';
 import type { RectShape, TextShape } from '../../packages/symbols/src/index.ts';
-import { getSymbol } from '../../packages/symbols/src/index.ts';
+import { SYMBOLS, getSymbol, paletteCategories } from '../../packages/symbols/src/index.ts';
 import { answers, fail } from './common.ts';
 
 console.log('\n■ 蓄電池ユニット：2行の文字・短くした長方形・古い図面の変換');
@@ -72,4 +72,19 @@ console.log('\n■ 蓄電池ユニット：2行の文字・短くした長方形
   }
   if (bad.length > 0) fail(`蓄電池ユニットに問題が ${bad.length}件あります（例：${bad.slice(0, 4).join(' ／ ')}）`);
   else console.log('  2行の文字は真ん中・長方形は横だけ縮む（高さは同じ）・縦棒は真ん中・古い図面は、位置とつながりが変わらずに直る');
+}
+
+console.log('\n■ 「記号を追加・差し替え」の分類：「結線要素」は出さない（第20弾 項目5）');
+{
+  const bad: string[] = [];
+  const cats = paletteCategories();
+  if (cats.includes('wiring')) bad.push('追加の一覧に、「結線要素」が出ています');
+  if (cats.length !== new Set(SYMBOLS.map((s) => s.category)).size - 1) bad.push(`分類の数が合いません（${cats.length}）`);
+  // 記号の定義は残してある（保存してある図面に入っているものを描ける。×印の太さの元にもなる）
+  for (const id of ['bus', 'ground-line']) if (!SYMBOLS.some((s) => s.id === id)) bad.push(`${id} の定義が無くなっています（保存してある図面が描けなくなります）`);
+  // 自動で作る図面には、使っていない（図面が変わらない）
+  const used = new Set(layout(buildComposition(answers), answers).symbols.map((s) => s.symbolId));
+  for (const id of ['bus', 'ground-line']) if (used.has(id)) bad.push(`自動作図が ${id} を使っています（項目5の前提と違います）`);
+  if (bad.length > 0) fail(`「結線要素」の整理に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
+  else console.log(`  追加の一覧の分類は ${cats.length} 個（「結線要素」は無い）。母線・地表面の定義は、保存済みの図面のために残してある`);
 }
