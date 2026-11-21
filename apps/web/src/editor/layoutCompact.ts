@@ -1,5 +1,5 @@
 import { labelRect } from '@zumen/layout';
-import { applyAnchors, docBounds, itemBounds } from './doc.ts';
+import { applyAnchors, seatOnWire, docBounds, itemBounds } from './doc.ts';
 import type { Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
 
 /**
@@ -549,7 +549,7 @@ export function compactOneAxis(doc: Doc, axis: Axis, factor: number, params: Com
   if (factor === 1) return null;
   const raw = compactAxis(doc, axis, factor, params);
   if (!raw || !moved(doc, raw)) return null;
-  const anchored = applyAnchors(raw);
+  const anchored = seatOnWire(applyAnchors(raw));
   // 計算の、ごく小さなずれで、縦（横）の線が、斜めと見なされないように、小数点以下6けたにそろえる
   const r6 = (v: number) => Math.round(v * 1e6) / 1e6;
   const out: Doc = {

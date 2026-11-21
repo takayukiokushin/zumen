@@ -1411,6 +1411,39 @@ export function standardLabelOffset(doc: Doc, it: DocSymbol): { dx: number; dy: 
 }
 
 /**
+ * 線の上に乗せる記号（VCT・CT・ZCT）を、近くの縦の線の上に、置き直す（軸を、線の真上に合わせる）。
+ * レイアウトの縮小・拡大、図面の作り直し、「結線を整える」のあとに呼ぶ。以前は、記号の入口・出口が、線の端につながっていたので、
+ * 線が動けば、記号もついてきた。いまは、記号と線が別なので、動かしたあとに、記号だけ、線から横にずれることがある（第20弾 項目8）。
+ * 軸から横に 30 以内に、縦の線があり、その線が、記号の真ん中の高さを通っているときだけ、動かす（近くに線が無ければ、動かさない）。
+ * ここでは、利用者が決めた位置を動かさないよう、呼ぶのは、線ごと動いた直後だけ（記号を動かしている最中には、呼ばない）。
+ * keep：動かさない記号（手で、線から離して置いてあった記号。作り直しのとき、その位置を残す）。
+ */
+export function seatOnWire(doc: Doc, keep?: (it: DocSymbol) => boolean): Doc {
+  const wires = doc.items.filter((w): w is DocWire => w.kind === 'wire' && Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y1 - w.y2) > 0.5);
+  if (wires.length === 0) return doc;
+  let changed = false;
+  const items = doc.items.map((it): DocItem => {
+    if (it.kind !== 'symbol' || it.parent || it.rotate % 360 !== 0) return it;
+    const def = getSymbol(it.symbolId);
+    const ow = def.onWire;
+    if (!ow || keep?.(it)) return it;
+    const ax = it.x + ow.x;
+    const ay = it.y + def.box.h / 2;
+    let best: number | null = null;
+    for (const w of wires) {
+      if (ay < Math.min(w.y1, w.y2) - 1 || ay > Math.max(w.y1, w.y2) + 1) continue;
+      const d = w.x1 - ax;
+      if (Math.abs(d) > 30) continue;
+      if (best === null || Math.abs(d) < Math.abs(best)) best = d;
+    }
+    if (best === null || Math.abs(best) < 0.01) return it;
+    changed = true;
+    return { ...it, x: it.x + best };
+  });
+  return changed ? applyAnchors({ ...doc, items }) : doc;
+}
+
+/**
  * 線の上に乗せる記号（VCT・CT・ZCT）を動かしたあと、「記号を追加」で一緒に足した短い線が、別の縦の線と重なっていたら、その短い線を消す
  * （別の線の上に置いたので、短い線は要らない。残すと、線が二重になる）。
  */

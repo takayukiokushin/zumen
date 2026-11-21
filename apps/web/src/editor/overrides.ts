@@ -1,6 +1,6 @@
 import { rotatedBox } from '@zumen/layout';
 import { followAutoWires } from './wireFollow.ts';
-import { applyAnchors, baselineOf, defOf, freshId, moveItem, moveItems, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
+import { applyAnchors, seatOnWire, baselineOf, defOf, freshId, moveItem, moveItems, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
 import type { AddedItem, Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire, FrameEdit, Overrides, Placement, SymbolEdit } from './doc.ts';
 
 /**
@@ -231,6 +231,57 @@ export function rebuildWithOverrides(
       const b = topName(sameName(it.at2.item));
       if (group.has(a) && group.has(b)) group.set(find(a), find(b));
     }
+    // 記号につないでいない折れ線（PASの ZCT・ZPD から、横の GR・DGR へ行く制御線など）でつながっている新しい機器も、同じ組にする
+    // （そうしないと、GR・DGR だけが、遠くの別の機器の動きに合わせて動き、制御線が PAS の中を通ってしまう）
+    const extraLinks = new Map<string, Set<string>>();
+    {
+      const free = generated.items.filter((it): it is DocWire => it.kind === 'wire' && !it.fan && !(it.at1 && it.at2));
+      const ends = free.flatMap((w) => [`${Math.round(w.x1 * 2)}:${Math.round(w.y1 * 2)}`, `${Math.round(w.x2 * 2)}:${Math.round(w.y2 * 2)}`]);
+      const net = free.map((_, i) => i);
+      const root = (i: number): number => {
+        while (net[i] !== i) i = net[i]!;
+        return i;
+      };
+      const at = new Map<string, number>();
+      ends.forEach((k, e) => {
+        const wi = Math.floor(e / 2);
+        const prev = at.get(k);
+        if (prev === undefined) at.set(k, wi);
+        else net[root(wi)] = root(prev);
+      });
+      const owners = new Map<number, Set<string>>();
+      const touchesOld = new Set<number>();
+      free.forEach((w, i) => {
+        for (const an of [w.at1, w.at2]) {
+          if (!an) continue;
+          const n = topName(sameName(an.item));
+          const r = root(i);
+          if (known.has(n)) touchesOld.add(r);
+          else if (group.has(n)) owners.set(r, (owners.get(r) ?? new Set()).add(n));
+        }
+      });
+      // 制御線の、つないでいない端が、もとからある機器の中にあるとき（開閉器の真ん中から出る、TC への点線など）は、その機器の動きに合わせる
+      const rbOf = (g: DocSymbol) => {
+        const rb = rotatedBox(defOf(g).box, g.rotate);
+        return { x0: g.x + rb.dx, y0: g.y + rb.dy, x1: g.x + rb.dx + rb.w, y1: g.y + rb.dy + rb.h };
+      };
+      free.forEach((w, i) => {
+        for (const [x, y, an] of [[w.x1, w.y1, w.at1], [w.x2, w.y2, w.at2]] as const) {
+          if (an) continue;
+          const o = olds.find((g) => {
+            const b = rbOf(g);
+            return x >= b.x0 - 0.5 && x <= b.x1 + 0.5 && y >= b.y0 - 0.5 && y <= b.y1 + 0.5;
+          });
+          if (!o) continue;
+          for (const n of owners.get(root(i)) ?? []) extraLinks.set(n, (extraLinks.get(n) ?? new Set()).add(sameName(o.id)));
+        }
+      });
+      for (const [r, names] of owners) {
+        if (touchesOld.has(r) || names.size < 2) continue;
+        const [first, ...rest] = [...names];
+        for (const n of rest) group.set(find(n), find(first!));
+      }
+    }
     // 組に、線でつながっているもとからある機器（主回路の上下の機器など）があれば、その機器の動きに合わせる
     // （近いだけで選ぶと、横に出た枝の機器が選ばれ、主回路の機器と動き方が違って、縦の線が斜めになる）
     const linkedOld = new Map<string, Set<string>>();
@@ -243,6 +294,13 @@ export function rebuildWithOverrides(
         const k = find(n);
         linkedOld.set(k, (linkedOld.get(k) ?? new Set()).add(o));
       }
+    }
+    for (const [n, set] of extraLinks) {
+      const k = find(n);
+      if (!group.has(k)) continue;
+      const cur = linkedOld.get(k) ?? new Set<string>();
+      for (const o of set) cur.add(o);
+      linkedOld.set(k, cur);
     }
     const members = new Map<string, DocSymbol[]>();
     for (const n of news) members.set(find(sameName(n.id)), [...(members.get(find(sameName(n.id))) ?? []), n]);
@@ -350,6 +408,14 @@ export function rebuildWithOverrides(
   work = applyAnchors(work);
   // 記号につないでいない線（自動で作った、途中の折れ線・低圧の母線・PASの内蔵品の中の線など）を、記号の動きに合わせて動かし直す
   if (current?.base) work = followAutoWires(generated, work);
+  // 線の上に乗せる記号（VCT・CT・ZCT）を、線の真上に置き直す（線が動いたあとに、記号だけ、横にずれることがある）
+  // （ただし、作り直す前から、線から離れて置いてあった記号は、手で決めた位置なので、そのまま残す）
+  const offWire = new Set<string>();
+  if (current) {
+    const seated = new Map(seatOnWire(current).items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => [i.id, i.x]));
+    for (const it of current.items) if (it.kind === 'symbol' && seated.has(it.id) && Math.abs(seated.get(it.id)! - it.x) >= 0.01) offWire.add(sameName(it.id));
+  }
+  work = seatOnWire(work, (it) => offWire.has(sameName(it.id)));
   // 計算の端数（0.0000000001 など）で、まっすぐな線が、斜めと判定されないよう、線の端を、1000分の1までに丸める
   work = { ...work, items: work.items.map((it): DocItem => (it.kind === 'wire' ? { ...it, x1: r3(it.x1), y1: r3(it.y1), x2: r3(it.x2), y2: r3(it.y2) } : it)) };
 

@@ -1,5 +1,5 @@
 import { labelRect } from '@zumen/layout';
-import { applyAnchors, docBounds, groupRootOf, itemBounds } from './doc.ts';
+import { applyAnchors, seatOnWire, docBounds, groupRootOf, itemBounds } from './doc.ts';
 import { compactOneAxis } from './layoutCompact.ts';
 import type { Axis } from './layoutCompact.ts';
 import type { Doc, DocItem, DocSymbol } from './doc.ts';
@@ -209,7 +209,7 @@ export function scaleByProjection(doc: Doc, factor: number, only?: Axis): { doc:
   });
   if (!moved) return { doc, changed: false };
   // 記号につないだ線の端を、接続点の位置に合わせ直す（変換のあとの、ごく小さなずれを、なくす）
-  const anchored = applyAnchors({ ...doc, items: next });
+  const anchored = seatOnWire(applyAnchors({ ...doc, items: next }));
   // 計算の、ごく小さなずれ（0.0000000000001 など）で、縦（横）の線が、斜めと見なされないように、小数点以下6けたにそろえる
   const r6 = (v: number) => Math.round(v * 1e6) / 1e6;
   return {
