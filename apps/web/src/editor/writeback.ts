@@ -271,6 +271,8 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
   let headsNow = false;
   const suppressed = new Set<string>();
   for (const name of removed) {
+    // いまの入力で、図面に出ていない部品（入力を変えて、機器ごと無くなったときの、前の「消した」記録）は、書き戻さない
+    if (!baseNames.has(name)) continue;
     const { area, rest } = splitArea(name);
     const sym = baseNames.get(name) ?? name;
     const rep = repeatOf(rest, table);
@@ -819,7 +821,23 @@ function insertSwitches(raw: Answers, doc: Doc, toEffective: (a: Answers) => Ans
  * 図面で直した内容を、「設備を入力して作成」の答えに書き戻す（本体は writeBackCore）。
  * 途中の台（変圧器・コンデンサなど）を消したときは、先に、後ろの台を前へつめてから書き戻す。
  */
+/**
+ * 図面で直した内容を、入力に書き戻す。
+ * 部品を2つ以上消したときなど、1つ書き戻すと、ほかの書き戻しが通るようになることがあるので、反映が落ち着くまで、くり返す（最大4回）。
+ */
 export function writeBack(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers): WritebackResult | null {
+  const first = writeBackOnce(raw, doc, toEffective);
+  if (!first) return null;
+  let acc = first;
+  for (let i = 0; i < 4 && acc.applied.length > 0; i++) {
+    const next = writeBackOnce(acc.answers, acc.doc, toEffective);
+    if (!next || next.applied.length === 0) break;
+    acc = { ...next, applied: [...acc.applied, ...next.applied] };
+  }
+  return acc;
+}
+
+function writeBackOnce(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers): WritebackResult | null {
   if (!doc.base || doc.edited !== true) return null;
   const table = roleTable();
   let curRaw = raw;
