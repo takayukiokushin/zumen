@@ -62,8 +62,14 @@ export const SECTIONALIZER_SETS: readonly SectionalizerSet[] = SET_CONTROLS.flat
 export const setPatternLabel = (set: SectionalizerSet): string =>
   SET_PATTERNS.find((p) => p.vt === set.vt && p.la === set.la)!.label;
 
-/** 区分開閉器の部分の構成ルール（役割）。これ以外の部分（ケーブル・客柱・外づけLAなど）は、足さない */
-const SET_ROLE = /^pas(-zct|-vt|-la|-zpd|-relay)?$/;
+/**
+ * 区分開閉器の部分の構成ルール（役割）。これ以外の部分（ケーブル・外づけLAなど）は、足さない。
+ * 客柱（customer-pole）は、PAS・PGSのときだけ、左に付く（構成ルールの条件で、UGSのときは出ない）（第20弾 項目8・番号4）
+ */
+const SET_ROLE = /^(pas(-zct|-vt|-la|-zpd|-relay)?|customer-pole)$/;
+
+/** 客柱の図記号（セットに付く。区分開閉器の子で、区分開閉器と一緒に動き、一緒に消える。中身を入れ替えても、そのまま残る） */
+export const SET_POLE_SYMBOL = 'pole-customer';
 
 /** セットを作る回答（区分開閉器の種類・制御・内蔵だけ。定格電圧の初期値は7200V） */
 export function setAnswers(set: SectionalizerSet): Answers {
@@ -78,7 +84,7 @@ export function setAnswers(set: SectionalizerSet): Answers {
   );
 }
 
-/** セットの構成（区分開閉器・内蔵機器・継電器だけ）。自動作図と同じ構成ルールから取り出す */
+/** セットの構成（区分開閉器・内蔵機器・継電器・客柱だけ）。自動作図と同じ構成ルールから取り出す */
 export function setComposition(set: SectionalizerSet): { items: PlacedItem[]; answers: Answers } {
   const answers = setAnswers(set);
   return { items: buildComposition(answers).filter((i) => SET_ROLE.test(i.role)), answers };

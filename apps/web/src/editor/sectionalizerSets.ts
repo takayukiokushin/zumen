@@ -1,4 +1,4 @@
-import { SECTIONALIZER_SETS, isBuiltinTextLine, setComposition } from '@zumen/knowledge';
+import { SECTIONALIZER_SETS, SET_POLE_SYMBOL, isBuiltinTextLine, setComposition } from '@zumen/knowledge';
 import type { SectionalizerSet } from '@zumen/knowledge';
 import { layout, snap } from '@zumen/layout';
 import { getSymbol, shapesToSvg } from '@zumen/symbols';
@@ -46,6 +46,8 @@ function buildSetItems(
       if (it.id === pasOld) s.labelStd = { dx: it.labelDx, dy: it.labelDy };
       // 継電器（GR・DGR）は、区分開閉器の子にする（スロットは無い）
       if (/^relay-(gr|dgr)$/.test(it.symbolId)) s.parent = pasNew;
+      // 客柱も、区分開閉器の子にする（スロットは無い。区分開閉器と一緒に動き、一緒に消える）
+      else if (it.symbolId === SET_POLE_SYMBOL) s.parent = pasNew;
       else if (it.parent) s.parent = ren(it.parent);
       out.push(s);
     } else if (it.kind === 'wire') {
@@ -95,7 +97,8 @@ export function swapSectionalizerSet(doc: Doc, pasId: string, set: Sectionalizer
   const pas = doc.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === pasId);
   if (!pas || !isSectionalizer(pas) || pas.rotate % 360 !== 0) return null;
   // いまの中身：スロットに入っている子と、継電器（子、または、制御線の先にあるもの）、制御線
-  const kids = doc.items.filter((i): i is DocSymbol => i.kind === 'symbol' && i.parent === pasId);
+  // （客柱は、入れ替えない。いまのまま残す）
+  const kids = doc.items.filter((i): i is DocSymbol => i.kind === 'symbol' && i.parent === pasId && i.symbolId !== SET_POLE_SYMBOL);
   const members = new Set([pasId, ...kids.map((k) => k.id)]);
   const net = controlNet(doc, members, true);
   const goneSyms = new Set([...kids.map((k) => k.id), ...net.relays]);
@@ -122,7 +125,7 @@ export function swapSectionalizerSet(doc: Doc, pasId: string, set: Sectionalizer
   delete (newPas as { values?: unknown }).values;
   const items: DocItem[] = [
     ...doc.items.filter((i) => !goneSyms.has(i.id) && !net.wires.has(i.id)).map((i) => (i.id === pasId ? newPas : i)),
-    ...out.filter((i) => i.id !== pasId),
+    ...out.filter((i) => i.id !== pasId && !(i.kind === 'symbol' && i.symbolId === SET_POLE_SYMBOL)),
   ];
   return applyAnchors({ ...doc, items });
 }

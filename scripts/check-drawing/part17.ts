@@ -47,7 +47,25 @@ console.log('\n■ 区分開閉器のリスト：24通りの完成形を足す')
     const relays = added.filter((s) => /^relay-/.test(s.symbolId));
     if (relays.length !== 1 || relays[0]!.symbolId !== `relay-${set.control}` || relays[0]!.parent !== id || relays[0]!.slot) bad.push(`${name}：継電器が決まりどおりではありません（${relays.map((r) => r.symbolId).join('・')}）`);
     // 追加した記号は、いままでの図面の記号に、触れていない（記号を足しただけ）／外へ出る線が無い
-    if (added.length !== 1 + want.length + 1) bad.push(`${name}：足された記号の数が違います（${added.length}）`);
+    // 客柱：PAS・PGSのときだけ、左に1つ（区分開閉器の子・スロットなし。UGSには付かない）（第20弾 項目8・番号4）
+    const poles = added.filter((s) => s.symbolId === 'pole-customer');
+    const wantPole = set.sectionalizer !== 'ugs';
+    if (poles.length !== (wantPole ? 1 : 0)) bad.push(`${name}：客柱の数が違います（${poles.length}。PAS・PGSは1つ、UGSは0）`);
+    else if (wantPole) {
+      const pole = poles[0]!;
+      const pb = getSymbol(pole.symbolId).box;
+      const sb = pdef.box;
+      if (pole.parent !== id || pole.slot) bad.push(`${name}：客柱が、区分開閉器の子（スロットなし）になっていません`);
+      // 区分開閉器の左で、枠の高さの中（自動作図と同じ位置）
+      if (pole.x + pb.w > pas.x || pole.x + pb.w < pas.x - 30) bad.push(`${name}：客柱が、区分開閉器の左のすぐ近くにありません`);
+      if (pole.y + pb.h / 2 < pas.y || pole.y + pb.h / 2 > pas.y + sb.h) bad.push(`${name}：客柱の高さが、区分開閉器の枠の高さの中ではありません`);
+      // 自動作図の客柱と、同じ位置（同じ図記号の区分開閉器どうし）
+      const aPas = base.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === 'pas');
+      const aPole = base.items.find((i): i is DocSymbol => i.kind === 'symbol' && i.id === 'customer-pole');
+      if (aPas && aPole && aPas.symbolId === pas.symbolId && (Math.abs(pole.x - pas.x - (aPole.x - aPas.x)) > 0.01 || Math.abs(pole.y - pas.y - (aPole.y - aPas.y)) > 0.01)) bad.push(`${name}：客柱の位置が、自動作図と違います`);
+      if (pole.label.some((l) => l.trim() !== '')) bad.push(`${name}：客柱に文字が付いています`);
+    }
+    if (added.length !== 1 + want.length + 1 + (wantPole ? 1 : 0)) bad.push(`${name}：足された記号の数が違います（${added.length}）`);
     if (problems(doc) > p0) bad.push(`${name}：足したら、重なり・つながっていない線・斜めの線が増えました（${p0}→${problems(doc)}）`);
     // 線の端の記号が、図面の中に実在する
     const ids = new Set(doc.items.map((i) => i.id));
@@ -64,6 +82,7 @@ console.log('\n■ 区分開閉器のリスト：24通りの完成形を足す')
     // 区分開閉器を、ほかの記号に差し替えても、継電器は残る
     const rep = replaceSymbol(doc, id, set.sectionalizer === 'pas' ? 'pgs' : 'pas');
     if (!syms(rep).some((s) => s.parent === id && /^relay-/.test(s.symbolId))) bad.push(`${name}：区分開閉器を差し替えたら、継電器が消えました`);
+    if (wantPole && !syms(rep).some((s) => s.parent === id && s.symbolId === 'pole-customer')) bad.push(`${name}：区分開閉器を差し替えたら、客柱が消えました`);
     // 一覧の見本の絵
     if (!/<svg/.test(setThumb(set).svg)) bad.push(`${name}：一覧の見本の絵が作れません`);
   }
@@ -128,7 +147,7 @@ console.log('\n■ 区分開閉器のリスト：選んでいる区分開閉器�
       if (!pas) { bad.push(`${name}：区分開閉器が消えました`); continue; }
       const kids = syms(r).filter((s) => s.parent === id && s.slot).map((s) => s.symbolId).sort();
       if (kids.join() !== wantKids(to).join()) bad.push(`${name}：中身が違います（${kids.join('・')}）`);
-      const relays = syms(r).filter((s) => s.parent === id && !s.slot);
+      const relays = syms(r).filter((s) => s.parent === id && !s.slot && /^relay-/.test(s.symbolId));
       if (relays.length !== 1 || relays[0]!.symbolId !== `relay-${to.control}`) bad.push(`${name}：継電器が違います（${relays.map((x) => x.symbolId).join('・')}）`);
       const inN = inPort(pas);
       if (Math.abs(inN[0]! - in0[0]!) > 0.01 || Math.abs(inN[1]! - in0[1]!) > 0.01) bad.push(`${name}：区分開閉器の入口の位置が動きました`);
@@ -136,7 +155,12 @@ console.log('\n■ 区分開閉器のリスト：選んでいる区分開閉器�
       if (pas.label.some((l) => /内蔵型$/.test(l)) !== (to.vt || to.la)) bad.push(`${name}：「内蔵型」の行が合っていません（${pas.label.join('｜')}）`);
       // 余分な線・記号が残っていない（足してすぐ、その入れ替え先にした図面と、同じ数）
       const direct = addSectionalizerSet(base, to).doc;
-      if (syms(r).length !== syms(direct).length || wiresOf(r).length !== wiresOf(direct).length) bad.push(`${name}：記号・線の数が、はじめから足したときと違います（記号 ${syms(r).length}/${syms(direct).length}・線 ${wiresOf(r).length}/${wiresOf(direct).length}）`);
+      // 客柱は、入れ替えない（いまのまま残る）：入れ替える前と、同じ位置に、同じものが残る
+      const polesBefore = syms(doc).filter((x) => x.parent === id && x.symbolId === 'pole-customer');
+      const polesAfter = syms(r).filter((x) => x.parent === id && x.symbolId === 'pole-customer');
+      if (polesBefore.length !== polesAfter.length || polesBefore.some((b, i) => b.id !== polesAfter[i]!.id || Math.abs(b.x - polesAfter[i]!.x) > 0.01 || Math.abs(b.y - polesAfter[i]!.y) > 0.01)) bad.push(`${name}：入れ替えたら、客柱が変わりました（${polesBefore.length}→${polesAfter.length}）`);
+      const poleDiff = polesAfter.length - syms(direct).filter((x) => x.symbolId === 'pole-customer' && x.parent).length;
+      if (syms(r).length !== syms(direct).length + poleDiff || wiresOf(r).length !== wiresOf(direct).length) bad.push(`${name}：記号・線の数が、はじめから足したときと違います（記号 ${syms(r).length}/${syms(direct).length}・線 ${wiresOf(r).length}/${wiresOf(direct).length}）`);
       // つなぎ先が、図面にある
       const ids = new Set(r.items.map((i) => i.id));
       for (const w of wiresOf(r)) for (const a of [w.at1, w.at2]) if (a && !ids.has(a.item)) bad.push(`${name}：線のつなぎ先が、図面にありません（${a.item}）`);
