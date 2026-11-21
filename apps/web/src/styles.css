@@ -238,6 +238,13 @@ button.trend-chip:hover { text-decoration: underline; }
 .palette .thumb { display: grid; place-items: center; height: 46px; color: var(--ink); zoom: var(--pal-scale, 1); }
 .palette .thumb svg { max-width: 100%; max-height: 44px; }
 .palette .cap { font-size: calc(10.5px * var(--text-scale) * var(--pal-font, 1)); color: var(--muted); }
+/* 「区分開閉器」リスト（完成形のセット）：1つの絵が大きいので、2列で、大きく見せる */
+.palette:empty { display: none; }
+.set-head { margin: 12px 0 0; font-size: calc(12.5px * var(--text-scale)); }
+.palette.sets { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 6px; }
+.palette.sets .thumb { height: 70px; }
+.palette.sets .thumb svg { max-width: 100%; max-height: 68px; }
+:where(html[data-uw~="900"]) .editor-body .palette.sets { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
 /* 横に3つ並べる。枠の幅を変えると、ボタンと絵が、幅に比例して大きくなる。
    画面が狭いとき（記号の一覧を下から出すとき）は、枠の幅を変えられないので、ボタンは元の大きさで、並べられるだけ並べる */
 :where(html[data-uw~="900"]) .editor-body .palette { --pal-scale: 1; --pal-font: 1; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); }

@@ -159,6 +159,8 @@ export const zh: Dict = {
   'editor.palette': '添加·替换符号',
   'editor.palette.replace': '已选中一个符号。从下方选择即可替换（接线保持连接，长度自动调整）。',
   'editor.palette.add': '从下方选择会添加到图纸下方。先选中符号再点击则为替换。',
+  'editor.palette.setHint': '点击后，会把区分开关、内置设备、继电器（GR/DGR）和控制线一并添加到图纸下方。即使已选中符号，也不会替换（而是新增）。',
+  'editor.set.added': '已在图纸下方添加区分开关（{name}）。原先选中的符号保持不变。',
   'editor.selected': '所选对象',
   'editor.labelText': '写在图纸上的文字',
   'editor.ratings': '额定值与数值输入',

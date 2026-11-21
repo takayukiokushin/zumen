@@ -162,6 +162,8 @@ export const fr: Dict = {
     'Un symbole est sélectionné. Choisissez-en un ci-dessous pour le remplacer : les traits restent reliés et s’ajustent.',
   'editor.palette.add':
     'Choisissez-en un ci-dessous pour l’ajouter sous le schéma. Sélectionnez d’abord un symbole pour le remplacer.',
+  'editor.palette.setHint': 'Un appui ajoute en une fois, sous le schéma, l’interrupteur de sectionnement, ses appareils intégrés, le relais (GR/DGR) et les fils de commande. Même si un symbole est sélectionné, cela ajoute un nouvel ensemble (sans remplacer).',
+  'editor.set.added': 'Interrupteur de sectionnement ({name}) ajouté sous le schéma. Le symbole sélectionné reste inchangé.',
   'editor.selected': 'Sélection',
   'editor.labelText': 'Texte sur le schéma',
   'editor.ratings': 'Valeurs nominales',

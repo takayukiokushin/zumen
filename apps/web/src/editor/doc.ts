@@ -1149,11 +1149,50 @@ export const removeItem = (doc: Doc, id: string, opts: { noHeal?: boolean } = {}
     }
     freed.push({ y0, y1, x0: it.x + rb.dx, x1: it.x + rb.dx + rb.w });
   }
+  // 「区分開閉器」リストで足したセット（区分開閉器＋内蔵機器＋継電器）を消すとき：継電器へ向かう制御線・内蔵機器への枝線も、一緒に消す
+  // （第20弾 項目6）。継電器が子になっているもの（セット）だけ。自動作図の区分開閉器は、これまでどおり
+  const own = new Set<string>();
+  const isSet = doc.items.some((i) => i.kind === 'symbol' && gone.has(i.id) && i.parent === id && !i.slot && /^relay-(gr|dgr)$/.test(i.symbolId));
+  if (isSet) {
+    const boxes = doc.items.filter((o): o is DocSymbol => o.kind === 'symbol' && gone.has(o.id)).map((o) => {
+      const rb = rotatedBox(defOf(o).box, o.rotate);
+      return { x0: o.x + rb.dx, y0: o.y + rb.dy, x1: o.x + rb.dx + rb.w, y1: o.y + rb.dy + rb.h };
+    });
+    const inside = (x: number, y: number) => boxes.some((b) => x >= b.x0 - 0.5 && x <= b.x1 + 0.5 && y >= b.y0 - 0.5 && y <= b.y1 + 0.5);
+    const wires = doc.items.filter((w): w is DocWire => w.kind === 'wire');
+    // 外の記号につながっている線は、対象にしない（区分開閉器の上下の主回路の線など）
+    const outside = (w: DocWire) => [w.at1, w.at2].some((a) => a && !gone.has(a.item));
+    const queue: DocWire[] = [];
+    for (const w of wires) {
+      if (outside(w)) continue;
+      const a1 = !!w.at1 && gone.has(w.at1.item);
+      const a2 = !!w.at2 && gone.has(w.at2.item);
+      if ((a1 && a2) || (a1 && !w.at2 && inside(w.x2, w.y2)) || (a2 && !w.at1 && inside(w.x1, w.y1)) || (a1 && !w.at2) || (a2 && !w.at1)) {
+        own.add(w.id);
+        queue.push(w);
+      }
+    }
+    // 制御線の途中の線（記号につながらず、線の端どうしでつながっている曲がり角の線）も、一緒に消す
+    const near = (ax: number, ay: number, bx: number, by: number) => Math.abs(ax - bx) < 0.01 && Math.abs(ay - by) < 0.01;
+    while (queue.length > 0) {
+      const w = queue.pop()!;
+      for (const o of wires) {
+        if (own.has(o.id) || outside(o)) continue;
+        // つなぎ先の無い端どうしが、同じ点にあるときだけ
+        const ends = [[w.at1, w.x1, w.y1], [w.at2, w.x2, w.y2]] as const;
+        const oends = [[o.at1, o.x1, o.y1], [o.at2, o.x2, o.y2]] as const;
+        if (ends.some(([a, x, y]) => !a && oends.some(([b, ox, oy]) => !b && near(x, y, ox, oy)))) {
+          own.add(o.id);
+          queue.push(o);
+        }
+      }
+    }
+  }
   return refreshFans({
     ...doc,
     ...(freed.length > 0 ? { vacated: [...(doc.vacated ?? []), ...freed] } : {}),
     items: doc.items
-      .filter((it) => !gone.has(it.id))
+      .filter((it) => !gone.has(it.id) && !own.has(it.id))
       .map((it) => {
         if (it.kind !== 'wire') return it;
         const a1 = it.at1 && gone.has(it.at1.item);
@@ -1222,7 +1261,9 @@ export const replaceSymbol = (doc: Doc, id: string, symbolId: string): Doc => {
   const reseated = new Map<string, { x: number; y: number }>();
   for (const it of doc.items) {
     if (it.kind !== 'symbol' || it.parent !== id) continue;
-    const slot = it.slot ? newDef.slots?.find((s2) => s2.id === it.slot) : undefined;
+    // スロットの無い子（「区分開閉器」リストで足したセットの継電器）は、置き直さず、そのまま残す
+    if (!it.slot) continue;
+    const slot = newDef.slots?.find((s2) => s2.id === it.slot);
     if (!slot) {
       for (const g of groupOf(doc, it.id)) dropped.add(g);
       continue;

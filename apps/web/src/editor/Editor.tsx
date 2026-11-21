@@ -4,7 +4,7 @@ import { CATEGORY_LABEL, SYMBOLS, getSymbol, labelFields, symbolToSvg } from '@z
 import type { SymbolCategory } from '@zumen/symbols';
 import { COMPANY_NAME, SHEET_MARGIN, layout, layoutTitle, sheetSize } from '@zumen/layout';
 import type { Orientation, PaperSize } from '@zumen/layout';
-import { AREA_KINDS, buildComposition, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, resolveDrawingName } from '@zumen/knowledge';
+import { AREA_KINDS, SECTIONALIZER_SETS, SET_CONTROLS, buildComposition, MAX_CUSTOM_LAYERS, MAX_LAYER_ITEMS_PER_KIND, MAX_TEXT_LENGTH, SET_LIST_LABEL, resolveDrawingName, setDisplayName, setShortName } from '@zumen/knowledge';
 import type { Answers } from '@zumen/knowledge';
 import { DrawingCanvas } from './DrawingCanvas.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
@@ -20,6 +20,7 @@ import { TextWindow } from './TextWindow.tsx';
 import type { Pos } from './FloatingWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
+import { addSectionalizerSet, setThumb } from './sectionalizerSets.ts';
 import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
 import { addExtraCross, addLayerCrossOnWire, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
@@ -93,6 +94,9 @@ function useTouchDevice(): boolean {
   return touch;
 }
 
+/** 「記号を追加・差し替え」の、「区分開閉器」リスト（完成形のセット）の、分類の値と、見出し */
+const SET_LIST = 'sectionalizer-sets' as const;
+
 export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps) {
   const t = useT();
   const tx = useTx();
@@ -131,7 +135,9 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     if (zoomApi.current) zoomApi.current(next);
     else setZoom(next);
   };
-  const [paletteCategory, setPaletteCategory] = useState<SymbolCategory>('switchgear');
+  /** 「区分開閉器」リスト（完成形のセット。第20弾 項目6）は、記号の分類ではないので、別の値で表す */
+  const [paletteCategory, setPaletteCategory] = useState<SymbolCategory | typeof SET_LIST>('switchgear');
+  const [setNote, setSetNote] = useState<string | null>(null);
   const [mode, setMode] = useState<'select' | 'wire' | 'cross' | 'ground' | 'area' | 'dot' | 'arrow' | 'link' | 'fan'>('select');
   /** 結線で、クリックして選んだ記号（最初が元の記号、2つ目から下の機器。クリックした順） */
   const [fanPicks, setFanPicks] = useState<string[]>([]);
@@ -763,8 +769,15 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
 
   // 自動作図のためだけに用意した差し替え版（PASの枠を広げたものなど）は、
   // 手で選ぶものではないので一覧に出さない
-  const palette = SYMBOLS.filter((s) => s.category === paletteCategory && !(s.altOf && s.optional));
-  const categories = [...new Set(SYMBOLS.map((s) => s.category))];
+  const palette = paletteCategory === SET_LIST ? [] : SYMBOLS.filter((s) => s.category === paletteCategory && !(s.altOf && s.optional));
+  // 「区分開閉器」のリストは、「責任分界点」と「開閉器・遮断器」のあいだ
+  const categories: (SymbolCategory | typeof SET_LIST)[] = [...new Set(SYMBOLS.map((s) => s.category))].flatMap((c) => (c === 'boundary' ? [c, SET_LIST] : [c]));
+  const onSetClick = (set: (typeof SECTIONALIZER_SETS)[number]) => {
+    const { doc: next, id } = addSectionalizerSet(doc, set);
+    apply(next);
+    setSelectedId(id);
+    setSetNote(t('editor.set.added', { name: setDisplayName(set, tx) }));
+  };
 
   const onPaletteClick = (symbolId: string) => {
     if (selectedSymbol) {
@@ -1166,6 +1179,15 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         </p>
       )}
 
+      {setNote && (
+        <p className="layer-note" role="status">
+          <b>{setNote}</b>
+          <button type="button" className="btn" onClick={() => setSetNote(null)}>
+            {t('common.close')}
+          </button>
+        </p>
+      )}
+
       {cableNote && (
         <p className="layer-note" role="status">
           <b>{cableNote}</b>
@@ -1542,17 +1564,39 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           <section inert={locked}>
             <h3>{t('editor.palette')}</h3>
             <p className="hint">
-              {selectedSymbol
-                ? t('editor.palette.replace')
-                : t('editor.palette.add')}
+              {paletteCategory === SET_LIST
+                ? t('editor.palette.setHint')
+                : selectedSymbol
+                  ? t('editor.palette.replace')
+                  : t('editor.palette.add')}
             </p>
-            <select value={paletteCategory} onChange={(e) => setPaletteCategory(e.target.value as SymbolCategory)}>
+            <select value={paletteCategory} onChange={(e) => setPaletteCategory(e.target.value as SymbolCategory | typeof SET_LIST)}>
               {categories.map((c) => (
                 <option key={c} value={c}>
-                  {tx(CATEGORY_LABEL[c])}
+                  {tx(c === SET_LIST ? SET_LIST_LABEL : CATEGORY_LABEL[c])}
                 </option>
               ))}
             </select>
+            {paletteCategory === SET_LIST && (
+              // 上半分＝GR方式、下半分＝DGR方式。それぞれ、PAS・PGS・UGS の順に、内蔵のパターン（4つ）を並べる
+              <>
+                {SET_CONTROLS.map((c) => (
+                  <div key={c.id}>
+                    <h4 className="set-head">{tx(c.label)}</h4>
+                    <div className="palette sets">
+                      {SECTIONALIZER_SETS.filter((st) => st.control === c.id).map((st) => {
+                        return (
+                          <button key={st.id} type="button" title={setDisplayName(st, tx)} onClick={() => onSetClick(st)}>
+                            <span className="thumb" dangerouslySetInnerHTML={{ __html: setThumb(st).svg }} />
+                            <span className="cap">{setShortName(st, tx)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
             <div className="palette">
               {palette.map((s) => (
                 <button key={s.id} type="button" title={tx(s.nameJa)} onClick={() => onPaletteClick(s.id)}>

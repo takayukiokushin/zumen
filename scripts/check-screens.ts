@@ -241,7 +241,13 @@ try {
                 const g = document.querySelectorAll('svg.canvas g.item')[k];
                 if (!g) return null;
                 const r = g.getBoundingClientRect();
-                return Math.hypot(r.x + r.width / 2 - x, r.y + r.height / 2 - y);
+                // 拡大したあとも、図面が枠より小さい向きは、図面が枠の真ん中に寄るので、記号を、カーソルの下に残せない（その向きのずれは、数えない）
+                const wr = document.querySelector('.canvas-wrap') as HTMLElement | null;
+                const sv = wr?.querySelector('svg.canvas') as SVGElement | null;
+                const sr = sv?.getBoundingClientRect();
+                const fitsX = !!wr && !!sr && sr.width < wr.clientWidth - 1;
+                const fitsY = !!wr && !!sr && sr.height < wr.clientHeight - 1;
+                return Math.hypot(fitsX ? 0 : r.x + r.width / 2 - x, fitsY ? 0 : r.y + r.height / 2 - y);
               }, pick);
               screens++;
               if (gap !== null && gap > 4) {

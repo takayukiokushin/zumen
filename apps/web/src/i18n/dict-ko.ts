@@ -160,6 +160,8 @@ export const ko: Dict = {
   'editor.palette': '기호 추가·교체',
   'editor.palette.replace': '기호를 고른 상태입니다. 아래에서 고르면 교체됩니다(결선은 이어진 채 길이가 맞춰집니다).',
   'editor.palette.add': '아래에서 고르면 도면 아래에 더해집니다. 기호를 고른 뒤 누르면 교체됩니다.',
+  'editor.palette.setHint': '누르면 구분 개폐기, 내장 기기, 계전기(GR/DGR), 제어선이 한 번에 도면 아래에 더해집니다. 기호를 골라 둔 상태여도 교체되지 않고 새로 더해집니다.',
+  'editor.set.added': '구분 개폐기({name})를 도면 아래에 더했습니다. 골라 두었던 기호는 그대로입니다.',
   'editor.selected': '고른 것',
   'editor.labelText': '도면에 쓰는 글자',
   'editor.ratings': '정격·수치 입력',

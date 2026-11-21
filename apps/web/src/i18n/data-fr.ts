@@ -960,6 +960,12 @@ const data: Record<string, string> = {
   "零相変流器（PAS・PGS内蔵用）": "Transformateur de courant homopolaire (intégré PAS/PGS)",
   "計器用変圧器（PAS・PGS内蔵用）": "Transformateur de tension (intégré PAS/PGS)",
   "避雷器（PAS・PGS内蔵用）": "Parafoudre (intégré PAS/PGS)",
+  "GR方式": "Type GR",
+  "DGR方式": "Type DGR",
+  "内蔵なし": "Sans appareil intégré",
+  "VTのみ": "VT seul",
+  "LAのみ": "LA seul",
+  "VT＋LA": "VT + LA",
   "高圧カットアウト（構内柱の外づけLA用）": "Coupe-circuit haute tension (pour parafoudre externe sur poteau)",
 };
 export default data;

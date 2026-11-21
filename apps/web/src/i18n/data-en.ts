@@ -966,6 +966,12 @@ const data: Record<string, string> = {
   "零相変流器（PAS・PGS内蔵用）": "Zero-phase current transformer (for built-in use in PAS/PGS)",
   "計器用変圧器（PAS・PGS内蔵用）": "Voltage transformer (for built-in use in PAS/PGS)",
   "避雷器（PAS・PGS内蔵用）": "Surge arrester (for built-in use in PAS/PGS)",
+  "GR方式": "GR type",
+  "DGR方式": "DGR type",
+  "内蔵なし": "No built-in devices",
+  "VTのみ": "VT only",
+  "LAのみ": "LA only",
+  "VT＋LA": "VT + LA",
   "高圧カットアウト（構内柱の外づけLA用）": "High-voltage cutout (for external LA on premises pole)",
 };
 export default data;

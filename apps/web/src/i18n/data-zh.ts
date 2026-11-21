@@ -957,6 +957,12 @@ const data: Record<string, string> = {
   "零相変流器（PAS・PGS内蔵用）": "零序电流互感器（PAS・PGS内置用）",
   "計器用変圧器（PAS・PGS内蔵用）": "电压互感器（PAS・PGS内置用）",
   "避雷器（PAS・PGS内蔵用）": "避雷器（PAS・PGS内置用）",
+  "GR方式": "GR 方式",
+  "DGR方式": "DGR 方式",
+  "内蔵なし": "无内置设备",
+  "VTのみ": "仅 VT",
+  "LAのみ": "仅 LA",
+  "VT＋LA": "VT + LA",
   "高圧カットアウト（構内柱の外づけLA用）": "高压跌落式熔断器（厂内杆外置避雷器用）",
 };
 export default data;

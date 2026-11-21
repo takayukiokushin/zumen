@@ -7,3 +7,4 @@ export * from './engine.ts';
 export * from './rows.ts';
 export * from './reverse.ts';
 export * from './trends.ts';
+export * from './sectionalizer-sets.ts';

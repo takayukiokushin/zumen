@@ -957,6 +957,12 @@ const data: Record<string, string> = {
   "零相変流器（PAS・PGS内蔵用）": "영상 변류기(PAS·PGS 내장용)",
   "計器用変圧器（PAS・PGS内蔵用）": "계기용 변압기(PAS·PGS 내장용)",
   "避雷器（PAS・PGS内蔵用）": "피뢰기(PAS·PGS 내장용)",
+  "GR方式": "GR 방식",
+  "DGR方式": "DGR 방식",
+  "内蔵なし": "내장 기기 없음",
+  "VTのみ": "VT만",
+  "LAのみ": "LA만",
+  "VT＋LA": "VT + LA",
   "高圧カットアウト（構内柱の外づけLA用）": "고압 컷아웃(구내 전주 외장 피뢰기용)",
 };
 export default data;

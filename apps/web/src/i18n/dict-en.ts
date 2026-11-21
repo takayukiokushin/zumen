@@ -161,6 +161,8 @@ export const en: Dict = {
   'editor.palette.replace':
     'A symbol is selected. Pick one below to replace it — the lines stay connected and resize themselves.',
   'editor.palette.add': 'Pick one below to add it under the diagram. Select a symbol first to replace it instead.',
+  'editor.palette.setHint': 'Pressing one adds the sectionalizing switch, its built-in devices, the relay (GR/DGR) and the control wires to the bottom of the diagram, all at once. Even if a symbol is selected, this adds a new set (it does not replace).',
+  'editor.set.added': 'Added the sectionalizing switch ({name}) under the diagram. The symbol you had selected is unchanged.',
   'editor.selected': 'Selection',
   'editor.labelText': 'Text on the diagram',
   'editor.ratings': 'Ratings and values',

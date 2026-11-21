@@ -162,6 +162,8 @@ export const ja = {
   'editor.palette.replace':
     '記号を選んでいます。下から選ぶと差し替わります（結線はつながったまま、長さが自動で合います）。',
   'editor.palette.add': '下から選ぶと図面の下に追加します。記号を選んでから押すと差し替えになります。',
+  'editor.palette.setHint': '押すと、区分開閉器・内蔵機器・継電器（GR/DGR）・制御線を、ひとまとめで図面の下に追加します。記号を選んでいても、差し替えにはなりません（新しく追加します）。',
+  'editor.set.added': '区分開閉器（{name}）を、図面の下に追加しました。選んでいた記号は、そのままです。',
   'editor.selected': '選んでいるもの',
   'editor.labelText': '図面に書く文字',
   'editor.ratings': '定格・数値の入力',
