@@ -8,7 +8,7 @@ import { inspectDrawing } from '../../apps/web/src/editor/inspect.ts';
 import { buildComposition, dropHiddenChoices } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { findLabelCollisions, layout } from '../../packages/layout/src/index.ts';
-import { getSymbol } from '../../packages/symbols/src/index.ts';
+import { PAS_SCALE, getSymbol } from '../../packages/symbols/src/index.ts';
 import { answersSpread, fail } from './common.ts';
 
 console.log('\n■ 構内柱の外づけの避雷器（LA）：PASの左に縦に並び、PAS内蔵のLAとは別に選べる');
@@ -31,7 +31,12 @@ console.log('\n■ 構内柱の外づけの避雷器（LA）：PASの左に縦�
             continue;
           }
           const inner = d.symbols.find((x) => x.id === 'pas-la');
-          if (inner && la[0] && (inner.symbolId !== la[0].symbolId || (inner as { scale?: number }).scale !== (la[0] as { scale?: number }).scale)) bad.push(`${name}：内蔵LAと外づけLAの、図記号・大きさが違います`);
+          // 内蔵LAは、PASと一緒に60%に縮めた専用の図記号（la-pas。第20弾 項目7）。外づけLAは、ふつうの大きさのLA（la）のまま
+          if (inner && la[0]) {
+            const bi = getSymbol(inner.symbolId).box;
+            const be = getSymbol(la[0].symbolId).box;
+            if (inner.symbolId !== 'la-pas' || la[0].symbolId !== 'la' || Math.abs(bi.w - be.w * PAS_SCALE) > 0.01 || Math.abs(bi.h - be.h * PAS_SCALE) > 0.01) bad.push(`${name}：内蔵LA（60%の la-pas）と外づけLA（la）の、図記号・大きさが想定と違います`);
+          }
           if (la.length !== 1) bad.push(`${name}：外づけのLAが${la.length}個です`);
           else if (la[0]!.x + 5 >= pas.x) bad.push(`${name}：外づけのLAが、PASの左にありません`);
           else if (la[0]!.y <= pas.y) bad.push(`${name}：外づけのLAが、PASより下にありません`);

@@ -1,5 +1,12 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
 import { contact, hline, line, loadContact, path, rect, tiltedBar, vline } from '../shape.ts';
+import { scaleSymbol } from '../scale.ts';
+
+/**
+ * PAS・PGS・UGS（と、その中に入る機器）を縮める比率（第20弾 項目7）。
+ * 他の記号と並べたとき、大きすぎたため。中に入る機器は、専用の縮めた記号（zct-pas・vt-pas・la-pas・zpd-pas・zpd-pas-boxed）にしてある
+ */
+export const PAS_SCALE = 0.6;
 
 /** 遮断器を表す×印 */
 /**
@@ -71,7 +78,9 @@ const pasDef = (
   /** 主回路（縦に走る線）の位置 */
   const x = 28 + l;
   const frameTop = 10 - t;
-  const frameBottom = 136 + b;
+  // 縦の寸法は、100%のときの値で書く（最後に PAS_SCALE 倍する）。
+  // ZCT〜開閉部のあいだは、枠の上辺〜ZCT・ZCT〜開閉部の横棒を、それぞれ 7 まで詰めてある（以前は 13）。それより下は、詰めたぶん（12）だけ、そのまま上へ上げた
+  const frameBottom = 124 + b;
   /**
    * 内蔵LAの位置。
    * LAの記号は、入口から 28 下が本体の下端、36 下が接地記号の1本目。
@@ -80,8 +89,8 @@ const pasDef = (
    */
   const laY = frameBottom - 32;
   /** 接地記号が枠の下へ出るぶん、箱も下へ伸ばす（内蔵版だけ） */
-  const h = altOf ? laY + 48 + 8 : 148 + b;
-  return {
+  const h = altOf ? laY + 48 + 8 : 136 + b;
+  const def: SymbolDef = {
     id,
     abbr: name.abbr,
     labelLines: [name.abbr, '{ratedVoltage}V', '{ratedCurrent}A'],
@@ -100,9 +109,9 @@ const pasDef = (
       // 枠の上端から開閉部の横バーまで、縦線を途切れさせずに引く。
       // 内蔵のZCTも同じ位置に縦線を持つが、ZCTが無い構成（制御なし）や、
       // ZCTの端と枠・バーのあいだに隙間ができる構成でも、線がつながるようにここで引いておく
-      ...loadContact(x, 62, 8, frameTop),
-      line(x, 84, 16 + l, 66),
-      vline(x, 84, h),
+      ...loadContact(x, 50, 8, frameTop),
+      line(x, 72, 16 + l, 54),
+      vline(x, 72, h),
     ],
     ports: [
       { id: 'in', x, y: 0, dir: 'up', role: 'line' },
@@ -111,10 +120,10 @@ const pasDef = (
     // 並びは見本図面のまま（上からZCT・開閉部・LAとVT）。余白だけを詰めてある。
     // VTは主回路の上に置く。少しでもずらすと、VTの横棒が主回路を貫いて左へはみ出す
     slots: [
-      { id: 'zct', x, y: 12, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct'] },
+      { id: 'zct', x, y: 10, label: 'ZCT（GR/DGR方式のとき内蔵）', accepts: ['zct-pas', 'zct'] },
       // LAは枠の左半分の真ん中に置く（枠の左の線までと主回路までが同じ余白になる）
-      { id: 'la', x: 13 + l, y: laY, label: 'LA内蔵', accepts: ['la'] },
-      { id: 'vt', x, y: 100, label: 'VT内蔵', accepts: ['vt'] },
+      { id: 'la', x: 13 + l, y: laY, label: 'LA内蔵', accepts: ['la-pas', 'la'] },
+      { id: 'vt', x, y: 88, label: 'VT内蔵', accepts: ['vt-pas', 'vt'] },
       // DGRのときのZPD。VTの下、LAの右横（主回路をはさんで反対側）に入れる。枠の大きさは変えない。
       // 接地記号は、LAと同じく、枠の下の線の外へ出る（枠の下から 4 下が接地の1本目）。LAも一緒に入るときは、ZPDの接地は描かず、縦線を枠の下の線までつなぐ（zpd-pas-boxed）
       { id: 'zpd', x: x + 40, y: frameBottom - 28, label: 'ZPD内蔵（DGR方式のとき）', accepts: ['zpd-pas', 'zpd-pas-boxed'] },
@@ -153,6 +162,7 @@ const pasDef = (
       '実図面のとおり、実線の四角＋負荷開閉器の印（横バー＋丸）＋左上がりの可動刃。内蔵機器（ZCT/VT/LA）を枠内に収められる大きさにしました。',
     note: '記載例「PAS 7200V 300A VT,LA内蔵型」。制御装置（GR/DGR）は枠の外に描き、ZCT・VTから制御線を引く。枠の一番下の接地記号はLAの接地で、LAとPAS本体の接地を同じ箇所で施工していることを表す。',
   };
+  return scaleSymbol(def, PAS_SCALE);
 };
 
 const switchgearRaw: SymbolDef[] = [
@@ -413,7 +423,7 @@ const switchgearRaw: SymbolDef[] = [
     tags: ['区分開閉器', '電柱上', 'PGS', 'GR', 'DGR'],
   }),
   // 内蔵機器（LA・VT）を入れるとき用。枠を少しだけ広げてある（とくに左）
-  pasDef('pas-builtin', { l: 8, r: 2, t: 4, b: 12 }, 'pas'),
+  pasDef('pas-builtin', { l: 8, r: 2, t: 0, b: 12 }, 'pas'),
 ];
 
 /**

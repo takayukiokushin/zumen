@@ -1,8 +1,9 @@
 import type { SymbolDef } from './types.ts';
 import { validateSymbol } from './types.ts';
-import { earth, hline, rect, shapesToSvg, vline } from './shape.ts';
+import { circle, earth, hline, line, rect, shapesToSvg, text, vline } from './shape.ts';
 import { incomingSymbols } from './defs/incoming.ts';
-import { switchgearSymbols } from './defs/switchgear.ts';
+import { PAS_SCALE, switchgearSymbols } from './defs/switchgear.ts';
+import { scaleSymbol } from './scale.ts';
 import { instrumentSymbols } from './defs/instrument.ts';
 import { protectionSymbols } from './defs/protection.ts';
 import { transformerSymbols } from './defs/transformer.ts';
@@ -10,19 +11,65 @@ import { DASH_DOT, miscSymbols } from './defs/misc.ts';
 
 export * from './shape.ts';
 export * from './types.ts';
+export { scaleSymbol } from './scale.ts';
+export { PAS_SCALE } from './defs/switchgear.ts';
 export { BOUNDARY_SAFETY_LEFT } from './defs/incoming.ts';
 
 /**
  * 記号マスタ。新しい機器はここに定義を1件足すだけで、
  * パレット・カタログ・プロパティ入力欄・PDF出力のすべてに反映される。
  */
-export const SYMBOLS: readonly SymbolDef[] = [
+const BASE_SYMBOLS: readonly SymbolDef[] = [
   ...incomingSymbols,
   ...switchgearSymbols,
   ...instrumentSymbols,
   ...protectionSymbols,
   ...transformerSymbols,
   ...miscSymbols,
+];
+
+/**
+ * PAS・PGS・UGS の中に入る機器は、枠と同じ比率（PAS_SCALE）に縮めた専用の記号にする（第20弾 項目7）。
+ *  - ZPD（zpd-pas・zpd-pas-boxed）は、PAS専用なので、そのまま縮める
+ *  - ZCT・VT・LA は、ほかの場所でも使う（縮めない）ので、縮めたものを別の記号（zct-pas・vt-pas・la-pas）として足す。
+ *    ZCTは、枠の上辺・開閉部の横棒との隙間を詰めるため、上下の余白を削った形で作る
+ */
+const baseOf = (id: string): SymbolDef => {
+  const d = BASE_SYMBOLS.find((s) => s.id === id);
+  if (!d) throw new Error(`記号が無い: ${id}`);
+  return d;
+};
+const ZCT_PAS_BASE: SymbolDef = {
+  ...baseOf('zct'),
+  // 円（ZCT）の上下の余白を、13 → 7 に詰める（円の半径 11・斜線・「3」は、そのまま）
+  box: { w: 52, h: 36 },
+  shapes: [
+    vline(20, 0, 36),
+    circle(20, 18, 11),
+    line(20 - 10 / Math.SQRT2, 18 + 10 / Math.SQRT2, 20 + 10 / Math.SQRT2, 18 - 10 / Math.SQRT2),
+    text(24.75, 21, '3', { size: 9 }),
+    hline(18, 31, 52),
+  ],
+  ports: [
+    { id: 'in', x: 20, y: 0, dir: 'up', role: 'line' },
+    { id: 'out', x: 20, y: 36, dir: 'down', role: 'line' },
+    { id: 'sec', x: 52, y: 18, dir: 'right', role: 'control', label: 'GR/DGRへ' },
+  ],
+};
+const insideOf = (src: SymbolDef, id: string, nameJa: string): SymbolDef =>
+  scaleSymbol(src, PAS_SCALE, {
+    id,
+    nameJa,
+    altOf: baseOf(src.id).id,
+    optional: true,
+    tags: [...(src.tags ?? []), 'PAS', 'PGS', '内蔵'],
+    note: 'PAS・PGS・UGSの枠の中に入れる、縮めた記号。形は元の記号と同じ',
+  });
+export const SYMBOLS: readonly SymbolDef[] = [
+  ...BASE_SYMBOLS.map((s) => (s.id === 'zpd-pas' || s.id === 'zpd-pas-boxed' ? scaleSymbol(s, PAS_SCALE) : s)),
+  insideOf(ZCT_PAS_BASE, 'zct-pas', '零相変流器（PAS・PGS内蔵用）'),
+  insideOf(baseOf('vt'), 'vt-pas', '計器用変圧器（PAS・PGS内蔵用）'),
+  insideOf(baseOf('la'), 'la-pas', '避雷器（PAS・PGS内蔵用）'),
 ];
 
 const byId = new Map(SYMBOLS.map((s) => [s.id, s]));

@@ -8,7 +8,7 @@ import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { buildComposition } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { rotatedBox, findLabelCollisions, labelRect, layout } from '../../packages/layout/src/index.ts';
-import { getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
+import { PAS_SCALE, getSymbol as getSymbolDef } from '../../packages/symbols/src/index.ts';
 import { buildSheetSvg } from '../../apps/web/src/editor/exportSheet.ts';
 import { MIN_BAR, SHRINK, scaleByProjection, scaleLayout } from '../../apps/web/src/editor/layoutScale.ts';
 import { inspectDrawing, nudgeSymbolLabel } from '../../apps/web/src/editor/inspect.ts';
@@ -44,7 +44,7 @@ console.log('\n■ PASを動かしたとき（内蔵品・中の枝線・GR/DGR�
       const m = moveItem(d0, pas.id, dx, dy);
       for (const o of [pas, relay, ...kids]) {
         const n = find(m, o.id)!;
-        if (n.x - o.x !== dx || n.y - o.y !== dy || n.rotate !== o.rotate) bad ||= `${o.id} が (${dx},${dy}) どおりに動いていません`;
+        if (Math.abs(n.x - o.x - dx) > 0.01 || Math.abs(n.y - o.y - dy) > 0.01 || n.rotate !== o.rotate) bad ||= `${o.id} が (${dx},${dy}) どおりに動いていません`;
       }
       for (const w of [...innerWires, ...toRelay]) {
         const n = m.items.find((it): it is DocWire => it.kind === 'wire' && it.id === w.id)!;
@@ -95,39 +95,41 @@ console.log('\n■ PAS・PGSの中のZPD（DGRのとき）');
       fail(`${name}：PASの中にZPDが入っていません`);
       continue;
     }
-    // 枠の大きさは変えない（内蔵品があるときは pas-builtin の 96×172、無いときは pas・ugs・pgs の 86×148）
+    // 枠の大きさは変えない（内蔵品があるときは pas-builtin の 96×160、無いときは pas・ugs・pgs の 86×136。どちらも、100%のときの大きさ。実際は、PASの縮尺 K 倍）
+    const K = PAS_SCALE;
+    const near = (a: number, b: number) => Math.abs(a - b) < 0.01;
     const pb = getSymbolDef(pas.symbolId).box;
-    const sizeOk = pas.symbolId === 'pas-builtin' ? pb.w === 96 && pb.h === 172 : pb.w === 86 && pb.h === 148;
-    const zx0 = zpd.x + 1; const zx1 = zpd.x + 37; const zy0 = zpd.y + 6; const zy1 = zpd.y + 22;
+    const sizeOk = pas.symbolId === 'pas-builtin' ? near(pb.w, 96 * K) && near(pb.h, 160 * K) : near(pb.w, 86 * K) && near(pb.h, 136 * K);
+    const zx0 = zpd.x + 1 * K; const zx1 = zpd.x + 37 * K; const zy0 = zpd.y + 6 * K; const zy1 = zpd.y + 22 * K;
     // 枠の下の線（PASの枠の下端）：LAの接地記号が出る高さと同じ。LAが無いときも、PASの記号から求める
-    const frameBottom = pas.y + (pas.symbolId === 'pas-builtin' ? 148 : 136);
-    const frameRight = pas.x + (pas.symbolId === 'pas-builtin' ? 6 + 74 + 10 : 6 + 74);
+    const frameBottom = pas.y + (pas.symbolId === 'pas-builtin' ? 136 : 124) * K;
+    const frameRight = pas.x + (pas.symbolId === 'pas-builtin' ? 6 + 74 + 10 : 6 + 74) * K;
     const others = syms.filter((s) => s.parent === 'pas' && s.id !== zpd.id);
     const hit = others.filter((o) => {
       const b = getSymbolDef(o.symbolId).box;
       // 記号の絵が占める範囲（接地記号が枠の外へ出る部分は、別に見る）
-      return zx0 < o.x + b.w && zx1 > o.x && zy0 < o.y + b.h && zy1 > o.y && !(o.symbolId === 'zct');
+      return zx0 < o.x + b.w && zx1 > o.x && zy0 < o.y + b.h && zy1 > o.y && !(o.symbolId === 'zct-pas');
     });
-    const withLa = syms.some((s) => s.parent === 'pas' && s.symbolId === 'la');
-    const earthY = zpd.y + 32; // 接地記号の1本目
-    const vt = others.find((o) => o.symbolId === 'vt');
-    const la = others.find((o) => o.symbolId === 'la');
+    const withLa = syms.some((s) => s.parent === 'pas' && s.symbolId === 'la-pas');
+    const earthY = zpd.y + 32 * K; // 接地記号の1本目
+    const vt = others.find((o) => o.symbolId === 'vt-pas');
+    const la = others.find((o) => o.symbolId === 'la-pas');
     const problems: string[] = [];
     if (!sizeOk) problems.push(`PASの大きさが変わっています（${pb.w}×${pb.h}）`);
     if (zy1 > frameBottom || zx1 > frameRight) problems.push('ZPDの枠が、PASの枠から、はみ出しています');
     if (withLa) {
       // LAも入るとき：接地記号はLAの1つだけ。ZPDは、縦線を枠の下の線まで伸ばす（はみ出さない）
       if (zpd.symbolId !== 'zpd-pas-boxed') problems.push('LAがあるのに、ZPDの接地記号が残っています');
-      const stemEnd = zpd.y + 28;
+      const stemEnd = zpd.y + 28 * K;
       if (Math.abs(stemEnd - frameBottom) > 0.01) problems.push(`ZPDの縦線が、枠の下の線まで届いていません（線の端 ${stemEnd}、枠の下 ${frameBottom}）`);
-      const earths = d.items.filter((it) => it.kind === 'symbol' && it.parent === 'pas' && ['la', 'zpd-pas'].includes(it.symbolId)).length;
+      const earths = d.items.filter((it) => it.kind === 'symbol' && it.parent === 'pas' && ['la-pas', 'zpd-pas'].includes(it.symbolId)).length;
       if (earths !== 1) problems.push(`外箱の接地記号が ${earths}個あります（最大1つ）`);
     } else {
       if (zpd.symbolId !== 'zpd-pas') problems.push('LAが無いのに、ZPDの接地記号が無くなっています');
-      if (earthY < frameBottom + 3) problems.push(`接地記号が、枠の外に出ていません（枠の下 ${frameBottom}、接地 ${earthY}）`);
+      if (earthY < frameBottom + 3 * K) problems.push(`接地記号が、枠の外に出ていません（枠の下 ${frameBottom}、接地 ${earthY}）`);
     }
-    if (vt && zy0 < vt.y + 30) problems.push('ZPDが、VTの下に入っていません');
-    if (la && zx0 < la.x + 41) problems.push('ZPDが、LAの右横に入っていません');
+    if (vt && zy0 < vt.y + 30 * K) problems.push('ZPDが、VTの下に入っていません');
+    if (la && zx0 < la.x + 41 * K) problems.push('ZPDが、LAの右横に入っていません');
     if (hit.length) problems.push(`ZPDが、${hit.map((o) => o.symbolId).join('・')} と重なっています`);
     // DGRまで線がつながっている
     const dgr = syms.find((s) => s.symbolId === 'relay-dgr')!;
@@ -773,7 +775,9 @@ console.log('\n■ レイアウトの縮小・拡大');
   const bounds = (d: Doc) => docBounds(d);
   const axisBad = (d: Doc) => d.items.filter((i) => i.kind === 'wire' && Math.abs(i.x1 - i.x2) > 0.01 && Math.abs(i.y1 - i.y2) > 0.01).length;
   const problems = (d: Doc) => inspectDrawing(d, 'A3', 'landscape').filter((i) => i.kind === 'overlap' || i.kind === 'through' || i.kind === 'floating' || i.kind === 'skew').length;
-  const symBoxes = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => [i.id, i.symbolId, i.w, i.h, i.rotate, i.label.join('|'), i.labelDx, i.labelDy].join(':')).sort().join(',');
+  // PASを60%に縮めた（小数の大きさになる）ので、拡大・縮小で出る、ごくわずかな数の誤差は、見ない
+  const r2 = (v: number | undefined) => v === undefined ? v : Math.round(v * 100) / 100;
+  const symBoxes = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => [i.id, i.symbolId, r2(i.w), r2(i.h), i.rotate, i.label.join('|'), r2(i.labelDx), r2(i.labelDy)].join(':')).sort().join(',');
   const groupRel = (d: Doc) => {
     // 親と内蔵品の、相対位置
     const by = new Map(d.items.filter((i): i is DocSymbol => i.kind === 'symbol').map((i) => [i.id, i]));

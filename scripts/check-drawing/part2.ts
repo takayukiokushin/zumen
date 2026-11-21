@@ -557,7 +557,8 @@ console.log('\n■ PASの内部の縦線（枠の上端から開閉部まで・�
           if (a0 > cur + 0.01 && cur >= top - 0.01 && a0 <= bottom + 0.01) gaps.push([cur - pas.y, a0 - pas.y]);
           cur = Math.max(cur, a1);
         }
-        const bladeOpen = gaps.filter(([g0, g1]) => g0 >= 57.5 && g1 <= 84.5);
+        // 100%のときの 45.5〜72.5（横バーの下〜刃の支点）を、PASの縮尺（60%）にした範囲
+        const bladeOpen = gaps.filter(([g0, g1]) => g0 >= 45.5 * 0.6 && g1 <= 72.5 * 0.6);
         const others = gaps.filter((g) => !bladeOpen.includes(g));
         const label = `制御${pasControl}・VT${pasBuiltinVt}・LA${pasBuiltinLa}`;
         if (others.length > 0) fail(`${label}：PASの縦線に欠けがあります（${others.map(([g0, g1]) => `y=${g0.toFixed(1)}〜${g1.toFixed(1)}`).join('、')}）`);

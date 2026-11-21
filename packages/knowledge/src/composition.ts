@@ -368,7 +368,7 @@ export const UPSTREAM: Placement[] = [
   {
     // SOG（GR/DGR）があれば、ZCTはPASに内蔵される。無ければ入らない
     role: 'pas-zct',
-    symbolId: 'zct',
+    symbolId: 'zct-pas',
     kind: 'inside',
     parent: 'pas',
     slot: 'zct',
@@ -377,7 +377,7 @@ export const UPSTREAM: Placement[] = [
   {
     // VTもSOGがあるときだけ。SOGが無いPASにVTは入らない
     role: 'pas-vt',
-    symbolId: 'vt',
+    symbolId: 'vt-pas',
     kind: 'inside',
     parent: 'pas',
     slot: 'vt',
@@ -391,7 +391,7 @@ export const UPSTREAM: Placement[] = [
   },
   {
     role: 'pas-la',
-    symbolId: 'la',
+    symbolId: 'la-pas',
     kind: 'inside',
     parent: 'pas',
     slot: 'la',
@@ -507,7 +507,7 @@ export const UPSTREAM: Placement[] = [
   },
   {
     role: 'mid-pas-zct',
-    symbolId: 'zct',
+    symbolId: 'zct-pas',
     kind: 'inside',
     parent: 'mid-pas',
     slot: 'zct',
@@ -515,7 +515,7 @@ export const UPSTREAM: Placement[] = [
   },
   {
     role: 'mid-pas-vt',
-    symbolId: 'vt',
+    symbolId: 'vt-pas',
     kind: 'inside',
     parent: 'mid-pas',
     slot: 'vt',
@@ -523,7 +523,7 @@ export const UPSTREAM: Placement[] = [
   },
   {
     role: 'mid-pas-la',
-    symbolId: 'la',
+    symbolId: 'la-pas',
     kind: 'inside',
     parent: 'mid-pas',
     slot: 'la',

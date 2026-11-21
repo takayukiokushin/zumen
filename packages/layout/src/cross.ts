@@ -1,4 +1,4 @@
-import { getSymbol } from '@zumen/symbols';
+import { PAS_SCALE, getSymbol } from '@zumen/symbols';
 import type { CircleShape, LineShape, RectShape } from '@zumen/symbols';
 
 /**
@@ -14,8 +14,11 @@ export const CROSS_SIZE_IDS: readonly CrossSize[] = ['S', 'M', 'L'];
 const rectOf = (id: string): RectShape => getSymbol(id).shapes.find((s): s is RectShape => s.k === 'rect')!;
 const circleOf = (id: string): CircleShape => getSymbol(id).shapes.find((s): s is CircleShape => s.k === 'circle')!;
 const BUS_WIDTH = getSymbol('bus').shapes.find((s): s is LineShape => s.k === 'line')?.sw ?? 1;
-/** PASの外枠の横幅（内蔵機器を入れる形。ふだんの図面の PAS） */
-const PAS_FRAME = rectOf('pas-builtin').w;
+/**
+ * PASの外枠の横幅（内蔵機器を入れる形。ふだんの図面の PAS）。
+ * PAS を60%に縮めた（第20弾 項目7）あとも、×印の大きさは、決めた値（84）のまま変えない（縮める前の幅）
+ */
+const PAS_FRAME = rectOf('pas-builtin').w / PAS_SCALE;
 /** 変圧器の丸い記号の横幅（直径） */
 const TR_DIAMETER = circleOf('tr-3p-dy').r * 2;
 

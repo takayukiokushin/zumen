@@ -107,7 +107,7 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     const r2 = writeBack(raw2, edited(addSymbol(d1, 'la', 40, 40).doc), toEff);
     ok(r2?.answers.hasLa === 'yes', `LAを足しても、「LAあり」になっていません（${r2?.answers.hasLa}／${JSON.stringify(r2?.rejected)}）`);
     ok(r2 !== null && sym(r2.doc, 'site-la') !== undefined, '書き戻したあとの図面に、LAが出ていません');
-    ok(r2 !== null && r2.doc.items.filter((i) => i.kind === 'symbol' && sameName(i.id) === 'site-la').length === 1 && r2.doc.items.filter((i) => i.kind === 'symbol' && i.symbolId === 'la').length === 2, 'LAが増えすぎています（PAS内蔵のLAと、手で足したものが重なっている）（手で足したものと、自動で出たものが重なっている）');
+    ok(r2 !== null && r2.doc.items.filter((i) => i.kind === 'symbol' && sameName(i.id) === 'site-la').length === 1 && r2.doc.items.filter((i) => i.kind === 'symbol' && (i.symbolId === 'la' || i.symbolId === 'la-pas')).length === 2, 'LAが増えすぎています（PAS内蔵のLAと、手で足したものが重なっている）（手で足したものと、自動で出たものが重なっている）');
   }
 
   // 7. 台数：最後の台を消す → 台数を1つ減らす。最初の台を消したときも、台数を減らし、残りの台の答えを前へつめる（以前は、書き戻さなかった）

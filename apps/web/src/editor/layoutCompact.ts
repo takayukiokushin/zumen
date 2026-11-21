@@ -555,7 +555,14 @@ export function compactOneAxis(doc: Doc, axis: Axis, factor: number, params: Com
   const out: Doc = {
     ...anchored,
     items: anchored.items.map((it): DocItem => {
-      if (it.kind === 'wire') return { ...it, x1: r6(it.x1), y1: r6(it.y1), x2: r6(it.x2), y2: r6(it.y2) };
+      if (it.kind === 'wire') {
+        const w = { ...it, x1: r6(it.x1), y1: r6(it.y1), x2: r6(it.x2), y2: r6(it.y2) };
+        // 両端の、ちょうど6けた目で、丸めが分かれてしまった（縦・横のはずの線が、0.000001 だけ、斜めになった）ものは、そろえる
+        // （PASを60%にした、第20弾 項目7 から、記号の大きさが小数になり、この丸めの分かれが、起きるようになった）
+        if (w.x1 !== w.x2 && Math.abs(w.x1 - w.x2) < 1e-4) w.x2 = w.x1;
+        if (w.y1 !== w.y2 && Math.abs(w.y1 - w.y2) < 1e-4) w.y2 = w.y1;
+        return w;
+      }
       if (it.kind === 'symbol') return { ...it, x: r6(it.x), y: r6(it.y) };
       return it;
     }),

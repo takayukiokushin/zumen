@@ -9,7 +9,7 @@
  *
  *   node --experimental-strip-types scripts/check-symbols.ts
  */
-import { CONTACT_R, SYMBOLS } from '../packages/symbols/src/index.ts';
+import { CONTACT_R, PAS_SCALE, SYMBOLS } from '../packages/symbols/src/index.ts';
 import type { Shape } from '../packages/symbols/src/shape.ts';
 
 let failed = 0;
@@ -29,6 +29,7 @@ const ALLOWED: Record<string, string[]> = {
   ),
   // 丸の中に貫通する一次導体や文字を描く記号
   zct: ['*'],
+  'zct-pas': ['*'],
   ct: ['*'],
   vct: ['*'],
   'ct-test': ['*'],
@@ -176,6 +177,15 @@ console.log('\n■ 接点を表す丸の大きさが揃っているか');
       found.push({ id: def.id, r: sh.r });
     }
   }
+  // PAS・PGS・UGS と、その中に入る機器は、60%に縮めてある（第20弾 項目7）ので、丸も60%（別に数える）
+  const PAS_FAMILY = new Set(['pas', 'ugs', 'pgs', 'pas-builtin', 'zpd-pas', 'zpd-pas-boxed', 'zct-pas', 'vt-pas', 'la-pas']);
+  const scaled = found.filter((f) => PAS_FAMILY.has(f.id));
+  for (const f of scaled) {
+    const want = Math.round(CONTACT_R * PAS_SCALE * 1000) / 1000;
+    // 接点の丸（pas・ugs・pgs・pas-builtin）は、CONTACT_R の60%。ZPDなどの二重丸は、元の丸（4）の60%、VTの丸（11）の60%
+    if (['pas', 'ugs', 'pgs', 'pas-builtin'].includes(f.id) && f.r !== want) fail(`${f.id} の接点の丸が、CONTACT_R の${PAS_SCALE * 100}%（${want}）ではありません：r=${f.r}`);
+  }
+  found.splice(0, found.length, ...found.filter((f) => !PAS_FAMILY.has(f.id)));
   const sizes = [...new Set(found.map((f) => f.r))];
   if (sizes.length !== 1) {
     const by = sizes.map((r) => `r=${r}（${found.filter((f) => f.r === r).map((f) => f.id).join('・')}）`);
