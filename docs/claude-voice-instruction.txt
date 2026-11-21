@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vrg4zq8",
+  "version": "v1tgez7t",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：vrg4zq8）
+# 項目の一覧（版：v1tgez7t）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -214,7 +214,9 @@
 - groundCabinetType：地上キャビネットの種類は｜mold-discon=モールドディスコン ／ t-shelter=T型シェルター ／ three-pole=三極連動｜条件：sectionalizer=none かつ groundCabinet=yes
 - pasControl：GR・DGR（制御装置）は｜none=なし ／ gr=GR（無方向性） ／ dgr=DGR（方向性）｜条件：sectionalizer=pas/ugs/pgs
 - pasBuiltinVt：VTは内蔵されていますか｜yes/no｜条件：sectionalizer=pas/ugs/pgs かつ pasControl=gr/dgr
-- pasBuiltinLa：LAは内蔵されていますか｜yes/no｜条件：sectionalizer=pas/ugs/pgs
+- pasBuiltinLa：PAS内蔵のLAはありますか｜yes/no｜条件：sectionalizer=pas/ugs/pgs
+- pasExtLa：構内柱上に、外づけの避雷器（LA）はありますか｜yes/no｜条件：sectionalizer=pas/pgs
+- pasExtLaPc：外づけのLAの電源側に、PC（高圧カットアウト）はありますか｜yes/no｜条件：sectionalizer=pas/pgs かつ pasExtLa=yes
 - pasRatedVoltage：定格電圧は｜数（3300〜34500）｜条件：sectionalizer=pas/ugs/pgs
 - pasRatedCurrent：定格電流は｜100=100A ／ 200=200A ／ 300=300A ／ 400=400A｜条件：sectionalizer=pas/ugs/pgs
 

@@ -134,10 +134,14 @@ export function run(n: number, rich: boolean, mixed = false): { stats: Roundtrip
       const rebuilt = rebuildWithOverrides(g2, r1.doc).doc;
       // 消した部品が、復活しない（反映した答えのまま）
       const back = writeBack(a2, { ...rebuilt, edited: true }, toEff);
-      if (back && back.applied.length > 0) {
+      // すでに反映した内容（同じ質問・同じ台・同じエリア）が、もう一度反映されたら、不具合。
+      // 先に書き戻せなかった別の変更が、入力を直したあとで、新しく通るのは、不具合ではない
+      const done = new Set(r1.applied.map((a) => `${a.question}|${a.unit}|${a.area}`));
+      const again2 = back ? back.applied.filter((a) => done.has(`${a.question}|${a.unit}|${a.area}`)) : [];
+      if (back && again2.length > 0) {
         stats.resurrected++;
         note(`二重（入力変更後）：種${id + 1}（消した：${removed.join('・')}／変えた：${q.id}）→ ${back.applied.map((a) => a.question).join('・')}`);
-        if (process.env.SWEEP_DEBUG) console.log(JSON.stringify({ first: r1.applied, back: back.applied, q: q.id, from: cur, to: a2[q.id], motor: [r1.answers.hasMotor, r1.answers.motorCable, a2.hasMotor, a2.motorCable] }));
+        if (process.env.SWEEP_DEBUG) console.log(JSON.stringify({ id: id + 1, removed, first: r1.applied.map((a) => `${a.question}:${a.from}→${a.to}`), back: back.applied.map((a) => `${a.question}(${a.unit}/${a.area}):${a.from}→${a.to}`), q: q.id, from: cur, to: a2[q.id] }));
       }
       // 図面の欠陥が、増えない
       const worse = defects(rebuilt) > defects(r1.doc) + defects(g2);

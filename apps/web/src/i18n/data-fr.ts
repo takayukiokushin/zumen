@@ -951,5 +951,11 @@ const data: Record<string, string> = {
   "ほかの機器の開閉器の二次側": "Côté secondaire de l'interrupteur d'un autre appareil",
   "どの開閉器の二次側ですか？": "Côté secondaire de quel interrupteur ?",
   "送り出す側のエリアの、変圧器・コンデンサ・発電機・電動機の列にある開閉器から選ぶ（手前・あとの開閉器と、手前のPC・LBS・VCS）。その開閉器の列のすぐ右に、送り出しの開閉器・ケーブルの端末を並べる": "Choisir parmi les interrupteurs des colonnes transformateur / condensateur / générateur / moteur de la zone d'envoi (interrupteurs avant et après le câble, et PC / LBS / VCS avant). L'interrupteur de départ et les extrémités du câble sont placés immédiatement à droite de la colonne de cet interrupteur.",
+  "PAS内蔵のLAはありますか？": "Le PAS a-t-il un parafoudre (LA) intégré ?",
+  "PAS・PGSの枠の中に内蔵されているLA。制御装置（GR・DGR）が無いPASでも内蔵されていることがある。構内柱の外に、別に付ける避雷器は、次の「外づけの避雷器」で答える（内蔵と外づけは、別々に選べる）": "Le parafoudre (LA) intégré au cadre du PAS/PGS. Il peut être intégré même si le PAS n’a pas d’unité de commande (GR/DGR). Un parafoudre monté séparément à l’extérieur, sur le poteau, se renseigne à la question suivante « parafoudre externe » (intégré et externe se choisissent indépendamment).",
+  "構内柱上に、外づけの避雷器（LA）はありますか？": "Y a-t-il un parafoudre (LA) externe sur le poteau de l’établissement ?",
+  "PAS・PGSの外に、別に取り付ける避雷器（PAS内蔵のLAとは別。両方付くこともある）。PASの二次側から左へ線を出して、避雷器を縦に描く。避雷器には、独立した接地記号が付く": "Un parafoudre monté séparément à l’extérieur du PAS/PGS (distinct du LA intégré au PAS ; les deux peuvent coexister). Une ligne part vers la gauche du côté secondaire du PAS et le parafoudre est dessiné à la verticale. Il possède son propre symbole de terre indépendant.",
+  "外づけのLAの電源側に、PC（高圧カットアウト）はありますか？": "Y a-t-il un PC (coupe-circuit haute tension) côté source du LA externe ?",
+  "外づけのLAの手前（電源側）に付くのは、PCだけ（ほかの開閉器は付かない）。付けると、PASの二次側から、PC、LAの順に、縦に並ぶ": "Seul un PC peut être placé en amont (côté source) du LA externe (aucun autre appareil). Une fois ajouté, le PC puis le LA sont alignés à la verticale depuis le côté secondaire du PAS.",
 };
 export default data;

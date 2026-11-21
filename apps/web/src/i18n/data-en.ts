@@ -957,5 +957,11 @@ const data: Record<string, string> = {
   "ほかの機器の開閉器の二次側": "Secondary side of another device's switch",
   "どの開閉器の二次側ですか？": "Secondary side of which switch?",
   "送り出す側のエリアの、変圧器・コンデンサ・発電機・電動機の列にある開閉器から選ぶ（手前・あとの開閉器と、手前のPC・LBS・VCS）。その開閉器の列のすぐ右に、送り出しの開閉器・ケーブルの端末を並べる": "Choose from the switches in the transformer / capacitor / generator / motor columns of the sending area (the switches before and after the cable, and the PC / LBS / VCS before it). The outgoing switch and the cable terminals are placed immediately to the right of that switch's column.",
+  "PAS内蔵のLAはありますか？": "Does the PAS have a built-in LA?",
+  "PAS・PGSの枠の中に内蔵されているLA。制御装置（GR・DGR）が無いPASでも内蔵されていることがある。構内柱の外に、別に付ける避雷器は、次の「外づけの避雷器」で答える（内蔵と外づけは、別々に選べる）": "The LA built into the PAS/PGS frame. It may be built in even if the PAS has no control unit (GR/DGR). A lightning arrester mounted separately outside, on the pole, is answered in the next question, “external lightning arrester” (built-in and external can be chosen independently).",
+  "構内柱上に、外づけの避雷器（LA）はありますか？": "Is there an external lightning arrester (LA) on the premises pole?",
+  "PAS・PGSの外に、別に取り付ける避雷器（PAS内蔵のLAとは別。両方付くこともある）。PASの二次側から左へ線を出して、避雷器を縦に描く。避雷器には、独立した接地記号が付く": "A lightning arrester mounted separately outside the PAS/PGS (separate from the PAS built-in LA; both may be present). A line goes left from the PAS secondary side, and the arrester is drawn vertically. The arrester has its own independent earth symbol.",
+  "外づけのLAの電源側に、PC（高圧カットアウト）はありますか？": "Is there a PC (high-voltage cutout) on the source side of the external LA?",
+  "外づけのLAの手前（電源側）に付くのは、PCだけ（ほかの開閉器は付かない）。付けると、PASの二次側から、PC、LAの順に、縦に並ぶ": "Only a PC can be placed in front of (on the source side of) the external LA (no other switch). When added, the PC and then the LA are lined up vertically from the PAS secondary side.",
 };
 export default data;
