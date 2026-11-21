@@ -195,6 +195,8 @@ interface Candidate {
   carryNames?: string[];
   /** 区分開閉器を消したとき：答えを変えると、図面に描いていない部品（地上キャビネット・DS・分界点の安全装置）が自動で増える。それは図面に出さず、消したままにする */
   suppressNew?: boolean;
+  /** 足した記号：答えを変えたあとの図面に、この種類の記号が、足りなかった分だけ、実際に出ること（出ないなら、書き戻さない） */
+  addSym?: string;
   /** エリア間の接続のケーブル：どの送り先か決められないとき、候補を並べる（同じ名前の組のうち、最初に当てはまったものだけを使う） */
   alt?: string;
   /** この記号が、答えを変えたあとの図面から、無くなっていること（候補の確かめ） */
@@ -409,6 +411,30 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     } else if (table.get(rest)?.presenceKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey(table.get(rest)!.presenceKey!, area)]: 'no' } });
   }
 
+  /** 図面の上の位置から、どのエリアか（各エリアの記号の横の範囲に、いちばん近いエリア） */
+  const areaAt = (x: number): number => {
+    const box = new Map<number, { x0: number; x1: number }>();
+    for (const it of doc.items) {
+      if (it.kind !== 'symbol') continue;
+      const nm = sameName(it.id);
+      if (/(^|:)(cable-head-send|sendout-)/.test(nm)) continue;
+      const a = splitArea(nm).area;
+      const w = getSymbol(it.symbolId).box.w;
+      const b = box.get(a) ?? { x0: Infinity, x1: -Infinity };
+      box.set(a, { x0: Math.min(b.x0, it.x), x1: Math.max(b.x1, it.x + w) });
+    }
+    let best = 0;
+    let bd = Infinity;
+    for (const [a, b] of box) {
+      const d = x < b.x0 ? b.x0 - x : x > b.x1 ? x - b.x1 : 0;
+      if (d < bd) {
+        bd = d;
+        best = a;
+      }
+    }
+    return best;
+  };
+
   /** 台の本体（変圧器・コンデンサ・電動機など）の、図面の上の位置と、何か所目の何台目か（件数の質問ごと） */
   const mainsOf = (countKey: string): { area: number; no: number; x: number; y: number }[] => {
     const out: { area: number; no: number; x: number; y: number }[] = [];
@@ -425,16 +451,18 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
   // 足した記号：「あり／なし」を「あり」に。台数を1つ増やす
   for (const a of added) {
     const S = a.item.symbolId;
-    const presence = [...table.values()].filter((r) => r.presenceKey && r.symbolIds.has(S) && !baseNames.has(r.role) && eff0[r.presenceKey] !== 'yes');
+    const A = areaAt(a.item.x);
+    const pre = A > 0 ? `a${A + 1}:` : '';
+    const presence = [...table.values()].filter((r) => r.presenceKey && r.symbolIds.has(S) && !baseNames.has(`${pre}${r.role}`) && eff0[qKey(r.presenceKey, A)] !== 'yes');
     const keys = new Set(presence.map((r) => r.presenceKey!));
     // 台の本体（変圧器・コンデンサ・電動機など）を足したとき：台数を1つ増やす。台のまわりの部品（PC・LBSなど）は、台数の対象ではない
     const counts = new Set(
       [...table.values()].filter((r) => r.countKey && UNIT_MAIN.has(r.role) && (r.symbolIds.has(S) || (r.role === 'transformer' && (CONN_SYMBOLS.has(S) || S === 'tr-blank')))).map((r) => r.countKey!),
     );
-    if (keys.size === 1 && counts.size === 0) cands.push({ kind: 'added', symbol: nameJaOf(S), set: { [[...keys][0]!]: 'yes' } });
+    if (keys.size === 1 && counts.size === 0) cands.push({ kind: 'added', symbol: nameJaOf(S), set: { [qKey([...keys][0]!, A)]: 'yes' }, addSym: S });
     else if (counts.size === 1 && keys.size === 0) {
       const ck = [...counts][0]!;
-      cands.push({ kind: 'added', symbol: nameJaOf(S), count: { key: ck, area: 0, ...(ck === 'transformerCount' && S !== 'tr-blank' ? { conn: S } : {}) } });
+      cands.push({ kind: 'added', symbol: nameJaOf(S), count: { key: ck, area: A, ...(ck === 'transformerCount' && S !== 'tr-blank' ? { conn: S } : {}) }, addSym: S });
     } else if (counts.size === 0) {
       // 台のまわりの部品（PC・LBS・VCS・リアクトルなど）：足した位置にいちばん近い台の「あり」にする
       const partRoles = [...table.values()].filter((r) => r.unitKey && r.countKey && r.symbolIds.has(S));
@@ -448,7 +476,7 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
           if (!best || d < best.d) best = { d, set: { [key]: 'yes' } };
         }
       }
-      if (best) cands.push({ kind: 'added', symbol: nameJaOf(S), set: best.set });
+      if (best) cands.push({ kind: 'added', symbol: nameJaOf(S), set: best.set, addSym: S });
     }
   }
 
@@ -546,6 +574,11 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     for (const it of gen.items) if (it.kind === 'symbol') pairs.set(sameName(it.id), it.symbolId);
     let ok = explained(pairs);
     if (ok && c.mustVanish && pairs.has(sameName(c.mustVanish))) ok = false;
+    if (ok && c.addSym) {
+      // 足した記号は、答えを変えたあとの図面に、実際に出ていること（出ないのに書き戻すと、台数などが、くり返し増える）
+      const countS = (m: Iterable<string>) => [...m].filter((x) => x === c.addSym).length;
+      if (countS(pairs.values()) <= countS(baseNames.values())) ok = false;
+    }
     if (ok && c.label) {
       const g = gen.items.find((it) => it.kind === 'symbol' && sameName(it.id) === c.label!.name);
       ok = g?.kind === 'symbol' && JSON.stringify(g.label) === JSON.stringify(c.label.lines);

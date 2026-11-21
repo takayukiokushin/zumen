@@ -5,7 +5,7 @@
  *   ・作り直したあとの図面に、「線が浮く・斜め・突き抜け・重なり」が、増えない
  *   SWEEP_N=60 node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/sweep-roundtrip.ts
  */
-import { dedupeIds, fromLayout, removeItem, sameName, tidyDoc } from '../apps/web/src/editor/doc.ts';
+import { addSymbol, dedupeIds, docBounds, fromLayout, removeItem, replaceSymbol, sameName, tidyDoc } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol } from '../apps/web/src/editor/doc.ts';
 import { inspectDrawing } from '../apps/web/src/editor/inspect.ts';
 import { rebuildWithOverrides } from '../apps/web/src/editor/overrides.ts';
@@ -56,12 +56,15 @@ function answersOf(rnd: Rnd, area: number): Answers {
   }
   return a;
 }
+const ADD_TYPES = ['ds', 'vcb', 'lbs-pf', 'la', 'vt', 'ct', 'sc', 'sr', 'zpd', 'pc', 'as', 'vcs', 'tr-3p-yd', 'motor'];
+const SW_TYPES = ['ds', 'vcb', 'lbs-pf', 'lbs', 'vcs', 'as'];
+const TR_TYPES = ['tr-3p-yd', 'tr-3p-dd', 'tr-3p-dy', 'tr-3p-yy'];
 const SELECTS = QUESTIONS.filter((q) => q.type === 'select' && (q.options?.length ?? 0) >= 2 && !q.noAi);
 
 export interface RoundtripStats { runs: number; reflected: number; notIdempotent: number; resurrected: number; worse: number; crash: number }
 
 /** n 案件で、一連の流れを試す。rich：ケーブル・開閉器・電動機・エリア間の接続を多く付けた案件にする */
-export function run(n: number, rich: boolean): { stats: RoundtripStats; examples: string[] } {
+export function run(n: number, rich: boolean, mixed = false): { stats: RoundtripStats; examples: string[] } {
   const stats: RoundtripStats = { runs: 0, reflected: 0, notIdempotent: 0, resurrected: 0, worse: 0, crash: 0 };
   const examples: string[] = [];
   const note = (s: string) => {
@@ -77,15 +80,38 @@ export function run(n: number, rich: boolean): { stats: RoundtripStats; examples
       const toEff = (a: Answers) => effectiveAnswers(a);
       let doc: Doc = tidyDoc(dedupeIds({ ...gen(raw), edited: true }));
       if (!doc.base) doc = { ...doc, base: gen(raw).base };
-      // 1〜3個、続けて消す
+      // 1〜3個、続けて、消す・足す・差し替える
       const k = 1 + Math.floor(rnd() * 3);
       const removed: string[] = [];
       for (let j = 0; j < k; j++) {
         const syms = doc.items.filter((i): i is DocSymbol => i.kind === 'symbol' && !i.parent);
         if (syms.length < 6) break;
         const t = syms[Math.floor(rnd() * syms.length)]!;
-        removed.push(sameName(t.id));
-        doc = removeItem(doc, t.id);
+        const roll = mixed ? rnd() : 0;
+        if (roll < 0.5) {
+          removed.push(`消:${sameName(t.id)}`);
+          doc = removeItem(doc, t.id);
+        } else if (roll < 0.8) {
+          const type = ADD_TYPES[Math.floor(rnd() * ADD_TYPES.length)]!;
+          const b = docBounds(doc);
+          try {
+            doc = addSymbol(doc, type, b.x0 + rnd() * (b.x1 - b.x0), b.y0 + rnd() * (b.y1 - b.y0)).doc;
+            removed.push(`足:${type}`);
+          } catch {
+            /* この種類は足せない */
+          }
+        } else {
+          const pool = SW_TYPES.includes(t.symbolId) ? SW_TYPES : TR_TYPES.includes(t.symbolId) ? TR_TYPES : null;
+          if (!pool) continue;
+          const to = pool[Math.floor(rnd() * pool.length)]!;
+          if (to === t.symbolId) continue;
+          try {
+            doc = replaceSymbol(doc, t.id, to);
+            removed.push(`替:${sameName(t.id)}→${to}`);
+          } catch {
+            /* 差し替えられない */
+          }
+        }
       }
       if (removed.length === 0) continue;
       stats.runs++;
@@ -97,6 +123,7 @@ export function run(n: number, rich: boolean): { stats: RoundtripStats; examples
       if (again && again.applied.length > 0) {
         stats.notIdempotent++;
         note(`二重：種${id + 1}（消した：${removed.join('・')}）→ もう一度：${again.applied.map((a) => a.question).join('・')}`);
+        if (process.env.SWEEP_DEBUG) console.log(JSON.stringify({ id: id + 1, raw: Object.fromEntries(Object.entries(raw).filter(([k]) => /vt|intake|mainBreakerForm|areaCount|sectionalizer/i.test(k))), first: r1.applied.map((a) => `${a.question}:${a.from}→${a.to}`) }));
       }
       // 入力を、さらに直す（選択式の質問を1つ、別の選択肢にする）
       const q = SELECTS[Math.floor(rnd() * SELECTS.length)]!;
@@ -127,7 +154,7 @@ export function run(n: number, rich: boolean): { stats: RoundtripStats; examples
 }
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()!)) {
-  const r = run(N, !!process.env.SWEEP_RICH);
+  const r = run(N, !!process.env.SWEEP_RICH, !!process.env.SWEEP_MIXED);
   console.log('■ 消す → 入力に反映 → 入力を直す → 作り直す（一連の流れ）');
   console.log(`  ${JSON.stringify(r.stats)}`);
   for (const e of r.examples) console.log(`  ${e}`);
