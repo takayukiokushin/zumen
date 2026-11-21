@@ -132,10 +132,15 @@ for (let id = 0; id < N; id++) {
     }
   }
   if (process.env.SWEEP_MODE === 'replace') {
-    const TO = ['tr-3p-yd', 'tr-3p-dd', 'ds', 'vcb', 'lbs-pf', 'la'];
+    const SW = ['ds', 'vcb', 'lbs-pf', 'lbs', 'vcs', 'as'];
+    const TR = ['tr-3p-yd', 'tr-3p-dd', 'tr-3p-dy', 'tr-3p-yy'];
+    const SEC = ['pas', 'pgs', 'ugs'];
     for (const s of topSyms(doc0)) {
       const role = baseOf(s.id);
-      const to = TO[Math.floor(rnd() * TO.length)]!;
+      // 意味のある組み合わせだけ：開閉器どうし・変圧器の結線どうし・区分開閉器の種類どうし
+      const pool = SW.includes(s.symbolId) ? SW : TR.includes(s.symbolId) ? TR : SEC.includes(s.symbolId) ? SEC : null;
+      if (!pool) continue;
+      const to = pool[Math.floor(rnd() * pool.length)]!;
       if (to === s.symbolId) continue;
       const key = `差替:${role}`;
       try {

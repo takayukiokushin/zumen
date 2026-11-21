@@ -232,6 +232,64 @@ const withKeys = (a: Answers, set: Answers): Answers => {
  * @param doc いまの図面
  * @param toEffective 画面が図面を作るときに使う、既定値などを足した答えにする関数
  */
+/** 差し替えた記号 → 開閉器の組み合わせの部品の名前（ケーブル前後・電動機・送り出し） */
+const COMP_OF: Record<string, string> = { ds: 'ds', vcb: 'vcb', 'lbs-pf': 'lbs', lbs: 'lbs-plain', vcs: 'vcs', as: 'as', mccb: 'mccb' };
+
+/** 開閉器の組み合わせ（「ds-vcb」など）の、1つの部品を入れ替える。選べない組み合わせになるときは null */
+function swapComponent(cur: string, from: string, to: string, valid: Set<string>): string | null {
+  const comps = cur === 'none' ? [] : cur === 'lbs-plain' ? ['lbs-plain'] : cur.split('-');
+  const at = comps.indexOf(from);
+  if (at < 0 || comps.includes(to)) return null;
+  const next = [...comps];
+  next[at] = to;
+  const v = next.join('-');
+  return valid.has(v) ? v : null;
+}
+
+/**
+ * 記号を別の種類に差し替えたとき（開閉器どうし・区分開閉器の種類どうし）の、書き戻す答え。書き戻せないときは null。
+ *   ・ケーブル前後の開閉器（1〜3つ目）：その欄を、差し替えた開閉器にする（同じ開閉器がすでにあれば、書き戻さない）
+ *   ・電動機の開閉器・エリア間の接続の送り出しの開閉器：組み合わせの、その部品だけを入れ替える（選べない組み合わせは、書き戻さない）
+ *   ・区分開閉器：PAS・PGS・UGS
+ */
+function replacedAnswers(name: string, to: string | undefined, eff: Answers, table: Map<string, RoleInfo>): Answers | null {
+  if (!to) return null;
+  const { area, rest } = splitArea(name);
+  const rep = repeatOf(rest, table);
+  const role = rep ? rep.info.role : rest.replace(/-\d+$/, '');
+  const uk = (key: string) => (rep ? qKey(indexedKey(key, rep.no - 1), area) : qKey(key, area));
+  const comp = COMP_OF[to];
+  // 区分開閉器
+  if (rest === 'pas' && (to === 'pas' || to === 'pgs' || to === 'ugs')) return String(eff[qKey('sectionalizer', area)]) === to ? null : { [qKey('sectionalizer', area)]: to };
+  if (!comp) return null;
+  // ケーブル前後の開閉器の欄
+  const slot = /^(tr|cap|gen|motor)-cable-(up|dn)([123])$/.exec(role);
+  if (slot && rep) {
+    const side = slot[2] === 'up' ? 'Up' : 'Dn';
+    const key = (k: number) => uk(`${slot[1]}Cable${side}${k}`);
+    const vals = [1, 2, 3].map((k) => String(eff[key(k)] ?? 'none'));
+    if (vals.includes(comp) || vals[Number(slot[3]) - 1] === 'none') return null;
+    return { [key(Number(slot[3]))]: comp };
+  }
+  // 電動機の開閉器
+  const mfrom: Record<string, string> = { 'motor-ds': 'ds', 'motor-vcb': 'vcb', 'motor-lbs': 'lbs', 'motor-lbs-plain': 'lbs-plain', 'motor-mccb': 'mccb' };
+  if (rep && mfrom[role]) {
+    const valid = new Set((Q.get('motorSwitch')?.options ?? []).map((o) => String(o.value)));
+    const next = swapComponent(String(eff[uk('motorSwitch')] ?? 'none'), mfrom[role]!, comp, valid);
+    return next ? { [uk('motorSwitch')]: next } : null;
+  }
+  // エリア間の接続の、送り出しの開閉器（k段目）
+  const so = /^sendout-(ds|vcb|lbs|vcs|as)(?:-(\d+))?$/.exec(rest);
+  if (so && !rep) {
+    const k = so[2] ? Number(so[2]) : 1;
+    const key = qKey(`${linkStagePrefix(k)}Switch`, area);
+    const valid = new Set((Q.get('linkSwitch')?.options ?? []).map((o) => String(o.value)));
+    const next = swapComponent(String(eff[key] ?? 'none'), so[1]!, comp, valid);
+    return next ? { [key]: next } : null;
+  }
+  return null;
+}
+
 function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers, force = false): WritebackResult | null {
   if (!doc.base || doc.edited !== true) return null;
   const ov = collectOverrides(doc);
@@ -253,7 +311,12 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
   for (const [name, e] of Object.entries(ov.moved)) {
     const { area, rest } = splitArea(name);
     const unit = transformerUnit(rest);
-    if (unit < 0) continue;
+    if (unit < 0) {
+      // 変圧器以外の記号の差し替え：開閉器（ケーブル前後・電動機・送り出し）・区分開閉器の種類
+      const set = replacedAnswers(name, e.symbolId, eff0, table);
+      if (set) cands.push({ kind: 'replaced', symbol: nameJaOf(e.symbolId!), set });
+      continue;
+    }
     if (e.symbolId && (CONN_SYMBOLS.has(e.symbolId) || e.symbolId === 'tr-blank')) {
       cands.push({
         kind: 'replaced',
@@ -824,6 +887,69 @@ function insertSwitches(raw: Answers, doc: Doc, toEffective: (a: Answers) => Ans
  * 途中の台（変圧器・コンデンサなど）を消したときは、先に、後ろの台を前へつめてから書き戻す。
  */
 /**
+ * 電動機の開閉器・エリア間の接続の送り出しの開閉器を、別の種類に差し替えたとき：答えを入れ替え、図面の記号の名前も付け替える
+ * （開閉器の種類で、記号の名前が変わるため。例：motor-ds → motor-vcb）。付け替えた記号は、自動で作ったものとして扱う（位置は、そのまま）。
+ */
+function swapSwitches(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers, table: Map<string, RoleInfo>): { raw: Answers; doc: Doc; applied: AppliedChange[] } | null {
+  let curRaw = raw;
+  let curDoc = doc;
+  const applied: AppliedChange[] = [];
+  const MOTOR_ROLE: Record<string, string> = { ds: 'motor-ds', vcb: 'motor-vcb', lbs: 'motor-lbs', 'lbs-plain': 'motor-lbs-plain', mccb: 'motor-mccb' };
+  for (let guard = 0; guard < 8; guard++) {
+    const ov = collectOverrides(curDoc);
+    const eff = toEffective(curRaw);
+    let did = false;
+    for (const [name, e] of Object.entries(ov.moved)) {
+      if (!e.symbolId || !curDoc.base) continue;
+      const comp = COMP_OF[e.symbolId];
+      if (!comp) continue;
+      const { area, rest } = splitArea(name);
+      const prefix = name.slice(0, name.length - rest.length);
+      const rep = repeatOf(rest, table);
+      let key: string | null = null;
+      let next: string | null = null;
+      let newName: string | null = null;
+      let qid = '';
+      let unit = 0;
+      const mfrom: Record<string, string> = { 'motor-ds': 'ds', 'motor-vcb': 'vcb', 'motor-lbs': 'lbs', 'motor-lbs-plain': 'lbs-plain', 'motor-mccb': 'mccb' };
+      if (rep && mfrom[rep.info.role]) {
+        qid = 'motorSwitch';
+        key = qKey(indexedKey('motorSwitch', rep.no - 1), area);
+        const valid = new Set((Q.get('motorSwitch')?.options ?? []).map((o) => String(o.value)));
+        next = swapComponent(String(eff[key] ?? 'none'), mfrom[rep.info.role]!, comp, valid);
+        if (next && MOTOR_ROLE[comp]) newName = `${prefix}${MOTOR_ROLE[comp]}${rep.no > 1 ? `-${rep.no}` : ''}`;
+        unit = rep.no > 1 ? rep.no : 0;
+      } else {
+        const so = !rep ? /^sendout-(ds|vcb|lbs|vcs|as)(?:-(\d+))?$/.exec(rest) : null;
+        if (so) {
+          const k = so[2] ? Number(so[2]) : 1;
+          qid = `${linkStagePrefix(k)}Switch`;
+          key = qKey(qid, area);
+          const valid = new Set((Q.get('linkSwitch')?.options ?? []).map((o) => String(o.value)));
+          next = swapComponent(String(eff[key] ?? 'none'), so[1]!, comp, valid);
+          if (next) newName = `${prefix}sendout-${comp}${k > 1 ? `-${k}` : ''}`;
+        }
+      }
+      if (!key || !next || !newName || newName === name) continue;
+      const target = newName;
+      const ren = (id: string): string => (sameName(id) === name ? target : id);
+      const renamed = renameDoc(curDoc, ren);
+      const nn = sameName(target);
+      const b = renamed.base?.symbols[nn];
+      if (!renamed.base || !b) continue;
+      // 控えの記号の種類を、差し替えた種類にする（自動で作ったものとして扱う）
+      curDoc = { ...renamed, base: { ...renamed.base, symbols: { ...renamed.base.symbols, [nn]: { ...b, symbolId: e.symbolId } } } };
+      applied.push({ question: questionLabel(qid), unit, area, from: valueText(qid, eff[key] ?? 'none'), to: valueText(qid, next) });
+      curRaw = { ...curRaw, [key]: next };
+      did = true;
+      break;
+    }
+    if (!did) break;
+  }
+  return applied.length > 0 ? { raw: curRaw, doc: curDoc, applied } : null;
+}
+
+/**
  * 図面で直した内容を、入力に書き戻す。
  * 部品を2つ以上消したときなど、1つ書き戻すと、ほかの書き戻しが通るようになることがあるので、反映が落ち着くまで、くり返す（最大4回）。
  */
@@ -890,12 +1016,19 @@ function writeBackOnce(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     curDoc = r.doc;
     shifted = true;
   }
-  // ケーブルの前後に足した開閉器を、その台の開閉器の欄に入れる
-  const pre = insertSwitches(curRaw, curDoc, toEffective, table);
-  if (pre) {
-    curRaw = pre.raw;
-    curDoc = pre.doc;
+  // 電動機・送り出しの開閉器を差し替えたとき、記号の名前を付け替える
+  const swap = swapSwitches(curRaw, curDoc, toEffective, table);
+  if (swap) {
+    curRaw = swap.raw;
+    curDoc = swap.doc;
   }
+  // ケーブルの前後に足した開閉器を、その台の開閉器の欄に入れる
+  const ins = insertSwitches(curRaw, curDoc, toEffective, table);
+  if (ins) {
+    curRaw = ins.raw;
+    curDoc = ins.doc;
+  }
+  const pre = swap || ins ? { applied: [...(swap?.applied ?? []), ...(ins?.applied ?? [])] } : null;
   const core = writeBackCore(curRaw, curDoc, toEffective, pre !== null);
   const res = core && pre ? { ...core, applied: [...pre.applied, ...core.applied] } : core;
   if (!shifted) return res;

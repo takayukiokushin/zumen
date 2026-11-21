@@ -567,3 +567,61 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log(`  入力に項目が無い部品（主遮断装置・引込点）を消す → 書き戻さず、図面にだけ残る。知らせに、部品の名前が出る（${rem.names.join('・')}）`);
   }
 }
+
+/* 開閉器の記号を別の種類に差し替えたとき（第18弾 追加）：ケーブル前後の欄・電動機・エリア間の接続の送り出し */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  // ケーブル前後の欄：1つ目のDSをVCBに差し替える（2つ目がLBSなので、重ならない）
+  {
+    const raw: Answers = { ...answersSpread, areaCount: '1', transformerCount: '1', trHasCable: 'yes', trCableUp1: 'ds', trCableUp2: 'lbs', trCableDn1: 'lbs', trCableInstallation: 'buried', trCableStructure: 'CVT', hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no' };
+    const d0 = buildGenerated(toEff(raw));
+    const up1 = find(d0, 'tr-cable-up1');
+    if (!up1) fail('ケーブルの手前の1つ目が、自動の図面にありません');
+    else {
+      const r = writeBack(raw, { ...replaceSymbol(d0, up1.id, 'vcb'), edited: true }, toEff);
+      if (r?.answers.trCableUp1 !== 'vcb' || r.answers.trCableUp2 !== 'lbs') fail(`ケーブルの手前の1つ目のDSをVCBに差し替えたら、1つ目が「VCB」になるはずが、違います（${r?.answers.trCableUp1}・${r?.answers.trCableUp2}／${JSON.stringify(r?.rejected)}）`);
+      else if (r.leftovers.some((l) => l.kind === 'replaced')) fail('書き戻したのに、「差し替えたもの」が図面にだけ残っています');
+      else console.log('  ケーブルの手前の1つ目のDSを、VCBに差し替える → 1つ目が「VCB」になる（2つ目は変わらない）');
+      // すでにある開閉器（LBS）と同じものへの差し替えは、書き戻さない
+      const r2 = writeBack(raw, { ...replaceSymbol(d0, up1.id, 'lbs-pf'), edited: true }, toEff);
+      if (r2 && r2.answers.trCableUp1 !== 'ds') fail('同じ開閉器（LBS）が、すでにあるのに、DSをLBSに差し替えて、書き戻しています');
+    }
+  }
+  // 電動機：開閉器が「DS」→ DSをVCBに差し替える → 「VCB」（記号の名前も、motor-vcbになる）
+  {
+    const raw: Answers = { ...answersSpread, areaCount: '1', hasMotor: 'yes', motorCount: '1', motorSource: 'bus', motorSwitch: 'ds', motorSwitch2: 'none', motorCable: 'no' };
+    const d0 = buildGenerated(toEff(raw));
+    const ds = find(d0, 'motor-ds');
+    if (!ds) fail('電動機のDSが、自動の図面にありません');
+    else {
+      const r = writeBack(raw, { ...replaceSymbol(d0, ds.id, 'vcb'), edited: true }, toEff);
+      if (r?.answers.motorSwitch !== 'vcb') fail(`電動機のDSをVCBに差し替えたのに、開閉器が「VCB」になっていません（${r?.answers.motorSwitch}／${JSON.stringify(r?.rejected)}）`);
+      else if (!find(r.doc, 'motor-vcb') || find(r.doc, 'motor-ds')) fail('書き戻したあとの図面で、電動機の開閉器が、VCBの記号の名前になっていません');
+      else console.log('  電動機の開閉器のDSを、VCBに差し替える → 開閉器が「VCB」になる（記号の名前も付け替わる）');
+    }
+  }
+  // エリア間の接続の送り出し：DS＋VCB のDSをLBSに差し替える → 選べない組み合わせなので、書き戻さない／VCBをVCSに差し替える → 「DS＋VCS」も選べないので書き戻さない
+  {
+    const raw: Answers = { ...answersSpread, areaCount: '2', 'a2:linkTap': 'bus', 'a2:linkSwitch': 'ds-vcb', 'a2:linkCable': 'yes', 'a2:linkCableInstallation': 'buried', 'a2:linkCableStructure': 'CVT' };
+    const d0 = buildGenerated(toEff(raw));
+    const ds = find(d0, 'a2:sendout-ds');
+    const vcb = find(d0, 'a2:sendout-vcb');
+    if (!ds || !vcb) fail('送り出しの「DS＋VCB」が、自動の図面にありません');
+    else {
+      const r = writeBack(raw, { ...replaceSymbol(d0, ds.id, 'lbs-pf'), edited: true }, toEff);
+      if (r && r.applied.length > 0) fail('「DS＋VCB」のDSをLBSに差し替えて、選べない組み合わせなのに、書き戻しています');
+      else console.log('  送り出しの「DS＋VCB」のDSを、LBSに差し替える → 選べない組み合わせなので、書き戻さない（図面にだけ残る）');
+    }
+    const raw1: Answers = { ...raw, 'a2:linkSwitch': 'vcb' };
+    const e0 = buildGenerated(toEff(raw1));
+    const v = find(e0, 'a2:sendout-vcb');
+    if (!v) fail('送り出しのVCBが、自動の図面にありません');
+    else {
+      const r = writeBack(raw1, { ...replaceSymbol(e0, v.id, 'lbs-pf'), edited: true }, toEff);
+      if (r?.answers['a2:linkSwitch'] !== 'lbs' || !find(r.doc, 'a2:sendout-lbs')) fail(`送り出しのVCBをLBSに差し替えたのに、「LBS」になっていません（${r?.answers['a2:linkSwitch']}／${JSON.stringify(r?.rejected)}）`);
+      else console.log('  送り出しのVCBを、LBSに差し替える → 送り出しの開閉器が「LBS」になる（記号の名前も付け替わる）');
+    }
+  }
+}
