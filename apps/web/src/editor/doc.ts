@@ -566,8 +566,8 @@ export function linkWires(doc: Doc): Doc {
        * （PASの中で、LAへの横線の端がすぐ上のVTの接続点に吸い寄せられていた）
        */
       const keepsStraight = (p: { x: number; y: number }): boolean => {
-        if (w.y1 === w.y2) return Math.abs(p.y - w.y1) <= 1.5;
-        if (w.x1 === w.x2) return Math.abs(p.x - w.x1) <= 1.5;
+        if (isHorizontal(w)) return Math.abs(p.y - w.y1) <= 1.5;
+        if (isVertical(w)) return Math.abs(p.x - w.x1) <= 1.5;
         return true;
       };
       const pick = (x: number, y: number) => {
@@ -1409,6 +1409,15 @@ export function standardLabelOffset(doc: Doc, it: DocSymbol): { dx: number; dy: 
   const o = sideLabelOrigin(getSymbol(it.symbolId), 'right', 10, LABEL_FONT * 0.85);
   return { dx: o.x, dy: o.y };
 }
+
+/**
+ * 縦の線・横の線の判定（ごくわずかな差は、同じとみなす）。
+ * 計算の端数（0.0000001 など）で、まっすぐな線が、斜めと判定されないように、すべての判定を、この2つにそろえる（第20弾 項目8・番号2）。
+ * 長さ 0 の線は、縦でも横でもある。
+ */
+export const WIRE_EPS = 0.01;
+export const isVertical = (w: { x1: number; x2: number }): boolean => Math.abs(w.x1 - w.x2) < WIRE_EPS;
+export const isHorizontal = (w: { y1: number; y2: number }): boolean => Math.abs(w.y1 - w.y2) < WIRE_EPS;
 
 /**
  * 線の上に乗せる記号（VCT・CT・ZCT）を、近くの縦の線の上に、置き直す（軸を、線の真上に合わせる）。

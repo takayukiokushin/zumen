@@ -5,7 +5,7 @@ import { LABEL_FONT, LABEL_LINE, SHEET_MARGIN, clampTextSize, SHEET_PAD, layoutT
 import type { Orientation, PaperSize, TitleBlock } from '@zumen/layout';
 import type { Doc, DocItem, DocSymbol, DocText, DocWire } from './doc.ts';
 import { cableViolations } from './hvCable.ts';
-import { applyAnchors, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf, refreshFans, standardLabelOffset } from './doc.ts';
+import { applyAnchors, isHorizontal, isVertical, defOf, descendantsOf, docBounds, groupOf, groupRootOf, linkWires, makeWire, moveItem, nearestPort, outwardOf, portsOf, refreshFans, standardLabelOffset } from './doc.ts';
 
 /**
  * 図面全体を見まわして、おかしなところを直す。
@@ -140,10 +140,10 @@ function segmentEntersBox(w: DocWire, b: Box, inset = 1): boolean {
   const inside = (x: number, y: number) => x > box.x0 && x < box.x1 && y > box.y0 && y < box.y1;
   if (inside(w.x1, w.y1) || inside(w.x2, w.y2)) return true;
   // 縦横の線しか使わないので、またいでいるかだけ見ればよい
-  if (w.x1 === w.x2) {
+  if (isVertical(w)) {
     return w.x1 > box.x0 && w.x1 < box.x1 && Math.min(w.y1, w.y2) < box.y0 && Math.max(w.y1, w.y2) > box.y1;
   }
-  if (w.y1 === w.y2) {
+  if (isHorizontal(w)) {
     return w.y1 > box.y0 && w.y1 < box.y1 && Math.min(w.x1, w.x2) < box.x0 && Math.max(w.x1, w.x2) > box.x1;
   }
   return false;
@@ -244,7 +244,7 @@ function freeEnds(doc: Doc): FreeEnd[] {
   const out: FreeEnd[] = [];
   for (const w of all) {
     const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
-    const straight = w.x1 === w.x2 || w.y1 === w.y2;
+    const straight = isVertical(w) || isHorizontal(w);
     if (len < 0.5 || !straight) continue;
     for (const end of [1, 2] as const) {
       if (end === 1 ? w.at1 : w.at2) continue;
@@ -266,7 +266,7 @@ function freeEnds(doc: Doc): FreeEnd[] {
       if (meeting.length >= 2) continue;
       // 同じ直線の上で、端と端がぴったり続いている（1本の線が2本に分かれているだけ）なら、つながっている
       const continues = meeting.some((o) =>
-        w.x1 === w.x2 ? o.x1 === o.x2 && Math.abs(o.x1 - w.x1) <= TOUCH : w.y1 === w.y2 && o.y1 === o.y2 && Math.abs(o.y1 - w.y1) <= TOUCH,
+        isVertical(w) ? isVertical(o) && Math.abs(o.x1 - w.x1) <= TOUCH : isHorizontal(w) && isHorizontal(o) && Math.abs(o.y1 - w.y1) <= TOUCH,
       );
       if (continues) continue;
       if (branchesInsideParent(doc, w, x, y)) continue;
@@ -617,7 +617,7 @@ function contentBoxes(doc: Doc, joinLabels = false, skipCables = false): Box[] {
         (h) => h.kind === 'symbol' && h.symbolId === 'cable-head' && h.rotate === 180 && h.y > it.y && h.y <= it.y + 40 && h.x >= it.x && h.x <= it.x + it.w,
       );
       if (!betweenHeads) boxes.push({ x0: it.x, y0: it.y - 1, x1: it.x + it.w, y1: it.y + 26 });
-    } else if (it.y1 === it.y2 && it.x1 !== it.x2 && !(skipCables && it.dashed)) {
+    } else if (isHorizontal(it) && !isVertical(it) && !(skipCables && it.dashed)) {
       boxes.push({ x0: Math.min(it.x1, it.x2), y0: it.y1 - 0.5, x1: Math.max(it.x1, it.x2), y1: it.y1 + 0.5 });
     }
   }
@@ -761,7 +761,7 @@ function trimThroughSymbols(doc: Doc): { doc: Doc; fixed: number; issues: Issue[
           (o) => o.id !== it.id && distToSegment(mx, my, o.x1, o.y1, o.x2, o.y2) <= TOUCH,
         );
         if (joined) continue;
-        if (w.x1 === w.x2) {
+        if (isVertical(w)) {
           const other = moveEnd === 1 ? w.y2 : w.y1;
           const edge = other < box.y0 ? box.y0 : box.y1;
           if (moveEnd === 1) w.y1 = edge;
@@ -969,7 +969,7 @@ function straightenFreeWires(doc: Doc): { doc: Doc; fixed: number } {
 
   for (let pass = 0; pass < 3; pass++) {
     const bent = items.filter(
-      (it): it is DocWire => it.kind === 'wire' && !it.at1 && !it.at2 && it.x1 !== it.x2 && it.y1 !== it.y2,
+      (it): it is DocWire => it.kind === 'wire' && !it.at1 && !it.at2 && !isVertical(it) && !isHorizontal(it),
     );
     if (bent.length === 0) break;
 
@@ -1037,7 +1037,7 @@ function straightenWires(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] }
 
   // 1本直すと別の線に影響することがあるので、何度か繰り返す
   for (let pass = 0; pass < 4; pass++) {
-    const skewed = wiresOf(next).filter((w) => w.x1 !== w.x2 && w.y1 !== w.y2 && w.at1 && w.at2);
+    const skewed = wiresOf(next).filter((w) => !isVertical(w) && !isHorizontal(w) && w.at1 && w.at2);
     if (skewed.length === 0) break;
     let movedSomething = false;
 
@@ -1066,7 +1066,7 @@ function straightenWires(doc: Doc): { doc: Doc; fixed: number; issues: Issue[] }
   }
 
   const left = wiresOf(next)
-    .filter((w) => w.x1 !== w.x2 && w.y1 !== w.y2)
+    .filter((w) => !isVertical(w) && !isHorizontal(w))
     .map(
       (w): Issue => ({
         kind: 'skew',
@@ -1218,7 +1218,7 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
 
   // 斜めの線
   for (const w of wires) {
-    if (w.x1 === w.x2 || w.y1 === w.y2) continue;
+    if (isVertical(w) || isHorizontal(w)) continue;
     issues.push({
       kind: 'skew',
       message: tr('insp.skew'),

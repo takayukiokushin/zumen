@@ -88,3 +88,26 @@ console.log('\n■ 「記号を追加・差し替え」の分類：「結線要�
   if (bad.length > 0) fail(`「結線要素」の整理に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
   else console.log(`  追加の一覧の分類は ${cats.length} 個（「結線要素」は無い）。母線・地表面の定義は、保存済みの図面のために残してある`);
 }
+
+console.log('\n■ 線の縦・横の判定：ごくわずかな差は、同じとみなす（第20弾 項目8・番号2）');
+{
+  const bad: string[] = [];
+  const base = fromLayout(layout(buildComposition(answers), answers));
+  const kinds = (d: Doc) => inspectDrawing(d, 'A3', 'landscape').filter((i) => i.kind === 'skew').length;
+  const wires = base.items.filter((i): i is DocWire => i.kind === 'wire' && !i.stub);
+  const v = wires.find((w) => Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y1 - w.y2) > 5);
+  const h = wires.find((w) => Math.abs(w.y1 - w.y2) < 0.01 && Math.abs(w.x1 - w.x2) > 5);
+  const n0 = kinds(base);
+  const shift = (w: DocWire, dx: number, dy: number): Doc => ({ ...base, items: base.items.map((i) => (i.id === w.id ? { ...(i as DocWire), x2: (i as DocWire).x2 + dx, y2: (i as DocWire).y2 + dy } : i)) });
+  if (!v || !h) bad.push('縦の線・横の線が見つかりません');
+  else {
+    for (const e of [1e-7, 0.001, 0.005]) {
+      if (kinds(shift(v, e, 0)) > n0) bad.push(`縦の線の端が ${e} ずれただけで、斜めの線として数えられます`);
+      if (kinds(shift(h, 0, e)) > n0) bad.push(`横の線の端が ${e} ずれただけで、斜めの線として数えられます`);
+    }
+    if (kinds(shift(v, 0.5, 0)) <= n0) bad.push('縦の線の端が 0.5 ずれても、斜めの線として数えられません');
+    if (kinds(shift(h, 0, 0.5)) <= n0) bad.push('横の線の端が 0.5 ずれても、斜めの線として数えられません');
+  }
+  if (bad.length > 0) fail(`縦横の判定に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
+  else console.log('  端が 0.005 までずれた線は、まっすぐな線のまま。0.5 ずれた線は、斜めの線として数える');
+}
