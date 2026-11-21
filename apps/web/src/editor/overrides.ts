@@ -1,4 +1,5 @@
 import { rotatedBox } from '@zumen/layout';
+import { nudgeSymbolLabel } from './inspect.ts';
 import { followAutoWires } from './wireFollow.ts';
 import { applyAnchors, seatOnWire, baselineOf, defOf, freshId, moveItem, moveItems, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
 import type { AddedItem, Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire, FrameEdit, Overrides, Placement, SymbolEdit } from './doc.ts';
@@ -421,6 +422,9 @@ export function rebuildWithOverrides(
 
   // 重なりの知らせ（勝手には動かさない）
   const touched = new Set<string>([...movedIds, ...newSymbols.map((s) => s.id)]);
+  // 手で足した記号・手で動かした記号の文字が、作り直しで新しく置かれた記号（入力で足した LA など）に重なったときだけ、重ならない場所へ逃がす
+  // （重なっていなければ、何も変えない。手で動かした文字の位置も、そのまま）
+  for (const id of touched) if (work.items.some((it) => it.kind === 'symbol' && it.id === id)) work = nudgeSymbolLabel(work, id);
   const all = work.items.filter((it): it is DocSymbol => it.kind === 'symbol' && !it.parent);
   let overlaps = 0;
   const overlapIds = new Set<string>();
