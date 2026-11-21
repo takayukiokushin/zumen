@@ -478,3 +478,26 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     else console.log('  エリア間の接続の最後の段のケーブルの、受け側の端末を消す → 2段目のケーブルが「なし」');
   }
 }
+
+/* 台のまわりの部品（PC・LBS・VCS・リアクトル）を足したとき：足した位置にいちばん近い台の「あり」になる（第18弾 追加） */
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const find = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const raw: Answers = { ...answersSpread, areaCount: '1', transformerCount: '2', trHasPc: 'no', trHasPc__2: 'no', trHasLbs: 'no', trHasLbs__2: 'no' };
+  const d0 = buildGenerated(toEff(raw));
+  const t1 = find(d0, 'transformer');
+  const t2 = find(d0, 'transformer-2');
+  if (!t1 || !t2) fail('変圧器が2台の図面に、1台目・2台目がありません');
+  else {
+    // 2台目の近くに、PCを足す → 2台目の「PC」だけが「あり」
+    const r = writeBack(raw, { ...addSymbol(d0, 'pc', t2.x, t2.y - 60).doc, edited: true }, toEff);
+    if (r?.answers.trHasPc__2 !== 'yes') fail(`2台目の近くにPCを足しても、2台目の「PC」が「あり」になっていません（${r?.answers.trHasPc__2}／${JSON.stringify(r?.rejected)}）`);
+    else if (r.answers.trHasPc !== 'no') fail('2台目の近くにPCを足したら、1台目のPCまで変わりました');
+    else console.log('  2台目の近くにPCを足す → 2台目の「PC」だけが「あり」になる');
+    // 1台目の近くに、PCを足す → 1台目の「PC」が「あり」
+    const r1 = writeBack(raw, { ...addSymbol(d0, 'pc', t1.x, t1.y - 60).doc, edited: true }, toEff);
+    if (r1?.answers.trHasPc !== 'yes' || r1.answers.trHasPc__2 !== 'no') fail(`1台目の近くにPCを足したら、1台目だけが「あり」になるはずが、違います（${r1?.answers.trHasPc}・${r1?.answers.trHasPc__2}）`);
+    else console.log('  1台目の近くにPCを足す → 1台目の「PC」だけが「あり」になる');
+  }
+}

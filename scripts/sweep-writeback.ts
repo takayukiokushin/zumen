@@ -9,7 +9,7 @@
  *
  *   SWEEP_N=60 node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/sweep-writeback.ts
  */
-import { fromLayout, removeItem, sameName, tidyDoc, dedupeIds } from '../apps/web/src/editor/doc.ts';
+import { addSymbol, docBounds, fromLayout, removeItem, replaceSymbol, sameName, tidyDoc, dedupeIds } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol } from '../apps/web/src/editor/doc.ts';
 import { buildGenerated, writeBack } from '../apps/web/src/editor/writeback.ts';
 import { buildComposition, dropHiddenChoices, effectiveAnswers, evaluate, missingRequiredFields } from '../packages/knowledge/src/index.ts';
@@ -191,6 +191,44 @@ for (let id = 0; id < N; id++) {
     } catch (e) {
       tally(role, '落ちた');
       examples[`落ちた:${role}`] ??= `種${id + 1}：${String((e as Error).message).slice(0, 60)}`;
+    }
+  }
+  // 足す・差し替える（SWEEP_MODE=add / replace）
+  if (process.env.SWEEP_MODE === 'add') {
+    const TYPES = ['ds', 'vcb', 'lbs-pf', 'la', 'vt', 'ct', 'sc', 'sr', 'zct', 'pc', 'as', 'pas', 'relay-ocr', 'zpd', 'tr-3p-yd', 'generator', 'motor', 'vcs', 'cable-head', 'tr-blank'];
+    for (const t of TYPES) {
+      const key = `足す:${t}`;
+      try {
+        const b = docBounds(doc0);
+        const d = addSymbol(doc0, t, b.x0 + rnd() * (b.x1 - b.x0), b.y0 + rnd() * (b.y1 - b.y0)).doc;
+        const r = writeBack(raw, { ...d, edited: true }, toEff);
+        const g = r ? buildGenerated(toEff(r.answers)) : null;
+        const cnt = (dd: Doc) => dd.items.filter((i) => i.kind === 'symbol' && (i as DocSymbol).symbolId === t).length;
+        if (r && r.applied.length > 0 && g && cnt(g) > cnt(buildGenerated(toEff(raw)))) tally(key, '反映された');
+        else if (r && r.rejected.length > 0) tally(key, '断られた');
+        else tally(key, '対応する入力が無い');
+      } catch (e) {
+        tally(key, '落ちた');
+        examples[`落ちた:${key}`] ??= String((e as Error).message).slice(0, 60);
+      }
+    }
+  }
+  if (process.env.SWEEP_MODE === 'replace') {
+    const TO = ['tr-3p-yd', 'tr-3p-dd', 'ds', 'vcb', 'lbs-pf', 'la'];
+    for (const s of topSyms(doc0)) {
+      const role = baseOf(s.id);
+      const to = TO[Math.floor(rnd() * TO.length)]!;
+      if (to === s.symbolId) continue;
+      const key = `差替:${role}`;
+      try {
+        const d = replaceSymbol(doc0, s.id, to);
+        const r = writeBack(raw, { ...d, edited: true }, toEff);
+        if (r && r.applied.length > 0) tally(key, '反映された');
+        else if (r && r.rejected.length > 0) tally(key, '断られた');
+        else tally(key, '対応する入力が無い');
+      } catch {
+        tally(key, '落ちた');
+      }
     }
   }
   // 2つ以上、続けて消す

@@ -342,18 +342,46 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
     } else if (table.get(rest)?.presenceKey) cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey(table.get(rest)!.presenceKey!, area)]: 'no' } });
   }
 
+  /** 台の本体（変圧器・コンデンサ・電動機など）の、図面の上の位置と、何か所目の何台目か（件数の質問ごと） */
+  const mainsOf = (countKey: string): { area: number; no: number; x: number; y: number }[] => {
+    const out: { area: number; no: number; x: number; y: number }[] = [];
+    for (const it of doc.items) {
+      if (it.kind !== 'symbol') continue;
+      const sp = splitArea(sameName(it.id));
+      const rep = repeatOf(sp.rest, table);
+      if (!rep || rep.info.countKey !== countKey || !UNIT_MAIN.has(rep.info.role)) continue;
+      out.push({ area: sp.area, no: rep.no, x: it.x, y: it.y });
+    }
+    return out;
+  };
+
   // 足した記号：「あり／なし」を「あり」に。台数を1つ増やす
   for (const a of added) {
     const S = a.item.symbolId;
     const presence = [...table.values()].filter((r) => r.presenceKey && r.symbolIds.has(S) && !baseNames.has(r.role) && eff0[r.presenceKey] !== 'yes');
     const keys = new Set(presence.map((r) => r.presenceKey!));
+    // 台の本体（変圧器・コンデンサ・電動機など）を足したとき：台数を1つ増やす。台のまわりの部品（PC・LBSなど）は、台数の対象ではない
     const counts = new Set(
-      [...table.values()].filter((r) => r.countKey && (r.symbolIds.has(S) || (r.role === 'transformer' && (CONN_SYMBOLS.has(S) || S === 'tr-blank')))).map((r) => r.countKey!),
+      [...table.values()].filter((r) => r.countKey && UNIT_MAIN.has(r.role) && (r.symbolIds.has(S) || (r.role === 'transformer' && (CONN_SYMBOLS.has(S) || S === 'tr-blank')))).map((r) => r.countKey!),
     );
     if (keys.size === 1 && counts.size === 0) cands.push({ kind: 'added', symbol: nameJaOf(S), set: { [[...keys][0]!]: 'yes' } });
     else if (counts.size === 1 && keys.size === 0) {
       const ck = [...counts][0]!;
       cands.push({ kind: 'added', symbol: nameJaOf(S), count: { key: ck, area: 0, ...(ck === 'transformerCount' && S !== 'tr-blank' ? { conn: S } : {}) } });
+    } else if (counts.size === 0) {
+      // 台のまわりの部品（PC・LBS・VCS・リアクトルなど）：足した位置にいちばん近い台の「あり」にする
+      const partRoles = [...table.values()].filter((r) => r.unitKey && r.countKey && r.symbolIds.has(S));
+      let best: { d: number; set: Answers } | null = null;
+      for (const r of partRoles) {
+        for (const m of mainsOf(r.countKey!)) {
+          const name = `${m.area > 0 ? `a${m.area + 1}:` : ''}${r.role}${m.no > 1 ? `-${m.no}` : ''}`;
+          const key = qKey(indexedKey(r.unitKey!, m.no - 1), m.area);
+          if (baseNames.has(name) || String(eff0[key] ?? '') === 'yes') continue;
+          const d = (Math.abs(m.x - a.item.x) * 3) ** 2 + (m.y - a.item.y) ** 2;
+          if (!best || d < best.d) best = { d, set: { [key]: 'yes' } };
+        }
+      }
+      if (best) cands.push({ kind: 'added', symbol: nameJaOf(S), set: best.set });
     }
   }
 
