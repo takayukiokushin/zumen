@@ -163,6 +163,9 @@ export const fr: Dict = {
   'editor.palette.add':
     'Choisissez-en un ci-dessous pour l’ajouter sous le schéma. Sélectionnez d’abord un symbole pour le remplacer.',
   'editor.palette.setHint': 'Un appui ajoute en une fois, sous le schéma, l’interrupteur de sectionnement, ses appareils intégrés, le relais (GR/DGR) et les fils de commande. Même si un symbole est sélectionné, cela ajoute un nouvel ensemble (sans remplacer).',
+  'editor.palette.setHintSwap': 'Un interrupteur de sectionnement est sélectionné. Un appui ci-dessous remplace son contenu (appareils intégrés, relais et fils de commande). Sa position et les fils au-dessus et au-dessous restent inchangés.',
+  'editor.set.swapped': 'Contenu de l’interrupteur de sectionnement sélectionné remplacé par « {name} ». « Annuler » permet de revenir en arrière.',
+  'editor.set.swapRefused': 'Le contenu d’un interrupteur de sectionnement pivoté ne peut pas être remplacé. Remettez-le dans son sens d’origine, ou désélectionnez-le et ajoutez-en un nouveau.',
   'editor.set.added': 'Interrupteur de sectionnement ({name}) ajouté sous le schéma. Le symbole sélectionné reste inchangé.',
   'editor.selected': 'Sélection',
   'editor.labelText': 'Texte sur le schéma',

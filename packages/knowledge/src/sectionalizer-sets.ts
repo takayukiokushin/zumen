@@ -94,3 +94,6 @@ export const setDisplayName = (set: SectionalizerSet, tr: (s: string) => string 
 /** リストの中で、見出し（GR方式・DGR方式）の下に出す短い名前（例：「PAS・VTのみ」） */
 export const setShortName = (set: SectionalizerSet, tr: (s: string) => string = (s) => s): string =>
   `${set.sectionalizer.toUpperCase()}・${tr(setPatternLabel(set))}`;
+
+/** 区分開閉器の文字のうち、内蔵機器を表す行（例：「VT,LA内蔵型」）か。内蔵を入れ替えるときに、この行だけ作り直す */
+export const isBuiltinTextLine = (line: string): boolean => /内蔵型$/.test(line);

@@ -20,7 +20,7 @@ import { TextWindow } from './TextWindow.tsx';
 import type { Pos } from './FloatingWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
-import { addSectionalizerSet, setThumb } from './sectionalizerSets.ts';
+import { addSectionalizerSet, isSectionalizer, setThumb, swapSectionalizerSet } from './sectionalizerSets.ts';
 import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
 import { addExtraCross, addLayerCrossOnWire, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
@@ -773,6 +773,15 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   // 「区分開閉器」のリストは、「責任分界点」と「開閉器・遮断器」のあいだ
   const categories: (SymbolCategory | typeof SET_LIST)[] = [...new Set(SYMBOLS.map((s) => s.category))].flatMap((c) => (c === 'boundary' ? [c, SET_LIST] : [c]));
   const onSetClick = (set: (typeof SECTIONALIZER_SETS)[number]) => {
+    // 区分開閉器（PAS・PGS・UGS）を選んでいるときだけ、その中身（内蔵機器・継電器・制御線）を、入れ替える
+    if (selectedSymbol && isSectionalizer(selectedSymbol)) {
+      const swapped = swapSectionalizerSet(doc, selectedSymbol.id, set);
+      if (swapped) {
+        apply(swapped);
+        setSetNote(t('editor.set.swapped', { name: setDisplayName(set, tx) }));
+      } else setSetNote(t('editor.set.swapRefused'));
+      return;
+    }
     const { doc: next, id } = addSectionalizerSet(doc, set);
     apply(next);
     setSelectedId(id);
@@ -1565,7 +1574,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
             <h3>{t('editor.palette')}</h3>
             <p className="hint">
               {paletteCategory === SET_LIST
-                ? t('editor.palette.setHint')
+                ? selectedSymbol && isSectionalizer(selectedSymbol) ? t('editor.palette.setHintSwap') : t('editor.palette.setHint')
                 : selectedSymbol
                   ? t('editor.palette.replace')
                   : t('editor.palette.add')}

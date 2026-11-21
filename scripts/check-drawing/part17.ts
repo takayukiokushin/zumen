@@ -7,7 +7,7 @@ import { fromLayout, moveItem, removeItem, replaceSymbol } from '../../apps/web/
 import type { Doc, DocSymbol, DocWire } from '../../apps/web/src/editor/doc.ts';
 import { inspectDrawing } from '../../apps/web/src/editor/inspect.ts';
 import { rebuildWithOverrides } from '../../apps/web/src/editor/overrides.ts';
-import { addSectionalizerSet, setThumb } from '../../apps/web/src/editor/sectionalizerSets.ts';
+import { addSectionalizerSet, isSectionalizer, setThumb, swapSectionalizerSet } from '../../apps/web/src/editor/sectionalizerSets.ts';
 import { buildGenerated, writeBack } from '../../apps/web/src/editor/writeback.ts';
 import { SECTIONALIZER_SETS, SET_CONTROLS, SET_PATTERNS, SET_SECTIONALIZERS, buildComposition, normalizeAnswers, QUESTIONS, withAutoValues } from '../../packages/knowledge/src/index.ts';
 import type { Answers, Value } from '../../packages/knowledge/src/index.ts';
@@ -97,4 +97,85 @@ console.log('\n■ 区分開閉器のリスト：作り直し・入力への書�
   }
   if (bad.length > 0) fail(`区分開閉器の完成形の、作り直し・書き戻しに問題が ${bad.length}件あります（例：${bad.slice(0, 4).join(' ／ ')}）`);
   else console.log('  足した完成形は、作り直しても残り、入力へは、勝手に書き戻されない');
+}
+
+console.log('\n■ 区分開閉器のリスト：選んでいる区分開閉器の中身を入れ替える');
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const bad: string[] = [];
+  const syms = (d: Doc) => d.items.filter((i): i is DocSymbol => i.kind === 'symbol');
+  const wiresOf = (d: Doc) => d.items.filter((i): i is DocWire => i.kind === 'wire');
+  const problems = (d: Doc) => inspectDrawing(d, 'A3', 'landscape').filter((i) => ['overlap', 'through', 'floating', 'skew'].includes(i.kind)).length;
+  const wantKids = (set: (typeof SECTIONALIZER_SETS)[number]) => ['zct-pas', ...(set.vt ? ['vt-pas'] : []), ...(set.la ? ['la-pas'] : []), ...(set.control === 'dgr' ? [set.la ? 'zpd-pas-boxed' : 'zpd-pas'] : [])].sort();
+  const inPort = (s: DocSymbol) => { const p = getSymbol(s.symbolId).ports.find((q) => q.id === 'in')!; return [s.x + p.x, s.y + p.y]; };
+  const base = fromLayout(layout(buildComposition(answersSpread), answersSpread));
+  const baseP = problems(base);
+
+  // (1) 足したセット × 入れ替え先 24通り × 24通り。中身・継電器・位置・名前の文字・余分な線が残らないこと
+  let n = 0;
+  let k = 0;
+  for (const from of SECTIONALIZER_SETS) {
+    const { doc, id } = addSectionalizerSet(base, from);
+    const pas0 = syms(doc).find((s) => s.id === id)!;
+    const in0 = inPort(pas0);
+    for (const to of SECTIONALIZER_SETS) {
+      n++;
+      const r = swapSectionalizerSet(doc, id, to);
+      const name = `${from.id}→${to.id}`;
+      if (!r) { bad.push(`${name}：入れ替えられません`); continue; }
+      const pas = syms(r).find((s) => s.id === id);
+      if (!pas) { bad.push(`${name}：区分開閉器が消えました`); continue; }
+      const kids = syms(r).filter((s) => s.parent === id && s.slot).map((s) => s.symbolId).sort();
+      if (kids.join() !== wantKids(to).join()) bad.push(`${name}：中身が違います（${kids.join('・')}）`);
+      const relays = syms(r).filter((s) => s.parent === id && !s.slot);
+      if (relays.length !== 1 || relays[0]!.symbolId !== `relay-${to.control}`) bad.push(`${name}：継電器が違います（${relays.map((x) => x.symbolId).join('・')}）`);
+      const inN = inPort(pas);
+      if (Math.abs(inN[0]! - in0[0]!) > 0.01 || Math.abs(inN[1]! - in0[1]!) > 0.01) bad.push(`${name}：区分開閉器の入口の位置が動きました`);
+      if (pas.label[0] !== to.sectionalizer.toUpperCase()) bad.push(`${name}：名前の文字が合っていません（${pas.label[0]}）`);
+      if (pas.label.some((l) => /内蔵型$/.test(l)) !== (to.vt || to.la)) bad.push(`${name}：「内蔵型」の行が合っていません（${pas.label.join('｜')}）`);
+      // 余分な線・記号が残っていない（足してすぐ、その入れ替え先にした図面と、同じ数）
+      const direct = addSectionalizerSet(base, to).doc;
+      if (syms(r).length !== syms(direct).length || wiresOf(r).length !== wiresOf(direct).length) bad.push(`${name}：記号・線の数が、はじめから足したときと違います（記号 ${syms(r).length}/${syms(direct).length}・線 ${wiresOf(r).length}/${wiresOf(direct).length}）`);
+      // つなぎ先が、図面にある
+      const ids = new Set(r.items.map((i) => i.id));
+      for (const w of wiresOf(r)) for (const a of [w.at1, w.at2]) if (a && !ids.has(a.item)) bad.push(`${name}：線のつなぎ先が、図面にありません（${a.item}）`);
+      // 線・文字の問題は、増えない（組み合わせのうち、7通りに1つで、全体を調べる）
+      if (k++ % 7 === 0 && problems(r) > baseP) bad.push(`${name}：入れ替えたら、重なり・つながっていない線・斜めの線が増えました`);
+    }
+  }
+  console.log(`  足したセット：${n}通り（24 × 24）で、中身・継電器・入口の位置・名前の文字が決まりどおり。余分な線は残らない`);
+
+  // (2) 自動作図の区分開閉器：上下につながっている線は、そのまま。入力の書き戻し・作り直しでも壊れない
+  const raw: Answers = { ...answersSpread, areaCount: '1' };
+  const gen = buildGenerated(toEff(raw));
+  const pas0 = syms(gen).find((s) => s.id === 'pas')!;
+  const portWires = (d: Doc) => wiresOf(d).filter((w) => w.at1?.item === 'pas' || w.at2?.item === 'pas').map((w) => w.id).sort().join();
+  const w0 = portWires(gen);
+  for (const to of SECTIONALIZER_SETS.filter((s, i) => i % 3 === 0)) {
+    const r = swapSectionalizerSet(gen, 'pas', to);
+    const name = `自動作図の区分開閉器→${to.id}`;
+    if (!r) { bad.push(`${name}：入れ替えられません`); continue; }
+    if (portWires(r) !== w0) bad.push(`${name}：区分開閉器の上下につながっていた線が、変わりました`);
+    const kids = syms(r).filter((s) => s.parent === 'pas' && s.slot).map((s) => s.symbolId).sort();
+    if (kids.join() !== wantKids(to).join()) bad.push(`${name}：中身が違います（${kids.join('・')}）`);
+    if (syms(r).filter((s) => /^relay-(gr|dgr)$/.test(s.symbolId) && !/^(relay|relay-tt)$/.test(s.id) && (s.parent === 'pas' || /pas/.test(s.id))).length !== 1) bad.push(`${name}：区分開閉器の継電器が1つではありません`);
+    if (problems(r) > problems(gen)) bad.push(`${name}：入れ替えたら、重なり・つながっていない線・斜めの線が増えました`);
+    const cur: Doc = { ...r, edited: true };
+    const wb = writeBack(raw, cur, toEff);
+    const rb = rebuildWithOverrides(wb ? buildGenerated(toEff(wb.answers)) : buildGenerated(toEff(raw)), wb ? wb.doc : cur);
+    if (!syms(rb.doc).some((s) => s.id === 'pas')) bad.push(`${name}：書き戻し・作り直しで、区分開閉器が消えました`);
+    const left = wiresOf(rb.doc).filter((w) => [w.at1, w.at2].some((a) => a && !rb.doc.items.some((i) => i.id === a.item)));
+    if (left.length > 0) bad.push(`${name}：書き戻し・作り直しのあと、つなぎ先の無い線があります`);
+  }
+  console.log('  自動作図の区分開閉器：上下の線はそのまま。書き戻し・作り直しでも、区分開閉器は残り、つなぎ先の無い線は出ない');
+
+  // (3) 回してある区分開閉器は、入れ替えない
+  {
+    const { doc, id } = addSectionalizerSet(base, SECTIONALIZER_SETS[0]!);
+    const rotated: Doc = { ...doc, items: doc.items.map((i) => (i.id === id && i.kind === 'symbol' ? { ...i, rotate: 90 } : i)) };
+    if (swapSectionalizerSet(rotated, id, SECTIONALIZER_SETS[5]!) !== null) bad.push('回してある区分開閉器を、入れ替えています');
+    if (!isSectionalizer(syms(doc).find((s) => s.id === id)) || isSectionalizer(syms(base).find((s) => s.symbolId === 'ds'))) bad.push('区分開閉器の判定が合っていません');
+  }
+  if (bad.length > 0) fail(`区分開閉器の入れ替えに問題が ${bad.length}件あります（例：${bad.slice(0, 4).join(' ／ ')}）`);
 }

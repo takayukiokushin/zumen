@@ -1115,6 +1115,66 @@ export const addWire = (
 };
 
 /** 要素を消す。記号を消すと、内蔵しているものも一緒に消える */
+/**
+ * 区分開閉器の「制御線」（内蔵機器・継電器へ向かう線、その途中の曲がり角の線）を見つける（第20弾 項目6）。
+ * members の記号につながっている線から、つなぎ先の無い端どうしがつながっている線をたどる。
+ * 外の記号（members・継電器以外）につながっている線は、対象にしない（区分開閉器の上下の主回路の線など）。
+ * allowRelays が true のときは、members から線でつながっている継電器（GR・DGR）も、仲間として見つけて返す。
+ */
+export function controlNet(doc: Doc, members: Set<string>, allowRelays: boolean): { wires: Set<string>; relays: Set<string> } {
+  const wires = doc.items.filter((w): w is DocWire => w.kind === 'wire');
+  const isRelay = (id: string) => doc.items.some((i) => i.kind === 'symbol' && i.id === id && /^relay-(gr|dgr)$/.test(i.symbolId));
+  const relays = new Set<string>();
+  // 継電器を見つける：members の記号から、線で直接つながっている継電器（途中の曲がり角の線は、あとでたどる）
+  const ends = (w: DocWire) => [[w.at1, w.x1, w.y1], [w.at2, w.x2, w.y2]] as const;
+  const near = (ax: number, ay: number, bx: number, by: number) => Math.abs(ax - bx) < 0.01 && Math.abs(ay - by) < 0.01;
+  const known = (id: string) => members.has(id) || relays.has(id);
+  const outside = (w: DocWire) => [w.at1, w.at2].some((a) => a && !known(a.item));
+  const own = new Set<string>();
+  const queue: DocWire[] = [];
+  const take = (w: DocWire) => {
+    if (own.has(w.id)) return;
+    own.add(w.id);
+    queue.push(w);
+  };
+  if (allowRelays) {
+    // 区分開閉器の内蔵機器とつながる線をたどり、その先の継電器を、仲間に入れる
+    let grew = true;
+    const seen = new Set<string>();
+    const net: DocWire[] = [];
+    const q2: DocWire[] = wires.filter((w) => [w.at1, w.at2].some((a) => a && members.has(a.item)));
+    while (q2.length > 0) {
+      const w = q2.pop()!;
+      if (seen.has(w.id)) continue;
+      seen.add(w.id);
+      net.push(w);
+      for (const o of wires) {
+        if (seen.has(o.id)) continue;
+        if (ends(w).some(([a, x, y]) => !a && ends(o).some(([b, ox, oy]) => !b && near(x, y, ox, oy)))) q2.push(o);
+      }
+    }
+    while (grew) {
+      grew = false;
+      for (const w of net) for (const a of [w.at1, w.at2]) if (a && !members.has(a.item) && isRelay(a.item) && !relays.has(a.item)) { relays.add(a.item); grew = true; }
+    }
+  }
+  for (const w of wires) {
+    if (outside(w)) continue;
+    const a1 = !!w.at1 && known(w.at1.item);
+    const a2 = !!w.at2 && known(w.at2.item);
+    if ((a1 && a2) || (a1 && !w.at2) || (a2 && !w.at1)) take(w);
+  }
+  while (queue.length > 0) {
+    const w = queue.pop()!;
+    for (const o of wires) {
+      if (own.has(o.id) || outside(o)) continue;
+      // つなぎ先の無い端どうしが、同じ点にあるときだけ
+      if (ends(w).some(([a, x, y]) => !a && ends(o).some(([b, ox, oy]) => !b && near(x, y, ox, oy)))) take(o);
+    }
+  }
+  return { wires: own, relays };
+}
+
 export const removeItem = (doc: Doc, id: string, opts: { noHeal?: boolean } = {}): Doc => {
   // 「結線」の下の機器を消すとき：その機器の下に、つながる記号が1つだけあれば、母線から、その記号へ付け替える。
   // 下に何も無い（または、枝分かれしている）ときは、母線からの縦線ごと消す（上下のつなぎ直しはしない）
@@ -1151,43 +1211,8 @@ export const removeItem = (doc: Doc, id: string, opts: { noHeal?: boolean } = {}
   }
   // 「区分開閉器」リストで足したセット（区分開閉器＋内蔵機器＋継電器）を消すとき：継電器へ向かう制御線・内蔵機器への枝線も、一緒に消す
   // （第20弾 項目6）。継電器が子になっているもの（セット）だけ。自動作図の区分開閉器は、これまでどおり
-  const own = new Set<string>();
   const isSet = doc.items.some((i) => i.kind === 'symbol' && gone.has(i.id) && i.parent === id && !i.slot && /^relay-(gr|dgr)$/.test(i.symbolId));
-  if (isSet) {
-    const boxes = doc.items.filter((o): o is DocSymbol => o.kind === 'symbol' && gone.has(o.id)).map((o) => {
-      const rb = rotatedBox(defOf(o).box, o.rotate);
-      return { x0: o.x + rb.dx, y0: o.y + rb.dy, x1: o.x + rb.dx + rb.w, y1: o.y + rb.dy + rb.h };
-    });
-    const inside = (x: number, y: number) => boxes.some((b) => x >= b.x0 - 0.5 && x <= b.x1 + 0.5 && y >= b.y0 - 0.5 && y <= b.y1 + 0.5);
-    const wires = doc.items.filter((w): w is DocWire => w.kind === 'wire');
-    // 外の記号につながっている線は、対象にしない（区分開閉器の上下の主回路の線など）
-    const outside = (w: DocWire) => [w.at1, w.at2].some((a) => a && !gone.has(a.item));
-    const queue: DocWire[] = [];
-    for (const w of wires) {
-      if (outside(w)) continue;
-      const a1 = !!w.at1 && gone.has(w.at1.item);
-      const a2 = !!w.at2 && gone.has(w.at2.item);
-      if ((a1 && a2) || (a1 && !w.at2 && inside(w.x2, w.y2)) || (a2 && !w.at1 && inside(w.x1, w.y1)) || (a1 && !w.at2) || (a2 && !w.at1)) {
-        own.add(w.id);
-        queue.push(w);
-      }
-    }
-    // 制御線の途中の線（記号につながらず、線の端どうしでつながっている曲がり角の線）も、一緒に消す
-    const near = (ax: number, ay: number, bx: number, by: number) => Math.abs(ax - bx) < 0.01 && Math.abs(ay - by) < 0.01;
-    while (queue.length > 0) {
-      const w = queue.pop()!;
-      for (const o of wires) {
-        if (own.has(o.id) || outside(o)) continue;
-        // つなぎ先の無い端どうしが、同じ点にあるときだけ
-        const ends = [[w.at1, w.x1, w.y1], [w.at2, w.x2, w.y2]] as const;
-        const oends = [[o.at1, o.x1, o.y1], [o.at2, o.x2, o.y2]] as const;
-        if (ends.some(([a, x, y]) => !a && oends.some(([b, ox, oy]) => !b && near(x, y, ox, oy)))) {
-          own.add(o.id);
-          queue.push(o);
-        }
-      }
-    }
-  }
+  const own = isSet ? controlNet(doc, gone, false).wires : new Set<string>();
   return refreshFans({
     ...doc,
     ...(freed.length > 0 ? { vacated: [...(doc.vacated ?? []), ...freed] } : {}),
