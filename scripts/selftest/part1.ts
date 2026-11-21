@@ -120,7 +120,7 @@ export async function part1() {
     ['/', 'text/html'],
     ['/manifest.webmanifest', 'application/manifest+json'],
     ['/icon-192.png', 'image/png'],
-    ['/favicon-32.png', 'image/png'],
+    ['/favicon-tab-32.png', 'image/png'],
   ] as const) {
     const r = await fetch(base + path);
     check(`${path} が返る`, r.ok && (r.headers.get('content-type') ?? '').includes(type), `${r.status}`);

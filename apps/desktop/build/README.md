@@ -9,5 +9,5 @@
 - 書体は **IPAゴシック**。他のフォントに落ちると漢字の字形が変わるので使わない
 
 ブラウザ用の同じアイコンは `apps/web/public/` にある（`icon-192.png` /
-`icon-512.png` / `icon-maskable-512.png` / `apple-touch-icon.png` / `favicon-32.png`）。
+`icon-512.png` / `icon-maskable-512.png` / `apple-touch-icon.png`。ブラウザのタブ用は `favicon-tab-*.png` / `icon-tab.svg`）。
 **色や字を変えるときは両方そろえること。**
