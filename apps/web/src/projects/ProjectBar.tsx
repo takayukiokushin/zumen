@@ -18,6 +18,10 @@ interface Props {
   onList: () => void;
   onRename: (name: string) => void;
   onSave: () => void;
+  /** 「ひとつ前の保存」の内容を保存した時刻（無ければ null。無いときは、ボタンを出さない） */
+  previousAt?: string | null;
+  /** 「ひとつ前の保存」に戻す */
+  onRestorePrevious?: () => void;
 }
 
 /** 開いている案件の名前・保存の帯。利用者まわりは上のタブ帯に移した（㉙） */
@@ -33,6 +37,8 @@ export function ProjectBar({
   onList,
   onRename,
   onSave,
+  previousAt = null,
+  onRestorePrevious,
 }: Props) {
   const t = useT();
   const { input } = useDialogs();
@@ -89,6 +95,16 @@ export function ProjectBar({
             {/* 名前は、いつも「保存」。保存したあとは、押せなくなるだけ（横に、保存した時刻が出る） */}
             {t('project.save')}
           </button>
+          {previousAt && onRestorePrevious && (
+            <button
+              type="button"
+              title={t('previous.tip', { when: new Date(previousAt).toLocaleString(lang) })}
+              onClick={onRestorePrevious}
+              disabled={saving || readOnly}
+            >
+              {t('previous.button')}
+            </button>
+          )}
           <span className="saved">{status}</span>
         </>
       )}

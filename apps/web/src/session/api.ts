@@ -174,6 +174,8 @@ export interface ProjectDetail {
   /** 保存していない入力を、自動で控えたもの（書いた本人にだけ返る）。無ければ null */
   draft?: Draft | null;
   lock: Lock | null;
+  /** 「ひとつ前の保存」があるとき、その内容を保存した時刻（無ければ null） */
+  previous?: { savedAt: string } | null;
 }
 
 /**
@@ -296,7 +298,13 @@ export const api = {
     id: string,
     patch: { name?: string; answers?: Answers; drawing?: Doc | null; sketchRead?: boolean; baseUpdatedAt?: string; force?: boolean },
   ) =>
-    call<{ ok: true; updatedAt: string }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+    call<{ ok: true; updatedAt: string; previous?: { savedAt: string } | null }>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+  /** 「ひとつ前の保存」に戻す（いまの内容と、入れ替わる。もう一度押すと、元に戻る） */
+  restorePrevious: (id: string, baseUpdatedAt?: string) =>
+    call<{ ok: true; updatedAt: string; previous?: { savedAt: string } | null }>(`/api/projects/${id}/restore-previous`, {
+      method: 'POST',
+      body: JSON.stringify(baseUpdatedAt ? { baseUpdatedAt } : {}),
+    }),
   /**
    * 下書きを預ける（自動で控える）。案件そのものは書き換えない。
    * 裏で自動で行うので、ログインが切れていても、窓は出さず、静かに失敗させる（retried=true で、ログインし直しの窓を省く）

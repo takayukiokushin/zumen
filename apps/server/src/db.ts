@@ -74,6 +74,15 @@ db.exec(`
     saved_at        TEXT NOT NULL
   );
 
+  -- ひとつ前の保存（「保存」で上書きする前の、回答と図面の控え）。案件ごとに1つ。前の保存から1時間以上あいたときだけ入れ替える（previous.ts）
+  CREATE TABLE IF NOT EXISTS project_previous (
+    project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+    answers    TEXT NOT NULL,
+    drawing    TEXT,
+    -- その内容を保存した時刻
+    saved_at   TEXT NOT NULL
+  );
+
   -- 会社の設定（管理用のアカウントが変える。いまは、電柱の名称の頭の部分だけ）
   CREATE TABLE IF NOT EXISTS app_settings (
     key        TEXT PRIMARY KEY,
@@ -104,6 +113,8 @@ addColumnIfMissing('projects', 'owner', 'TEXT');
 addColumnIfMissing('projects', 'deleted_at', 'TEXT');
 addColumnIfMissing('projects', 'deleted_by', 'TEXT');
 // スケッチ・PDFを読み取った案件か（読み取りに使った写真は、保存したときに消すので、写真の有無とは別に覚える）
+// 内容（回答・図面）を最後に保存した時刻（案件名だけの変更では動かさない。「ひとつ前の保存」の、1時間の判定に使う）
+addColumnIfMissing('projects', 'content_updated_at', 'TEXT');
 addColumnIfMissing('projects', 'sketch_read', 'INTEGER NOT NULL DEFAULT 0');
 // 図面一覧に出す事業場名称・お客様番号と、探すための文字（案件名・事業場名称・お客様番号を、整えてひとつにしたもの）
 addColumnIfMissing('projects', 'site_name', 'TEXT');

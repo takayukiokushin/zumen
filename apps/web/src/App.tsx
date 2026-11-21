@@ -193,6 +193,8 @@ export function App() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  /** 「ひとつ前の保存」の内容を保存した時刻（まだ無ければ null） */
+  const [previousAt, setPreviousAt] = useState<string | null>(null);
   /** 保存していない入力を、自動で控えた時刻（下書き）。保存したら消す */
   const [draftAt, setDraftAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -382,6 +384,7 @@ export function App() {
     setDirty(false);
     setDraftAt(null);
     setSavedAt(null);
+    setPreviousAt(null);
     setBaseUpdatedAt(null);
     setStale(null);
     setLockedBy(null);
@@ -507,6 +510,7 @@ export function App() {
         setDirty(base !== null);
         setDraftAt(base ? base.savedAt : null);
         setSavedAt(null);
+        setPreviousAt(p.previous?.savedAt ?? null);
         setError(null);
         setWarning(null);
         setStale(null);
@@ -557,6 +561,30 @@ export function App() {
       }
     });
 
+  /**
+   * 「ひとつ前の保存」に戻す。いまの内容と入れ替わるので、もう一度押すと元に戻せる。
+   * 保存していない変更があるときは、それは消える（確かめてから）。戻したあとは、案件を開き直す
+   */
+  const restorePrevious = async () => {
+    if (!projectId || readOnly || !previousAt || saving) return;
+    const ok = await ask({
+      title: t('previous.title'),
+      message: [t('previous.msg1', { when: new Date(previousAt).toLocaleString(lang) }), ...(dirty ? [t('previous.msgDirty')] : []), t('previous.msg2')],
+      confirmLabel: t('previous.yes'),
+    });
+    if (!ok) return;
+    try {
+      await api.restorePrevious(projectId, baseUpdatedAt ?? undefined);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('err.restorePrevious'));
+      return;
+    }
+    // 下書きは、戻したあとの内容と食い違うので、サーバーで消してある。画面の「保存していない」印も外してから、開き直す
+    setDirty(false);
+    await openProject(projectId);
+    setWarning(t('previous.done'));
+  };
+
   /** 保存する。保存できたら true（別の端末で更新されていた・通信できなかったなどのときは false） */
   const save = async (force = false): Promise<boolean> => {
     if (!projectId) return false;
@@ -574,7 +602,7 @@ export function App() {
       ...(force ? { force: true } : {}),
     };
     try {
-      let r: { updatedAt: string };
+      let r: { updatedAt: string; previous?: { savedAt: string } | null };
       try {
         r = await api.saveProject(projectId, patch);
       } catch (e) {
@@ -585,6 +613,7 @@ export function App() {
         r = { updatedAt: now.updatedAt };
       }
       setSavedAt(r.updatedAt);
+      if (r.previous !== undefined) setPreviousAt(r.previous?.savedAt ?? null);
       setBaseUpdatedAt(r.updatedAt);
       setStale(null);
       setDirty(false);
@@ -724,6 +753,8 @@ export function App() {
         onList={() => setShowList((open) => (projectId ? !open : true))}
         onRename={(name) => void renameProject(name)}
         onSave={() => void save()}
+        previousAt={previousAt}
+        onRestorePrevious={() => void restorePrevious()}
         readOnly={readOnly}
       />
 

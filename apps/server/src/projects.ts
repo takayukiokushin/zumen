@@ -10,6 +10,8 @@ import type { User } from './auth.ts';
 import { FILE_CSP, isPhotoType } from './security.ts';
 import { clearForDuplicate, MAX_TEXT_LENGTH, openStartMode } from '@zumen/knowledge';
 import { customPolePrefix } from './company.ts';
+import { keepPrevious, previousOf, previousSavedAt } from './previous.ts';
+import type { CurrentContent } from './previous.ts';
 
 /**
  * ファイルを書く。ディスクまで確かに書いてから戻る（停電のあとに、記録だけあって中身が空、にならないように）。
@@ -610,6 +612,8 @@ projects.get('/:id', (c) => {
     // 写真は保存したときに消すので、「読み取った案件か」は、写真の有無とは別に覚えている
     sketchRead: row.sketch_read === 1 || files.some((f) => { const m = (f as { media_type: string }).media_type; return m.startsWith('image/') || m === 'application/pdf'; }),
     lock: currentLock(row.id),
+    // 「ひとつ前の保存」があるか（あれば、その内容を保存した時刻。中身は返さない）
+    previous: previousSavedAt(row.id) ? { savedAt: previousSavedAt(row.id) } : null,
   });
 });
 
@@ -688,7 +692,13 @@ projects.put('/:id', async (c) => {
   }
   // ここからの書き込みは、全部できたか、全部できなかったかのどちらかにする（途中で止まっても、中途半端にならない）
   const droppedFiles = inTransaction(() => {
+    // 内容（回答・図面）が変わるときは、保存する前の内容を、「ひとつ前の保存」に移す（前の保存から1時間以上あいたときだけ）
+    const cur = (db.prepare('SELECT answers, drawing, content_updated_at, updated_at FROM projects WHERE id = ?').get(id) as CurrentContent | undefined) as CurrentContent;
+    const nextAnswers = body.answers !== undefined ? JSON.stringify(body.answers ?? {}) : cur.answers;
+    const nextDrawing = body.drawing !== undefined ? (body.drawing === null ? null : JSON.stringify(body.drawing)) : cur.drawing;
+    keepPrevious(id, cur, nextAnswers, nextDrawing, Date.parse(args[0]!));
     db.prepare(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
+    if (nextAnswers !== cur.answers || nextDrawing !== cur.drawing) db.prepare('UPDATE projects SET content_updated_at = ? WHERE id = ?').run(args[0]!, id);
     // 案件名・回答が変わったので、一覧の検索用の文字も、作り直す
     refreshSearch(id);
     // 「保存」を押したら、読み取りに使った写真・PDFは消す（図面の元になる内容は、回答と図面として、いま保存した）。
@@ -704,7 +714,40 @@ projects.put('/:id', async (c) => {
   });
   // 記録の削除が確定してから、ファイルを消す
   unlinkFiles(droppedFiles);
-  return c.json({ ok: true, updatedAt: args[0] });
+  return c.json({ ok: true, updatedAt: args[0], previous: previousSavedAt(id) ? { savedAt: previousSavedAt(id) } : null });
+});
+
+/**
+ * 「ひとつ前の保存」に戻す。いまの内容と「ひとつ前」を入れ替えるので、もう一度押すと、元に戻せる。
+ * 戻せるのは、保存できる人（編集中の人が別にいるとき・見られない案件は、保存と同じく、断る）。案件名は、変えない。
+ * 自動で控えた下書きは、消す（戻したあとの内容と、食い違うため）。
+ */
+projects.post('/:id/restore-previous', async (c) => {
+  const id = c.req.param('id');
+  const exists = db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(id);
+  const user = c.get('user');
+  if (!exists || !canTouch(user, id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
+  const lock = currentLock(id);
+  if (lock && lock.userId !== user.id && user.role !== 'admin') {
+    return c.json({ error: `${lock.userName}さんが編集中のため戻せません。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 423);
+  }
+  const body = (await c.req.json().catch(() => null)) as { baseUpdatedAt?: string } | null;
+  const prev = previousOf(id);
+  if (!prev) return c.json({ error: '「ひとつ前の保存」は、まだありません。前の保存から1時間以上あけて、内容を変えて保存すると、できるようになります。画面を開き直して、確かめてください。' }, 409);
+  const cur = (db.prepare('SELECT answers, drawing, content_updated_at, updated_at FROM projects WHERE id = ?').get(id) as CurrentContent | undefined) as CurrentContent;
+  // この画面で読み込んだあとに、ほかの画面で保存されていたら、戻さない（知らない保存を、消してしまうため）
+  if (body?.baseUpdatedAt !== undefined && cur.updated_at !== body.baseUpdatedAt) {
+    return c.json({ error: 'この案件は、この画面で読み込んだあとに、ほかの端末や画面で更新されています。最新を読み込み直してから、もう一度お試しください。', stale: true, updatedAt: cur.updated_at }, 409);
+  }
+  takeLock(id, user.id);
+  const t = now();
+  inTransaction(() => {
+    db.prepare('UPDATE projects SET answers = ?, drawing = ?, updated_at = ?, updated_by = ?, content_updated_at = ? WHERE id = ?').run(prev.answers, prev.drawing, t, user.id, t, id);
+    db.prepare('INSERT OR REPLACE INTO project_previous (project_id, answers, drawing, saved_at) VALUES (?, ?, ?, ?)').run(id, cur.answers, cur.drawing, cur.content_updated_at ?? cur.updated_at);
+    db.prepare('DELETE FROM project_drafts WHERE project_id = ?').run(id);
+    refreshSearch(id);
+  });
+  return c.json({ ok: true, updatedAt: t, previous: previousSavedAt(id) ? { savedAt: previousSavedAt(id) } : null });
 });
 
 /* ---------------- 下書き（自動で控える） ---------------- */

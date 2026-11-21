@@ -72,6 +72,57 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     await call(a, `/api/projects/${pj.id}`, { method: 'DELETE' });
     check('消した案件には、下書きを預けられない', (await call(a, `/api/projects/${pj.id}/draft`, { method: 'PUT', body: JSON.stringify({ answers: {} }) })).status === 404);
   }
+  // ひとつ前の保存（保存で上書きする前の内容を、1世代だけ控える。前の保存から1時間以上あいたときだけ入れ替える）
+  {
+    const sdb = new DatabaseSync(join(dataDir, 'zumen.db'));
+    const pj = (await (await call(a, '/api/projects', { method: 'POST', body: JSON.stringify({ name: 'ひとつ前の保存の試験' }) })).json()) as { id: string };
+    type Detail = { answers: Record<string, unknown>; updatedAt: string; previous: null | { savedAt: string } };
+    const get = async () => (await (await call(a, `/api/projects/${pj.id}`)).json()) as Detail;
+    const put = (answers: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+      call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ answers, ...extra }) });
+    const restore = (who = a, extra: Record<string, unknown> = {}) => call(who, `/api/projects/${pj.id}/restore-previous`, { method: 'POST', body: JSON.stringify(extra) });
+    /** 内容を最後に保存した時刻を、n 時間前にする（時間があいた状態を作る） */
+    const ago = (hours: number) =>
+      sdb.prepare('UPDATE projects SET content_updated_at = ? WHERE id = ?').run(new Date(Date.now() - hours * 3600_000).toISOString(), pj.id);
+    const siteOf = async () => (await get()).answers.siteName;
+
+    check('何も入っていない案件の、最初の保存では、控えない', (await put({ siteName: 'A' })).ok && (await get()).previous === null);
+    check('「ひとつ前」が無いときは、戻せない（409）', (await restore()).status === 409);
+    ago(2);
+    check('2時間あいたあとの保存で、保存する前の内容が、ひとつ前になる', (await put({ siteName: 'B' })).ok && (await get()).previous !== null);
+    check('画面に返るのは、保存した時刻だけ（中身は返さない）', Object.keys((await get()).previous ?? {}).join() === 'savedAt');
+    check('続けて保存しても（1時間たっていない）、ひとつ前は、入れ替わらない', (await put({ siteName: 'C' })).ok && (await put({ siteName: 'D' })).ok);
+    check('戻すと、ひとつ前（A）の内容になる', (await restore()).ok && (await siteOf()) === 'A');
+    check('戻すと、いままでの内容（D）が、ひとつ前に入る。もう一度戻すと、D に戻る', (await restore()).ok && (await siteOf()) === 'D');
+    // 内容が変わらない保存では、入れ替わらない
+    ago(2);
+    await put({ siteName: 'D' });
+    check('内容が同じ保存では、ひとつ前を入れ替えない（A のまま）', (await restore()).ok && (await siteOf()) === 'A');
+    await restore();
+    // 案件名だけの保存では、1時間の数え始めが、動かない
+    ago(2);
+    check('案件名だけの保存は、通る', (await call(a, `/api/projects/${pj.id}`, { method: 'PUT', body: JSON.stringify({ name: 'ひとつ前の保存の試験（名前変更）' }) })).ok);
+    await put({ siteName: 'E' });
+    check('案件名だけの保存を挟んでも、内容の保存から1時間以上なら、入れ替わる（ひとつ前が D になる）', (await restore()).ok && (await siteOf()) === 'D');
+    await restore();
+    // 戻したとき
+    await call(a, `/api/projects/${pj.id}/draft`, { method: 'PUT', body: JSON.stringify({ answers: { siteName: '戻す前の下書き' }, name: 'x', drawing: null, sketchRead: false, baseUpdatedAt: null }) });
+    const cur = await get();
+    const stale = await restore(a, { baseUpdatedAt: '2000-01-01T00:00:00.000Z' });
+    check('読み込んだあとに、ほかで保存されていたら、戻さない（409）', stale.status === 409 && (await get()).answers.siteName === cur.answers.siteName);
+    check('戻すと、自動の下書きは消える', (await restore(a, { baseUpdatedAt: cur.updatedAt })).ok && ((await (await call(a, `/api/projects/${pj.id}`)).json()) as { draft: unknown }).draft === null);
+    check('戻しても、案件名は変わらない', (((await (await call(a, `/api/projects/${pj.id}`)).json()) as { name: string }).name) === 'ひとつ前の保存の試験（名前変更）');
+    // 権限：ほかの人が編集中のとき・消えた案件・見られない案件
+    check('ほかの人が編集中のときは、戻せない（423）', (await restore(b)).status === 423);
+    check('存在しない案件は、戻せない（404）', (await call(a, '/api/projects/no-such-project/restore-previous', { method: 'POST', body: '{}' })).status === 404);
+    // 案件が消えたら、控えも消える
+    const n = () => (sdb.prepare('SELECT COUNT(*) AS n FROM project_previous WHERE project_id = ?').get(pj.id) as { n: number }).n;
+    const had = n();
+    sdb.exec('PRAGMA foreign_keys = ON');
+    sdb.prepare('DELETE FROM projects WHERE id = ?').run(pj.id);
+    check('案件を完全に消すと、ひとつ前の保存も、いっしょに消える', had === 1 && n() === 0);
+    sdb.close();
+  }
   // 1×1の小さなPNG
   const png =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
