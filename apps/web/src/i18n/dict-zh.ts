@@ -740,7 +740,7 @@ export const zh: Dict = {
   'editor.rebuiltOverlap': '手动移动过的符号中，有 {n} 个与其他符号重叠。请确认位置（重叠的符号用红色虚线圈出；关闭此提示后，圈线也会消失）。',
   'editor.cableRefused': '高压电缆的中间不能连接 ZCT 以外的设备。请接在电缆终端头的外侧。',
   'editor.onWireRefused': '放在线上的符号（VCT・CT・ZCT）与其他符号不能互相替换。请取消选择后重新添加。',
-  'editor.onWireUpgraded': '已将图纸中的 VCT・CT・ZCT 符号改为新的“放在线上”形式。外观不变，手动修改的内容也已保留。无法用“撤销操作”回到此前（请直接保存）。',
+  'editor.onWireUpgraded': '已将图纸中的符号（VCT、CT、ZCT、蓄电池单元）改为新的形状。位置和连线保持不变，手动修改的内容也已保留。无法用“撤销操作”回到此前（请直接保存）。',
   'editor.cableFound': '高压电缆的中间连着 ZCT 以外的东西（{n} 处，红色标记）。请接在电缆终端头的外侧。',
   'editor.rebuiltUndo': '可通过“撤销操作”恢复原状。',
   'editor.rebuiltUndo2': '可通过“撤销操作”恢复为原来的图纸。',

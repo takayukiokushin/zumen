@@ -100,7 +100,7 @@ console.log('\n■ 線の上に乗せる記号（VCT・CT・ZCT）：自動作�
       if (Math.abs(k.x - s.x - dx) > 0.01 || Math.abs(k.y - s.y) > 0.01) bad.push(`${name}：変換のあと、${s.id} の位置が違います（${k.x - s.x}, ${k.y - s.y}）`);
     }
     if (mm.some((k) => k.id === target.id && k.labelDx !== syms(gen).find((x) => x.id === k.id)!.labelDx + 6)) bad.push(`${name}：手で動かした文字の位置が、変換のあとに残っていません`);
-    if (m.layoutV !== 2 || needsOnWireMigration(m)) bad.push(`${name}：変換のあと、版が新しくなっていません`);
+    if ((m.layoutV ?? 1) < 2 || needsOnWireMigration(m)) bad.push(`${name}：変換のあと、版が新しくなっていません`);
     // 線：ほとんど同じ数（動かした記号につながる線の位置は変わる）。余計な重なり・つなぎ先の無い線は、増えない
     if (problems(m) > problems(gen) + 2) bad.push(`${name}：変換のあと、図面の点検で問題が増えました（${problems(gen)}→${problems(m)}）`);
     const ids = new Set(m.items.map((i) => i.id));

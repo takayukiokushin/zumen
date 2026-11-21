@@ -20,7 +20,7 @@ import { TextWindow } from './TextWindow.tsx';
 import type { Pos } from './FloatingWindow.tsx';
 import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
-import { convertDocOnWire, migrateOnWire, needsOnWireMigration } from './onwireMigrate.ts';
+import { convertDocOnWire, migrateBattery, migrateOnWire, needsBatteryMigration, needsOnWireMigration } from './onwireMigrate.ts';
 import { addSectionalizerSet, isSectionalizer, setThumb, swapSectionalizerSet } from './sectionalizerSets.ts';
 import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
@@ -125,7 +125,11 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
     // 縦線のある古い形の VCT・CT・ZCT が入った図面は、新しい形（線の上に乗せる記号。第20弾 項目2）に直す（手で直した内容は、残す）
     const migrate = needsOnWireMigration(initialDoc);
     if (migrate) onWireUpgraded.current = true;
-    const start0 = migrate ? (initialDoc.base ? migrateOnWire(initialDoc, generated) : convertDocOnWire(initialDoc)) : initialDoc;
+    const start1 = migrate ? (initialDoc.base ? migrateOnWire(initialDoc, generated) : convertDocOnWire(initialDoc)) : initialDoc;
+    // 古い形の蓄電池ユニット（外形が横96）が入った図面は、新しい外形（横56。第20弾 項目4）に直す
+    const migrateBatt = needsBatteryMigration(start1);
+    if (migrateBatt) onWireUpgraded.current = true;
+    const start0 = migrateBatt ? migrateBattery(start1) : start1;
     const tidy = tidyDoc(dedupeIds(start0));
     return { past: [], present: tidy.base ? tidy : { ...tidy, base: generated.base }, future: [] };
   });

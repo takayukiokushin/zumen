@@ -1,6 +1,6 @@
 import { CHAIN_SYMBOLS, ON_WIRE_ORIGIN, getSymbol, isOnWireId } from '@zumen/symbols';
 import { rotatedPort } from '@zumen/layout';
-import { LAYOUT_V, sameName } from './doc.ts';
+import { LAYOUT_V, ONWIRE_V, sameName } from './doc.ts';
 import type { Doc, DocItem, DocSymbol, DocWire } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import type { AddedItem, Overrides } from './doc.ts';
@@ -16,7 +16,7 @@ const originOf = (symbolId: string) => ON_WIRE_ORIGIN[symbolId as keyof typeof O
 
 /** 新しい形が必要な図面か（版が古く、直す記号がある） */
 export function needsOnWireMigration(doc: Doc): boolean {
-  return (doc.layoutV ?? 1) < LAYOUT_V && doc.items.some((i) => i.kind === 'symbol' && isOn(i.symbolId));
+  return (doc.layoutV ?? 1) < ONWIRE_V && doc.items.some((i) => i.kind === 'symbol' && isOn(i.symbolId));
 }
 
 /** 古い形の記号 s が、新しい形では、どこに置かれるか（本体は同じ場所）。以前の入口・出口の位置も返す */
@@ -76,7 +76,7 @@ export function convertDocOnWire(doc: Doc): Doc {
     const strip = (a: DocWire['at1']) => (a && onIds.has(a.item) && (a.port === 'in' || a.port === 'out') ? undefined : a);
     return { ...it, at1: strip(it.at1), at2: strip(it.at2) };
   });
-  return { ...doc, items: [...items, ...through], layoutV: LAYOUT_V };
+  return { ...doc, items: [...items, ...through], layoutV: ONWIRE_V };
 }
 
 /**
@@ -121,4 +121,43 @@ export function migrateOnWire(old: Doc, generated: Doc): Doc {
   };
   const r = rebuildWithOverrides(generated, old, adjust);
   return dedupeWires({ ...r.doc, layoutV: LAYOUT_V });
+}
+
+/* ------------------------------------------------------------------ */
+/* 蓄電池ユニット（第20弾 項目4）                                        */
+/* ------------------------------------------------------------------ */
+
+/** 蓄電池ユニットの外形を、横96から56に縮めた。接続点（上の縦棒）の位置が、中心の 48 から 28 に動くので、記号を右へ動かして、同じ場所に直す */
+const BATTERY_SHIFT = 20;
+
+/** 古い形の蓄電池ユニットが入った図面か */
+export function needsBatteryMigration(doc: Doc): boolean {
+  return (doc.layoutV ?? 1) < LAYOUT_V && doc.items.some((i) => i.kind === 'symbol' && i.symbolId === 'battery-unit');
+}
+
+/**
+ * 蓄電池ユニットを、新しい外形（横56）に直す。記号を右へ 20 動かして、上の縦棒の位置を変えない（つないだ線は、そのまま）。
+ * 文字は、標準の位置にあったもの（長方形の真横）は、新しい長方形の真横に直し、手で動かしたものは、いまの場所のまま残す。
+ * 手で直した内容の記録（自動で作った図面の控え）も、同じ形に直す（直さないと、動かしたことになってしまう）。
+ */
+export function migrateBattery(doc: Doc): Doc {
+  const fix = <T extends { x: number; labelDx: number; labelAnchor?: 'start' | 'middle' | 'end' }>(s: T, anchor: 'start' | 'middle' | 'end'): T => {
+    // 以前の標準の位置：左に置く（anchor が end）なら、長方形の左（x＝4）から10離す＝-6。右に置く（start）なら、長方形の右（x＝92）から10離す＝102
+    const wasStd = anchor === 'end' ? s.labelDx === -6 : anchor === 'start' ? s.labelDx === 102 : false;
+    const stdNow = anchor === 'end' ? -8 : 64;
+    return { ...s, x: s.x + BATTERY_SHIFT, labelDx: wasStd ? stdNow : s.labelDx - BATTERY_SHIFT };
+  };
+  const items: DocItem[] = doc.items.map((it): DocItem => (it.kind === 'symbol' && it.symbolId === 'battery-unit' ? fix(it, it.labelAnchor) : it));
+  let base = doc.base;
+  if (base) {
+    const symbols = { ...base.symbols };
+    for (const [name, b] of Object.entries(symbols)) {
+      if (b.symbolId !== 'battery-unit') continue;
+      // 控えには、文字の向き（anchor）が無いので、いまの図面の同じ記号の向きを使う
+      const cur = doc.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+      symbols[name] = fix(b, cur?.labelAnchor ?? 'end');
+    }
+    base = { ...base, symbols };
+  }
+  return { ...doc, items, ...(base ? { base } : {}), layoutV: LAYOUT_V };
 }

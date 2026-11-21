@@ -206,7 +206,10 @@ console.log('\n■ PCSの真下のPV（枠ごとに1つ）');
         if (nudgeSymbolLabel(d0, bat.id) !== d0) problems.push('重なっていないのに、文字が動きました');
         // 自動で作った図面の文字は、長方形の上の辺に、文字の上端がそろう
         const lr0 = labelRect({ x: bat.x + bat.labelDx, y: bat.y + bat.labelDy, anchor: bat.labelAnchor }, bat.label);
-        if (before.length === 0 && Math.abs(lr0.y0 - (bat.y + 10)) > 0.5 && Math.abs(lr0.y0 - (bat.y + 10)) < 40) problems.push(`蓄電池ユニットの文字の上端が、長方形の上の辺とそろっていません（差 ${(lr0.y0 - (bat.y + 10)).toFixed(1)}）`);
+        // 標準の位置（長方形の上の辺にそろう位置）が、隣の記号の外形にかかるときは、重ならない場所へ、下へずらしてある（そろわなくてよい）
+        const alignedTop = labelRect({ x: bat.x + bat.labelDx, y: bat.y + bat.labelDy - (lr0.y0 - (bat.y + 10)), anchor: bat.labelAnchor }, bat.label);
+        const blocked = d0.items.some((o) => o.kind === 'symbol' && o.id !== bat.id && (() => { const b = getSymbolDef(o.symbolId).box; return alignedTop.x0 < o.x + b.w && alignedTop.x1 > o.x && alignedTop.y0 < o.y + b.h && alignedTop.y1 > o.y; })());
+        if (before.length === 0 && !blocked && Math.abs(lr0.y0 - (bat.y + 10)) > 0.5 && Math.abs(lr0.y0 - (bat.y + 10)) < 40) problems.push(`蓄電池ユニットの文字の上端が、長方形の上の辺とそろっていません（差 ${(lr0.y0 - (bat.y + 10)).toFixed(1)}）`);
       }
     }
     // 接地の種別の記号（EA〜ED。第13弾 項目55 修正17／B-7）：線・記号・文字は緑。位置・大きさ（幅だけ）・角度は自由。初期の図面には付かない

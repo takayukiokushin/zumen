@@ -359,10 +359,12 @@ export function makeWire(x1: number, y1: number, x2: number, y2: number, at1: An
 
 /** 自動レイアウトの結果を、編集できる形に取り込む */
 /**
- * 図面データの形の版。2＝VCT・CT・ZCTが「線の上に乗せる記号」になった（第20弾 項目2）。
- * 版の無い（1の）保存済みの図面は、開いたとき、新しい形に直す（onwireMigrate.ts）
+ * 図面データの形の版（LAYOUT_V）。保存してある図面の版が、これより古いときは、開いたとき、新しい形に直す（onwireMigrate.ts）。
+ *  2＝VCT・CT・ZCTが「線の上に乗せる記号」になった（第20弾 項目2）
+ *  3＝蓄電池ユニットの外形が、横96から56に縮んだ（第20弾 項目4）
  */
-export const LAYOUT_V = 2;
+export const ONWIRE_V = 2;
+export const LAYOUT_V = 3;
 
 export function fromLayout(drawing: DrawingLayout, basis?: string): Doc {
   const items: DocItem[] = [];

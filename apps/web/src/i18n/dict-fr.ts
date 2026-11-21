@@ -744,7 +744,7 @@ export const fr: Dict = {
   'editor.rebuiltOverlap': '{n} symbole(s) déplacé(s) à la main chevauchent d’autres symboles. Vérifiez leur position (les symboles qui se chevauchent sont entourés d’un pointillé rouge, qui disparaît quand vous fermez cet avis).',
   'editor.cableRefused': 'Rien d’autre qu’un ZCT ne peut être relié au milieu d’un câble HT. Raccordez-le à l’extérieur des extrémités du câble.',
   'editor.onWireRefused': 'Les symboles posés sur un fil (VCT, CT, ZCT) et les autres symboles ne sont pas interchangeables. Désélectionnez-le et ajoutez-en un nouveau.',
-  'editor.onWireUpgraded': 'Les symboles VCT, CT et ZCT de ce dessin ont été convertis au nouveau format « posé sur un fil ». L’aspect est identique et vos modifications manuelles sont conservées. « Annuler » ne peut pas revenir avant (enregistrez simplement).',
+  'editor.onWireUpgraded': 'Les symboles de ce dessin (VCT, CT, ZCT, unité de batterie) ont été convertis à leur nouvelle forme. Les positions et les connexions sont inchangées et vos modifications manuelles sont conservées. « Annuler » ne peut pas revenir avant (enregistrez simplement).',
   'editor.cableFound': 'Un élément autre qu’un ZCT est relié au milieu d’un câble HT ({n} endroit(s)), marqué en rouge. Raccordez-le à l’extérieur des extrémités du câble.',
   'editor.rebuiltUndo': 'Vous pouvez revenir en arrière avec « Annuler ».',
   'editor.rebuiltUndo2': 'Vous pouvez revenir au schéma précédent avec « Annuler ».',

@@ -279,12 +279,13 @@
       <rect x="9" y="10" width="38" height="28" fill="none" stroke-width="1" />
       <text x="28" y="24" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">PCS</text>
     </g>
-    <g transform="translate(37 1272)">
-      <line x1="48" y1="0" x2="48" y2="10" stroke-width="1" />
-      <rect x="4" y="10" width="88" height="30" fill="none" stroke-width="1" />
-      <text x="48" y="25" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">蓄電池ユニット</text>
+    <g transform="translate(57 1272)">
+      <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
+      <rect x="2" y="10" width="52" height="30" fill="none" stroke-width="1" />
+      <text x="28" y="19.5" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">蓄電池</text>
+      <text x="28" y="30.5" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">ユニット</text>
     </g>
-    <text x="139" y="1290.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="139" dy="0">蓄電池ユニット</tspan><tspan x="139" dy="12.5">200kWh</tspan></text>
+    <text x="121" y="1290.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="121" dy="0">蓄電池ユニット</tspan><tspan x="121" dy="12.5">200kWh</tspan></text>
     </g>
   </g>
 </svg>
