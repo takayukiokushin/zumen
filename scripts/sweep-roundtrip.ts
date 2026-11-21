@@ -5,7 +5,7 @@
  *   ・作り直したあとの図面に、「線が浮く・斜め・突き抜け・重なり」が、増えない
  *   SWEEP_N=60 node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/sweep-roundtrip.ts
  */
-import { addSymbol, dedupeIds, docBounds, fromLayout, removeItem, replaceSymbol, sameName, tidyDoc } from '../apps/web/src/editor/doc.ts';
+import { addSymbol, dedupeIds, docBounds, fromLayout, removeItem, replaceSymbol, sameName, setLabel, tidyDoc } from '../apps/web/src/editor/doc.ts';
 import type { Doc, DocSymbol } from '../apps/web/src/editor/doc.ts';
 import { inspectDrawing } from '../apps/web/src/editor/inspect.ts';
 import { rebuildWithOverrides } from '../apps/web/src/editor/overrides.ts';
@@ -91,6 +91,12 @@ export function run(n: number, rich: boolean, mixed = false): { stats: Roundtrip
         if (roll < 0.5) {
           removed.push(`消:${sameName(t.id)}`);
           doc = removeItem(doc, t.id);
+        } else if (roll < 0.62 && t.label.length > 0) {
+          // 文字の1行を書き換える（変圧器の文字・答えそのままの行は入力に書き戻る。それ以外は、図面にだけ残る）
+          const at = Math.floor(rnd() * t.label.length);
+          const lines = t.label.map((l, i) => (i === at ? `${l}改${Math.floor(rnd() * 90) + 10}` : l));
+          doc = setLabel(doc, t.id, lines);
+          removed.push(`文字:${sameName(t.id)}`);
         } else if (roll < 0.8) {
           const type = ADD_TYPES[Math.floor(rnd() * ADD_TYPES.length)]!;
           const b = docBounds(doc);

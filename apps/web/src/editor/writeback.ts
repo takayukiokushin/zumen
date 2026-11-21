@@ -91,6 +91,8 @@ interface RoleInfo {
   groupKey?: string;
   /** 台ごとの「あり／なし」の質問（変圧器のPC・LBS・ケーブルなど。その部品を消したとき、その台だけ「なし」にする） */
   unitKey?: string;
+  /** 文字の1行が、入力の答えそのままになっている質問（文字・数の欄。例：DSの定格、VTの変圧比）。図面で、その行を書き換えたとき、答えに書き戻す */
+  fieldKeys: string[];
 }
 
 let rolesCache: Map<string, RoleInfo> | null = null;
@@ -107,14 +109,23 @@ function roleTable(): Map<string, RoleInfo> {
     // それは入力の質問ではなく、書いても、次に読み直したときに上書きされて、効かない（図面で区分開閉器を消しても、入力のPASが変わらなかった）
     const common = [...(keySets[0] ?? [])].filter((k) => keySets.every((s) => s.has(k)));
     const countKeys = new Set(ps.map((p) => p.repeatCountKey).filter((k): k is string => Boolean(k)));
+    // 文字の行が、「{質問}」だけの行（前後に文字が付かない）の、文字・数の質問
+    const fieldKeys = [...new Set(ps.flatMap((p) => (p.labelTemplate ?? []).map((l) => /^\{([\w.]+)\}$/.exec(l)?.[1]).filter((k): k is string => k !== undefined && (Q.get(k)?.type === 'text' || Q.get(k)?.type === 'number'))))];
     table.set(role, {
       role,
+      fieldKeys,
       symbolIds,
       ...(common.length === 1 && countKeys.size === 0 && QUESTION_IDS.has(common[0]!) ? { presenceKey: common[0]! } : {}),
       ...(countKeys.size === 1 ? { countKey: [...countKeys][0]! } : {}),
       ...(common.length === 1 && countKeys.size === 1 && QUESTION_IDS.has(common[0]!) && !PER_UNIT_QUESTION_IDS.has(common[0]!) ? { groupKey: common[0]! } : {}),
       ...(countKeys.size === 1 && common.filter((k) => PER_UNIT_QUESTION_IDS.has(k)).length === 1 ? { unitKey: common.filter((k) => PER_UNIT_QUESTION_IDS.has(k))[0]! } : {}),
     });
+  }
+  // VTは、文字が、手前のPF（○○-pf）の行にあり、図面では VT の記号の横に出る。PFの文字の質問を、VTの機器のものにする
+  for (const [role, info] of table) {
+    if (!role.endsWith('-pf')) continue;
+    const vt = table.get(role.slice(0, -3));
+    if (vt) vt.fieldKeys = [...new Set([...vt.fieldKeys, ...info.fieldKeys])];
   }
   rolesCache = table;
   return table;
@@ -207,6 +218,8 @@ interface Candidate {
   carrySectional?: { area: number };
   /** 変えたあとの、この機器の文字（確かめる） */
   label?: { name: string; lines: string[] };
+  /** 文字の書き換えが、入力の答えそのままの行（DSの定格など）だったもの。変圧器のように、文字を読み取って決めるものではない */
+  textField?: boolean;
 }
 
 const nameJaOf = (symbolId: string): string => {
@@ -292,6 +305,33 @@ function replacedAnswers(name: string, to: string | undefined, eff: Answers, tab
   return null;
 }
 
+/**
+ * 変圧器以外の機器の文字を書き換えたとき（例：DSの定格・VTの変圧比・コンデンサの容量）の、書き戻す答え。
+ * 行の数が同じで、書き換えた行が、入力の答えそのままの行（その機器の fieldKeys のどれかの答えと同じ文字）のときだけ。決められないときは null。
+ * （書き戻したあとの図面の文字が、書き換えた文字と同じになるかは、あとで、答えを変えた図面を作って確かめる）
+ */
+function textFieldAnswers(name: string, base: string[], lines: string[], eff: Answers, table: Map<string, RoleInfo>): Answers | null {
+  if (base.length === 0 || base.length !== lines.length) return null;
+  const { area, rest } = splitArea(name);
+  const rep = repeatOf(rest, table);
+  const info = rep ? rep.info : table.get(rest.replace(/-\d+$/, '')) ?? table.get(rest);
+  if (!info || info.fieldKeys.length === 0) return null;
+  const out: Answers = {};
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i] === base[i]) continue;
+    const next = lines[i]!.trim();
+    if (next === '') return null;
+    const hit = info.fieldKeys
+      .map((k) => ({ k, key: rep ? qKey(indexedKey(k, rep.no - 1), area) : qKey(k, area) }))
+      .filter((c) => String(eff[c.key] ?? '') === base[i]);
+    if (hit.length !== 1) return null;
+    const isNumber = Q.get(hit[0]!.k)?.type === 'number';
+    if (isNumber && !Number.isFinite(Number(next))) return null;
+    out[hit[0]!.key] = isNumber ? Number(next) : next;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answers, force = false): WritebackResult | null {
   if (!doc.base || doc.edited !== true) return null;
   const ov = collectOverrides(doc);
@@ -317,6 +357,11 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
       // 変圧器以外の記号の差し替え：開閉器（ケーブル前後・電動機・送り出し）・区分開閉器の種類
       const set = replacedAnswers(name, e.symbolId, eff0, table);
       if (set) cands.push({ kind: 'replaced', symbol: nameJaOf(e.symbolId!), set });
+      // 変圧器以外の機器の文字の書き換え（答えそのままの行だけ）
+      if (e.label && !e.symbolId && base.symbols[name]) {
+        const tset = textFieldAnswers(name, base.symbols[name]!.label, e.label, eff0, table);
+        if (tset) cands.push({ kind: 'relabel', symbol: nameJaOf(base.symbols[name]!.symbolId), set: tset, label: { name, lines: e.label }, textField: true });
+      }
       continue;
     }
     if (e.symbolId && (CONN_SYMBOLS.has(e.symbolId) || e.symbolId === 'tr-blank')) {
@@ -556,8 +601,8 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
       }
     }
 
-    // 文字の書き換えは、そのときの結線方式で読み取る
-    if (c.label) {
+    // 文字の書き換えは、そのときの結線方式で読み取る（答えそのままの行の書き換えは、すでに答えが決まっている）
+    if (c.label && !c.textField) {
       const { area, rest } = splitArea(c.label.name);
       const unit = transformerUnit(rest);
       const conn = String(toEffective(acc)[qKey(indexedKey('trConnection', unit), area)] ?? '');

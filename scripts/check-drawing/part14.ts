@@ -625,3 +625,76 @@ console.log('\n■ 図面で直した内容を、入力に書き戻す');
     }
   }
 }
+
+console.log('\n■ 図面で、変圧器以外の機器の文字（答えそのままの行）を書き換えると、入力に書き戻す（第20弾・書き戻しの残り ②）');
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const raw: Answers = {
+    ...answersSpread,
+    transformerCount: 1,
+    hasCapacitor: 'yes',
+    capacitorCount: 2,
+    capacitorCapacity: '100kvar',
+    capacitorCapacity__2: '150kvar',
+    hasReactor: 'yes',
+    reactorCapacity: '6kvar',
+    reactorCapacity__2: '9kvar',
+    vtRatio: '6600/110V',
+    hasBattery: 'yes',
+    batteryUnitCount: 2,
+    batteryUnitRating: '10kW/20kWh',
+    hasPv: 'no',
+    hasGenerator: 'no',
+  };
+  const bad: string[] = [];
+  const eff = toEff(raw);
+  const fresh = (): Doc => buildGenerated(toEff(raw));
+  const sym = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  // [図面の名前, 質問のID, 書き換えたあとの文字]
+  const CASES: [string, string, string][] = [
+    ['ds', 'dsRating', '7200V 400A'],
+    ['ds-vt', 'vtRatio', '6600/100V'],
+    ['capacitor', 'capacitorCapacity', '120kvar'],
+    ['capacitor-2', 'capacitorCapacity__2', '200kvar'],
+    ['reactor', 'reactorCapacity', '7kvar'],
+    ['battery', 'batteryUnitRating', '12kW/24kWh'],
+  ];
+  let reflected = 0;
+  for (const [name, key, next] of CASES) {
+    const d0 = fresh();
+    const s0 = sym(d0, name);
+    if (!s0) { bad.push(`${name}：試験の図面に、この機器がありません`); continue; }
+    const at = s0.label.findIndex((l) => l === String(eff[key]));
+    if (at < 0) { bad.push(`${name}：文字の中に、答え（${String(eff[key])}）の行がありません（${s0.label.join('｜')}）`); continue; }
+    const lines = s0.label.map((l, i) => (i === at ? next : l));
+    const d1: Doc = { ...setLabel(d0, s0.id, lines), edited: true };
+    const r = writeBack(raw, d1, toEff);
+    if (!r || String(r.answers[key]) !== next) { bad.push(`${name}：書き換えた文字が、答え（${key}）に書き戻されていません（${r ? String(r.answers[key]) : '何も起きない'}）`); continue; }
+    reflected++;
+    // 書き戻したあとの図面の文字が、書き換えた文字のまま。ほかの答えは変わらない
+    if (sym(r.doc, name)?.label.join('|') !== lines.join('|')) bad.push(`${name}：書き戻したあとの図面の文字が、書き換えた文字と違います`);
+    for (const [k, v] of Object.entries(raw)) if (k !== key && String(r.answers[k]) !== String(v)) bad.push(`${name}：${key} のほかに、${k} も変わりました`);
+    if (r.applied.length !== 1) bad.push(`${name}：書き戻した内容の知らせが1件ではありません（${r.applied.length}件）`);
+    if (r.leftovers.some((l) => l.kind === 'relabel')) bad.push(`${name}：書き戻したのに、「文字の書き換え」が図面にだけ残っています`);
+    // もう一度書き戻しても、何も起きない
+    const again = writeBack(r.answers, r.doc, toEff);
+    if (again && again.applied.length > 0) bad.push(`${name}：二重に書き戻しました`);
+  }
+  // 書き戻せないもの：行を足した・消した／答えそのままでない行（単位だけの行の書き換え）／空にした → 図面にだけ残す
+  {
+    const d0 = fresh();
+    const s0 = sym(d0, 'ds')!;
+    const keep = (lines: string[], why: string) => {
+      const r = writeBack(raw, { ...setLabel(d0, s0.id, lines), edited: true }, toEff);
+      if (r && r.applied.length > 0) bad.push(`${why}：書き戻されました（図面にだけ残すはず）`);
+      else if (r === null || !r.leftovers.some((l) => l.kind === 'relabel')) bad.push(`${why}：図面に残っていません`);
+    };
+    keep([...s0.label, '備考'], '行を足したとき');
+    keep(s0.label.slice(0, 1), '行を消したとき');
+    keep(s0.label.map((l, i) => (i === 0 ? 'DS（手書き）' : l)), '答えそのままでない行（見出し）を書き換えたとき');
+  }
+  if (reflected < CASES.length) bad.push(`書き戻せた機器が少なすぎます（${reflected}／${CASES.length}）`);
+  if (bad.length > 0) fail(`文字の書き戻し（変圧器以外）に問題が ${bad.length}件あります（例：${bad.slice(0, 4).join(' ／ ')}）`);
+  else console.log(`  ${reflected}種類の機器（DS・VT・コンデンサ2組・リアクトル・蓄電池）で、文字の書き換えが、入力の同じ項目に書き戻る（行を足す・消す・見出しを変える書き換えは、図面にだけ残る）`);
+}
