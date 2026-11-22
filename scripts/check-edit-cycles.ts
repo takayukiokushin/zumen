@@ -131,11 +131,11 @@ for (let id=0; id<N; id++) {
       const opened=tidyDoc(dedupeIds(cur));
       const prev=opened.base?opened:{...opened,base:cur.base};
       const g2=gen(a1);
-      const out=rebuildWithOverrides(g2,prev).doc;
+      const rb=rebuildWithOverrides(g2,prev);const out=rb.doc;const aligned=new Set(rb.report.alignedIds);
       const pm=collectOverrides(prev).moved, om=collectOverrides(out).moved;
       const names=new Set(syms(g2).map(s=>sameName(s.id)));
       for(const n of Object.keys(pm)){
-        if(!names.has(n)||(!pm[n]!.dx&&!pm[n]!.dy))continue;
+        if(!names.has(n)||(!pm[n]!.dx&&!pm[n]!.dy)||aligned.has(n))continue;
         tot++;
         const o=om[n];
         // 線の上に乗せる記号（VCT・CT・ZCT）は、乗っている線が横に動いたとき、その線の真上へついていく（横の動きは、数えない）

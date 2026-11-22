@@ -754,6 +754,7 @@ export const fr: Dict = {
   'editor.rebuiltKept': 'Vos retouches manuelles ont été conservées telles quelles.',
   'editor.rebuiltDormant': 'Les retouches des appareils absents de la saisie actuelle ({n}) sont mises de côté (elles seront réappliquées si ces appareils reviennent).',
   'editor.rebuiltOverlap': '{n} symbole(s) déplacé(s) à la main chevauchent d’autres symboles. Vérifiez leur position (les symboles qui se chevauchent sont entourés d’un pointillé rouge, qui disparaît quand vous fermez cet avis).',
+  'editor.rebuiltAligned': 'Pour garder les fils droits, {n} appareil(s) ont été déplacés latéralement (ils sont légèrement décalés par rapport à leur position précédente).',
   'editor.cableRefused': 'Rien d’autre qu’un ZCT ne peut être relié au milieu d’un câble HT. Raccordez-le à l’extérieur des extrémités du câble.',
   'editor.onWireRefused': 'Les symboles posés sur un fil (VCT, CT, ZCT) et les autres symboles ne sont pas interchangeables. Désélectionnez-le et ajoutez-en un nouveau.',
   'editor.onWireUpgraded': 'Les symboles de ce dessin (VCT, CT, ZCT, unité de batterie) ont été convertis à leur nouvelle forme. Les positions et les connexions sont inchangées et vos modifications manuelles sont conservées. « Annuler » ne peut pas revenir avant (enregistrez simplement).',

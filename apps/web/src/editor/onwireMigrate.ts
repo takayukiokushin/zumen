@@ -119,7 +119,7 @@ export function migrateOnWire(old: Doc, generated: Doc): Doc {
     }
     return { ...ov, wiresRemoved: gone, added };
   };
-  const r = rebuildWithOverrides(generated, old, adjust);
+  const r = rebuildWithOverrides(generated, old, adjust, { noAlign: true });
   return dedupeWires({ ...r.doc, layoutV: LAYOUT_V });
 }
 

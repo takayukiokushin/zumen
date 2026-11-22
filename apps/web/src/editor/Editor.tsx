@@ -199,7 +199,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   /** 「レイアウトを縮小」で、これ以上縮められないときの知らせ */
   const [layoutNote, setLayoutNote] = useState<string | null>(null);
   /** 入力内容が変わって、手で直した図面を作り直したときの知らせ（「操作を戻す」で元に戻せる） */
-  const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; overlapIds: string[]; lost: boolean } | null>(null);
+  const [rebuiltNote, setRebuiltNote] = useState<{ kept: boolean; dormant: number; overlaps: number; overlapIds: string[]; alignedIds: string[]; lost: boolean } | null>(null);
   /** 高圧ケーブルの途中に、ZCT 以外をつなごうとして、断ったときの知らせ（第18弾 D） */
   const [cableNote, setCableNote] = useState<string | null>(null);
   /** 開いた図面に、すでに、高圧ケーブルの途中へのつなぎがあるとき、その場所（赤い印を出す）。知らせを閉じると消える */
@@ -595,7 +595,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
    */
   const regenerate = () => {
     const legacy = doc.edited === true && !doc.base;
-    const { doc: fresh, report } = legacy ? { doc: generated, report: { kept: false, dormant: 0, overlaps: 0, overlapIds: [] } } : rebuildWithOverrides(generated, doc);
+    const { doc: fresh, report } = legacy ? { doc: generated, report: { kept: false, dormant: 0, overlaps: 0, overlapIds: [], alignedIds: [] } } : rebuildWithOverrides(generated, doc);
     // 印刷の向きとレイヤーは、作り直しても、引き継ぐ
     const withOrientation: Doc = carryOver(fresh, doc);
     setHistory((h) => commit(h, withOrientation));
@@ -1246,6 +1246,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               {t('editor.rebuiltKept')}
               {rebuiltNote.dormant > 0 && ` ${t('editor.rebuiltDormant', { n: rebuiltNote.dormant })}`}
               {rebuiltNote.overlaps > 0 && ` ${t('editor.rebuiltOverlap', { n: rebuiltNote.overlaps })}`}
+              {rebuiltNote.alignedIds.length > 0 && ` ${t('editor.rebuiltAligned', { n: rebuiltNote.alignedIds.length })}`}
               {` ${t('editor.rebuiltUndo')}`}
             </span>
           ) : (

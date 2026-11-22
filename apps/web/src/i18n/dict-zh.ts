@@ -750,6 +750,7 @@ export const zh: Dict = {
   'editor.rebuiltKept': '手动修改的内容已原样保留。',
   'editor.rebuiltDormant': '当前输入中已不存在的设备所对应的部分（{n}项）已保留（该设备恢复后会重新套用）。',
   'editor.rebuiltOverlap': '手动移动过的符号中，有 {n} 个与其他符号重叠。请确认位置（重叠的符号用红色虚线圈出；关闭此提示后，圈线也会消失）。',
+  'editor.rebuiltAligned': '为避免线条倾斜，已将 {n} 处设备横向移动并对齐（这些设备与之前的位置略有偏移）。',
   'editor.cableRefused': '高压电缆的中间不能连接 ZCT 以外的设备。请接在电缆终端头的外侧。',
   'editor.onWireRefused': '放在线上的符号（VCT・CT・ZCT）与其他符号不能互相替换。请取消选择后重新添加。',
   'editor.onWireUpgraded': '已将图纸中的符号（VCT、CT、ZCT、蓄电池单元）改为新的形状。位置和连线保持不变，手动修改的内容也已保留。无法用“撤销操作”回到此前（请直接保存）。',

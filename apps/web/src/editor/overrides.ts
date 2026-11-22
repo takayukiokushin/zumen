@@ -1,5 +1,6 @@
 import { rotatedBox } from '@zumen/layout';
 import { nudgeSymbolLabel } from './inspect.ts';
+import { alignSkewedColumns, skewKeys } from './alignSkew.ts';
 import { followAutoWires } from './wireFollow.ts';
 import { applyAnchors, seatOnWire, baselineOf, defOf, freshId, moveItem, moveItems, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
 import type { AddedItem, Doc, DocFrame, DocItem, DocSymbol, DocText, DocWire, FrameEdit, Overrides, Placement, SymbolEdit } from './doc.ts';
@@ -128,6 +129,8 @@ export interface RebuildReport {
   overlaps: number;
   /** 重なっている記号（手で動かした記号と、それがかかっている記号）の id。図面の上に、印を出すのに使う（第18弾 C-5） */
   overlapIds: string[];
+  /** 斜めになる線を、まっすぐにそろえるために、横に動かした機器の名前（第20弾・案2） */
+  alignedIds: string[];
 }
 
 /** 記号の絵が占める範囲 */
@@ -157,6 +160,8 @@ export function rebuildWithOverrides(
   current: Doc | null,
   /** 手で直した内容を、重ねる前に、差し引く・直すとき（図面の変更を入力に書き戻したぶんを、外すのに使う） */
   adjust?: (ov: Overrides) => Overrides,
+  /** noAlign：斜めの線をそろえる処理（横に動かす）をしない。形式の変換（位置を変えずに、新しい形に直す）で使う */
+  opts: { noAlign?: boolean } = {},
 ): { doc: Doc; report: RebuildReport } {
   const ov0 = current?.base ? collectOverrides(current) : EMPTY;
   const ov = adjust ? adjust(ov0) : ov0;
@@ -409,6 +414,14 @@ export function rebuildWithOverrides(
   work = applyAnchors(work);
   // 記号につないでいない線（自動で作った、途中の折れ線・低圧の母線・PASの内蔵品の中の線など）を、記号の動きに合わせて動かし直す
   if (current?.base) work = followAutoWires(generated, work);
+  // 作り直しで、新しく斜めになった線（手で動かした機器と、新しく入った機器のあいだなど）を、下側の機器を横に動かして、まっすぐにそろえる
+  // （横のずれが小さいときだけ。大きいずれは、手で大きく動かしたものとして、そのまま残す）
+  let alignedIds: string[] = [];
+  if (current?.base && !opts.noAlign) {
+    const al = alignSkewedColumns(work, skewKeys(current));
+    work = al.doc;
+    alignedIds = al.moved;
+  }
   // 線の上に乗せる記号（VCT・CT・ZCT）を、線の真上に置き直す（線が動いたあとに、記号だけ、横にずれることがある）
   // （ただし、作り直す前から、線から離れて置いてあった記号は、手で決めた位置なので、そのまま残す）
   const offWire = new Set<string>();
@@ -469,5 +482,5 @@ export function rebuildWithOverrides(
     // レイヤー（停電範囲図など）は、元の図面を作り直しても、そのまま引き継ぐ
     ...(current?.layers !== undefined ? { layers: current.layers } : {}),
   };
-  return { doc, report: { kept, dormant, overlaps, overlapIds: [...overlapIds] } };
+  return { doc, report: { kept, dormant, overlaps, overlapIds: [...overlapIds], alignedIds } };
 }

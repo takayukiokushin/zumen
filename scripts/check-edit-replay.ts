@@ -228,14 +228,17 @@ for (let id = 0; id < N; id++) {
     const before = defects(prev);
     const g2 = gen(a1);
     const auto = defects(g2);
-    const out = rebuildWithOverrides(g2, prev).doc;
+    const rb = rebuildWithOverrides(g2, prev);
+    const out = rb.doc;
+    // 斜めになる線を、まっすぐにそろえるために、横に動かした機器は、位置が変わってよい（第20弾・案2）
+    const aligned = new Set(rb.report.alignedIds);
     const after = defects(out);
     // 手で動かした位置が、そのまま保たれているか
     const pm = collectOverrides(prev).moved;
     const om = collectOverrides(out).moved;
     const names = new Set(syms(g2).map((s) => sameName(s.id)));
     for (const n of Object.keys(pm)) {
-      if (!names.has(n) || (!pm[n]!.dx && !pm[n]!.dy)) continue;
+      if (!names.has(n) || (!pm[n]!.dx && !pm[n]!.dy) || aligned.has(n)) continue;
       lostOf++;
       const o = om[n];
       // 線の上に乗せる記号（VCT・CT・ZCT）は、乗っている線が横に動いたとき、その線の真上へついていく（横の動きは、数えない）
