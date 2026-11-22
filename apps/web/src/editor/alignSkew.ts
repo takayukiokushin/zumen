@@ -1,6 +1,6 @@
 import { followAutoWires } from './wireFollow.ts';
 import { groupRootOf, isHorizontal, isVertical, moveItems, outwardOf, sameName } from './doc.ts';
-import type { Doc, DocWire } from './doc.ts';
+import type { Doc, DocSymbol, DocWire } from './doc.ts';
 
 /**
  * 作り直しで、新しく斜めになった線を、機器を横に動かして、まっすぐにそろえる（第20弾・案2）。
@@ -71,8 +71,14 @@ export function alignSkewedColumns(work: Doc, before: Set<string>): { doc: Doc; 
         const trial = followAutoWires(cur, moveItems(cur, [...c.block], vertical ? c.shift : 0, vertical ? 0 : c.shift));
         // 斜めの線が、減るときだけ、動かす
         if (skewed(trial, before).length >= skewed(cur, before).length) continue;
+        // 動いた機器（かたまりの親と、いっしょに動いた内蔵品・付属の継電器）の名前
+        const was = new Map(cur.items.filter((it): it is DocSymbol => it.kind === 'symbol').map((it) => [it.id, it]));
+        for (const it of trial.items) {
+          if (it.kind !== 'symbol') continue;
+          const o = was.get(it.id);
+          if (o && (Math.abs(o.x - it.x) > 0.001 || Math.abs(o.y - it.y) > 0.001)) moved.push(sameName(it.id));
+        }
         cur = trial;
-        for (const b of c.block) moved.push(sameName(b));
         progress = true;
         break;
       }
