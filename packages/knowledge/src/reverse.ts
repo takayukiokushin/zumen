@@ -59,3 +59,45 @@ export function parseTransformerLabel(lines: string[], conn: string, unit: numbe
   return out;
 }
 
+
+/**
+ * 定格の行（例：「7200V 200A」）。電圧と電流の2つの答えから作る行を、答えに読み替える（第20弾・書き戻しの残り ③）。
+ * placeholder：構成ルールの文字の行（`{...}` だけの行）に書いてある名前。voltage・current：その行を作る答えの質問ID。
+ * currentSuffix：電流の答えに、単位（A）を付けて出すもの（'A'）／答えそのままの文字を出すもの（''）。電圧には、いつも「V」を付ける。
+ * 片方だけ入っているときは、その方だけが出る（もう片方の答えは空）。
+ */
+export interface RatingLine {
+  placeholder: string;
+  voltage: string;
+  current: string;
+  currentSuffix: 'A' | '';
+}
+
+export const RATING_LINES: readonly RatingLine[] = [
+  { placeholder: 'lbsRatingLine', voltage: 'lbsRatedVoltage', current: 'lbsRatedCurrent', currentSuffix: 'A' },
+  { placeholder: 'pasRatingText', voltage: 'pasRatedVoltage', current: 'pasRatedCurrent', currentSuffix: 'A' },
+  { placeholder: 'midRatingText', voltage: 'midRatedVoltage', current: 'midRatedCurrent', currentSuffix: 'A' },
+  { placeholder: 'areaPasRatingText', voltage: 'areaPasRatedVoltage', current: 'areaPasRatedCurrent', currentSuffix: 'A' },
+  { placeholder: 'areaAsRatingText', voltage: 'areaAsRatedVoltage', current: 'areaAsRatedCurrent', currentSuffix: 'A' },
+  { placeholder: 'trLbsRatingLine', voltage: 'trLbsVoltage', current: 'trLbsRating', currentSuffix: '' },
+  { placeholder: 'capLbsRatingLine', voltage: 'capLbsVoltage', current: 'capLbsRating', currentSuffix: '' },
+];
+
+/** 定格の行を、電圧の答え・電流の答えに分ける（電圧は数、電流は「数」または単位なしの文字）。読み取れない書き方のときは、null */
+export function parseRatingLine(line: string, spec: RatingLine): { voltage?: string; current?: string } | null {
+  const text = line.trim();
+  if (text === '') return null;
+  const tokens = text.split(' ');
+  const v = new RegExp(`^(${NUM})V$`).exec(tokens[0]!);
+  const rest = (v ? tokens.slice(1) : tokens).join(' ');
+  const out: { voltage?: string; current?: string } = {};
+  if (v) out.voltage = v[1]!;
+  if (rest !== '') {
+    if (spec.currentSuffix === 'A') {
+      const a = new RegExp(`^(${NUM})A$`).exec(rest);
+      if (!a) return null;
+      out.current = a[1]!;
+    } else out.current = rest;
+  }
+  return out.voltage === undefined && out.current === undefined ? null : out;
+}

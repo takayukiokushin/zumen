@@ -698,3 +698,70 @@ console.log('\n■ 図面で、変圧器以外の機器の文字（答えその�
   if (bad.length > 0) fail(`文字の書き戻し（変圧器以外）に問題が ${bad.length}件あります（例：${bad.slice(0, 4).join(' ／ ')}）`);
   else console.log(`  ${reflected}種類の機器（DS・VT・コンデンサ2組・リアクトル・蓄電池）で、文字の書き換えが、入力の同じ項目に書き戻る（行を足す・消す・見出しを変える書き換えは、図面にだけ残る）`);
 }
+
+console.log('\n■ 図面で、定格の行（電圧と電流）を書き換えると、入力に書き戻す（第20弾・書き戻しの残り ③）');
+{
+  const DEFAULTS: Answers = Object.fromEntries(QUESTIONS.filter((q) => q.defaultValue !== undefined).map((q) => [q.id, q.defaultValue as Value]));
+  const toEff = (a: Answers): Answers => withAutoValues({ ...DEFAULTS, ...normalizeAnswers(a) });
+  const raw: Answers = {
+    ...answersSpread,
+    transformerCount: 1,
+    hasCapacitor: 'no',
+    hasPv: 'no',
+    hasGenerator: 'no',
+    mainBreakerForm: 'pfs',
+    lbsRatedVoltage: '7200',
+    lbsRatedCurrent: 200,
+    pasRatedVoltage: '7200',
+    pasRatedCurrent: '300',
+    trHasLbs: 'yes',
+    trLbsVoltage: '7200',
+    trLbsRating: '200A',
+  };
+  const bad: string[] = [];
+  const fresh = (): Doc => buildGenerated(toEff(raw));
+  const sym = (d: Doc, name: string) => d.items.find((i): i is DocSymbol => i.kind === 'symbol' && sameName(i.id) === name);
+  const RATING = /^\d+V( \S+)?$/;
+  // [図面の名前, 書き換えたあとの行, 期待する答え]
+  const CASES: [string, string, Record<string, string | number | undefined>][] = [
+    ['main-breaker', '6600V 300A', { lbsRatedVoltage: '6600', lbsRatedCurrent: 300 }],
+    ['pas', '6600V 200A', { pasRatedVoltage: '6600', pasRatedCurrent: '200' }],
+    ['pas', '6600V', { pasRatedVoltage: '6600', pasRatedCurrent: undefined }],
+    ['tr-lbs', '6600V 300A', { trLbsVoltage: '6600', trLbsRating: '300A' }],
+  ];
+  let reflected = 0;
+  for (const [name, next, want] of CASES) {
+    const d0 = fresh();
+    const s0 = sym(d0, name);
+    if (!s0) { bad.push(`${name}：試験の図面に、この機器がありません`); continue; }
+    const at = s0.label.findIndex((l) => RATING.test(l));
+    if (at < 0) { bad.push(`${name}：定格の行がありません（${s0.label.join('｜')}）`); continue; }
+    const lines = s0.label.map((l, i) => (i === at ? next : l));
+    const r = writeBack(raw, { ...setLabel(d0, s0.id, lines), edited: true }, toEff);
+    const wrong = Object.entries(want).filter(([k, v]) => String(r?.answers[k] ?? '') !== String(v ?? ''));
+    if (!r || wrong.length > 0) { bad.push(`${name}「${next}」：答えが期待どおりではありません（${wrong.map(([k]) => `${k}=${String(r?.answers[k])}`).join('・') || '何も起きない'}）`); continue; }
+    reflected++;
+    if (sym(r.doc, name)?.label.join('|') !== lines.join('|')) bad.push(`${name}「${next}」：書き戻したあとの図面の文字が、書き換えた文字と違います`);
+    for (const [k, v] of Object.entries(raw)) if (!(k in want) && String(r.answers[k]) !== String(v)) bad.push(`${name}：${k} も変わりました`);
+    if (r.leftovers.some((l) => l.kind === 'relabel')) bad.push(`${name}「${next}」：書き戻したのに、「文字の書き換え」が図面にだけ残っています`);
+    const again = writeBack(r.answers, r.doc, toEff);
+    if (again && again.applied.length > 0) bad.push(`${name}「${next}」：二重に書き戻しました`);
+  }
+  // 書き戻さないもの：選べない値・読めない書き方 → 図面にだけ残す
+  for (const [name, next, why] of [
+    ['pas', '7500V 200A', '選べない電圧（7500V）'],
+    ['pas', '6600V 250A', '選べない電流（250A）'],
+    ['pas', '6600 200', '単位の無い書き方'],
+    ['main-breaker', '6600V 3x0A', '数でない電流'],
+  ] as const) {
+    const d0 = fresh();
+    const s0 = sym(d0, name)!;
+    const at = s0.label.findIndex((l) => RATING.test(l));
+    const r = writeBack(raw, { ...setLabel(d0, s0.id, s0.label.map((l, i) => (i === at ? next : l))), edited: true }, toEff);
+    if (r && r.applied.length > 0) bad.push(`${why}：書き戻されました（図面にだけ残すはず）`);
+    else if (r === null || !r.leftovers.some((l) => l.kind === 'relabel')) bad.push(`${why}：図面に残っていません`);
+  }
+  if (reflected < CASES.length) bad.push(`書き戻せた定格が少なすぎます（${reflected}／${CASES.length}）`);
+  if (bad.length > 0) fail(`定格の行の書き戻しに問題が ${bad.length}件あります（例：${bad.slice(0, 4).join(' ／ ')}）`);
+  else console.log(`  ${reflected}通り（LBS・PAS・変圧器の手前のLBS。電圧だけの行も）で、定格の書き換えが、入力に書き戻る。選べない値・単位の無い書き方・数でない電流は、図面にだけ残る`);
+}

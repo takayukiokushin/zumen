@@ -1,5 +1,5 @@
-import { areaCountOf, areaKey, areaView, buildComposition, CHAIN_BY_FORM, referencedKeys, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, linkStageCountOf, linkStagePrefix, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, PER_UNIT_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
-import type { Answers, Condition, Placement, Value } from '@zumen/knowledge';
+import { RATING_LINES, parseRatingLine, areaCountOf, areaKey, areaView, buildComposition, CHAIN_BY_FORM, referencedKeys, DOWNSTREAM, EXTRAS, indexedKey, linkFromOf, linkStageCountOf, linkStagePrefix, maxCountOf, parseTransformerLabel, PER_AREA_QUESTION_IDS, PER_UNIT_QUESTION_IDS, QUESTION_GROUPS, QUESTIONS, SENDOUT, TRANSFORMER, UPSTREAM, countOf } from '@zumen/knowledge';
+import type { Answers, Condition, Placement, RatingLine, Value } from '@zumen/knowledge';
 import { layout } from '@zumen/layout';
 import { getSymbol } from '@zumen/symbols';
 import { digest, fromLayout, sameName } from './doc.ts';
@@ -93,6 +93,8 @@ interface RoleInfo {
   unitKey?: string;
   /** 文字の1行が、入力の答えそのままになっている質問（文字・数の欄。例：DSの定格、VTの変圧比）。図面で、その行を書き換えたとき、答えに書き戻す */
   fieldKeys: string[];
+  /** 文字の行が、定格の行（電圧と電流の2つの答えから作る行。例：7200V 200A）になっているもの */
+  ratingLines: RatingLine[];
 }
 
 let rolesCache: Map<string, RoleInfo> | null = null;
@@ -111,9 +113,11 @@ function roleTable(): Map<string, RoleInfo> {
     const countKeys = new Set(ps.map((p) => p.repeatCountKey).filter((k): k is string => Boolean(k)));
     // 文字の行が、「{質問}」だけの行（前後に文字が付かない）の、文字・数の質問
     const fieldKeys = [...new Set(ps.flatMap((p) => (p.labelTemplate ?? []).map((l) => /^\{([\w.]+)\}$/.exec(l)?.[1]).filter((k): k is string => k !== undefined && (Q.get(k)?.type === 'text' || Q.get(k)?.type === 'number'))))];
+    const ratingLines = RATING_LINES.filter((r) => ps.some((p) => (p.labelTemplate ?? []).includes(`{${r.placeholder}}`)));
     table.set(role, {
       role,
       fieldKeys,
+      ratingLines,
       symbolIds,
       ...(common.length === 1 && countKeys.size === 0 && QUESTION_IDS.has(common[0]!) ? { presenceKey: common[0]! } : {}),
       ...(countKeys.size === 1 ? { countKey: [...countKeys][0]! } : {}),
@@ -315,12 +319,34 @@ function textFieldAnswers(name: string, base: string[], lines: string[], eff: An
   const { area, rest } = splitArea(name);
   const rep = repeatOf(rest, table);
   const info = rep ? rep.info : table.get(rest.replace(/-\d+$/, '')) ?? table.get(rest);
-  if (!info || info.fieldKeys.length === 0) return null;
+  if (!info || (info.fieldKeys.length === 0 && info.ratingLines.length === 0)) return null;
   const out: Answers = {};
+  const keyOf = (k: string) => (rep ? qKey(indexedKey(k, rep.no - 1), area) : qKey(k, area));
+  /** 答えの型に合わせた値にする。選ぶ欄は、選べる値のときだけ。合わなければ null（undefined は、空にする） */
+  const coerce = (id: string, v: string | undefined): { ok: true; v: Value | undefined } | { ok: false } => {
+    if (v === undefined) return { ok: true, v: undefined };
+    const q = Q.get(id);
+    if (q?.type === 'number') return Number.isFinite(Number(v)) ? { ok: true, v: Number(v) } : { ok: false };
+    if (q?.type === 'select') return (q.options ?? []).some((o) => String(o.value) === v) ? { ok: true, v } : { ok: false };
+    return { ok: true, v };
+  };
   for (let i = 0; i < lines.length; i++) {
     if (lines[i] === base[i]) continue;
     const next = lines[i]!.trim();
     if (next === '') return null;
+    // 定格の行（電圧と電流）：もとの行も、新しい行も、その書き方で読めるときだけ
+    const rating = info.ratingLines.filter((r) => parseRatingLine(base[i]!, r) !== null);
+    if (rating.length === 1) {
+      const r = rating[0]!;
+      const parsed = parseRatingLine(next, r);
+      if (!parsed) return null;
+      const vv = coerce(r.voltage, parsed.voltage);
+      const cc = coerce(r.current, parsed.current);
+      if (!vv.ok || !cc.ok) return null;
+      out[keyOf(r.voltage)] = vv.v;
+      out[keyOf(r.current)] = cc.v;
+      continue;
+    }
     const hit = info.fieldKeys
       .map((k) => ({ k, key: rep ? qKey(indexedKey(k, rep.no - 1), area) : qKey(k, area) }))
       .filter((c) => String(eff[c.key] ?? '') === base[i]);
