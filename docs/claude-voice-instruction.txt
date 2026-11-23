@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vsuf1q7",
+  "version": "v1hsuqfx",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：vsuf1q7）
+# 項目の一覧（版：v1hsuqfx）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -540,7 +540,7 @@
 - generatorUsage：用途区分｜normal=常用型 ／ emergency=非常用型
 - generatorFuel：燃料の種別｜diesel=軽油 ／ gas=天然ガス ／ gasoline=ガソリン ／ kerosene=灯油 ／ heavy-oil=重油 ／ ほかの値も可
 - generatorCapacity：発電機の容量｜文字
-- generatorRatedVoltage：定格電圧｜200=200V ／ 400=400V ／ 3300=3300V ／ 6600=6600V ／ ほかの値も可
+- generatorRatedVoltage：定格電圧｜200=200V ／ 220=220V ／ 400=400V ／ 3300=3300V ／ 6600=6600V ／ ほかの値も可
 - generatorPlace：設置場所｜文字
 - generatorTransformer：この発電機の接続先は｜none=つながない（単独で置く） ／ bus=高圧母線から接続する ／ 1=1台目の二次側 ／ 2=2台目の二次側 ／ 3=3台目の二次側 ／ 4=4台目の二次側 ／ 5=5台目の二次側 ／ 6=6台目の二次側 ／ 7=7台目の二次側 ／ 8=8台目の二次側
 - genHasCable：この発電機の電源側に、高圧ケーブルがありますか｜yes/no｜条件：generatorTransformer=bus

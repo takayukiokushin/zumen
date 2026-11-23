@@ -1744,29 +1744,25 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
       out.push({ group: 'link', text: 'つなぐ先の機器（CT・VT）が無い継電器があります。「途中に付ける機器」で、CT・VTを付けてください。付けないときは、継電器の名前だけを、縦の並びの下に書きます。' });
     }
   }
-  // 低圧の電動機・発電機：図面に描くのは、高圧（600Vを超えるもの）だけ。定格電圧（無ければ、つなぎ先の変圧器の二次側の電圧）が低圧のとき、知らせる（第13弾 項目55 修正15／A-4・B-6）
-  for (const [on, countKey, groupId, what] of [
-    ['hasMotor', 'motorCount', 'motor', '電動機'],
-    ['hasGenerator', 'generatorCount', 'generator', '発電機'],
-  ] as const) {
-    if (dv[on] !== 'yes') continue;
-    const units = countOf(view[countKey], 1, maxCountOf(countKey));
+  // 低圧の電動機：図面に描くのは、高圧（600Vを超えるもの）だけ。定格電圧（無ければ、つなぎ先の変圧器の二次側の電圧）が低圧のとき、知らせる（第13弾 項目55 修正15）。
+  // 発電機は、高圧も低圧も描くので、知らせない（第20弾・図面再現の診断から。220Vの発電機がある図面に合わせた）
+  if (dv.hasMotor === 'yes') {
+    const units = countOf(view.motorCount, 1, maxCountOf('motorCount'));
     let low = false;
     for (let i = 0; i < units; i++) {
       const u = withDerived(viewAt(view, i));
-      const rated = Number(u[groupId === 'motor' ? 'motorRatedVoltage' : 'generatorRatedVoltage']);
+      const rated = Number(u.motorRatedVoltage);
       let volts = Number.isFinite(rated) && rated > 0 ? rated : NaN;
       if (!Number.isFinite(volts)) {
         // 定格電圧を入れていないとき：二次側につないでいれば、その変圧器の二次側の電圧で見る（母線につないでいれば、高圧）
-        const dest = groupId === 'motor' ? (u.motorSource === 'secondary' ? (u.motorSourceTr ?? '1') : undefined) : /^\d+$/.test(String(u.generatorTransformer ?? '')) ? u.generatorTransformer : undefined;
-        if (dest !== undefined) volts = secondaryVolts(view, Math.max(1, Number(dest)) - 1);
+        if (u.motorSource === 'secondary') volts = secondaryVolts(view, Math.max(1, Number(u.motorSourceTr ?? '1')) - 1);
       }
       if (isLowVoltage(volts)) low = true;
     }
     if (low) {
       out.push({
-        group: groupId,
-        text: `低圧（600V以下）の${what}があります。この図面に描くのは、高圧（3300V・6600Vなど）の${what}だけです。低圧の${what}は、描かないでください（図面は、このまま描きます）。`,
+        group: 'motor',
+        text: '低圧（600V以下）の電動機があります。この図面に描くのは、高圧（3300V・6600Vなど）の電動機だけです。低圧の電動機は、描かないでください（図面は、このまま描きます）。',
       });
     }
   }

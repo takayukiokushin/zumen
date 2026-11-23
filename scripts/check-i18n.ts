@@ -115,8 +115,8 @@ for (const v of Object.values(CATEGORY_LABEL)) add(v);
   for (const m of src.matchAll(/\b(?:text:|const text =)\s*(['`])((?:(?!\1)[^\\\n]|\\.)*)\1/g)) {
     const raw = m[2]!;
     if (!jp.test(raw)) continue;
-    // 「${what}」には、電動機・発電機が入る（低圧の電動機・発電機の注意）
-    if (raw.includes('${what}')) for (const what of ['電動機', '発電機']) add(raw.replaceAll('${what}', what));
+    // 「${what}」には、電動機が入る（低圧の電動機の注意。発電機には出さない）
+    if (raw.includes('${what}')) for (const what of ['電動機']) add(raw.replaceAll('${what}', what));
     else if (!raw.includes('${')) add(raw);
   }
 }

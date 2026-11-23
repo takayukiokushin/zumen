@@ -9,6 +9,8 @@ const MOTOR_HAS_TR: Condition = { not: { key: 'transformerCount', lte: 0 } };
 const MOTOR_SOURCE_CHOSEN: Condition = { key: 'motorSource', in: ['bus', 'secondary'] };
 /** 電動機・発電機の定格電圧の選択肢（高圧・低圧の区別は付けない。ほかの電圧は手で入力できる）。図面に描くのは、高圧（3300V・6600Vなど）だけ */
 const RATED_VOLTAGE_OPTIONS: Choice[] = [200, 400, 3300, 6600].map((v) => ({ value: String(v), label: `${v}V` }));
+/** 発電機の定格電圧の選択肢。高圧も低圧も描くので、低圧の220Vも選べる（ほかの電圧は手で入力できる） */
+const GENERATOR_VOLTAGE_OPTIONS: Choice[] = [200, 220, 400, 3300, 6600].map((v) => ({ value: String(v), label: `${v}V` }));
 /** 電動機：接続元が、変圧器の二次側のとき */
 const MOTOR_FROM_SECONDARY: Condition = { key: 'motorSource', eq: 'secondary' };
 
@@ -47,7 +49,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
   /* ---------------- 特殊設備 ----------------
    * 5つの「あり／なし」の並び：発電機・太陽光発電設備・蓄電池・補助変圧器・電動機（第15弾 項目2）。
    * 「あり／なし」の選択は、必須ではない（何も選ばない＝なし。最初は「あり」だけを出す）。「あり」のときの、台数・容量などの中身は、必須のまま。 */
-  { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '図面に描くのは、高圧の発電機だけ（低圧の発電機は描かない）' },
+  { id: 'hasGenerator', group: 'special', label: '発電機はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: '高圧の発電機も、低圧の発電機も、描ける。定格電圧は、発電機ごとに答える' },
   { id: 'hasPv', group: 'special', label: '太陽光発電設備はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'hasBattery', group: 'special', label: '蓄電池はありますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   // 補助変圧器：蓄電池の有無に関わらず、ここで「あり／なし」を答える（あり→下の「補助変圧器」の枠が出る。必須は台数だけ。第14弾 項目2）
@@ -241,11 +243,11 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     group: 'generator',
     label: '定格電圧',
     type: 'select',
-    options: RATED_VOLTAGE_OPTIONS,
+    options: GENERATOR_VOLTAGE_OPTIONS,
     allowFreeInput: true,
     dropdown: true,
     ask: 'always',
-    help: '図面には、容量の横に「6600V」のように書く。図面に描くのは、高圧（3300V・6600Vなど）の発電機だけ。分からなければ、空欄でよい',
+    help: '図面には、容量の横に「220V」「6600V」のように書く。高圧も低圧も描ける。一覧にない電圧は、手で入力できる。分からなければ、空欄でよい',
   },
   {
     id: 'generatorPlace',
@@ -265,7 +267,7 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     options: GENERATOR_DEST_CHOICES,
     defaultValue: 'none',
     ask: 'always',
-    help: '高圧母線から分岐して接続するか、何台目の変圧器の二次側（低圧側）から接続するか。つなぎ先が決まっていなければ「つながない」のままでよい（図面の下に置くだけになる）。図面に描くのは、高圧の発電機だけ',
+    help: '高圧母線から分岐して接続するか、何台目の変圧器の二次側（低圧側）から接続するか。つなぎ先が決まっていなければ「つながない」のままでよい（図面の下に置くだけになる）',
   },
 
   /* ---------------- 電動機（台ごと。入力の順番：台数・始動方式・容量・設置場所。接続元は、このあとの項目で足す） ---------------- */

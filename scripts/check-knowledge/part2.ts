@@ -188,7 +188,10 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
     if (note({ hasMotor: 'yes', motorSource: 'bus' }) !== '' || note({ hasMotor: 'yes', motorSource: 'bus', motorRatedVoltage: '400' }) !== 'motor' || note({ hasMotor: 'yes', motorSource: 'secondary', motorSourceTr: '1', motorRatedVoltage: '6600' }) !== '') fail('電動機の定格電圧による注意の出方が違います');
     // 境目：600Vは低圧、600Vを超えると高圧
     if (note({ hasMotor: 'yes', motorSource: 'bus', motorRatedVoltage: '600' }) !== 'motor' || note({ hasMotor: 'yes', motorSource: 'bus', motorRatedVoltage: '601' }) !== '') fail('低圧の境目（600V以下が低圧・600Vを超えると高圧）が違います');
-    if (note({ hasGenerator: 'yes', generatorTransformer: '1' }) !== 'generator' || note({ hasGenerator: 'yes', generatorTransformer: 'bus' }) !== '' || note({ hasGenerator: 'yes', generatorTransformer: 'bus', generatorRatedVoltage: '200' }) !== 'generator' || note({ hasGenerator: 'no', generatorTransformer: '1' }) !== '') fail('発電機の注意の出方が違います');
+    // 発電機は、高圧も低圧も描くので、低圧でも注意を出さない（第20弾・図面再現の診断から）
+    if ([{ hasGenerator: 'yes', generatorTransformer: '1' }, { hasGenerator: 'yes', generatorTransformer: 'bus' }, { hasGenerator: 'yes', generatorTransformer: 'bus', generatorRatedVoltage: '200' }, { hasGenerator: 'yes', generatorTransformer: 'bus', generatorRatedVoltage: '220' }, { hasGenerator: 'no', generatorTransformer: '1' }].some((a) => note(a as Answers) !== '')) fail('発電機に、低圧の注意が出ています（発電機は、高圧も低圧も描くので、出さない）');
+    if (!(QUESTIONS.find((q) => q.id === 'generatorRatedVoltage')?.options ?? []).some((o) => o.value === '220')) fail('発電機の定格電圧に220Vがありません');
+    if (groles({ generatorTransformer: 'bus', generatorUsage: 'emergency', generatorCapacity: '300kVA', generatorRatedVoltage: '220' })[0]?.label.join('|').indexOf('非常用 300kVA 220V') !== 2) fail('発電機の定格電圧220Vの文字が違います');
     const two = mroles({ hasMotor: 'yes', motorCount: 2, motorSource: 'bus', motorSource__2: 'secondary', motorSourceTr__2: '2' });
     if (two.map((i) => i.kind).join() !== 'parallel,feeder' || String(two[1]!.props?.transformer) !== '2') fail('1台は母線・1台は二次側のとき、それぞれの列になっていません');
     if (buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:transformerCount': 0, 'a2:hasMotor': 'yes', 'a2:motorCount': 2 }).filter((i) => i.role === 'a2:motor').length !== 2) fail('変圧器が0台の2か所目のエリアに、電動機が2台入っていません');
