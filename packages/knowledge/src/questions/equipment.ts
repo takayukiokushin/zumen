@@ -10,7 +10,7 @@ const MOTOR_SOURCE_CHOSEN: Condition = { key: 'motorSource', in: ['bus', 'second
 /** 電動機・発電機の定格電圧の選択肢（高圧・低圧の区別は付けない。ほかの電圧は手で入力できる）。図面に描くのは、高圧（3300V・6600Vなど）だけ */
 const RATED_VOLTAGE_OPTIONS: Choice[] = [200, 400, 3300, 6600].map((v) => ({ value: String(v), label: `${v}V` }));
 /** 発電機の定格電圧の選択肢。高圧も低圧も描くので、低圧の220Vも選べる（ほかの電圧は手で入力できる） */
-const GENERATOR_VOLTAGE_OPTIONS: Choice[] = [200, 220, 400, 3300, 6600].map((v) => ({ value: String(v), label: `${v}V` }));
+const GENERATOR_VOLTAGE_OPTIONS: Choice[] = [200, 220, 400, 440, 3300, 6600].map((v) => ({ value: String(v), label: `${v}V` }));
 /** 電動機：接続元が、変圧器の二次側のとき */
 const MOTOR_FROM_SECONDARY: Condition = { key: 'motorSource', eq: 'secondary' };
 
