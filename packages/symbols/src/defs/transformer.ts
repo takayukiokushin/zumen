@@ -2,6 +2,7 @@ import type { FieldDef, SymbolDef } from '../types.ts';
 import type { Shape } from '../shape.ts';
 import { circle, deltaMark, hline, starMark, text, vline } from '../shape.ts';
 import { CELL } from './switchgear.ts';
+import { scaleSymbol } from '../scale.ts';
 
 /**
  * 変圧器の共通の形（縦に重なった2つの円）。
@@ -200,6 +201,46 @@ const threeWinding = (id: string, conns: [Conn, Conn, Conn], label: string): Sym
   note: '巻線が3つある変圧器。丸が重なっているため、印は、丸の中心から少しずらして置いている（線に触れないように）。',
 });
 
+const TR_SCOTT: SymbolDef = {
+  id: 'tr-scott',
+  labelLines: ['Tr', '3φ{capacity}kVA', '{voltage}'],
+  abbr: 'Tr',
+  nameJa: 'スコット変圧器',
+  category: 'transformer',
+  tags: ['変圧器', 'スコット', '単相三線', '低圧', '高圧'],
+  optional: true,
+  box: BOX,
+  shapes: body(
+    [
+      // 「⊥」の横棒：丸の中心の、ほんの少し上。下の丸のふち（上の端）からも、上の丸のふち（上の端）からも、離す（上下の角に寄せすぎない）
+      hline(CY1 - 0.5, CX - 7 * SCALE, CX + 7 * SCALE),
+      vline(CX, CY1 - 0.5 - 6.5 * SCALE, CY1 - 0.5),
+    ],
+    [
+      // 「L」：丸の中心の、少し下寄りに置く（縦線の上端は、上の丸の下の線から3以上離す。第13弾 項目40）
+      vline(CX - 5 * SCALE, CY2 - 4 * SCALE + SCALE, CY2 + 5 * SCALE + SCALE),
+      hline(CY2 + 5 * SCALE + SCALE, CX - 5 * SCALE, CX + 6 * SCALE),
+    ],
+  ),
+  ports: PORTS,
+  fields: [CAPACITY, VOLTAGE],
+  status: 'confirmed',
+  statusNote: '見本図面のとおり、上の円に「⊥」、下の円に「L」を入れる形にしました（⊥は丸の中心のほんの少し上、Lは少し下寄り）。',
+  note: 'ほとんどが低圧から低圧への変換のため、通常は単線結線図に記載しない。指示があったときだけ配置する。記載例「低圧スコット（常時励磁）20kVA」。',
+};
+
+/**
+ * スコット変圧器の小さい版（第20弾・図面再現の診断から）。図面1の、低圧のスコット変圧器の大きさ（通常の変圧器の円の直径の、約0.77倍）。
+ * 形は、通常の大きさのスコット変圧器と同じ。大きさで、低圧用・高圧用を使い分けられる。
+ */
+const TR_SCOTT_SMALL: SymbolDef = scaleSymbol(TR_SCOTT, 0.77, {
+  id: 'tr-scott-s',
+  nameJa: 'スコット変圧器（小）',
+  tags: ['変圧器', 'スコット', '単相三線', '低圧', '小さい'],
+  statusNote: '見本図面の、低圧のスコット変圧器の大きさ（通常の変圧器より小さい）。形は、通常の大きさのスコット変圧器と同じ。',
+  note: '通常の大きさのスコット変圧器（tr-scott）を、約0.77倍に縮めたもの。大きさで、低圧用・高圧用を使い分けられる。',
+});
+
 export const transformerSymbols: SymbolDef[] = [
   {
     /*
@@ -312,29 +353,8 @@ export const transformerSymbols: SymbolDef[] = [
     statusNote: '並行運転の構成はこの図でOK。単相変圧器の図記号を見本どおりに差し替えました。',
     note: '単相変圧器2台を並行運転させ、倍容量の単相変圧器として使用するパターン。',
   },
-  {
-    id: 'tr-scott',
-    labelLines: ['Tr', '3φ{capacity}kVA', '{voltage}'],
-    abbr: 'Tr',
-    nameJa: 'スコット変圧器（低圧）',
-    category: 'transformer',
-    tags: ['変圧器', 'スコット', '単相三線', '低圧'],
-    optional: true,
-    box: BOX,
-    shapes: body(
-      [hline(CY1 + 4 * SCALE, CX - 7 * SCALE, CX + 7 * SCALE), vline(CX, CY1 - 6 * SCALE, CY1 + 4 * SCALE)],
-      [
-        // 縦線の上端は、上の丸の下の線から3以上離す（以前は、1.5まで近づいていた。第13弾 項目40）
-        vline(CX - 5 * SCALE, CY2 - 4 * SCALE, CY2 + 5 * SCALE),
-        hline(CY2 + 5 * SCALE, CX - 5 * SCALE, CX + 6 * SCALE),
-      ],
-    ),
-    ports: PORTS,
-    fields: [CAPACITY, VOLTAGE],
-    status: 'confirmed',
-    statusNote: '見本図面のとおり、上の円に「⊥」、下の円に「L」を入れる形にしました。',
-    note: 'ほとんどが低圧から低圧への変換のため、通常は単線結線図に記載しない。指示があったときだけ配置する。記載例「低圧スコット（常時励磁）20kVA」。',
-  },
+  TR_SCOTT,
+  TR_SCOTT_SMALL,
   {
     id: 'tr-3w',
     abbr: 'Tr',

@@ -1,5 +1,5 @@
 import type { FieldDef, SymbolDef } from '../types.ts';
-import { contact, hline, line, loadContact, path, rect, tiltedBar, vline } from '../shape.ts';
+import { contact, hline, line, loadContact, path, poly, rect, tiltedBar, vline } from '../shape.ts';
 import { scaleSymbol } from '../scale.ts';
 
 /**
@@ -164,6 +164,72 @@ const pasDef = (
   };
   return scaleSymbol(def, PAS_SCALE);
 };
+
+/**
+ * 電源切替開閉器（DT）。2つの電源（発電機と商用）のどちらかを切り替えて、下の負荷へ送る（第20弾・図面再現の診断から。形は、見本図面のとおり）。
+ * 四角い外箱の中に、左右の接点（半円）と、下の線につながる可動接点（上向きの「∧」）。左右の線は、横棒で打ち切る（つなぐ線は、記号に含めない）。
+ * 左右のどちらが発電機で、どちらが商用かは、配置によって変わるので、記号には決めない。
+ * 3種類：左右とも横棒だけ／右に矢印／左に矢印。下には、どれも、下向きの矢印を付ける。
+ */
+const DT_STUB = 18;
+const DT_BOX_W = 32;
+const DT_BOX_H = 34;
+const DT_LINE_Y = 9;
+const DT_W = DT_BOX_W + DT_STUB * 2;
+const DT_CX = DT_W / 2;
+const DT_TIP_Y = 52;
+const DT_CONTACT_R = 2.2;
+const DT_CONTACT_DX = 8.5;
+
+/** 横向きの矢じり（開いた「V」）。(x, y) が先端。dir：+1 は右向き、-1 は左向き */
+const dtArrowSide = (x: number, y: number, dir: 1 | -1) => poly([x - dir * 4.5, y - 3.5, x, y, x - dir * 4.5, y + 3.5], { close: false, fill: 'none' });
+
+function dtDef(id: 'dt' | 'dt-r' | 'dt-l', nameJa: string, arrow: 'none' | 'right' | 'left'): SymbolDef {
+  const lx = DT_STUB + DT_BOX_W / 2 - DT_CONTACT_DX;
+  const rx = DT_STUB + DT_BOX_W / 2 + DT_CONTACT_DX;
+  const y = DT_LINE_Y;
+  return {
+    id,
+    labelLines: ['電源切替開閉器'],
+    abbr: 'DT',
+    nameJa,
+    category: 'switchgear',
+    tags: ['切替開閉器', '電源切替', '発電機', '商用', 'DT', '手動で追加'],
+    optional: true,
+    box: { w: DT_W, h: DT_TIP_Y },
+    // 文字は、四角の外箱の右（右の線の外）に書く
+    labelBody: { x0: DT_STUB, x1: DT_W, top: 0 },
+    shapes: [
+      // 外箱
+      rect(DT_STUB, 0, DT_BOX_W, DT_BOX_H),
+      // 左右の線（横棒）。接点の半円の上側も、横線で突っ切る（半円の上に穴を開けない）
+      hline(y, 0, lx + DT_CONTACT_R),
+      hline(y, rx - DT_CONTACT_R, DT_W),
+      // 固定接点（下向きの半円。上側は、上の横線でふさがる）
+      path(`M ${lx - DT_CONTACT_R} ${y} A ${DT_CONTACT_R} ${DT_CONTACT_R} 0 0 0 ${lx + DT_CONTACT_R} ${y}`),
+      path(`M ${rx - DT_CONTACT_R} ${y} A ${DT_CONTACT_R} ${DT_CONTACT_R} 0 0 0 ${rx + DT_CONTACT_R} ${y}`),
+      // 可動接点（上向きの「∧」）と、下の負荷への線
+      line(DT_CX, y, DT_CX - 8, y + 8.4),
+      line(DT_CX, y, DT_CX + 8, y + 8.4),
+      vline(DT_CX, y, DT_TIP_Y),
+      // 下向きの矢印（開いた「V」）
+      poly([DT_CX - 3.5, DT_TIP_Y - 4.5, DT_CX, DT_TIP_Y, DT_CX + 3.5, DT_TIP_Y - 4.5], { close: false, fill: 'none' }),
+      ...(arrow === 'right' ? [dtArrowSide(DT_W, y, 1)] : arrow === 'left' ? [dtArrowSide(0, y, -1)] : []),
+    ],
+    ports: [
+      { id: 'l', x: 0, y, dir: 'left', role: 'line' },
+      { id: 'r', x: DT_W, y, dir: 'right', role: 'line' },
+      { id: 'out', x: DT_CX, y: DT_TIP_Y, dir: 'down', role: 'line' },
+    ],
+    fields: [],
+    status: 'confirmed',
+    statusNote: '見本図面の電源切替開閉器のとおり（外箱・左右の接点・可動接点）。左右の線は、横棒で打ち切る。',
+    note:
+      '発電機と商用の2つの電源のどちらかを切り替えて、下の負荷へ送る。左右のどちらが発電機かは、配置で決める。' +
+      (arrow === 'none' ? '左右とも横棒だけ。' : arrow === 'right' ? '右の線の先に矢印。左は横棒だけ。' : '左の線の先に矢印。右は横棒だけ。') +
+      '「記号を追加」から、手で足す（入力の画面には出ない）。',
+  };
+}
 
 const switchgearRaw: SymbolDef[] = [
   {
@@ -447,6 +513,10 @@ const switchgearRaw: SymbolDef[] = [
     nameJa: '区分開閉器（PGS）',
     tags: ['区分開閉器', '電柱上', 'PGS', 'GR', 'DGR'],
   }),
+  // 電源切替開閉器（DT）。手で追加する（左右とも横棒／右に矢印／左に矢印。下は、どれも下向きの矢印）
+  dtDef('dt', '電源切替開閉器（DT）', 'none'),
+  dtDef('dt-r', '電源切替開閉器（DT・右に矢印）', 'right'),
+  dtDef('dt-l', '電源切替開閉器（DT・左に矢印）', 'left'),
   // 内蔵機器（LA・VT）を入れるとき用。枠を少しだけ広げてある（とくに左）
   pasDef('pas-builtin', { l: 8, r: 2, t: 0, b: 12 }, 'pas'),
 ];
