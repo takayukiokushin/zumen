@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v905xnr",
+  "version": "v1pk96gf",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v905xnr）
+# 項目の一覧（版：v1pk96gf）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -472,8 +472,9 @@
 - trCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes
 - trCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes かつ trCableDn1=ds/vcb/lbs/lbs-plain/vcs/as/gs
 - trCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes かつ trCableDn2=ds/vcb/lbs/lbs-plain/vcs/as/gs
-- trPcRating：PC本体の定格電流｜30A ／ 50A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasPc=yes
+- trPcRating：PC本体の定格電流｜30A ／ 50A ／ 100A ／ 200A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasPc=yes
 - trPcFuse：PCのヒューズの定格電流｜5A ／ 7.5A ／ 10A ／ 12.5A ／ 15A ／ 20A ／ 25A ／ 30A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasPc=yes
+- trPcFuseCount：PCのヒューズの本数｜1 ／ 2 ／ 3｜条件：transformerCount>0 かつ trHasPc=yes
 - trLbsVoltage：LBS本体の定格電圧｜7200=7200V ／ 6600=6600V ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 - trLbsRating：LBS本体の定格電流｜100A ／ 200A ／ 300A ／ 400A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 - trPfG：パワーヒューズ（PF）の定格電流（G）｜5A ／ 7.5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
@@ -507,8 +508,9 @@
 - hasReactor：このコンデンサに直列リアクトルは入りますか｜yes/no｜条件：hasCapacitor=yes
 - reactorRatedVoltage：リアクトルの定格電圧｜文字｜条件：hasReactor=yes
 - reactorCapacity：リアクトルの容量｜文字｜条件：hasReactor=yes
-- capPcRating：PC本体の定格電流｜30A ／ 50A ／ 100A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasPc=yes
+- capPcRating：PC本体の定格電流｜30A ／ 50A ／ 100A ／ 200A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasPc=yes
 - capPcFuse：PCのヒューズの定格電流｜5A ／ 7.5A ／ 10A ／ 12.5A ／ 15A ／ 20A ／ 25A ／ 30A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasPc=yes
+- capPcFuseCount：PCのヒューズの本数｜1 ／ 2 ／ 3｜条件：hasCapacitor=yes かつ capHasPc=yes
 - capLbsVoltage：LBS本体の定格電圧｜7200=7200V ／ 6600=6600V ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 - capLbsRating：LBS本体の定格電流｜100A ／ 200A ／ 300A ／ 400A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 - capPfG：パワーヒューズ（PF）の定格電流（G）｜5A ／ 7.5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes

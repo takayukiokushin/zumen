@@ -598,6 +598,14 @@ export function withDerived(rawAnswers: Answers): Answers {
   for (const prefix of ['tr', 'cap'] as const) {
     // 定格を入れていないときは、せめて記号名を出す
     d[`${prefix}PcHead`] = answers[`${prefix}PcRating`] || 'PC';
+    // PCのヒューズの本数（「F×2」の行）。答えがあればそれ。無ければ、自動（変圧器：電灯（単相）は2本、ほかは3本。コンデンサ：3本）
+    {
+      const given = String(answers[`${prefix}PcFuseCount`] ?? '').trim();
+      const usage = String(answers.trUsage ?? '').trim();
+      const auto = prefix === 'tr' && usage === '電灯' && answers.trConnection !== 'tr-vv' ? 2 : 3;
+      const n = /^[123]$/.test(given) ? Number(given) : auto;
+      d[`${prefix}PcFuseCountLine`] = `F×${n}`;
+    }
     // LBSの2行目：「7200V 200A」（定格電圧と定格電流。入れてあるものだけ）
     d[`${prefix}LbsRatingLine`] = [answers[`${prefix}LbsVoltage`] ? `${answers[`${prefix}LbsVoltage`]}V` : '', answers[`${prefix}LbsRating`] ? String(answers[`${prefix}LbsRating`]) : ''].filter(Boolean).join(' ');
     d[`${prefix}PfLine`] = pfLine(

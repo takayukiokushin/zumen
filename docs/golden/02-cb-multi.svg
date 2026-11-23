@@ -261,7 +261,7 @@
       <polygon points="26.718,50.761 15.718,17.761 5.282,21.239 16.282,54.239" fill="none" stroke-width="1" />
       <line x1="24" y1="60" x2="24" y2="72" stroke-width="1" />
     </g>
-    <text x="194" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="194" dy="0">PC</tspan></text>
+    <text x="194" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="194" dy="0">PC</tspan><tspan x="194" dy="12.5">F×3</tspan></text>
     <g transform="translate(136 1043)">
       <line x1="24" y1="0" x2="24" y2="11.5" stroke-width="1" />
       <line x1="15" y1="11.5" x2="33" y2="11.5" stroke-width="1" />
@@ -292,7 +292,7 @@
       <polygon points="26.718,50.761 15.718,17.761 5.282,21.239 16.282,54.239" fill="none" stroke-width="1" />
       <line x1="24" y1="60" x2="24" y2="72" stroke-width="1" />
     </g>
-    <text x="354" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="354" dy="0">PC</tspan></text>
+    <text x="354" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="354" dy="0">PC</tspan><tspan x="354" dy="12.5">F×3</tspan></text>
     <g transform="translate(296 1043)">
       <line x1="24" y1="0" x2="24" y2="11.5" stroke-width="1" />
       <line x1="15" y1="11.5" x2="33" y2="11.5" stroke-width="1" />

@@ -334,7 +334,7 @@ console.log('\n■ 主遮断装置「それ以外（高圧マンション・電�
   const opts = (id: string) => QUESTIONS.find((q) => q.id === id)?.options?.map((o) => o.value) ?? [];
   const same = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
   const pcFuse = ['5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A'];
-  const pcBody = ['30A', '50A', '100A'];
+  const pcBody = ['30A', '50A', '100A', '200A'];
   const pf = ['5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A'];
   for (const prefix of ['tr', 'cap']) {
     if (!same(opts(`${prefix}PcRating`), pcBody)) fail(`${prefix}：PC本体の定格電流の選択肢が違います（${opts(`${prefix}PcRating`).join('・')}）`);
@@ -353,7 +353,7 @@ console.log('\n■ 主遮断装置「それ以外（高圧マンション・電�
   console.log(`  LBSのパワーヒューズ：${pf.join(' / ')}（150Aは無し）`);
   // 図面には、PC本体は「50A」、ヒューズは「F:」から始めて書く
   const pcLabel = buildComposition({ ...answers, transformerCount: 1, trHasPc: 'yes', trPcRating: '50A', trPcFuse: '12.5A' }).find((i) => i.role === 'tr-pc')?.label.join('|');
-  if (pcLabel !== '50A|F:12.5A') fail(`PCの図面の文字が違います（${pcLabel}）`);
+  if (pcLabel !== '50A|F×3|F:12.5A') fail(`PCの図面の文字が違います（${pcLabel}）`);
   else console.log(`  図面の文字：${pcLabel}`);
 }
 
@@ -378,7 +378,7 @@ console.log('\n■ 変圧器ごとのPC・LBS（1台目は無し、2台目だけ
   const lbs = comp.filter((i) => i.role === 'tr-lbs');
   const pc = comp.filter((i) => i.role === 'tr-pc');
   if (lbs.length !== 1 || pc.length !== 1) fail(`図面に出るPC・LBSの数が違います（LBS ${lbs.length}・PC ${pc.length}）`);
-  else if (!lbs[0]!.label.join('|').includes('300A') || !pc[0]!.label.join('|').includes('50A|F:12.5A')) fail(`図面の文字が違います（${lbs[0]!.label.join('|')} / ${pc[0]!.label.join('|')}）`);
+  else if (!lbs[0]!.label.join('|').includes('300A') || !pc[0]!.label.join('|').includes('50A|F×3|F:12.5A')) fail(`図面の文字が違います（${lbs[0]!.label.join('|')} / ${pc[0]!.label.join('|')}）`);
   else console.log(`  図面：LBS（2台目だけ）${lbs[0]!.label.join('|')} ／ PC（3台目だけ）${pc[0]!.label.join('|')}`);
   // 画面に出ている既定値（LBS本体の電圧・電流、PFの負荷側 T、短絡電流 40kA）は、2台目以降も、図面に出る。
   // 以前は、2台目以降では、既定値が図面に出ず、「LBS／G30A」だけになっていた

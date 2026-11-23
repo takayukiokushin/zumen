@@ -464,6 +464,8 @@ const data: Record<string, string> = {
   "PC本体の定格電流": "Courant nominal du corps du PC",
   "図面には「30A」のように、記号なしで書く": "Le schéma l’indique sans symbole, par exemple 「30A」.",
   "PCのヒューズの定格電流": "Courant nominal du fusible du PC",
+  "PCのヒューズの本数": "Nombre de fusibles du PC",
+  "図面には「F×2」のように書く。空欄のときは、自動で決める（変圧器の電灯（単相）は2本、動力は3本。コンデンサは3本）": "Il est écrit « F×2 » sur le dessin. Si laissé vide, il est déterminé automatiquement (2 pour un transformateur d’éclairage (monophasé), 3 pour un transformateur de force, 3 pour un condensateur).",
   "図面には「F:10A」のように、先頭にF:を付けて書く": "Le schéma l’indique avec le préfixe F:, par exemple 「F:10A」.",
   "LBS本体の定格電圧": "Tension nominale du corps du LBS",
   "ふつうは7200V。図面には「7200V 200A」のように、定格電流と並べて書く": "Généralement 7200V. Elle s’écrit avec le courant nominal, par exemple « 7200V 200A »",

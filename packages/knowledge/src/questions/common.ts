@@ -148,7 +148,7 @@ export const YES_NO_Q: Choice[] = [
 
 /* 開閉器とヒューズの定格電流。一覧から選べて、手入力もできる */
 export const amps = (...vals: string[]): Choice[] => vals.map((v) => ({ value: v, label: v }));
-export const PC_RATINGS = amps('30A', '50A', '100A');
+export const PC_RATINGS = amps('30A', '50A', '100A', '200A');
 export const PC_FUSES = amps('5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A');
 export const LBS_RATINGS = amps('100A', '200A', '300A', '400A');
 export const PF_RATINGS = amps('5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A');
@@ -185,6 +185,13 @@ export function breakerRatings(
       id: P('PcFuse'), group, label: 'PCのヒューズの定格電流', type: 'select',
       options: PC_FUSES, allowFreeInput: true, showIf: hasPc, ask: 'always',
       help: '図面には「F:10A」のように、先頭にF:を付けて書く',
+    },
+    {
+      // 空欄のときは、自動で決める（変圧器：電灯（単相）は2本、ほかは3本。コンデンサ：3本）。決まらないときだけ、選ぶ（第20弾・図面再現の診断から）
+      id: P('PcFuseCount'), group, label: 'PCのヒューズの本数', type: 'select',
+      options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }],
+      showIf: hasPc, ask: 'always',
+      help: '図面には「F×2」のように書く。空欄のときは、自動で決める（変圧器の電灯（単相）は2本、動力は3本。コンデンサは3本）',
     },
     {
       id: P('LbsVoltage'), group, label: 'LBS本体の定格電圧', type: 'select',

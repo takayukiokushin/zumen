@@ -470,6 +470,8 @@ const data: Record<string, string> = {
   "PC本体の定格電流": "Rated current of the PC body",
   "図面には「30A」のように、記号なしで書く": "The drawing shows it without a unit symbol, like 「30A」",
   "PCのヒューズの定格電流": "Rated current of the PC fuse",
+  "PCのヒューズの本数": "Number of PC fuses",
+  "図面には「F×2」のように書く。空欄のときは、自動で決める（変圧器の電灯（単相）は2本、動力は3本。コンデンサは3本）": "It is written like “F×2” on the drawing. If left blank, it is decided automatically (2 for a lighting (single-phase) transformer, 3 for a power transformer, 3 for a capacitor).",
   "図面には「F:10A」のように、先頭にF:を付けて書く": "The drawing shows it with F: at the front, like 「F:10A」",
   "LBS本体の定格電圧": "Rated voltage of the LBS itself",
   "ふつうは7200V。図面には「7200V 200A」のように、定格電流と並べて書く": "Usually 7200V. It is written together with the rated current, like “7200V 200A”",

@@ -1079,7 +1079,7 @@ export const TRANSFORMER: Placement[] = [
     kind: 'parallel',
     row: ROW.pc,
     when: { key: 'trHasPc', eq: 'yes' },
-    labelTemplate: ['{trPcHead}', 'F:{trPcFuse}'],
+    labelTemplate: ['{trPcHead}', '{trPcFuseCountLine}', 'F:{trPcFuse}'],
     repeatCountKey: 'transformerCount',
     zeroOk: true,
   },
@@ -1208,7 +1208,7 @@ export const EXTRAS: Placement[] = [
     kind: 'parallel',
     row: ROW.pc,
     when: { all: [{ key: 'hasCapacitor', eq: 'yes' }, { key: 'capHasPc', eq: 'yes' }] },
-    labelTemplate: ['{capPcHead}', 'F:{capPcFuse}'],
+    labelTemplate: ['{capPcHead}', '{capPcFuseCountLine}', 'F:{capPcFuse}'],
     repeatCountKey: 'capacitorCount',
   },
   {
