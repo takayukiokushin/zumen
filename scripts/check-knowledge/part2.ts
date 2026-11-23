@@ -386,17 +386,23 @@ console.log('\n■ 変圧器ごとのPC・LBS（1台目は無し、2台目だけ
   const lbsLabels = buildComposition(dflt).filter((i) => i.role === 'tr-lbs').map((i) => i.label.join('/'));
   if (lbsLabels.join(' | ') !== 'LBS/7200V 200A/PF×2/G20A T10A 40kA | LBS/7200V 200A/PF×3/G30A T20A 40kA') fail(`LBSの表記が違います（${lbsLabels.join(' | ')}）`);
   else console.log(`  LBSの表記（1台目・2台目とも同じ形）：${lbsLabels.join(' ／ ')}`);
-  // PFの本数：電灯（単相3線）は×2、動力は×3、電灯でもV結線は×3、電灯・動力は×3。用途が未入力なら書かない。コンデンサの手前は×3
+  // PFの本数：単相の変圧器は×2、三相は×3（V結線も三相）。結線が未入力のときは、用途から（電灯×2・ほか×3）。結線も用途も未入力なら書かない。コンデンサの手前は×3
   const pfOf = (usage: string | undefined, conn: string): string => {
     const q: Answers = { ...QUESTION_DEFAULTS, ...answers, transformerCount: 1, trHasLbs: 'yes', trConnection: conn, ...(usage === undefined ? { trUsage: undefined as never } : { trUsage: usage }) };
     return buildComposition(q).find((i) => i.role === 'tr-lbs')?.label.find((l) => l.startsWith('PF×')) ?? '（なし）';
   };
   const pfCases: [string, string | undefined, string, string][] = [
-    ['電灯・単相3線', '電灯', 'tr-1p', 'PF×2'],
-    ['動力', '動力', 'tr-3p-yd', 'PF×3'],
-    ['電灯でもV結線', '電灯', 'tr-vv', 'PF×3'],
+    ['単相3線（電灯）', '電灯', 'tr-1p', 'PF×2'],
+    ['単相2線（電灯）', '電灯', 'tr-1p-2w', 'PF×2'],
+    ['単相の並行運転（電灯）', '電灯', 'tr-1p-parallel', 'PF×2'],
+    ['三相（動力）', '動力', 'tr-3p-yd', 'PF×3'],
+    ['電灯でも三相（Δ-Y）', '電灯', 'tr-3p-dy', 'PF×3'],
+    ['電灯でもV結線（V結線も三相）', '電灯', 'tr-vv', 'PF×3'],
     ['電灯・動力（V結線）', '電灯・動力', 'tr-vv', 'PF×3'],
-    ['用途が未入力', undefined, 'tr-3p-yd', '（なし）'],
+    ['用途が未入力でも、結線（三相）で決まる', undefined, 'tr-3p-yd', 'PF×3'],
+    ['用途が未入力でも、結線（単相）で決まる', undefined, 'tr-1p', 'PF×2'],
+    ['結線が未入力のとき、電灯は用途から×2', '電灯', '', 'PF×2'],
+    ['結線も用途も未入力', undefined, '', '（なし）'],
   ];
   for (const [name, usage, conn, want] of pfCases) {
     const got = pfOf(usage, conn);
@@ -404,7 +410,7 @@ console.log('\n■ 変圧器ごとのPC・LBS（1台目は無し、2台目だけ
   }
   const capPf = buildComposition({ ...QUESTION_DEFAULTS, ...answers, hasCapacitor: 'yes', capacitorCount: 1, capHasLbs: 'yes' }).find((i) => i.role === 'cap-lbs')?.label.join('/');
   if (!capPf?.includes('PF×3')) fail(`コンデンサの手前のLBSに、PF×3 が出ていません（${capPf}）`);
-  else console.log(`  PFの本数：電灯（単相3線）×2／動力×3／電灯でもV結線×3／電灯・動力×3／用途が未入力なら書かない。コンデンサの手前×3（${capPf}）`);
+  else console.log(`  PFの本数：単相×2／三相×3（V結線も三相。電灯でも三相なら×3）／結線が未入力なら用途から／どちらも未入力なら書かない。コンデンサの手前×3（${capPf}）`);
   // コンデンサも同じ（1台目は無し、2台目だけLBSあり）
   const ac: Answers = { ...answers, hasCapacitor: 'yes', capacitorCount: 2, capHasPc: 'no', capHasLbs: 'no', capHasPc__2: 'no', capHasLbs__2: 'yes', capLbsRating__2: '200A' };
   const capIds = (n: number) => visibleQuestions(viewAt(ac, n), {}).filter((q) => q.group === 'compensation').map((q) => q.id);

@@ -1,6 +1,6 @@
 /**
  * 図面の検証（check-drawing）の23個目：PC（高圧カットアウト）の定格電流に200A・ヒューズの本数（第20弾・図面再現の診断から）。
- * 本数は、空欄のときは自動（変圧器の電灯＝単相は2本、ほかは3本。コンデンサは3本）。答えがあれば、それを使う。
+ * 本数は、空欄のときは自動（変圧器：単相は2本、三相は3本。コンデンサは3本）。答えがあれば、それを使う。
  */
 import { buildComposition, dropHiddenChoices, effectiveAnswers, QUESTIONS } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
@@ -41,6 +41,9 @@ console.log('\n■ PC：定格電流に200A・ヒューズの本数（空欄は�
   // 1・2・3以外の答え（古い案件など）は、読み飛ばして自動
   const c = make({ trPcFuseCount: '9' });
   if (pcLabels(c, 'tr-pc')[0] !== '200A/F×2/F:50A') bad.push('1〜3以外の本数が、自動になっていません');
+  // 自動の本数は、相で決まる（電灯でも、V結線＝三相なら3本）
+  const phase = make({ trUsage: '電灯', trConnection: 'tr-vv' });
+  if (pcLabels(phase, 'tr-pc')[0] !== '200A/F×3/F:50A') bad.push(`電灯でもV結線（三相）なら、PCの本数が3本になりません（${pcLabels(phase, 'tr-pc')[0]}）`);
   // 図面：点検の問題が増えない
   const eff = effectiveAnswers(dropHiddenChoices({ ...answersSpread, trHasPc: 'yes', trPcRating: '200A', trPcFuse: '50A' } as Answers));
   const doc = fromLayout(layout(buildComposition(eff), eff));

@@ -601,8 +601,7 @@ export function withDerived(rawAnswers: Answers): Answers {
     // PCのヒューズの本数（「F×2」の行）。答えがあればそれ。無ければ、自動（変圧器：電灯（単相）は2本、ほかは3本。コンデンサ：3本）
     {
       const given = String(answers[`${prefix}PcFuseCount`] ?? '').trim();
-      const usage = String(answers.trUsage ?? '').trim();
-      const auto = prefix === 'tr' && usage === '電灯' && answers.trConnection !== 'tr-vv' ? 2 : 3;
+      const auto = prefix === 'tr' ? (transformerFuseCount(answers) ?? 3) : 3;
       const n = /^[123]$/.test(given) ? Number(given) : auto;
       d[`${prefix}PcFuseCountLine`] = `F×${n}`;
     }
@@ -625,18 +624,13 @@ export function withDerived(rawAnswers: Answers): Answers {
 
   /*
    * LBSに付くPF（パワーヒューズ）の本数（「PF×3」の行）。
-   *   変圧器の手前：電灯回路（単相3線）は×2、動力回路は×3。電灯でも、V結線のときは×3。
-   *                 電灯・動力（V結線など）も×3。用途がまだ入っていないときは、決められないので、書かない
+   *   変圧器の手前：単相の変圧器は×2、三相の変圧器は×3（V結線も三相）。結線がまだ入っていないときは、用途から
+   *                 （電灯は×2、ほかは×3）。結線も用途も入っていないときは、決められないので、書かない
    *   コンデンサの手前：×3（三相に、1本ずつ）
-   * 入力はさせず、用途と結線方式から自動で決める
+   * 入力はさせず、結線方式（と用途）から自動で決める
    */
-  const trUsageNow = String(answers.trUsage ?? '').trim();
-  if (trUsageNow) {
-    const lightOnly = trUsageNow === '電灯' && answers.trConnection !== 'tr-vv';
-    d.trPfCountLine = `PF×${lightOnly ? 2 : 3}`;
-  } else {
-    d.trPfCountLine = '';
-  }
+  const trFuses = transformerFuseCount(answers);
+  d.trPfCountLine = trFuses === null ? '' : `PF×${trFuses}`;
   d.capPfCountLine = 'PF×3';
 
   // 変圧器の容量表記（V結線は2台分を別行にする）
@@ -851,6 +845,20 @@ export interface PlacedItem {
  * 繰り返し入力するグループ（受電設備エリア・変圧器）の n 件目のキー。
  * 1件目は基本のキーのままにして、2件目以降だけ接尾辞を付ける。
  */
+/** 変圧器の結線が、単相か（単相の変圧器の手前のPF・PCは2本、三相は3本）。結線が未入力なら、null */
+const SINGLE_PHASE_CONNECTIONS = new Set(['tr-1p', 'tr-1p-2w', 'tr-1p-parallel']);
+/**
+ * 変圧器の手前の、PF・PCのヒューズの本数（自動）：単相は2本、三相は3本（第20弾・図面再現の診断から）。
+ * 結線方式が分かっていれば、その相で決める。まだ入っていないときは、用途から（電灯は単相のはずなので2本、ほかは3本）。
+ * 結線も用途も未入力なら、決められないので、null。
+ */
+export function transformerFuseCount(answers: Answers): number | null {
+  const conn = String(answers.trConnection ?? '').trim();
+  if (conn) return SINGLE_PHASE_CONNECTIONS.has(conn) ? 2 : 3;
+  const usage = String(answers.trUsage ?? '').trim();
+  return usage ? (usage === '電灯' ? 2 : 3) : null;
+}
+
 export function indexedKey(id: string, index: number): string {
   return index === 0 ? id : `${id}__${index + 1}`;
 }
