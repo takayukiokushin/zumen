@@ -364,6 +364,25 @@ export function withDerived(rawAnswers: Answers): Answers {
   // 送り出しのLBSのパワーヒューズ（例: PF 30A）。定格電流が分からないときは、書かない
   d.linkFuseText = answers.linkFuseCurrent ? `PF ${answers.linkFuseCurrent}A` : '';
 
+  // 送り出しの盤の名称（「高圧動力盤No.1」）とVCBの番号（「No.2」→「VCB(No.2)」）。盤の名称は、1段目の、いちばん上の開閉器に書く
+  // （DS → VCB → LBS → AS → GS → VCS の順で、最初に付いているもの）。1つの開閉器にだけ付けるため、役割ごとに別のキーにする
+  {
+    const sw = String(answers.linkSwitch ?? 'none');
+    const has: Record<string, boolean> = {
+      Ds: ['ds', 'ds-vcb', 'ds-vcb-vcs'].includes(sw),
+      Vcb: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'].includes(sw),
+      Lbs: ['lbs', 'lbs-vcs'].includes(sw),
+      As: sw === 'as',
+      Gs: sw === 'gs',
+      Vcs: ['vcs', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'].includes(sw),
+    };
+    const first = ['Ds', 'Vcb', 'Lbs', 'As', 'Gs', 'Vcs'].find((r) => has[r]);
+    const panel = String(answers.linkPanelName ?? '').trim();
+    for (const r of ['Ds', 'Vcb', 'Lbs', 'As', 'Gs', 'Vcs']) d[`linkPanel${r}`] = r === first ? panel : '';
+    const no = String(answers.linkVcbNo ?? '').trim();
+    d.linkVcbLine = no ? `VCB(${no})` : 'VCB';
+  }
+
   // 2か所目以降のPAS・ASの定格（例: 7200V 300A）。片方しか分からないときは分かる方だけ書く
   const rating = (v: unknown, a: unknown) => [v ? `${v}V` : '', a ? `${a}A` : ''].filter(Boolean).join(' ');
   d.areaPasRatingText = rating(answers.areaPasRatedVoltage, answers.areaPasRatedCurrent);

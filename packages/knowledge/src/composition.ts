@@ -997,15 +997,15 @@ export const SENDOUT: Placement[] = [
     // 2段目以降は、段の数が足りているときだけ
     const here: Condition = k === 1 ? { key: 'areaNo', gt: 1 } : { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }] };
     return [
-      { role: `sendout-ds${suffix}`, symbolId: 'ds', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['ds', 'ds-vcb', 'ds-vcb-vcs'] }] }, labelTemplate: ['DS'] },
-      { role: `sendout-vcb${suffix}`, symbolId: 'vcb', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] }, labelTemplate: ['VCB'] },
+      { role: `sendout-ds${suffix}`, symbolId: 'ds', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['ds', 'ds-vcb', 'ds-vcb-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelDs}', 'DS'] : ['DS'] },
+      { role: `sendout-vcb${suffix}`, symbolId: 'vcb', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelVcb}', '{linkVcbLine}'] : ['VCB'] },
       {
-        role: `sendout-lbs${suffix}`, symbolId: 'lbs-pf', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['lbs', 'lbs-vcs'] }] }, labelTemplate: ['LBS', fuse],
+        role: `sendout-lbs${suffix}`, symbolId: 'lbs-pf', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['lbs', 'lbs-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelLbs}', 'LBS', fuse] : ['LBS', fuse],
         ...(k === 1 ? { note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く' } : {}),
       },
-      { role: `sendout-as${suffix}`, symbolId: 'as', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'as' }] }, labelTemplate: ['AS'] },
-      { role: `sendout-gs${suffix}`, symbolId: 'gs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'gs' }] }, labelTemplate: ['GS'] },
-      { role: `sendout-vcs${suffix}`, symbolId: 'vcs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcs', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'] }] }, labelTemplate: ['VCS'] },
+      { role: `sendout-as${suffix}`, symbolId: 'as', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'as' }] }, labelTemplate: k === 1 ? ['{linkPanelAs}', 'AS'] : ['AS'] },
+      { role: `sendout-gs${suffix}`, symbolId: 'gs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'gs' }] }, labelTemplate: k === 1 ? ['{linkPanelGs}', 'GS'] : ['GS'] },
+      { role: `sendout-vcs${suffix}`, symbolId: 'vcs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcs', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelVcs}', 'VCS'] : ['VCS'] },
     ];
   }),
   // 送り出しの開閉器に付くDGR：ZCTは送り出しの高圧ケーブルに、DGRはその横（上）に、TCは開閉器の上に描く（layout が置く）。

@@ -154,6 +154,27 @@ export const AREAS_QUESTIONS: Question[] = [
     help: 'この送り先へ向かう線の、送り出す側の点に、母線から直接ではなく、開閉器が付いている場合がある。図面では、送り出す側のエリアから、この送り先へ向かう線の途中に描く。送り先ごとに答える',
   },
   {
+    // 送り出しの盤の名称（第20弾・図面再現の診断から。「高圧動力盤No.1」など）。1段目の、いちばん上の開閉器に書く
+    id: 'linkPanelName',
+    group: 'link',
+    label: '盤の名称',
+    type: 'text',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', ne: 'none' }] },
+    ask: 'always',
+    help: '任意。例：高圧動力盤No.1。図面では、送り出しの開閉器（1段目の、いちばん上のもの）の文字の先頭に書く。空欄なら、書かない',
+  },
+  {
+    // 送り出しのVCBの番号（「No.2」→ 図面には「VCB(No.2)」）
+    id: 'linkVcbNo',
+    group: 'link',
+    label: 'VCBの番号',
+    type: 'text',
+    size: 's',
+    showIf: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkSwitch', in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] },
+    ask: 'always',
+    help: '任意。例：No.2。図面では、VCBの文字を「VCB(No.2)」のように書く。空欄なら、「VCB」だけ',
+  },
+  {
     id: 'linkFuseCurrent',
     group: 'link',
     label: 'LBSのパワーヒューズの容量（定格電流）',
