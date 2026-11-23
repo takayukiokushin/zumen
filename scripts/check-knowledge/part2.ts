@@ -606,7 +606,7 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(!ids({ areaCount: 1 }).has('linkSwitch') && !ids({ areaCount: 1 }).has('linkFuseCurrent'), 'エリアが1か所のときに、送り出しの質問が出ています');
   ok(ids(areaView({ areaCount: 2, 'a2:linkSwitch': 'lbs' }, 1)).has('linkFuseCurrent') && !ids(areaView({ areaCount: 2, 'a2:linkSwitch': 'ds' }, 1)).has('linkFuseCurrent'), 'LBSのときだけ、パワーヒューズの容量を聞く、になっていません');
   const sendOpts = (QUESTIONS.find((q) => q.id === 'linkSwitch')?.options ?? []).map((o) => o.value).join(',');
-  ok(sendOpts === 'none,ds,vcb,lbs,vcs,ds-vcb,ds-vcb-vcs,vcb-vcs,lbs-vcs,as', `送り出しの選択肢が違います（${sendOpts}）`);
+  ok(sendOpts === 'none,ds,vcb,lbs,vcs,ds-vcb,ds-vcb-vcs,vcb-vcs,lbs-vcs,as,gs', `送り出しの選択肢が違います（${sendOpts}）`);
   ok(send({}).length === 0 && send({ 'a2:linkSwitch': 'none' }).length === 0, '「なし」のとき、送り出しの開閉器が入っています');
   ok(send({ 'a2:linkSwitch': 'ds' }).join() === 'a2:sendout-ds:ds:DS', `DSの送り出しが違います（${send({ 'a2:linkSwitch': 'ds' }).join()}）`);
   ok(send({ 'a2:linkSwitch': 'vcb' }).join() === 'a2:sendout-vcb:vcb:VCB', 'VCBの送り出しが違います');

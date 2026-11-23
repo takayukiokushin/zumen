@@ -1003,6 +1003,7 @@ export const SENDOUT: Placement[] = [
         ...(k === 1 ? { note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く' } : {}),
       },
       { role: `sendout-as${suffix}`, symbolId: 'as', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'as' }] }, labelTemplate: ['AS'] },
+      { role: `sendout-gs${suffix}`, symbolId: 'gs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'gs' }] }, labelTemplate: ['GS'] },
       { role: `sendout-vcs${suffix}`, symbolId: 'vcs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcs', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'] }] }, labelTemplate: ['VCS'] },
     ];
   }),

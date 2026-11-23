@@ -21,6 +21,7 @@ const SWITCHES: Choice[] = [
   { value: 'lbs-plain', label: 'LBS（PFなし）', share: '実務では、ほとんど使わない' },
   { value: 'vcs', label: 'VCS' },
   { value: 'as', label: 'AS（気中開閉器）' },
+  { value: 'gs', label: 'GS（ガス開閉器）' },
 ];
 
 interface Device {

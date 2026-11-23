@@ -252,7 +252,7 @@ const withKeys = (a: Answers, set: Answers): Answers => {
  * @param toEffective 画面が図面を作るときに使う、既定値などを足した答えにする関数
  */
 /** 差し替えた記号 → 開閉器の組み合わせの部品の名前（ケーブル前後・電動機・送り出し） */
-const COMP_OF: Record<string, string> = { ds: 'ds', vcb: 'vcb', 'lbs-pf': 'lbs', lbs: 'lbs-plain', vcs: 'vcs', as: 'as', mccb: 'mccb' };
+const COMP_OF: Record<string, string> = { ds: 'ds', vcb: 'vcb', 'lbs-pf': 'lbs', lbs: 'lbs-plain', vcs: 'vcs', as: 'as', gs: 'gs', mccb: 'mccb' };
 
 /** 開閉器の組み合わせ（「ds-vcb」など）の、1つの部品を入れ替える。選べない組み合わせになるときは null */
 function swapComponent(cur: string, from: string, to: string, valid: Set<string>): string | null {
@@ -298,7 +298,7 @@ function replacedAnswers(name: string, to: string | undefined, eff: Answers, tab
     return next ? { [uk('motorSwitch')]: next } : null;
   }
   // エリア間の接続の、送り出しの開閉器（k段目）
-  const so = /^sendout-(ds|vcb|lbs|vcs|as)(?:-(\d+))?$/.exec(rest);
+  const so = /^sendout-(ds|vcb|lbs|vcs|as|gs)(?:-(\d+))?$/.exec(rest);
   if (so && !rep) {
     const k = so[2] ? Number(so[2]) : 1;
     const key = qKey(`${linkStagePrefix(k)}Switch`, area);
@@ -449,9 +449,9 @@ function writeBackCore(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answ
       // 区分開閉器を消した → 「区分開閉器：なし」。まわりの部品（分界点の線・構内柱・内蔵の機器）は、いっしょに消える。
       // 「なし」にすると自動で増える部品は、図面に出さない（消したままにする。必要なら、手で足す）
       cands.push({ kind: 'removed', symbol: nameJaOf(sym), set: { [qKey('sectionalizer', area)]: 'none' }, suppressNew: true, carrySectional: { area } });
-    } else if (/^sendout-(ds|vcb|lbs|vcs|as)(-\d+)?$/.test(rest) ) {
+    } else if (/^sendout-(ds|vcb|lbs|vcs|as|gs)(-\d+)?$/.test(rest) ) {
       // エリア間の接続の、送り出しの開閉器（k段目）：その開閉器を、組み合わせから外す（「DS＋VCB」からDSを消すと「VCB」）
-      const m = /^sendout-(ds|vcb|lbs|vcs|as)(?:-(\d+))?$/.exec(rest)!;
+      const m = /^sendout-(ds|vcb|lbs|vcs|as|gs)(?:-(\d+))?$/.exec(rest)!;
       const k = m[2] ? Number(m[2]) : 1;
       const key = qKey(`${linkStagePrefix(k)}Switch`, area);
       const cur = String(toEffective(raw)[key] ?? 'none');
@@ -897,7 +897,7 @@ function shiftSlot(raw: Answers, doc: Doc, area: number, unit: number, p: string
 /* ------------------------------------------------------------------ */
 
 /** 足した記号 → ケーブル前後の開閉器の欄の値 */
-const SLOT_VALUE: Record<string, string> = { ds: 'ds', vcb: 'vcb', 'lbs-pf': 'lbs', lbs: 'lbs-plain', vcs: 'vcs', as: 'as' };
+const SLOT_VALUE: Record<string, string> = { ds: 'ds', vcb: 'vcb', 'lbs-pf': 'lbs', lbs: 'lbs-plain', vcs: 'vcs', as: 'as', gs: 'gs' };
 /** 台の本体 → 質問IDの先頭 */
 const UNIT_P: Record<string, string> = { transformer: 'tr', capacitor: 'cap', generator: 'gen', motor: 'motor' };
 
@@ -1024,7 +1024,7 @@ function swapSwitches(raw: Answers, doc: Doc, toEffective: (a: Answers) => Answe
         if (next && MOTOR_ROLE[comp]) newName = `${prefix}${MOTOR_ROLE[comp]}${rep.no > 1 ? `-${rep.no}` : ''}`;
         unit = rep.no > 1 ? rep.no : 0;
       } else {
-        const so = !rep ? /^sendout-(ds|vcb|lbs|vcs|as)(?:-(\d+))?$/.exec(rest) : null;
+        const so = !rep ? /^sendout-(ds|vcb|lbs|vcs|as|gs)(?:-(\d+))?$/.exec(rest) : null;
         if (so) {
           const k = so[2] ? Number(so[2]) : 1;
           qid = `${linkStagePrefix(k)}Switch`;

@@ -192,6 +192,31 @@ const switchgearRaw: SymbolDef[] = [
     note: '記載例「屋側 / AS / 7200V 200A」。電柱パターンのとき、引込元〜責任分界点の間に入る場合がある。',
   },
   {
+    // 気中開閉器（AS）のガス絶縁版。絵は、ASと同じ形で、名前だけ「GS」と書く（第20弾・図面再現の診断から）
+    id: 'gs',
+    labelLines: ['GS', '{ratedVoltage}V', '{ratedCurrent}A'],
+    abbr: 'GS',
+    nameJa: 'ガス開閉器',
+    category: 'switchgear',
+    tags: ['ガス絶縁', '気中開閉器の仲間', '屋側'],
+    box: { w: 56, h: 72 },
+    shapes: [
+      vline(28, 0, 10),
+      rect(6, 10, 44, 52),
+      ...loadContact(28, 31, 8, 10),
+      line(28, 54, 16, 38),
+      vline(28, 54, 72),
+    ],
+    ports: [
+      { id: 'in', x: 28, y: 0, dir: 'up', role: 'line' },
+      { id: 'out', x: 28, y: 72, dir: 'down', role: 'line' },
+    ],
+    fields: [RATED_VOLTAGE, RATED_CURRENT, { key: 'place', label: '設置場所', type: 'text', help: '図面の記載例: 屋側' }],
+    status: 'confirmed',
+    statusNote: '気中開閉器（AS）と同じ絵。ガス絶縁の開閉器なので、名前だけ「GS」にしました。',
+    note: '柱の上に付けるものは PGS（PASのガス版）。柱に付けないものは GS と書く。',
+  },
+  {
     id: 'mccb',
     labelLines: ['MCCB', '{ratedCurrent}A'],
     abbr: 'MCCB',

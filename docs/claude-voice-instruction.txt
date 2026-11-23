@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v1tgez7t",
+  "version": "v905xnr",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v1tgez7t）
+# 項目の一覧（版：v905xnr）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -283,11 +283,11 @@
 - linkCableLength：長さは｜数字のみ（m）｜条件：linkCable≠no
 - linkCableLengthApprox：長さに「約」を付ける｜yes/no｜条件：linkCable≠no かつ linkCableLength>0
 - linkName：送り先名称（回路名称）｜文字｜条件：linkCable≠no
-- linkSwitch：送り出しに開閉器はありますか｜none=なし（母線から直接） ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器）
+- linkSwitch：送り出しに開閉器はありますか｜none=なし（母線から直接） ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）
 - linkFuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkSwitch=lbs/lbs-vcs
 - linkGroundRelay：送り出しの開閉器の地絡継電器は｜none=なし ／ dgr=DGR（方向性）※ZPDが「あり」のときだけ描く ／ gr=GR（無方向性）
 - linkZctPos：ZCT（DGR・GR用）の取り付け位置は｜cable=高圧ケーブル（送り出しの高圧ケーブル） ／ bus-primary=母線（送り出しの開閉器の一次側） ／ bus-secondary=母線（送り出しの開閉器の二次側）｜条件：(linkGroundRelay=gr または linkGroundRelay=dgr)
-- link2Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器）｜条件：linkStageCount=2/2/3/3/4/4
+- link2Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：linkStageCount=2/2/3/3/4/4
 - link2FuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Switch=lbs/lbs-vcs
 - link2Cable：この送り先へは、ケーブルでつなぎますか｜yes/no｜条件：linkStageCount=2/2/3/3/4/4
 - link2CableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Cable≠no
@@ -296,7 +296,7 @@
 - link2CableCrossSection：断面積は｜数（14〜150）｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Cable≠no
 - link2CableLength：長さは｜数字のみ（m）｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Cable≠no
 - link2CableLengthApprox：長さに「約」を付ける｜yes/no｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Cable≠no かつ link2CableLength>0
-- link3Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器）｜条件：linkStageCount=3/3/4/4
+- link3Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：linkStageCount=3/3/4/4
 - link3FuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkStageCount=3/3/4/4 かつ link3Switch=lbs/lbs-vcs
 - link3Cable：この送り先へは、ケーブルでつなぎますか｜yes/no｜条件：linkStageCount=3/3/4/4
 - link3CableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：linkStageCount=3/3/4/4 かつ link3Cable≠no
@@ -305,7 +305,7 @@
 - link3CableCrossSection：断面積は｜数（14〜150）｜条件：linkStageCount=3/3/4/4 かつ link3Cable≠no
 - link3CableLength：長さは｜数字のみ（m）｜条件：linkStageCount=3/3/4/4 かつ link3Cable≠no
 - link3CableLengthApprox：長さに「約」を付ける｜yes/no｜条件：linkStageCount=3/3/4/4 かつ link3Cable≠no かつ link3CableLength>0
-- link4Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器）｜条件：linkStageCount=4/4
+- link4Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：linkStageCount=4/4
 - link4FuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkStageCount=4/4 かつ link4Switch=lbs/lbs-vcs
 - link4Cable：この送り先へは、ケーブルでつなぎますか｜yes/no｜条件：linkStageCount=4/4
 - link4CableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：linkStageCount=4/4 かつ link4Cable≠no
@@ -460,18 +460,18 @@
 - trHasPc：変圧器の手前にPC（高圧カットアウト）が入りますか｜yes/no
 - trHasLbs：変圧器の手前にLBSが入りますか｜yes/no
 - trHasCable：変圧器の電源側に、高圧ケーブルがありますか｜yes/no
-- trCableUp1：ケーブルの手前の開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：trHasCable=yes
-- trCableUp2：ケーブルの手前の開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：trHasCable=yes かつ trCableUp1=ds/vcb/lbs/lbs-plain/vcs/as
-- trCableUp3：ケーブルの手前の開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：trHasCable=yes かつ trCableUp2=ds/vcb/lbs/lbs-plain/vcs/as
+- trCableUp1：ケーブルの手前の開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes
+- trCableUp2：ケーブルの手前の開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes かつ trCableUp1=ds/vcb/lbs/lbs-plain/vcs/as/gs
+- trCableUp3：ケーブルの手前の開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes かつ trCableUp2=ds/vcb/lbs/lbs-plain/vcs/as/gs
 - trCableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：trHasCable=yes
 - trCableStructure：ケーブルの構造は｜CVT ／ CV｜条件：trHasCable=yes
 - trCableVoltage：定格電圧は｜3300=3300V ／ 6600=6600V ／ 22000=22000V ／ 33000=33000V｜条件：trHasCable=yes
 - trCableCrossSection：断面積は｜数（14〜150）｜条件：trHasCable=yes
 - trCableLength：長さは｜数字のみ（m）｜条件：trHasCable=yes
 - trCableLengthApprox：長さに「約」を付ける｜yes/no｜条件：trHasCable=yes かつ trCableLength>0
-- trCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：trHasCable=yes
-- trCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：trHasCable=yes かつ trCableDn1=ds/vcb/lbs/lbs-plain/vcs/as
-- trCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：trHasCable=yes かつ trCableDn2=ds/vcb/lbs/lbs-plain/vcs/as
+- trCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes
+- trCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes かつ trCableDn1=ds/vcb/lbs/lbs-plain/vcs/as/gs
+- trCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：trHasCable=yes かつ trCableDn2=ds/vcb/lbs/lbs-plain/vcs/as/gs
 - trPcRating：PC本体の定格電流｜30A ／ 50A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasPc=yes
 - trPcFuse：PCのヒューズの定格電流｜5A ／ 7.5A ／ 10A ／ 12.5A ／ 15A ／ 20A ／ 25A ／ 30A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasPc=yes
 - trLbsVoltage：LBS本体の定格電圧｜7200=7200V ／ 6600=6600V ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
@@ -492,18 +492,18 @@
 - capHasLbs：このコンデンサの手前にLBSが入りますか｜yes/no｜条件：hasCapacitor=yes
 - capHasVcs：このコンデンサの手前にVCS（真空電磁接触器）が入りますか｜yes/no｜条件：hasCapacitor=yes
 - capHasCable：このコンデンサの電源側に、高圧ケーブルがありますか｜yes/no｜条件：hasCapacitor=yes
-- capCableUp1：ケーブルの手前の開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes
-- capCableUp2：ケーブルの手前の開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableUp1=ds/vcb/lbs/lbs-plain/vcs/as
-- capCableUp3：ケーブルの手前の開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableUp2=ds/vcb/lbs/lbs-plain/vcs/as
+- capCableUp1：ケーブルの手前の開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes
+- capCableUp2：ケーブルの手前の開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableUp1=ds/vcb/lbs/lbs-plain/vcs/as/gs
+- capCableUp3：ケーブルの手前の開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableUp2=ds/vcb/lbs/lbs-plain/vcs/as/gs
 - capCableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：hasCapacitor=yes かつ capHasCable=yes
 - capCableStructure：ケーブルの構造は｜CVT ／ CV｜条件：hasCapacitor=yes かつ capHasCable=yes
 - capCableVoltage：定格電圧は｜3300=3300V ／ 6600=6600V ／ 22000=22000V ／ 33000=33000V｜条件：hasCapacitor=yes かつ capHasCable=yes
 - capCableCrossSection：断面積は｜数（14〜150）｜条件：hasCapacitor=yes かつ capHasCable=yes
 - capCableLength：長さは｜数字のみ（m）｜条件：hasCapacitor=yes かつ capHasCable=yes
 - capCableLengthApprox：長さに「約」を付ける｜yes/no｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableLength>0
-- capCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes
-- capCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableDn1=ds/vcb/lbs/lbs-plain/vcs/as
-- capCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableDn2=ds/vcb/lbs/lbs-plain/vcs/as
+- capCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes
+- capCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableDn1=ds/vcb/lbs/lbs-plain/vcs/as/gs
+- capCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：hasCapacitor=yes かつ capHasCable=yes かつ capCableDn2=ds/vcb/lbs/lbs-plain/vcs/as/gs
 - hasReactor：このコンデンサに直列リアクトルは入りますか｜yes/no｜条件：hasCapacitor=yes
 - reactorRatedVoltage：リアクトルの定格電圧｜文字｜条件：hasReactor=yes
 - reactorCapacity：リアクトルの容量｜文字｜条件：hasReactor=yes
@@ -536,18 +536,18 @@
 - generatorPlace：設置場所｜文字
 - generatorTransformer：この発電機の接続先は｜none=つながない（単独で置く） ／ bus=高圧母線から接続する ／ 1=1台目の二次側 ／ 2=2台目の二次側 ／ 3=3台目の二次側 ／ 4=4台目の二次側 ／ 5=5台目の二次側 ／ 6=6台目の二次側 ／ 7=7台目の二次側 ／ 8=8台目の二次側
 - genHasCable：この発電機の電源側に、高圧ケーブルがありますか｜yes/no｜条件：generatorTransformer=bus
-- genCableUp1：ケーブルの手前の開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes
-- genCableUp2：ケーブルの手前の開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableUp1=ds/vcb/lbs/lbs-plain/vcs/as
-- genCableUp3：ケーブルの手前の開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableUp2=ds/vcb/lbs/lbs-plain/vcs/as
+- genCableUp1：ケーブルの手前の開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes
+- genCableUp2：ケーブルの手前の開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableUp1=ds/vcb/lbs/lbs-plain/vcs/as/gs
+- genCableUp3：ケーブルの手前の開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableUp2=ds/vcb/lbs/lbs-plain/vcs/as/gs
 - genCableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：generatorTransformer=bus かつ genHasCable=yes
 - genCableStructure：ケーブルの構造は｜CVT ／ CV｜条件：generatorTransformer=bus かつ genHasCable=yes
 - genCableVoltage：定格電圧は｜3300=3300V ／ 6600=6600V ／ 22000=22000V ／ 33000=33000V｜条件：generatorTransformer=bus かつ genHasCable=yes
 - genCableCrossSection：断面積は｜数（14〜150）｜条件：generatorTransformer=bus かつ genHasCable=yes
 - genCableLength：長さは｜数字のみ（m）｜条件：generatorTransformer=bus かつ genHasCable=yes
 - genCableLengthApprox：長さに「約」を付ける｜yes/no｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableLength>0
-- genCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes
-- genCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableDn1=ds/vcb/lbs/lbs-plain/vcs/as
-- genCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableDn2=ds/vcb/lbs/lbs-plain/vcs/as
+- genCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes
+- genCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableDn1=ds/vcb/lbs/lbs-plain/vcs/as/gs
+- genCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：generatorTransformer=bus かつ genHasCable=yes かつ genCableDn2=ds/vcb/lbs/lbs-plain/vcs/as/gs
 
 【太陽光発電設備（PCS）】
 （種類ごとに繰り返す。件数は pvGroupCount。2種類目以降は、項目IDの後ろに __2、__3 …（例：pcsCapacity__2））
@@ -621,6 +621,6 @@
 - motorSwitch：途中に開閉器はありますか｜none=なし（母線から直接） ／ ds=DS ／ vcb=VCB ／ ds-vcb=DS＋VCB ／ lbs-plain=LBS（PFなし） ／ lbs=LBS（PF付） ／ none=なし ／ mccb=MCCB（配線用遮断器）｜条件：motorSource=bus/secondary
 - motorSwitch2：2段目の開閉器はありますか｜none=なし ／ vcs=VCS（真空電磁接触器）｜条件：motorSource=bus
 - motorFuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：motorSwitch=lbs
-- motorCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：motorSource=bus かつ motorCable=yes
-- motorCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：motorSource=bus かつ motorCable=yes かつ motorCableDn1=ds/vcb/lbs/lbs-plain/vcs/as
-- motorCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器）｜条件：motorSource=bus かつ motorCable=yes かつ motorCableDn2=ds/vcb/lbs/lbs-plain/vcs/as
+- motorCableDn1：ケーブルのあとの開閉器（1つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：motorSource=bus かつ motorCable=yes
+- motorCableDn2：ケーブルのあとの開閉器（2つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：motorSource=bus かつ motorCable=yes かつ motorCableDn1=ds/vcb/lbs/lbs-plain/vcs/as/gs
+- motorCableDn3：ケーブルのあとの開閉器（3つ目）｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS（PF付） ／ lbs-plain=LBS（PFなし） ／ vcs=VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：motorSource=bus かつ motorCable=yes かつ motorCableDn2=ds/vcb/lbs/lbs-plain/vcs/as/gs

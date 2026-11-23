@@ -19,6 +19,8 @@ const linkSwitchOptions = (first: boolean): Choice[] => [
   { value: 'lbs-vcs', label: 'LBS＋VCS' },
   // ケーブルのあとに付く、気中開閉器（PASなどを含む）。パターン5：母線 → DS → VCB → ケーブル → AS → 別の電気室（第18弾 F-③）
   { value: 'as', label: 'AS（気中開閉器）' },
+  // ASのガス絶縁版。選び方も、ASと同じ（第20弾・図面再現の診断から）
+  { value: 'gs', label: 'GS（ガス開閉器）' },
 ];
 /** 何段目まであるか（k段目の質問を出す条件。段の数は、どの分岐位置でも選べる。第18弾 F-③） */
 const stageCond = (k: number): Condition => ({

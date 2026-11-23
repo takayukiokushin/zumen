@@ -939,6 +939,8 @@ const data: Record<string, string> = {
   "開閉器の種類は？": "Type d’interrupteur ?",
   "区分開閉器の後ろに付く、DS以外の開閉器の種類。PAS・PGSは、1か所目の区分開閉器と同じ図記号・同じ入力項目（GR・DGR・VT・LAなど）。引込点より上（電力会社側）のASは、「AS（気中開閉器）はありますか？」で答える": "Type de l’interrupteur (autre qu’un DS) placé après l’interrupteur de section. Un PAS ou un PGS utilise le même symbole et les mêmes champs (GR, DGR, VT, LA, etc.) que le premier interrupteur de section. L’AS situé au-dessus du point de branchement (côté distributeur) se renseigne à « Y a-t-il un AS (interrupteur à air) ? ».",
   "AS（気中開閉器）": "AS (interrupteur à air)",
+  "GS（ガス開閉器）": "GS (interrupteur à gaz)",
+  "ガス開閉器": "Interrupteur à gaz",
   "取り付け場所は？": "Où est-il installé ?",
   "「区分開閉器と同じ柱」は、ケーブルも客柱も描かず、区分開閉器の下にそのまま置く（区分開閉器がPAS・PGSのときだけ）。「構内柱」は、区分開閉器とのあいだにケーブルを描き、開閉器の左に客柱の記号を添える。「建物の屋側」は、ケーブルを描き、客柱は描かない（建物の壁に付ける場合。開閉器はPAS・PGSと同じで、名称も変わらない）。「離れた場所」は、ASのとき。ケーブルを描き、客柱は自動では描かない（必要なら、図面のタブで手で足す）": "« Sur le même poteau que l’interrupteur de section » ne trace ni câble ni symbole de poteau du client ; l’interrupteur est placé juste sous l’interrupteur de section (seulement si celui-ci est un PAS ou un PGS). « Poteau sur site » trace un câble entre les deux interrupteurs et ajoute un symbole de poteau du client à gauche de l’interrupteur. « Sur le mur du bâtiment » trace un câble mais pas de poteau du client (interrupteur fixé au mur ; il est identique à un PAS ou un PGS et garde son nom). « À distance » concerne un AS : un câble est tracé, et aucun poteau du client n’est tracé automatiquement (au besoin, ajoutez-le à la main dans l’onglet Schéma).",
   "区分開閉器と同じ柱": "Sur le même poteau que l’interrupteur de section",

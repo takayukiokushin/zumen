@@ -945,6 +945,8 @@ const data: Record<string, string> = {
   "開閉器の種類は？": "Switch type?",
   "区分開閉器の後ろに付く、DS以外の開閉器の種類。PAS・PGSは、1か所目の区分開閉器と同じ図記号・同じ入力項目（GR・DGR・VT・LAなど）。引込点より上（電力会社側）のASは、「AS（気中開閉器）はありますか？」で答える": "The type of the non-DS switch after the sectionalizing switch. A PAS or PGS uses the same symbol and the same input items (GR, DGR, VT, LA, etc.) as the first sectionalizing switch. The AS above the point of supply (utility side) is answered at “Is there an AS (air switch)?”.",
   "AS（気中開閉器）": "AS (air switch)",
+  "GS（ガス開閉器）": "GS (gas switch)",
+  "ガス開閉器": "Gas switch",
   "取り付け場所は？": "Where is it installed?",
   "「区分開閉器と同じ柱」は、ケーブルも客柱も描かず、区分開閉器の下にそのまま置く（区分開閉器がPAS・PGSのときだけ）。「構内柱」は、区分開閉器とのあいだにケーブルを描き、開閉器の左に客柱の記号を添える。「建物の屋側」は、ケーブルを描き、客柱は描かない（建物の壁に付ける場合。開閉器はPAS・PGSと同じで、名称も変わらない）。「離れた場所」は、ASのとき。ケーブルを描き、客柱は自動では描かない（必要なら、図面のタブで手で足す）": "“On the same pole as the sectionalizing switch” draws no cable and no customer-pole symbol; the switch is placed right below the sectionalizing switch (only when the sectionalizing switch is a PAS or PGS). “On-site pole” draws a cable between the two switches and puts a customer-pole symbol to the left of the switch. “On the building wall” draws a cable but no customer-pole symbol (for a switch mounted on a building wall; the switch is the same as a PAS or PGS and keeps its name). “Away from it” is for an AS: a cable is drawn, and no customer-pole symbol is drawn automatically (add one by hand in the Drawing tab if needed).",
   "区分開閉器と同じ柱": "On the same pole as the sectionalizing switch",

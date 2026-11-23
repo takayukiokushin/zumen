@@ -501,6 +501,7 @@ export function withDerived(rawAnswers: Answers): Answers {
     'lbs-plain': { symbol: 'lbs', label: 'LBS' },
     vcs: { symbol: 'vcs', label: 'VCS' },
     as: { symbol: 'as', label: 'AS' },
+    gs: { symbol: 'gs', label: 'GS' },
   };
   for (const p of ['tr', 'cap', 'gen', 'motor']) {
     for (const side of ['Up', 'Dn']) {
@@ -1176,7 +1177,7 @@ export function buildComposition(givenAnswers: Answers): PlacedItem[] {
 /** 分かれる元にできる、開閉器の役割（機器の列にある、手前・あとの開閉器と、機器の手前のPC・LBS・VCS） */
 const FEED_SOURCE_ROLE = /^((tr|cap|gen)-cable-(up|dn)[123]|(tr|cap)-(pc|lbs)|cap-vcs|motor-(ds|vcb|lbs|lbs-plain|vcs)|motor-cable-dn[123])$/;
 const FEED_DEVICE_ROLE: Record<string, string> = { tr: 'transformer', cap: 'capacitor', gen: 'generator', motor: 'motor' };
-const FEED_SWITCH_NAME: Record<string, string> = { ds: 'DS', vcb: 'VCB', lbs: 'LBS', 'lbs-pf': 'LBS', vcs: 'VCS', as: 'AS', pc: 'PC' };
+const FEED_SWITCH_NAME: Record<string, string> = { ds: 'DS', vcb: 'VCB', lbs: 'LBS', 'lbs-pf': 'LBS', vcs: 'VCS', as: 'AS', gs: 'GS', pc: 'PC' };
 
 /** 開閉器の項目（役割・記号・件）を、選択肢の名前の符号にする（feed:機器:何台目:開閉器:位置:何つ目） */
 function feedLabelOf(i: PlacedItem): string {
