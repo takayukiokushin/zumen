@@ -260,7 +260,8 @@ const switchgearRaw: SymbolDef[] = [
   {
     // 気中開閉器（AS）のガス絶縁版。絵は、ASと同じ形で、名前だけ「GS」と書く（第20弾・図面再現の診断から）
     id: 'gs',
-    labelLines: ['GS', '{ratedVoltage}V', '{ratedCurrent}A'],
+    // 定格は、1行に「7200V 200A」の形（電圧と電流のあいだは半角スペース1つ）
+    labelLines: ['GS', '{ratedVoltage}V {ratedCurrent}A'],
     abbr: 'GS',
     nameJa: 'ガス開閉器',
     category: 'switchgear',

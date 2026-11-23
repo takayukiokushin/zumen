@@ -1,6 +1,6 @@
 import type { Question, Choice } from './types.ts';
 import type { Condition } from '../condition.ts';
-import { FUSE_CURRENT_OPTIONS, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
+import { FUSE_CURRENT_OPTIONS, GS_CURRENTS, GS_VOLTAGES, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
 import { LINK_PARTS_TAP, LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, LINK_RELAY_SPECIAL_KEY, anyLinkRelay, anySpecialLinkRelay, linkPartKey, linkPartOpen, linkPartPositions, linkRelayKey } from '../link-parts.ts';
 
 /**
@@ -249,6 +249,17 @@ function ratingQuestions(k: number): Question[] {
       ...base, id: `${p}VcbRating`, label: 'VCBの定格', placeholder: '7200V 400A 12.5kA',
       showIf: { all: [when, { key: `${p}Switch`, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] },
       help: '任意。図面には、VCBの文字の下に、そのまま書く。空欄なら、書かない',
+    },
+    // GS（ガス開閉器）の定格：図面には「7200V 200A」の形（電圧と電流のあいだは半角スペース1つ）。電流が不明なら「7200V -A」
+    {
+      ...base, id: `${p}GsVoltage`, label: 'GSの定格電圧', type: 'select', options: GS_VOLTAGES, dropdown: true, allowFreeInput: true,
+      showIf: { all: [when, { key: `${p}Switch`, eq: 'gs' }] },
+      help: '任意。図面には、GSの文字の下に、「7200V 200A」のように書く（電圧と電流のあいだは半角スペース1つ）',
+    },
+    {
+      ...base, id: `${p}GsCurrent`, label: 'GSの定格電流', type: 'select', options: GS_CURRENTS, dropdown: true, allowFreeInput: true,
+      showIf: { all: [when, { key: `${p}Switch`, eq: 'gs' }] },
+      help: '任意。不明なときは「-A（未記入）」。図面には「7200V -A」のように書く',
     },
   ];
 }

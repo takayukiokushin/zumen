@@ -1,6 +1,6 @@
 import type { Condition } from '../condition.ts';
 import type { Choice, Question } from './types.ts';
-import { YES_NO, connectionCableQuestions } from './common.ts';
+import { GS_CURRENTS, GS_VOLTAGES, YES_NO, connectionCableQuestions } from './common.ts';
 
 /**
  * 変圧器・高圧コンデンサ（進相設備）・高圧の発電機の、電源側の高圧ケーブル（第18弾 F）。
@@ -92,6 +92,20 @@ export function cableSwitchSlots(o: { p: string; group: string; section: string;
   });
 }
 
+/**
+ * GS（ガス開閉器）の定格（第20弾・図面再現の診断から）。その機器の高圧ケーブルの開閉器に、GSがあるときだけ聞く。
+ * 図面には、GSの文字の下に、「7200V 200A」の形（電圧と電流のあいだは半角スペース1つ）で書く。電流が不明なら「7200V -A」。
+ * その機器のGSには、すべて同じ定格を書く（GSが2つ以上あるときは、図面で、文字を手で直す）
+ */
+export function gsRatingQuestions(o: { p: string; group: string; section: string; has: Condition; slots: string[] }): Question[] {
+  const anyGs: Condition = all(o.has, { any: o.slots.map((k) => ({ key: k, eq: 'gs' }) as Condition) });
+  const base = { noTrend: true, group: o.group, section: o.section, type: 'select' as const, dropdown: true, allowFreeInput: true, showIf: anyGs, ask: 'always' as const };
+  return [
+    { ...base, id: `${o.p}GsVoltage`, label: 'GSの定格電圧', options: GS_VOLTAGES, help: '任意。図面には、GSの文字の下に、「7200V 200A」のように書く（電圧と電流のあいだは半角スペース1つ）' },
+    { ...base, id: `${o.p}GsCurrent`, label: 'GSの定格電流', options: GS_CURRENTS, help: '任意。不明なときは「-A（未記入）」。図面には「7200V -A」のように書く' },
+  ];
+}
+
 function questionsOf(d: Device): Question[] {
   const has = `${d.p}HasCable`;
   const hasCable: Condition = all(d.base, { key: has, eq: 'yes' });
@@ -124,6 +138,7 @@ function questionsOf(d: Device): Question[] {
     // ケーブルの入力欄（種類・構造・定格電圧・断面積・長さ・約）は、引込・電動機・エリア間と同じ部品
     ...connectionCableQuestions({ prefix: d.p, group: d.group, section: '高圧ケーブル', when: hasCable }),
     ...slots('Dn'),
+    ...gsRatingQuestions({ p: d.p, group: d.group, section: '高圧ケーブル', has: hasCable, slots: [1, 2, 3].flatMap((k) => [`${d.p}CableUp${k}`, `${d.p}CableDn${k}`]) }),
   ];
 }
 
@@ -157,14 +172,18 @@ export const DEVICE_CABLE_QUESTIONS: { after: string; questions: Question[] }[] 
   },
   {
     after: 'motorFuseCurrent',
-    questions: cableSwitchSlots({
-      p: 'motor',
-      group: 'motor',
-      section: '接続元',
-      has: { all: [{ key: 'motorSource', eq: 'bus' }, { key: 'motorCable', eq: 'yes' }] },
-      side: 'Dn',
-      help1: 'ケーブルの電動機側の端末から、電動機までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」など）。付かないときは「なし」。母線から接続するときだけ',
-    }),
+    questions: [
+      ...cableSwitchSlots({
+        p: 'motor',
+        group: 'motor',
+        section: '接続元',
+        has: { all: [{ key: 'motorSource', eq: 'bus' }, { key: 'motorCable', eq: 'yes' }] },
+        side: 'Dn',
+        help1: 'ケーブルの電動機側の端末から、電動機までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」など）。付かないときは「なし」。母線から接続するときだけ',
+      }),
+      // 電動機のケーブルのあとの開閉器に、GSがあるとき：その定格
+      ...gsRatingQuestions({ p: 'motor', group: 'motor', section: '接続元', has: { all: [{ key: 'motorSource', eq: 'bus' }, { key: 'motorCable', eq: 'yes' }] }, slots: ['motorCableDn1', 'motorCableDn2', 'motorCableDn3'] }),
+    ],
   },
 ];
 

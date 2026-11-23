@@ -233,7 +233,7 @@ export function deviceCablePlacements(p: 'tr' | 'cap' | 'gen', repeatCountKey: s
     kind: 'parallel',
     row: ROW[`${side === 'Up' ? 'up' : 'dn'}${k}` as 'up1'],
     when: has,
-    labelTemplate: [`{${p}${side}${k}Label}`],
+    labelTemplate: [`{${p}${side}${k}Label}`, `{${p}${side}${k}Rating}`],
     ...rep,
   });
   return [
@@ -1040,7 +1040,7 @@ export const SENDOUT: Placement[] = [
         ...(k === 1 ? { note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く' } : {}),
       },
       { role: `sendout-as${suffix}`, symbolId: 'as', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'as' }] }, labelTemplate: k === 1 ? ['{linkPanelAs}', 'AS'] : ['AS'] },
-      { role: `sendout-gs${suffix}`, symbolId: 'gs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'gs' }] }, labelTemplate: k === 1 ? ['{linkPanelGs}', 'GS'] : ['GS'] },
+      { role: `sendout-gs${suffix}`, symbolId: 'gs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, eq: 'gs' }] }, labelTemplate: k === 1 ? ['{linkPanelGs}', 'GS', `{${p}GsRatingText}`] : ['GS', `{${p}GsRatingText}`] },
       { role: `sendout-vcs${suffix}`, symbolId: 'vcs', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcs', 'ds-vcb-vcs', 'vcb-vcs', 'lbs-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelVcs}', 'VCS'] : ['VCS'] },
     ];
   }),
@@ -1248,7 +1248,7 @@ const MOTOR_ITEMS: Placement[] = [
     kind: 'parallel',
     row: ROW[`mdn${k}` as 'mdn1'],
     when: { all: [MOTOR_BUS, MOTOR_CABLE] },
-    labelTemplate: [`{motorDn${k}Label}`],
+    labelTemplate: [`{motorDn${k}Label}`, `{motorDn${k}Rating}`],
     repeatCountKey: 'motorCount',
     zeroOk: true,
   })),

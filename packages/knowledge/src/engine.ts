@@ -297,6 +297,18 @@ export function pcsShares(
   return { counts, perPcs: false, dest };
 }
 
+/**
+ * GS（ガス開閉器）の定格の文字：「7200V 200A」（電圧と電流のあいだは半角スペース1つ）。電流が不明（空欄・「-A」）なら「7200V -A」。
+ * 電圧も電流も無ければ、書かない（第20弾・図面再現の診断から）
+ */
+function gsRating(voltage: unknown, current: unknown): string {
+  const v = String(voltage ?? '').trim();
+  const c = String(current ?? '').trim();
+  const vText = v === '' ? '' : /V$/i.test(v) ? v : `${v}V`;
+  const cText = c === '' ? (vText ? '-A' : '') : /A$/i.test(c) ? c : `${c}A`;
+  return [vText, cText].filter(Boolean).join(' ');
+}
+
 /** 回答そのものに加えて、図面の文字に使う導出値を足した集まりを作る */
 export function withDerived(rawAnswers: Answers): Answers {
   const answers = normalizeAnswers(rawAnswers);
@@ -361,6 +373,11 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.midPasZpdSymbol = answers.midBuiltinLa === 'yes' ? 'zpd-pas-boxed' : 'zpd-pas';
   d.midRatingText = [answers.midRatedVoltage ? `${answers.midRatedVoltage}V` : '', answers.midRatedCurrent ? `${answers.midRatedCurrent}A` : ''].filter(Boolean).join(' ');
 
+  // 送り出しの、GS（ガス開閉器）の定格の文字（1〜4段目）
+  for (const k of [1, 2, 3, 4]) {
+    const p = k === 1 ? 'link' : `link${k}`;
+    d[`${p}GsRatingText`] = gsRating(answers[`${p}GsVoltage`], answers[`${p}GsCurrent`]);
+  }
   // 行き止まりの分岐の、ケーブルのあとの開閉器（第20弾・図面再現の診断から）。PAS・PGSは、区分開閉器と同じ決まり（内蔵表記・図記号・ZPD・定格）。
   // AS・GSは、GR・DGRやLAを内蔵するとき、区分開閉器と同じ「箱」の図記号で、名前だけ変わる。内蔵しないときは、ASとGSの図記号
   {
@@ -375,7 +392,8 @@ export function withDerived(rawAnswers: Answers): Answers {
     d.deBox = box ? 'yes' : 'no';
     d.deSymbol = box ? (builtin.length ? 'pas-builtin' : 'pas') : kind === 'gs' ? 'gs' : 'as';
     d.deZpdSymbol = answers.deBuiltinLa === 'yes' ? 'zpd-pas-boxed' : 'zpd-pas';
-    d.deRatingText = [answers.deRatedVoltage ? `${answers.deRatedVoltage}V` : '', answers.deRatedCurrent ? `${answers.deRatedCurrent}A` : ''].filter(Boolean).join(' ');
+    // GSは、定格電流が不明なら「7200V -A」（ほかの開閉器は、入れたものだけ）
+    d.deRatingText = kind === 'gs' ? gsRating(answers.deRatedVoltage, answers.deRatedCurrent) : [answers.deRatedVoltage ? `${answers.deRatedVoltage}V` : '', answers.deRatedCurrent ? `${answers.deRatedCurrent}A` : ''].filter(Boolean).join(' ');
     const dest = String(answers.deDestination ?? '').trim();
     d.deDestinationText = dest;
   }
@@ -542,11 +560,14 @@ export function withDerived(rawAnswers: Answers): Answers {
     gs: { symbol: 'gs', label: 'GS' },
   };
   for (const p of ['tr', 'cap', 'gen', 'motor']) {
+    const gsText = gsRating(answers[`${p}GsVoltage`], answers[`${p}GsCurrent`]);
     for (const side of ['Up', 'Dn']) {
       for (const k of [1, 2, 3]) {
         const sw = pickOwn(SWITCH_SYMBOL, String(answers[`${p}Cable${side}${k}`]));
         d[`${p}${side}${k}Symbol`] = sw?.symbol ?? '';
         d[`${p}${side}${k}Label`] = sw?.label ?? '';
+        // GSのときだけ、定格の行を足す
+        d[`${p}${side}${k}Rating`] = sw?.symbol === 'gs' ? gsText : '';
       }
     }
     d[`${p}CableInstallationLabel`] = pickOwn(CABLE_INSTALLATION_LABEL, String(answers[`${p}CableInstallation`])) ?? '';

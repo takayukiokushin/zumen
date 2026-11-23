@@ -152,6 +152,9 @@ export const amps = (...vals: string[]): Choice[] => vals.map((v) => ({ value: v
 export const UNFILLED_AMP: Choice = { value: '-A', label: '-A（未記入）' };
 export const PC_RATINGS = amps('30A', '50A', '100A', '200A');
 export const PC_FUSES = [...amps('5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A'), UNFILLED_AMP];
+/** GS（ガス開閉器）の定格電圧・定格電流の選択肢。電流が不明なときは「-A」（図面には「7200V -A」のように書く） */
+export const GS_VOLTAGES: Choice[] = [{ value: '7200', label: '7200V' }, { value: '6600', label: '6600V' }];
+export const GS_CURRENTS: Choice[] = [...amps('100A', '200A', '300A', '400A'), UNFILLED_AMP];
 export const LBS_RATINGS = amps('100A', '200A', '300A', '400A');
 export const PF_RATINGS = [...amps('5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A'), UNFILLED_AMP];
 export const LOAD_AMPS = [...amps('5A', '10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A'), UNFILLED_AMP];
