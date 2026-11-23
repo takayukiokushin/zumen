@@ -1,5 +1,5 @@
 import { rotatedBox } from '@zumen/layout';
-import { nudgeSymbolLabel } from './inspect.ts';
+import { nudgeSymbolLabel, throughPairs } from './inspect.ts';
 import { alignSkewedColumns, skewKeys } from './alignSkew.ts';
 import { followAutoWires } from './wireFollow.ts';
 import { applyAnchors, seatOnWire, baselineOf, defOf, freshId, moveItem, moveItems, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
@@ -365,6 +365,7 @@ export function rebuildWithOverrides(
   };
   const ordered = [...symAdds].sort((x, y) => depthOf(x.item.id) - depthOf(y.item.id));
   const newSymbols: DocSymbol[] = [];
+  const addedWireIds = new Set<string>();
   for (const a of [...ordered, ...ov.added.filter((x) => x.kind !== 'symbol')]) {
     const now = itemsNow();
     const nearSym = a.at.near ? actual(a.at.near) : undefined;
@@ -408,6 +409,7 @@ export function rebuildWithOverrides(
         [dx, dy] = [nearSym.x + a.at.ndx - w0.x1, nearSym.y + a.at.ndy - w0.y1];
       }
       const w: DocWire = { ...w0, id, x1: w0.x1 + dx, y1: w0.y1 + dy, x2: w0.x2 + dx, y2: w0.y2 + dy, at1, at2, orphan: undefined };
+      addedWireIds.add(id);
       work = { ...work, items: [...work.items, w] };
     }
   }
@@ -432,6 +434,41 @@ export function rebuildWithOverrides(
   work = seatOnWire(work, (it) => offWire.has(sameName(it.id)));
   // 計算の端数（0.0000000001 など）で、まっすぐな線が、斜めと判定されないよう、線の端を、1000分の1までに丸める
   work = { ...work, items: work.items.map((it): DocItem => (it.kind === 'wire' ? { ...it, x1: r3(it.x1), y1: r3(it.y1), x2: r3(it.x2), y2: r3(it.y2) } : it)) };
+
+  // 作り直しで、新しくできた記号・線と、手で足したもの（記号・線）が、ぶつかったときの始末（記号を線が突き抜ける）
+  //  ・手で足した線（両端を機器につないだもの）が、新しくできた記号を突き抜けているときは、その線を外す
+  //    （消した機器のつなぎ直しの線などで、入力を変えて、あいだに記号が増えたとき。増えた記号は、自動の線で、すでにつながっている）
+  //  ・手で足した記号に、線が突き抜けているときは、その記号を、線から横（縦の線）・縦（横の線）に、少しだけ逃がす
+  {
+    const stale = new Set<string>();
+    for (const { wire } of throughPairs(work)) if (addedWireIds.has(wire.id) && wire.at1 && wire.at2) stale.add(wire.id);
+    if (stale.size > 0) {
+      work = { ...work, items: work.items.filter((it) => !stale.has(it.id)) };
+      dormant += stale.size;
+    }
+    const GAP = 8;
+    for (const sym of newSymbols) {
+      for (let pass = 0; pass < 3; pass++) {
+        const cur = work.items.find((it): it is DocSymbol => it.kind === 'symbol' && it.id === sym.id);
+        if (!cur) break;
+        const hit = throughPairs(work).find((p) => p.symbol.id === cur.id && !addedWireIds.has(p.wire.id));
+        if (!hit) break;
+        const w = hit.wire;
+        const b = boxOf(cur);
+        let dx = 0;
+        let dy = 0;
+        if (Math.abs(w.x1 - w.x2) < 0.01) {
+          const c = (b.x0 + b.x1) / 2;
+          dx = c >= w.x1 ? w.x1 + GAP - b.x0 : w.x1 - GAP - b.x1;
+        } else if (Math.abs(w.y1 - w.y2) < 0.01) {
+          const c = (b.y0 + b.y1) / 2;
+          dy = c >= w.y1 ? w.y1 + GAP - b.y0 : w.y1 - GAP - b.y1;
+        } else break;
+        work = moveItem(work, cur.id, dx, dy);
+      }
+    }
+    work = applyAnchors(work);
+  }
 
   // 重なりの知らせ（勝手には動かさない）
   const touched = new Set<string>([...movedIds, ...newSymbols.map((s) => s.id)]);

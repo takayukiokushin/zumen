@@ -1157,6 +1157,33 @@ function checkPaper(doc: Doc, paper: PaperSize, orientation: Orientation, titleH
   ];
 }
 
+/**
+ * 記号を突き抜けている線と記号の組（回路の上に重ねて描く印は、線が通ってよいので、数えない）。
+ * 点検（inspectDrawing）と、図面の作り直し（overrides）で、同じ見方をそろえるために、ここに置く。
+ */
+export function throughPairs(doc: Doc, wires: DocWire[] = wiresOf(doc), symbols: DocSymbol[] = symbolsOf(doc)): { wire: DocWire; symbol: DocSymbol }[] {
+  const out: { wire: DocWire; symbol: DocSymbol }[] = [];
+  for (const w of wires) {
+    const related = relatedSymbols(doc, w);
+    for (const s of symbols) {
+      if (related.has(s.id) || getSymbol(s.symbolId).overlay) continue;
+      // 線の上に乗せる記号（VCT・CT・ZCT）：線が、記号の軸を、縦にまっすぐ通っているのは、そのとおりの置き方（突き抜けではない）
+      const ow = getSymbol(s.symbolId).onWire;
+      if (ow && s.rotate % 360 === 0 && Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.x1 - (s.x + ow.x)) <= 1.5) continue;
+      const box = symbolBox(s);
+      if (!segmentEntersBox(w, box)) continue;
+      // 連動の点線が、開閉器の中で止まっているのは、突き抜けていない
+      if (w.dashed) {
+        const in1 = w.x1 > box.x0 && w.x1 < box.x1 && w.y1 > box.y0 && w.y1 < box.y1;
+        const in2 = w.x2 > box.x0 && w.x2 < box.x1 && w.y2 > box.y0 && w.y2 < box.y1;
+        if (in1 !== in2) continue;
+      }
+      out.push({ wire: w, symbol: s });
+    }
+  }
+  return out;
+}
+
 /** 直さずに調べるだけ（直したあとの確かめにも使う） */
 export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientation, titleH?: number): Issue[] {
   const issues: Issue[] = [];
@@ -1191,29 +1218,15 @@ export function inspectDrawing(doc: Doc, paper: PaperSize, orientation: Orientat
   }
 
   // 記号を突き抜けている線（回路の上に重ねて描く印は、線が通ってよいので、数えない）
-  for (const w of wires) {
-    const related = relatedSymbols(doc, w);
-    for (const s of symbols) {
-      if (related.has(s.id) || getSymbol(s.symbolId).overlay) continue;
-      // 線の上に乗せる記号（VCT・CT・ZCT）：線が、記号の軸を、縦にまっすぐ通っているのは、そのとおりの置き方（突き抜けではない）
-      const ow = getSymbol(s.symbolId).onWire;
-      if (ow && s.rotate % 360 === 0 && Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.x1 - (s.x + ow.x)) <= 1.5) continue;
-      const box = symbolBox(s);
-      if (!segmentEntersBox(w, box)) continue;
-      // 連動の点線が、開閉器の中で止まっているのは、突き抜けていない
-      if (w.dashed) {
-        const in1 = w.x1 > box.x0 && w.x1 < box.x1 && w.y1 > box.y0 && w.y1 < box.y1;
-        const in2 = w.x2 > box.x0 && w.x2 < box.x1 && w.y2 > box.y0 && w.y2 < box.y1;
-        if (in1 !== in2) continue;
-      }
-      issues.push({
-        kind: 'through',
-        message: tr('insp.through', { abbr: getSymbol(s.symbolId).abbr }),
-        x: (box.x0 + box.x1) / 2,
-        y: (box.y0 + box.y1) / 2,
-        itemId: w.id,
-      });
-    }
+  for (const { wire: w, symbol: s } of throughPairs(doc, wires, symbols)) {
+    const box = symbolBox(s);
+    issues.push({
+      kind: 'through',
+      message: tr('insp.through', { abbr: getSymbol(s.symbolId).abbr }),
+      x: (box.x0 + box.x1) / 2,
+      y: (box.y0 + box.y1) / 2,
+      itemId: w.id,
+    });
   }
 
   // 斜めの線
