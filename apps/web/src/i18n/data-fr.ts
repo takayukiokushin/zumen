@@ -887,7 +887,7 @@ const data: Record<string, string> = {
   "VTには、必ずヒューズ（PF）が付く。ZPDは、OVGRを一緒に描くか選べる。GCは、接地コンデンサ": "Un TP est toujours accompagné d’un fusible (PF). Pour un ZPD, on peut choisir de dessiner aussi un OVGR. GC : condensateur de mise à la terre",
   "GC（接地コンデンサ）": "GC (condensateur de mise à la terre)",
   "付ける位置は？": "Où est-il installé ?",
-  "送り出しの途中の、どこに付けるか。その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない": "Où, le long de la ligne de départ, il est installé. Si l’appareil de coupure d’un étage est « Aucun », ou si sa ligne est un « fil », cette position ne peut pas être choisie",
+  "送り出しの途中の、どこに付けるか。その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない。母線から直接の送り出しでは、「変圧器の出口の次」は選べない": "Où, le long de la ligne de départ, il est installé. Si l’appareil de coupure d’un étage est « Aucun », ou si sa ligne est un « fil », cette position ne peut pas être choisie. Pour un départ directement depuis le jeu de barres, « Après la sortie du transformateur » ne peut pas être choisi",
   "変圧器の出口の次": "Après la sortie du transformateur",
   "2台のときは、図面に「VT＋PF×2」のように書く": "Pour 2 unités, on écrit « VT+PF×2 » sur le plan",
   "数字だけ（100）なら、「100/5A」と書く": "Si seul un nombre (100) est saisi, on écrit « 100/5A »",

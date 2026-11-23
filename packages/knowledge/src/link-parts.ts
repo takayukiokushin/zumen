@@ -3,7 +3,7 @@ import type { Condition } from './condition.ts';
 /**
  * 送り出しの途中に付ける部品（VT・CT・ZPD・GC）。第13弾 項目55 修正19・段階3-1
  *
- * 「変圧器の二次側」から送り出すときだけ付けられる。最大6個。
+ * 「変圧器の二次側」と、「母線から直接」の送り出しに付けられる。最大6個。
  * 付ける位置は、「変圧器の出口の次」「k段目の開閉器の次」「k段目の線の次」。
  * その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない（描かない）。
  */
@@ -25,9 +25,17 @@ const cableKeyOf = (k: number) => (k <= 1 ? 'linkCable' : `link${k}Cable`);
 export const swSlotOpen = (k: number): Condition => ({ all: [stageCountIn(k), { key: switchKeyOf(k), ne: 'none' }] });
 export const lineSlotOpen = (k: number): Condition => ({ all: [stageCountIn(k), { key: cableKeyOf(k), ne: 'no' }] });
 
+/**
+ * 途中に付ける部品・継電器を付けられる、分岐の位置：変圧器の二次側と、母線から直接（第20弾・図面再現の診断から。
+ * 母線から直接の送り出し（高圧動力盤）にも、VCBの次にCT・OCRを付けられるようにした）
+ */
+export const LINK_PARTS_TAP: Condition = { key: 'linkTap', in: ['bus', 'tr-secondary'] };
+/** 「変圧器の出口の次」を選べるのは、変圧器の二次側から送り出すときだけ */
+export const TR_EXIT_OPEN: Condition = { key: 'linkTap', eq: 'tr-secondary' };
+
 /** 位置の値と、画面に出す名前 */
 export const linkPartPositions = (): { value: string; label: string; open?: Condition }[] => [
-  { value: 'tr', label: '変圧器の出口の次' },
+  { value: 'tr', label: '変圧器の出口の次', open: TR_EXIT_OPEN },
   ...[1, 2, 3, 4].flatMap((k) => [
     { value: `sw${k}`, label: `${k}段目の開閉器の次`, open: swSlotOpen(k) },
     { value: `line${k}`, label: `${k}段目の線の次`, open: lineSlotOpen(k) },
@@ -38,11 +46,11 @@ export const linkPartPositions = (): { value: string; label: string; open?: Cond
 export const linkPartOpen = (n: number): Condition => ({
   all: [
     { key: 'areaNo', gt: 1 },
-    { key: 'linkTap', eq: 'tr-secondary' },
+    LINK_PARTS_TAP,
     { key: 'linkPartCount', gt: n - 1 },
     {
       any: [
-        { key: linkPartKey(n, 'Pos'), eq: 'tr' },
+        { all: [{ key: linkPartKey(n, 'Pos'), eq: 'tr' }, TR_EXIT_OPEN] },
         ...[1, 2, 3, 4].flatMap((k): Condition[] => [
           { all: [{ key: linkPartKey(n, 'Pos'), eq: `sw${k}` }, swSlotOpen(k)] },
           { all: [{ key: linkPartKey(n, 'Pos'), eq: `line${k}` }, lineSlotOpen(k)] },

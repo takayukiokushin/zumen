@@ -1,7 +1,7 @@
 import type { Answers, Value } from './condition.ts';
 import { PCS_INPUT_MAX, countOf, maxCountOf } from './counts.ts';
 import { pickOwn } from './own.ts';
-import { LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
+import { LINK_PARTS_TAP, LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 import { evaluate, fillTemplate } from './condition.ts';
 import { PROPERTY_AT_DS, VCT_BELOW_BREAKER } from './questions/common.ts';
 import { BLANK_DEFAULTS, QUESTIONS, QUESTION_DEFAULTS, QUESTION_GROUPS } from './questions.ts';
@@ -1863,7 +1863,7 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
     }
   }
   // 送り出しの途中の機器（VT・CT・ZPD・GC）：位置が、いまの構成（開閉器・線）に無いときは、描かない。知らせる（段階3-1）
-  if (Number(dv.areaNo) > 1 && dv.linkTap === 'tr-secondary') {
+  if (Number(dv.areaNo) > 1 && evaluate(LINK_PARTS_TAP, dv)) {
     const n = countOf(view.linkPartCount, 0, LINK_PART_MAX);
     const bad: number[] = [];
     for (let i = 1; i <= n; i++) if (!evaluate(linkPartOpen(i), dv)) bad.push(i);
@@ -1875,7 +1875,7 @@ export function inputNotices(view: Answers, all?: Answers): InputNotice[] {
     }
   }
   // 送り出しの途中の継電器（段階3-2）：OCRはVCB・LBSと組み合わせる／2E・3EはVCB・LBS・VCSのとき／つなぐ先のCT・VTが無いとき
-  if (Number(dv.areaNo) > 1 && dv.linkTap === 'tr-secondary') {
+  if (Number(dv.areaNo) > 1 && evaluate(LINK_PARTS_TAP, dv)) {
     const on = (code: string) => dv[linkRelayKey(code)] === 'yes';
     const n = linkStageCountOf(dv);
     const sw = Array.from({ length: n }, (_, i) => String(dv[linkSwitchKey(i + 1)] ?? 'none'));

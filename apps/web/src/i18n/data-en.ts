@@ -893,7 +893,7 @@ const data: Record<string, string> = {
   "VTには、必ずヒューズ（PF）が付く。ZPDは、OVGRを一緒に描くか選べる。GCは、接地コンデンサ": "A VT always comes with a fuse (PF). For a ZPD, you can choose whether to draw an OVGR with it. GC is the grounding capacitor",
   "GC（接地コンデンサ）": "GC (grounding capacitor)",
   "付ける位置は？": "Where is it installed?",
-  "送り出しの途中の、どこに付けるか。その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない": "Where along the sending-out line it is installed. If the switch of a stage is “None”, or its line is a “wire”, that position cannot be chosen",
+  "送り出しの途中の、どこに付けるか。その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない。母線から直接の送り出しでは、「変圧器の出口の次」は選べない": "Where along the sending-out line it is installed. If the switch of a stage is “None”, or its line is a “wire”, that position cannot be chosen. For a send-out directly from the busbar, “After the transformer outlet” cannot be chosen",
   "変圧器の出口の次": "After the transformer outlet",
   "2台のときは、図面に「VT＋PF×2」のように書く": "For 2 units, it is written like “VT+PF×2” on the drawing",
   "数字だけ（100）なら、「100/5A」と書く": "If only a number (100) is entered, it is written as “100/5A”",

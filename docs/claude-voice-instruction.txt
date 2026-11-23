@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v1hnevs1",
+  "version": "v7ucrd6",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v1hnevs1）
+# 項目の一覧（版：v7ucrd6）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -317,71 +317,71 @@
 - link4CableCrossSection：断面積は｜数（14〜150）｜条件：linkStageCount=4/4 かつ link4Cable≠no
 - link4CableLength：長さは｜数字のみ（m）｜条件：linkStageCount=4/4 かつ link4Cable≠no
 - link4CableLengthApprox：長さに「約」を付ける｜yes/no｜条件：linkStageCount=4/4 かつ link4Cable≠no かつ link4CableLength>0
-- linkPartCount：途中に付ける機器（VT・CT・ZPD・GC）は何個ですか｜数（0〜6）｜条件：linkTap=tr-secondary
-- linkPart1Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=tr-secondary かつ linkPartCount>0
-- linkPart1Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=tr-secondary かつ linkPartCount>0
-- linkPart1VtCount：VTの台数｜1 ／ 2｜条件：linkTap=tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=vt
-- linkPart1VtRatio：VTの変圧比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=vt
-- linkPart1VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=vt かつ linkPart1VtCount>1
-- linkPart1CtRatio：CTの変流比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=ct
-- linkPart1Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=zpd
-- linkPart2Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=tr-secondary かつ linkPartCount>1
-- linkPart2Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=tr-secondary かつ linkPartCount>1
-- linkPart2VtCount：VTの台数｜1 ／ 2｜条件：linkTap=tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=vt
-- linkPart2VtRatio：VTの変圧比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=vt
-- linkPart2VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=vt かつ linkPart2VtCount>1
-- linkPart2CtRatio：CTの変流比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=ct
-- linkPart2Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=zpd
-- linkPart3Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=tr-secondary かつ linkPartCount>2
-- linkPart3Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=tr-secondary かつ linkPartCount>2
-- linkPart3VtCount：VTの台数｜1 ／ 2｜条件：linkTap=tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=vt
-- linkPart3VtRatio：VTの変圧比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=vt
-- linkPart3VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=vt かつ linkPart3VtCount>1
-- linkPart3CtRatio：CTの変流比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=ct
-- linkPart3Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=zpd
-- linkPart4Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=tr-secondary かつ linkPartCount>3
-- linkPart4Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=tr-secondary かつ linkPartCount>3
-- linkPart4VtCount：VTの台数｜1 ／ 2｜条件：linkTap=tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=vt
-- linkPart4VtRatio：VTの変圧比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=vt
-- linkPart4VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=vt かつ linkPart4VtCount>1
-- linkPart4CtRatio：CTの変流比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=ct
-- linkPart4Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=zpd
-- linkPart5Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=tr-secondary かつ linkPartCount>4
-- linkPart5Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=tr-secondary かつ linkPartCount>4
-- linkPart5VtCount：VTの台数｜1 ／ 2｜条件：linkTap=tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=vt
-- linkPart5VtRatio：VTの変圧比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=vt
-- linkPart5VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=vt かつ linkPart5VtCount>1
-- linkPart5CtRatio：CTの変流比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=ct
-- linkPart5Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=zpd
-- linkPart6Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=tr-secondary かつ linkPartCount>5
-- linkPart6Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=tr-secondary かつ linkPartCount>5
-- linkPart6VtCount：VTの台数｜1 ／ 2｜条件：linkTap=tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=vt
-- linkPart6VtRatio：VTの変圧比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=vt
-- linkPart6VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=vt かつ linkPart6VtCount>1
-- linkPart6CtRatio：CTの変流比｜文字｜条件：linkTap=tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=ct
-- linkPart6Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=zpd
-- linkRelayOCR：OCR（過電流継電器）｜yes/no｜条件：linkTap=tr-secondary
-- linkRelayUVR：UVR（不足電圧継電器）｜yes/no｜条件：linkTap=tr-secondary
-- linkRelayRPR：RPR（逆電力継電器）｜yes/no｜条件：linkTap=tr-secondary
-- linkRelaySpecial：特殊な継電器を選ぶ｜yes/no｜条件：linkTap=tr-secondary
-- linkRelayOVR：OVR（過電圧継電器）｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
-- linkRelayUFR：UFR（不足周波数継電器）｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
-- linkRelayOFR：OFR（過周波数継電器）｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
-- linkRelayDSR：DSR（短絡方向継電器）｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
-- linkRelayUPR：UPR（不足電力継電器）｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
-- linkRelay2E：2E（電動機保護継電器（2要素））｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
-- linkRelay3E：3E（電動機保護継電器（3要素））｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
-- linkRelayOCRAt：OCRは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayOCR=yes
-- linkRelayUVRAt：UVRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayUVR=yes
-- linkRelayRPRAt：RPRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayRPR=yes
-- linkRelayOVRAt：OVRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayOVR=yes
-- linkRelayUFRAt：UFRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayUFR=yes
-- linkRelayOFRAt：OFRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayOFR=yes
-- linkRelayDSRAt：DSRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayDSR=yes
-- linkRelayUPRAt：UPRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelayUPR=yes
-- linkRelay2EAt：2Eは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelay2E=yes
-- linkRelay3EAt：3Eは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=tr-secondary かつ linkRelay3E=yes
-- linkRelayNoTest：試験端子を付けない｜yes/no｜条件：linkTap=tr-secondary かつ (linkRelayOCR=yes または linkRelayUVR=yes または linkRelayRPR=yes または linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes)
+- linkPartCount：途中に付ける機器（VT・CT・ZPD・GC）は何個ですか｜数（0〜6）｜条件：linkTap=bus/tr-secondary
+- linkPart1Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=bus/tr-secondary かつ linkPartCount>0
+- linkPart1Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=bus/tr-secondary かつ linkPartCount>0
+- linkPart1VtCount：VTの台数｜1 ／ 2｜条件：linkTap=bus/tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=vt
+- linkPart1VtRatio：VTの変圧比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=vt
+- linkPart1VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=bus/tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=vt かつ linkPart1VtCount>1
+- linkPart1CtRatio：CTの変流比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=ct
+- linkPart1Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=bus/tr-secondary かつ linkPartCount>0 かつ linkPart1Kind=zpd
+- linkPart2Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=bus/tr-secondary かつ linkPartCount>1
+- linkPart2Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=bus/tr-secondary かつ linkPartCount>1
+- linkPart2VtCount：VTの台数｜1 ／ 2｜条件：linkTap=bus/tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=vt
+- linkPart2VtRatio：VTの変圧比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=vt
+- linkPart2VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=bus/tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=vt かつ linkPart2VtCount>1
+- linkPart2CtRatio：CTの変流比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=ct
+- linkPart2Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=bus/tr-secondary かつ linkPartCount>1 かつ linkPart2Kind=zpd
+- linkPart3Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=bus/tr-secondary かつ linkPartCount>2
+- linkPart3Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=bus/tr-secondary かつ linkPartCount>2
+- linkPart3VtCount：VTの台数｜1 ／ 2｜条件：linkTap=bus/tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=vt
+- linkPart3VtRatio：VTの変圧比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=vt
+- linkPart3VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=bus/tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=vt かつ linkPart3VtCount>1
+- linkPart3CtRatio：CTの変流比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=ct
+- linkPart3Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=bus/tr-secondary かつ linkPartCount>2 かつ linkPart3Kind=zpd
+- linkPart4Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=bus/tr-secondary かつ linkPartCount>3
+- linkPart4Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=bus/tr-secondary かつ linkPartCount>3
+- linkPart4VtCount：VTの台数｜1 ／ 2｜条件：linkTap=bus/tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=vt
+- linkPart4VtRatio：VTの変圧比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=vt
+- linkPart4VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=bus/tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=vt かつ linkPart4VtCount>1
+- linkPart4CtRatio：CTの変流比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=ct
+- linkPart4Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=bus/tr-secondary かつ linkPartCount>3 かつ linkPart4Kind=zpd
+- linkPart5Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=bus/tr-secondary かつ linkPartCount>4
+- linkPart5Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=bus/tr-secondary かつ linkPartCount>4
+- linkPart5VtCount：VTの台数｜1 ／ 2｜条件：linkTap=bus/tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=vt
+- linkPart5VtRatio：VTの変圧比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=vt
+- linkPart5VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=bus/tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=vt かつ linkPart5VtCount>1
+- linkPart5CtRatio：CTの変流比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=ct
+- linkPart5Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=bus/tr-secondary かつ linkPartCount>4 かつ linkPart5Kind=zpd
+- linkPart6Kind：機器の種類は｜vt=VT ／ ct=CT ／ zpd=ZPD ／ gc=GC（接地コンデンサ）｜条件：linkTap=bus/tr-secondary かつ linkPartCount>5
+- linkPart6Pos：付ける位置は｜tr=変圧器の出口の次 ／ sw1=1段目の開閉器の次 ／ line1=1段目の線の次 ／ sw2=2段目の開閉器の次 ／ line2=2段目の線の次 ／ sw3=3段目の開閉器の次 ／ line3=3段目の線の次 ／ sw4=4段目の開閉器の次 ／ line4=4段目の線の次｜条件：linkTap=bus/tr-secondary かつ linkPartCount>5
+- linkPart6VtCount：VTの台数｜1 ／ 2｜条件：linkTap=bus/tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=vt
+- linkPart6VtRatio：VTの変圧比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=vt
+- linkPart6VtConn：VTの接続｜independent=独立（それぞれ別に接続） ／ v=V結線｜条件：linkTap=bus/tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=vt かつ linkPart6VtCount>1
+- linkPart6CtRatio：CTの変流比｜文字｜条件：linkTap=bus/tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=ct
+- linkPart6Ovgr：OVGR（地絡過電圧継電器）も描きますか｜yes/no｜条件：linkTap=bus/tr-secondary かつ linkPartCount>5 かつ linkPart6Kind=zpd
+- linkRelayOCR：OCR（過電流継電器）｜yes/no｜条件：linkTap=bus/tr-secondary
+- linkRelayUVR：UVR（不足電圧継電器）｜yes/no｜条件：linkTap=bus/tr-secondary
+- linkRelayRPR：RPR（逆電力継電器）｜yes/no｜条件：linkTap=bus/tr-secondary
+- linkRelaySpecial：特殊な継電器を選ぶ｜yes/no｜条件：linkTap=bus/tr-secondary
+- linkRelayOVR：OVR（過電圧継電器）｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
+- linkRelayUFR：UFR（不足周波数継電器）｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
+- linkRelayOFR：OFR（過周波数継電器）｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
+- linkRelayDSR：DSR（短絡方向継電器）｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
+- linkRelayUPR：UPR（不足電力継電器）｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
+- linkRelay2E：2E（電動機保護継電器（2要素））｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
+- linkRelay3E：3E（電動機保護継電器（3要素））｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelaySpecial=yes または (linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes))
+- linkRelayOCRAt：OCRは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayOCR=yes
+- linkRelayUVRAt：UVRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayUVR=yes
+- linkRelayRPRAt：RPRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayRPR=yes
+- linkRelayOVRAt：OVRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayOVR=yes
+- linkRelayUFRAt：UFRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayUFR=yes
+- linkRelayOFRAt：OFRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayOFR=yes
+- linkRelayDSRAt：DSRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayDSR=yes
+- linkRelayUPRAt：UPRは、どこにつなぎますか｜part-1=途中の機器1（VT） ／ part-2=途中の機器2（VT） ／ part-3=途中の機器3（VT） ／ part-4=途中の機器4（VT） ／ part-5=途中の機器5（VT） ／ part-6=途中の機器6（VT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelayUPR=yes
+- linkRelay2EAt：2Eは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelay2E=yes
+- linkRelay3EAt：3Eは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelay3E=yes
+- linkRelayNoTest：試験端子を付けない｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelayOCR=yes または linkRelayUVR=yes または linkRelayRPR=yes または linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes)
 
 【受電設備の構成】
 （エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:mainBreakerForm））

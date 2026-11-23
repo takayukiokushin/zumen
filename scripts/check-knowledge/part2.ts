@@ -673,7 +673,7 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(gs({ 'a2:linkSwitch': 'vcb' }) === 1 && gs({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'vcb-vcs' }) === 2 && gs({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'vcs' }) === 0, '地絡継電器が付く段が違います');
   ok(gs({ 'a2:linkSwitch': 'ds' }) === 0 && !qids({ 'a2:linkSwitch': 'ds' }).has('linkGroundRelay') && qids({ 'a2:linkSwitch': 'ds', 'a2:linkStageCount': '2', 'a2:link2Switch': 'lbs' }).has('linkGroundRelay'), 'DSだけのときは、地絡継電器の質問が出ないはずです（2段目にLBSがあれば出る）');
   // 途中に付ける機器（VT・CT・ZPD・GC。段階3-1）：個数が0のときは、なにも聞かない。個数に合わせて、種類・位置の質問が出る。VTのときだけ台数・変圧比、CTのときだけ変流比、ZPDのときだけOVGR
-  ok(qids({}).has('linkPartCount') && !qids({ 'a2:linkTap': 'bus' }).has('linkPartCount'), '「途中に付ける機器は何個ですか？」は、「変圧器の二次側」のときだけのはずです');
+  ok(qids({}).has('linkPartCount') && qids({ 'a2:linkTap': 'bus' }).has('linkPartCount') && !qids({ 'a2:linkTap': 'ds-source' }).has('linkPartCount') && !qids({ 'a2:linkTap': 'vcb-load' }).has('linkPartCount'), '「途中に付ける機器は何個ですか？」は、「変圧器の二次側」と「母線から直接」のときだけのはずです');
   ok(!qids({}).has('linkPart1Kind') && qids({ 'a2:linkPartCount': '2' }).has('linkPart2Kind') && !qids({ 'a2:linkPartCount': '2' }).has('linkPart3Kind'), '途中の機器の質問が、個数に合わせて出ていません');
   ok(qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'vt' }).has('linkPart1VtRatio') && !qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'ct' }).has('linkPart1VtRatio') && qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'ct' }).has('linkPart1CtRatio') && qids({ 'a2:linkPartCount': '1', 'a2:linkPart1Kind': 'zpd' }).has('linkPart1Ovgr'), '種類に合わせた入力欄（VT：変圧比／CT：変流比／ZPD：OVGR）が出ていません');
   const partDraw = (a: Answers) => {
@@ -690,7 +690,7 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   ok(!gone.items.some((i) => /sendout-part-/.test(i.role)) && gone.notes >= 1, '位置が無い機器は、描かずに、知らせるはずです');
   ok(partDraw({ 'a2:linkPartCount': '0', 'a2:linkPart1Kind': 'gc' }).items.every((i) => !/sendout-part-/.test(i.role)), '個数が0のときは、1つも描かないはずです');
   // 途中に付ける継電器（段階3-2）：個数は聞かない。OCR・UVR・RPRは最初から見える。特殊な継電器は、「特殊な継電器を選ぶ」にチェックしたとき（またはどれかにチェックがあるとき）だけ
-  ok(qids({}).has('linkRelayOCR') && qids({}).has('linkRelayUVR') && qids({}).has('linkRelayRPR') && qids({}).has('linkRelaySpecial') && !qids({ 'a2:linkTap': 'bus' }).has('linkRelayOCR'), 'OCR・UVR・RPRは、「変圧器の二次側」のとき、最初から見えるはずです');
+  ok(qids({}).has('linkRelayOCR') && qids({}).has('linkRelayUVR') && qids({}).has('linkRelayRPR') && qids({}).has('linkRelaySpecial') && qids({ 'a2:linkTap': 'bus' }).has('linkRelayOCR') && !qids({ 'a2:linkTap': 'ds-source' }).has('linkRelayOCR'), 'OCR・UVR・RPRは、「変圧器の二次側」と「母線から直接」のとき、最初から見えるはずです');
   ok(!qids({}).has('linkRelayOVR') && qids({ 'a2:linkRelaySpecial': 'yes' }).has('linkRelay2E') && qids({ 'a2:linkRelayOFR': 'yes' }).has('linkRelayUPR'), '特殊な継電器は、「特殊な継電器を選ぶ」にチェックしたとき（またはどれかにチェックがあるとき）だけ出るはずです');
   ok(!QUESTIONS.some((q) => q.id === 'linkRelayOCGR') && !qids({ 'a2:linkRelaySpecial': 'yes' }).has('linkRelayOCGR'), 'OCGRは、出さない（GRで足りる）');
   ok(!qids({ 'a2:linkRelayOCR': 'yes' }).has('linkRelayOCRAt') && !qids({ 'a2:linkRelayOCR': 'yes' }).has('linkRelayNoTest') === false, 'つなぐ先の候補が無いときは聞かず、試験端子の質問は、継電器にチェックがあるときだけ出るはずです');

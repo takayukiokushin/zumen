@@ -1959,7 +1959,7 @@ function layoutAll(allItems: PlacedItem[], answers: Answers): DrawingLayout {
               // 継電器をつなぐCT：二次側の線が、文字にかからないように、文字は、二次側の線の下に書く
               const cd = getSymbol('ct');
               const csec = portOf(cd, 'sec')!;
-              csym.labelAt = { x: csym.labelAt.x, y: csym.y + csec.y + 18, anchor: 'start' };
+              csym.labelAt = { x: csym.labelAt.x, y: csym.y + csec.y + 22, anchor: 'start' };
               const lr = labelRect(csym.labelAt, g.main.label);
               ext(lr.x0, lr.y0, lr.x1, lr.y1);
               const rb = putRelays(g, csym.x + csec.x, csym.y + csec.y);

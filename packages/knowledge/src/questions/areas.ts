@@ -1,7 +1,7 @@
 import type { Question, Choice } from './types.ts';
 import type { Condition } from '../condition.ts';
 import { FUSE_CURRENT_OPTIONS, TRANSFORMER_CHOICES, YES_NO_Q, connectionCableQuestions } from './common.ts';
-import { LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, LINK_RELAY_SPECIAL_KEY, anyLinkRelay, anySpecialLinkRelay, linkPartKey, linkPartOpen, linkPartPositions, linkRelayKey } from '../link-parts.ts';
+import { LINK_PARTS_TAP, LINK_PART_CT_COUNT, LINK_PART_MAX, LINK_PART_VT_COUNT, LINK_RELAYS, LINK_RELAY_NO_TEST_KEY, LINK_RELAY_SPECIAL_KEY, anyLinkRelay, anySpecialLinkRelay, linkPartKey, linkPartOpen, linkPartPositions, linkRelayKey } from '../link-parts.ts';
 
 /**
  * 送り出しの開閉器の選択肢（段ごとに同じ。第13弾 項目55 修正19・段階2）。
@@ -263,7 +263,7 @@ function stageQuestions(k: number): Question[] {
  * （第13弾 項目55 修正19・段階3-1）。位置は、いまの構成にある位置だけを選べる
  */
 function partQuestions(): Question[] {
-  const base: Condition = { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }] };
+  const base: Condition = { all: [{ key: 'areaNo', gt: 1 }, LINK_PARTS_TAP] };
   // VTの変圧比：送り出しのケーブルが3300Vなら 3300/110V、それ以外は 6600/110V
   const volt3300: Condition = { any: ['link', 'link2', 'link3', 'link4'].map((p) => ({ key: `${p}CableVoltage`, in: ['3300', 3300] })) };
   const out: Question[] = [
@@ -295,8 +295,9 @@ function partQuestions(): Question[] {
       q({
         id: linkPartKey(n, 'Pos'), label: '付ける位置は？', type: 'select', dropdown: true,
         options: linkPartPositions().map((o) => ({ value: o.value, label: o.label, ...(o.open ? { showIf: o.open } : {}) })),
-        defaultValue: 'tr', showIf: here,
-        help: '送り出しの途中の、どこに付けるか。その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない',
+        // 変圧器の二次側からの送り出しは「変圧器の出口の次」、母線から直接の送り出しは「1段目の開閉器の次」が、はじめの位置
+        autoValue: [{ when: { key: 'linkTap', eq: 'bus' }, value: 'sw1' }, { value: 'tr' }], showIf: here,
+        help: '送り出しの途中の、どこに付けるか。その段の開閉器が「なし」、または線が「電線」のときは、その位置は選べない。母線から直接の送り出しでは、「変圧器の出口の次」は選べない',
       }),
       q({
         id: linkPartKey(n, 'VtCount'), label: 'VTの台数', type: 'select', options: [{ value: '1', label: '1' }, { value: '2', label: '2' }], defaultValue: '2', unit: '台',
@@ -333,7 +334,7 @@ function partQuestions(): Question[] {
  * つなぐ先は、候補（途中のCT・VT）が2つ以上あるときだけ聞く（1つなら自動、無ければ「名前だけ書く」）
  */
 function relayQuestions(): Question[] {
-  const base: Condition = { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }] };
+  const base: Condition = { all: [{ key: 'areaNo', gt: 1 }, LINK_PARTS_TAP] };
   const sec = '途中の継電器';
   const label = (code: string, name: string) => `${code}（${name}）`;
   const out: Question[] = [];

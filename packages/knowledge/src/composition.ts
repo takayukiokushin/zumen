@@ -1,7 +1,7 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
 import { MID_AS, MID_CABLE, MID_PAS, MID_POLE, MID_SOG, NO_SECTIONALIZER_SPLIT, PROPERTY_AT_DS, POLE_TOP, SPLIT_BOUNDARY } from './questions/common.ts';
-import { LINK_PART_MAX, LINK_RELAYS, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
+import { LINK_PARTS_TAP, LINK_PART_MAX, LINK_RELAYS, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
 export const MAIN_GROUND_ON: Condition = {
@@ -1038,7 +1038,7 @@ export const SENDOUT: Placement[] = [
       all: [
         { key: 'areaNo', gt: 1 },
         { key: 'linkGroundStage', gt: 0 },
-        { any: [SENDOUT_GROUND_ON, { all: [{ key: 'linkTap', eq: 'tr-secondary' }, { key: linkRelayKey('OCR'), eq: 'yes' }, { key: linkRelayKey('OCR', 'Target'), ne: 'none' }] }] },
+        { any: [SENDOUT_GROUND_ON, { all: [LINK_PARTS_TAP, { key: linkRelayKey('OCR'), eq: 'yes' }, { key: linkRelayKey('OCR', 'Target'), ne: 'none' }] }] },
       ],
     },
   },
@@ -1065,7 +1065,7 @@ export const SENDOUT: Placement[] = [
     symbolId: `relay-${r.code.toLowerCase()}`,
     kind: 'sendout',
     refFrom: linkRelayKey(r.code, 'Target'),
-    when: { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkTap', eq: 'tr-secondary' }, { key: linkRelayKey(r.code), eq: 'yes' }] },
+    when: { all: [{ key: 'areaNo', gt: 1 }, LINK_PARTS_TAP, { key: linkRelayKey(r.code), eq: 'yes' }] },
   })),
 ];
 
