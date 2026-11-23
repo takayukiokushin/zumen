@@ -24,6 +24,22 @@ export const RECEIVING_QUESTIONS: Question[] = [
     help: 'PAS・PGS＝電柱上に設置する区分開閉器。UGS＝キャビネット内に設置する区分開閉器。図面には、選んだ名前（PAS・PGS・UGS）を書く。引込元が地上キャビネットのときは、UGS（またはなし）。',
   },
   {
+    // 客柱（区分開閉器PAS・PGSの左に添える、円の左半分を塗った印）を描くか。ふつうは描く（第20弾・図面再現の診断から）
+    id: 'customerPole',
+    bothChoices: true,
+    group: 'pas',
+    label: '客柱を描きますか？',
+    type: 'select',
+    options: [
+      { value: 'yes', label: '描く' },
+      { value: 'no', label: '描かない' },
+    ],
+    defaultValue: 'yes',
+    showIf: { key: 'sectionalizer', in: ['pas', 'pgs'] },
+    ask: 'ai-uncertain',
+    help: '客柱＝電柱の上に付ける区分開閉器（PAS・PGS）の左に添える、円の左半分を塗った印。ふつうは描く。図面に客柱が無いときだけ、「描かない」を選ぶ。UGS（キャビネット内）のときは、もともと描かない。',
+  },
+  {
     // 区分開閉器と主遮断装置の間に、DS以外の開閉器（PAS・PGS・AS）が付く、まれな構成（第17弾 項目6）。
     // ふだんは何も押さなくてよい（最初は「あり」のボタンだけ。何も選ばない＝なし）。「あり」を押すと、種類・取り付け場所などの質問が出る
     id: 'midSwitch',

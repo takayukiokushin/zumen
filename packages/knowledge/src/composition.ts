@@ -363,8 +363,8 @@ export const UPSTREAM: Placement[] = [
     symbolId: 'pole-customer',
     kind: 'beside-left',
     attachTo: 'pas',
-    when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'sectionalizer', ne: 'ugs' }] },
-    note: 'PAS・PGSの左に、客柱（円の左半分を塗った丸）を、隙間を空けて置く。UGSのときは置かない',
+    when: { all: [{ key: 'hasPas', eq: 'yes' }, { key: 'sectionalizer', ne: 'ugs' }, { key: 'customerPole', ne: 'no' }] },
+    note: 'PAS・PGSの左に、客柱（円の左半分を塗った丸）を、隙間を空けて置く。UGSのとき、「客柱を描かない」を選んだときは置かない',
   },
   {
     // SOG（GR/DGR）があれば、ZCTはPASに内蔵される。無ければ入らない

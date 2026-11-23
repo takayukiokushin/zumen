@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v1azfiht",
+  "version": "vsuf1q7",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v1azfiht）
+# 項目の一覧（版：vsuf1q7）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -208,6 +208,7 @@
 
 【区分開閉器】
 - sectionalizer：区分開閉器は｜pas=PAS（電柱上） ／ pgs=PGS（電柱上） ／ ugs=UGS（キャビネット内） ／ none=なし
+- customerPole：客柱を描きますか｜yes/no｜条件：sectionalizer=pas/pgs
 - midSwitch：区分開閉器から主遮断装置までの間に、DS以外の開閉器はありますか｜yes/no｜条件：sectionalizer=pas/ugs/pgs
 - ugsCabinetName：UGSのキャビネット名称｜文字｜条件：sectionalizer=ugs
 - groundCabinet：地上キャビネットはありますか｜yes/no｜条件：sectionalizer=none
