@@ -116,6 +116,8 @@ const CYC=Number(process.env.CYCLES??5);
 let runs=0,lostRuns=0,lostN=0,tot=0,crash=0;
 const ex:string[]=[];
 for (let id=0; id<N; id++) {
+  // 調べたい種だけを回す（確かめ用。ONLY=1634 のように書く。ふだんは、すべて回す）
+  if (process.env.ONLY && Number(process.env.ONLY) !== id + 1) continue;
   const area=[1,2,3][id%3]!;
   const rnd=rng((id+1)*104729+area*17);
   let a:Answers; let cur:Doc;
@@ -141,6 +143,8 @@ for (let id=0; id<N; id++) {
         // 線の上に乗せる記号（VCT・CT・ZCT）は、乗っている線が横に動いたとき、その線の真上へついていく（横の動きは、数えない）
         const gs=syms(g2).find(x=>sameName(x.id)===n);
         const onWire=!!gs&&!!getSymbol(gs.symbolId).onWire;
+        // 線の上に乗せる記号を、横にだけ動かしていたとき（縦の動きが無いとき）は、線の真上へ戻る（作り直しで、位置の記録も無くなる）。これも、数えない
+        if(onWire&&Math.abs(pm[n]!.dy)<=2&&(!o||Math.abs(o.dy-pm[n]!.dy)<=2))continue;
         if(!o||(!onWire&&Math.abs(o.dx-pm[n]!.dx)>2)||Math.abs(o.dy-pm[n]!.dy)>2){lostN++;lostHere=true;if(ex.length<12)ex.push(`種${id+1} エリア${area} ${c+1}周目 ${n}：${pm[n]!.dx},${pm[n]!.dy} → ${o?o.dx+','+o.dy:'なし'}（${mn.join('→')}／${iop.name}）前の周：${log.slice(-2).join(' | ')}`);}
       }
       log.push(`${mn.join('→')}／${iop.name}`);
