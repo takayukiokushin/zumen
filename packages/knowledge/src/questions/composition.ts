@@ -1,7 +1,7 @@
 import type { Question } from './types.ts';
 import type { Condition } from '../condition.ts';
 import { CT_AT_VALUES, CT_SHOWN, VT_AT_VALUES, VT_SHOWN } from '../composition.ts';
-import { COUNT_OPTIONS, YES_NO, PF_RATINGS, SHORT_CIRCUIT, RELAY_COUNT_OPTIONS, RELAY_CHOICES, RELAY_ON_CT_TYPES, RELAY_ON_VT_TYPES } from './common.ts';
+import { COUNT_OPTIONS, YES_NO, PC_FUSES, PC_RATINGS, PF_RATINGS, SHORT_CIRCUIT, RELAY_COUNT_OPTIONS, RELAY_CHOICES, RELAY_ON_CT_TYPES, RELAY_ON_VT_TYPES } from './common.ts';
 
 /** 質問の定義：受電設備の構成（VT・CT・保護継電器を含む） */
 export const COMPOSITION_QUESTIONS: Question[] = [
@@ -557,6 +557,58 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     showIf: { key: 'hasLa', eq: 'yes' },
     ask: 'always',
     help: '主回路からLAへ向かう線の途中（LAの上側）に付く開閉器。選ぶと、主回路から横に出た線が真下に折れて、開閉器、LA、アースの順に縦に並ぶ',
+  },
+  {
+    // LAの定格（空欄でもよい。図面には、LAの下に、電圧・放電電流の順に、1行ずつ書く）（第20弾・図面再現の診断から）
+    id: 'laRatedVoltage',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'LAの定格電圧',
+    type: 'text',
+    showIf: { key: 'hasLa', eq: 'yes' },
+    ask: 'always',
+    help: '図面の記載例: 8.4kV（単位も書く）。空欄でもよい',
+  },
+  {
+    id: 'laDischargeCurrent',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'LAの公称放電電流',
+    type: 'text',
+    showIf: { key: 'hasLa', eq: 'yes' },
+    ask: 'always',
+    help: '図面の記載例: 2.5kA（単位も書く）。空欄でもよい',
+  },
+  {
+    // LAの上位がPCのとき：PCの定格（空欄でもよい）。本数は、空欄なら、3本
+    id: 'laPcRating',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'LAの上位のPC本体の定格電流',
+    type: 'select',
+    options: PC_RATINGS,
+    allowFreeInput: true,
+    showIf: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', eq: 'pc' }] },
+    ask: 'always',
+    help: '図面には「30A」のように、記号なしで書く。空欄でもよい',
+  },
+  {
+    id: 'laPcFuse',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'LAの上位のPCのヒューズの定格電流',
+    type: 'select',
+    options: PC_FUSES,
+    allowFreeInput: true,
+    showIf: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', eq: 'pc' }] },
+    ask: 'always',
+    help: '図面には「F:30A」のように、先頭にF:を付けて書く。空欄でもよい',
+  },
+  {
+    id: 'laPcFuseCount',
+    group: 'receiving', section: 'ZPD・LA・接地',
+    label: 'LAの上位のPCのヒューズの本数',
+    type: 'select',
+    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }],
+    showIf: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', eq: 'pc' }] },
+    ask: 'always',
+    help: '図面には「F×3」のように書く。空欄のときは、3本',
   },
   {
     id: 'gcTap',

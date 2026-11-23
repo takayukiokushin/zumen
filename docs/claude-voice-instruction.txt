@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v1pk96gf",
+  "version": "vlfxnwv",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v1pk96gf）
+# 項目の一覧（版：vlfxnwv）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -413,6 +413,11 @@
 - hasLa：受電設備内にLA（避雷器）はありますか｜yes/no
 - laTap：LAをつなぐ位置は｜ds-source=DS（断路器）の一次側 ／ ds-vcb=DSとVCBの間 ／ vcb-ct=VCBとCTの間 ／ lbs-ct=LBSの次（LBSとCTの間） ／ ct-bus=変圧器の手前（CTの下・高圧母線の上）｜条件：hasLa=yes
 - laSwitch：LAの上位（上側）に開閉器はありますか｜none=なし ／ ds=DS（断路器） ／ pc=PC（高圧カットアウト） ／ lbs=LBS（高圧交流負荷開閉器）｜条件：hasLa=yes
+- laRatedVoltage：LAの定格電圧｜文字｜条件：hasLa=yes
+- laDischargeCurrent：LAの公称放電電流｜文字｜条件：hasLa=yes
+- laPcRating：LAの上位のPC本体の定格電流｜30A ／ 50A ／ 100A ／ 200A ／ ほかの値も可｜条件：hasLa=yes かつ laSwitch=pc
+- laPcFuse：LAの上位のPCのヒューズの定格電流｜5A ／ 7.5A ／ 10A ／ 12.5A ／ 15A ／ 20A ／ 25A ／ 30A ／ 50A ／ 60A ／ 75A ／ 100A ／ ほかの値も可｜条件：hasLa=yes かつ laSwitch=pc
+- laPcFuseCount：LAの上位のPCのヒューズの本数｜1 ／ 2 ／ 3｜条件：hasLa=yes かつ laSwitch=pc
 - gcTap：GCをつなぐ位置は｜zct-source=ZCTの電源側（ZCTのすぐ上） ／ ds-source=DS（断路器）の一次側 ／ ds-vcb=DSとVCBの間 ／ vcb-ct=VCBとCTの間 ／ lbs-ct=LBSの次（LBSとCTの間） ／ ct-bus=変圧器の手前（CTの下・高圧母線の上）｜条件：hasGc=yes
 - gcSwitch：GCの上位（上側）に開閉器はありますか｜none=なし ／ ds=DS（断路器） ／ pc=PC（高圧カットアウト） ／ lbs=LBS（高圧交流負荷開閉器）｜条件：hasGc=yes
 - earthingNotes：接地方式・接地抵抗値等の特記事項｜文字

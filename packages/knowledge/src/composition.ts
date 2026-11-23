@@ -17,7 +17,8 @@ const LA_ITEMS: Placement[] = [
     tapFrom: 'laTap',
     upright: true,
     when: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', eq: v }] },
-    labelTemplate: [v.toUpperCase()],
+    // PCのときは、定格電流・ヒューズの本数・ヒューズの定格電流も書く（入れてあるものだけ。第20弾・図面再現の診断から）
+    labelTemplate: v === 'pc' ? ['PC', '{laPcRating}', '{laPcFuseCountLine}', 'F:{laPcFuse}'] : [v.toUpperCase()],
     note: 'LAの上側（主回路の側）に付く開閉器。LAは、この開閉器の真下につなぐ',
   })),
   {
@@ -28,7 +29,7 @@ const LA_ITEMS: Placement[] = [
     upright: true,
     hang: true,
     when: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', in: LA_SWITCHES }] },
-    labelTemplate: ['LA'],
+    labelTemplate: ['LA', '{laRatedVoltage}', '{laDischargeCurrent}'],
   },
   {
     role: 'site-la',
@@ -37,7 +38,7 @@ const LA_ITEMS: Placement[] = [
     tapFrom: 'laTap',
     upright: true,
     when: { all: [{ key: 'hasLa', eq: 'yes' }, { not: { key: 'laSwitch', in: LA_SWITCHES } }] },
-    labelTemplate: ['LA'],
+    labelTemplate: ['LA', '{laRatedVoltage}', '{laDischargeCurrent}'],
   },
 ];
 

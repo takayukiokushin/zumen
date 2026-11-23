@@ -617,6 +617,12 @@ export function withDerived(rawAnswers: Answers): Answers {
     );
   }
 
+  // LAの上位のPCの、ヒューズの本数（「F×3」の行）。答え（1〜3）があればそれ。空欄は3本（第20弾・図面再現の診断から）
+  {
+    const given = String(answers.laPcFuseCount ?? '').trim();
+    d.laPcFuseCountLine = `F×${/^[123]$/.test(given) ? given : '3'}`;
+  }
+
   /*
    * LBSに付くPF（パワーヒューズ）の本数（「PF×3」の行）。
    *   変圧器の手前：電灯回路（単相3線）は×2、動力回路は×3。電灯でも、V結線のときは×3。
