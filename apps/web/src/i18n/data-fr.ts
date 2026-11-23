@@ -484,6 +484,7 @@ const data: Record<string, string> = {
   "パワーヒューズ（PF）の定格電流（G）": "Courant nominal du fusible de puissance (PF) (G)",
   "図面には「G50A」のように、先頭にGを付けて書く": "Le schéma l’indique avec le préfixe G, par exemple 「G50A」.",
   "PFの負荷側につなぐもの": "Ce qui est raccordé côté charge du PF",
+  "-A（未記入）": "-A (non renseigné)",
   "T（変圧器）": "T (transformateur)",
   "C（コンデンサ）": "C (condensateur)",
   "M（モーター）": "M (moteur)",

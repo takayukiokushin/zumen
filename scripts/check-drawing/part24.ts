@@ -44,3 +44,27 @@ console.log('\n■ 引込みの LA・PC の定格（空欄でもよい）');
   if (bad.length > 0) fail(`引込みのLA・PCの定格に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
   else console.log('  LAの定格電圧・放電電流（空欄なら「LA」だけ）、PCの定格電流・ヒューズ・本数（空欄なら「F×3」）が、図面に出る。DS・LBSのときは、これまでどおり');
 }
+
+console.log('\n■ 電流が未記入のときの「-A」（第20弾・図面再現の診断から）');
+{
+  const bad: string[] = [];
+  const make = (extra: Answers) => {
+    const raw: Answers = { ...answersSpread, transformerCount: 1, ...extra };
+    const eff = effectiveAnswers(dropHiddenChoices(raw));
+    return buildComposition(eff);
+  };
+  const label = (items: ReturnType<typeof buildComposition>, role: string) => items.find((i) => i.role === role)?.label.join('/');
+  const pcOpts = ['trPcFuse', 'capPcFuse', 'laPcFuse', 'trPfG', 'trPfLoadAmp', 'capPfG', 'capPfLoadAmp', 'lbsPfG'];
+  for (const id of pcOpts) {
+    const opts = QUESTIONS.find((x) => x.id === id)?.options?.map((o) => o.value) ?? [];
+    if (!opts.includes('-A')) bad.push(`${id} の選択肢に「-A」がありません`);
+  }
+  // PC のヒューズ：「F:-A」
+  const pc = label(make({ trHasPc: 'yes', trHasLbs: 'no', trPcRating: '30A', trPcFuse: '-A' }), 'tr-pc');
+  if (!pc || !pc.endsWith('F:-A')) bad.push(`PCのヒューズが「F:-A」になりません（${pc}）`);
+  // LBS の PF：「G-A T-A 40kA」
+  const lbs = make({ trHasLbs: 'yes', trHasPc: 'no', trPfG: '-A', trPfLoadAmp: '-A', trPfKa: '40kA' }).find((i) => i.role === 'tr-lbs')?.label.join('/');
+  if (!lbs || !lbs.includes('G-A T-A 40kA')) bad.push(`PFの文字が「G-A T-A 40kA」になりません（${lbs}）`);
+  if (bad.length > 0) fail(`電流の「-A」に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
+  else console.log('  PC・PFの電流に「-A（未記入）」を選べ、図面には「F:-A」「G-A T-A」のように、そのまま出る');
+}

@@ -148,11 +148,13 @@ export const YES_NO_Q: Choice[] = [
 
 /* 開閉器とヒューズの定格電流。一覧から選べて、手入力もできる */
 export const amps = (...vals: string[]): Choice[] => vals.map((v) => ({ value: v, label: v }));
+/** 図面に電流が「-A」と書かれている（まだ決まっていない・未記入）ときの選択肢。図面には「T-A」「F:-A」のように、そのまま出る */
+export const UNFILLED_AMP: Choice = { value: '-A', label: '-A（未記入）' };
 export const PC_RATINGS = amps('30A', '50A', '100A', '200A');
-export const PC_FUSES = amps('5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A');
+export const PC_FUSES = [...amps('5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A'), UNFILLED_AMP];
 export const LBS_RATINGS = amps('100A', '200A', '300A', '400A');
-export const PF_RATINGS = amps('5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A');
-export const LOAD_AMPS = amps('5A', '10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A');
+export const PF_RATINGS = [...amps('5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A'), UNFILLED_AMP];
+export const LOAD_AMPS = [...amps('5A', '10A', '15A', '20A', '30A', '40A', '50A', '75A', '100A'), UNFILLED_AMP];
 export const SHORT_CIRCUIT = amps('12.5kA', '20kA', '31.5kA', '40kA');
 /** パワーヒューズの負荷側。つなぐ相手で記号が変わる */
 export const PF_LOAD_KIND: Choice[] = [

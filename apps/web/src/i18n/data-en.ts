@@ -490,6 +490,7 @@ const data: Record<string, string> = {
   "パワーヒューズ（PF）の定格電流（G）": "Rated current (G) of the power fuse (PF)",
   "図面には「G50A」のように、先頭にGを付けて書く": "The drawing shows it with G at the front, like 「G50A」",
   "PFの負荷側につなぐもの": "What is connected to the load side of the PF",
+  "-A（未記入）": "-A (not filled in)",
   "T（変圧器）": "T (transformer)",
   "C（コンデンサ）": "C (capacitor)",
   "M（モーター）": "M (motor)",
