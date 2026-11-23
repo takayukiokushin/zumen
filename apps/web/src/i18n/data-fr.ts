@@ -540,6 +540,8 @@ const data: Record<string, string> = {
   "消火栓設備へ": "Vers l’équipement incendie",
   "文字": "Texte",
   "文字だけの印": "Repère de texte seul",
+  "任意。図面には、DSの文字の下に、そのまま書く。空欄なら、書かない": "Facultatif. Écrit tel quel sous le texte du DS sur le plan. Si vide, rien n’est écrit",
+  "任意。図面には、VCBの文字の下に、そのまま書く。空欄なら、書かない": "Facultatif. Écrit tel quel sous le texte du VCB sur le plan. Si vide, rien n’est écrit",
   "客柱の名称": "Nom du poteau client",
   "基本的に空白のままでよい。名前を書きたいときだけ入力する（「中電柱」「客柱」などの文字は付けない）": "En principe, laissez vide. Ne saisissez que si vous voulez inscrire un nom (n’ajoutez pas de texte comme « 中電柱 » ou « 客柱 »).",
   "地上キャビネット（引込元）": "Armoire au sol (origine du branchement)",

@@ -2,7 +2,7 @@
  * 図面の検証（check-drawing）の27個目：送り出しの盤の名称・VCBの番号（第20弾・図面再現の診断から）。
  * 「盤の名称」は、送り出し1段目の、いちばん上の開閉器の文字の先頭に。「VCBの番号」は、VCBの文字を「VCB(No.2)」の形に。どちらも任意。
  */
-import { buildComposition, dropHiddenChoices, effectiveAnswers, QUESTIONS, visibleQuestions } from '../../packages/knowledge/src/index.ts';
+import { areaView, buildComposition, dropHiddenChoices, effectiveAnswers, QUESTIONS, visibleQuestions } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { layout } from '../../packages/layout/src/index.ts';
 import { fromLayout } from '../../apps/web/src/editor/doc.ts';
@@ -38,10 +38,20 @@ console.log('\n■ 送り出しの盤の名称・VCBの番号');
   const view = { ...e.eff, areaNo: 2, linkSwitch: 'none' } as Answers;
   if (visibleQuestions(view, {}).some((x) => x.id === 'linkPanelName')) bad.push('開閉器なしのとき、「盤の名称」の質問が出ています');
   if (e.items.some((i) => i.label.some((l) => l.includes(NAME)))) bad.push('開閉器なしのとき、盤の名称が図面に出ています');
+  // 送り出しのDS・VCBの定格（任意）：DS・VCBの文字の下に、そのまま書く。段ごと。空欄なら書かない
+  const r = make({ 'a2:linkSwitch': 'ds-vcb', 'a2:linkPanelName': NAME, 'a2:linkVcbNo': 'No.4', 'a2:linkDsRating': '7200V 400A', 'a2:linkVcbRating': '7200V 400A 12.5kA' });
+  if (label(r.items, 'a2:sendout-ds') !== `${NAME}/DS/7200V 400A`) bad.push(`DSの定格が、DSの文字の下に出ていません（${label(r.items, 'a2:sendout-ds')}）`);
+  if (label(r.items, 'a2:sendout-vcb') !== 'VCB(No.4)/7200V 400A 12.5kA') bad.push(`VCBの定格が、VCBの文字の下に出ていません（${label(r.items, 'a2:sendout-vcb')}）`);
+  const r2 = make({ 'a2:linkStageCount': '2', 'a2:linkSwitch': 'ds', 'a2:link2Switch': 'vcb', 'a2:linkDsRating': '7200V 200A', 'a2:link2VcbRating': '7200V 600A 12.5kA', 'a2:link2Cable': 'yes' });
+  if (label(r2.items, 'a2:sendout-ds') !== 'DS/7200V 200A' || label(r2.items, 'a2:sendout-vcb-2') !== 'VCB/7200V 600A 12.5kA') bad.push(`2段目の定格が違います（${label(r2.items, 'a2:sendout-ds')}・${label(r2.items, 'a2:sendout-vcb-2')}）`);
+  const onlyDs = make({ 'a2:linkSwitch': 'ds', 'a2:linkVcbRating': '7200V 400A 12.5kA' });
+  if (label(onlyDs.items, 'a2:sendout-ds') !== 'DS') bad.push('DSだけのとき、VCBの定格の答えが、DSの文字に混ざっています');
+  const qIds = (sw: string) => new Set(visibleQuestions(areaView(make({ 'a2:linkSwitch': sw }).eff, 1), {}).map((q) => q.id));
+  if (!qIds('ds-vcb').has('linkDsRating') || !qIds('ds-vcb').has('linkVcbRating') || qIds('ds').has('linkVcbRating') || qIds('vcb').has('linkDsRating') || qIds('none').has('linkDsRating')) bad.push('DS・VCBの定格の質問が、開閉器に合わせて出ていません');
   // 図面：点検の問題が増えない
   const base = make({ 'a2:linkSwitch': 'ds-vcb' });
   const probs = (m: ReturnType<typeof make>) => inspectDrawing(fromLayout(layout(m.items, m.eff)), 'A3', 'landscape').filter((i) => ['overlap', 'through', 'floating', 'skew', 'stray'].includes(i.kind)).length;
   if (probs(b) > probs(base)) bad.push(`盤の名称を入れた図面の点検の問題が、${probs(base)}件から ${probs(b)}件に増えました`);
   if (bad.length > 0) fail(`送り出しの盤の名称に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
-  else console.log('  盤の名称は、送り出し1段目のいちばん上の開閉器の先頭に。VCBは「VCB(No.2)」。空欄・開閉器なしのときは、これまでどおり');
+  else console.log('  盤の名称は、送り出し1段目のいちばん上の開閉器の先頭に。VCBは「VCB(No.2)」。DS・VCBの定格は、その文字の下に（任意）。空欄・開閉器なしのときは、これまでどおり');
 }

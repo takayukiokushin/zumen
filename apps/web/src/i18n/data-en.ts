@@ -546,6 +546,8 @@ const data: Record<string, string> = {
   "消火栓設備へ": "To fire hydrant equipment",
   "文字": "Text",
   "文字だけの印": "Text-only mark",
+  "任意。図面には、DSの文字の下に、そのまま書く。空欄なら、書かない": "Optional. Written as is below the DS text on the drawing. If blank, nothing is written",
+  "任意。図面には、VCBの文字の下に、そのまま書く。空欄なら、書かない": "Optional. Written as is below the VCB text on the drawing. If blank, nothing is written",
   "客柱の名称": "Customer pole name",
   "基本的に空白のままでよい。名前を書きたいときだけ入力する（「中電柱」「客柱」などの文字は付けない）": "Normally leave this blank. Enter only if you want to write a name (do not add text such as 「中電柱」 or 「客柱」)",
   "地上キャビネット（引込元）": "Ground cabinet (service source)",

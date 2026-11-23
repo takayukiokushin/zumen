@@ -174,6 +174,7 @@ export const AREAS_QUESTIONS: Question[] = [
     ask: 'always',
     help: '任意。例：No.2。図面では、VCBの文字を「VCB(No.2)」のように書く。空欄なら、「VCB」だけ',
   },
+  ...ratingQuestions(1),
   {
     id: 'linkFuseCurrent',
     group: 'link',
@@ -230,6 +231,29 @@ export const AREAS_QUESTIONS: Question[] = [
 ];
 
 /**
+ * 送り出しの DS・VCB の定格（第20弾・図面再現の診断から。受電側の「DSの定格」「VCBの定格」と同じ書き方。任意）。
+ * k段目の開閉器に DS・VCB があるときだけ聞く。図面には、DS・VCB の文字の下に書く（空欄なら書かない）
+ */
+function ratingQuestions(k: number): Question[] {
+  const p = k === 1 ? 'link' : `link${k}`;
+  const when: Condition = k === 1 ? { key: 'areaNo', gt: 1 } : stageCond(k);
+  const section = k === 1 ? undefined : `${k}段目`;
+  const base = { noTrend: true, group: 'link' as const, type: 'text' as const, ask: 'always' as const, ...(section ? { section } : {}) };
+  return [
+    {
+      ...base, id: `${p}DsRating`, label: 'DSの定格', placeholder: '7200V 400A',
+      showIf: { all: [when, { key: `${p}Switch`, in: ['ds', 'ds-vcb', 'ds-vcb-vcs'] }] },
+      help: '任意。図面には、DSの文字の下に、そのまま書く。空欄なら、書かない',
+    },
+    {
+      ...base, id: `${p}VcbRating`, label: 'VCBの定格', placeholder: '7200V 400A 12.5kA',
+      showIf: { all: [when, { key: `${p}Switch`, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] },
+      help: '任意。図面には、VCBの文字の下に、そのまま書く。空欄なら、書かない',
+    },
+  ];
+}
+
+/**
  * 2段目〜4段目の質問（開閉器と、線）。1段目と同じ質問・同じ選択肢。小見出しは「2段目」など
  * （1段目のものと同じ文言は、同じ訳を使う）
  */
@@ -243,6 +267,7 @@ function stageQuestions(k: number): Question[] {
       label: '送り出しに開閉器はありますか？', type: 'select', options: linkSwitchOptions(false), defaultValue: 'none', dropdown: true, showIf: when, ask: 'always',
       help: `${k}段目の開閉器。VCSの入る組み合わせも選べる。低圧用の開閉器は、選べない`,
     },
+    ...ratingQuestions(k),
     {
       id: `${p}FuseCurrent`, noTrend: true, group: 'link', section: sec,
       label: 'LBSのパワーヒューズの容量（定格電流）', type: 'select', options: FUSE_CURRENT_OPTIONS, allowFreeInput: true, dropdown: true, unit: 'A',

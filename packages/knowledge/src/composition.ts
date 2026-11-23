@@ -1027,13 +1027,14 @@ export const SENDOUT: Placement[] = [
   // 開閉器は、段ごと（最大4段）。1段目は、これまでの役割の名前（sendout-ds など）。2段目以降は、段の番号つき（sendout-ds-2 など）
   ...[1, 2, 3, 4].flatMap((k): Placement[] => {
     const sw = k === 1 ? 'linkSwitch' : `link${k}Switch`;
+    const p = k === 1 ? 'link' : `link${k}`;
     const fuse = k === 1 ? '{linkFuseText}' : `{link${k}FuseText}`;
     const suffix = k === 1 ? '' : `-${k}`;
     // 2段目以降は、段の数が足りているときだけ
     const here: Condition = k === 1 ? { key: 'areaNo', gt: 1 } : { all: [{ key: 'areaNo', gt: 1 }, { key: 'linkStageCount', in: [2, 3, 4].filter((n) => n >= k).flatMap((n) => [String(n), n]) }] };
     return [
-      { role: `sendout-ds${suffix}`, symbolId: 'ds', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['ds', 'ds-vcb', 'ds-vcb-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelDs}', 'DS'] : ['DS'] },
-      { role: `sendout-vcb${suffix}`, symbolId: 'vcb', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelVcb}', '{linkVcbLine}'] : ['VCB'] },
+      { role: `sendout-ds${suffix}`, symbolId: 'ds', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['ds', 'ds-vcb', 'ds-vcb-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelDs}', 'DS', `{${p}DsRating}`] : ['DS', `{${p}DsRating}`] },
+      { role: `sendout-vcb${suffix}`, symbolId: 'vcb', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['vcb', 'ds-vcb', 'ds-vcb-vcs', 'vcb-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelVcb}', '{linkVcbLine}', `{${p}VcbRating}`] : ['VCB', `{${p}VcbRating}`] },
       {
         role: `sendout-lbs${suffix}`, symbolId: 'lbs-pf', kind: 'sendout', stage: k, when: { all: [here, { key: sw, in: ['lbs', 'lbs-vcs'] }] }, labelTemplate: k === 1 ? ['{linkPanelLbs}', 'LBS', fuse] : ['LBS', fuse],
         ...(k === 1 ? { note: '送り出しのLBS。パワーヒューズ（PF）の定格電流が分かっていれば、「PF 30A」のように書く' } : {}),

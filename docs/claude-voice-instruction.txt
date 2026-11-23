@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v5ycars",
+  "version": "v1wa24b6",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v5ycars）
+# 項目の一覧（版：v1wa24b6）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -287,10 +287,14 @@
 - linkSwitch：送り出しに開閉器はありますか｜none=なし（母線から直接） ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）
 - linkPanelName：盤の名称｜文字｜条件：linkSwitch≠none
 - linkVcbNo：VCBの番号｜文字｜条件：linkSwitch=vcb/ds-vcb/ds-vcb-vcs/vcb-vcs
+- linkDsRating：DSの定格｜文字｜条件：linkSwitch=ds/ds-vcb/ds-vcb-vcs
+- linkVcbRating：VCBの定格｜文字｜条件：linkSwitch=vcb/ds-vcb/ds-vcb-vcs/vcb-vcs
 - linkFuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkSwitch=lbs/lbs-vcs
 - linkGroundRelay：送り出しの開閉器の地絡継電器は｜none=なし ／ dgr=DGR（方向性）※ZPDが「あり」のときだけ描く ／ gr=GR（無方向性）
 - linkZctPos：ZCT（DGR・GR用）の取り付け位置は｜cable=高圧ケーブル（送り出しの高圧ケーブル） ／ bus-primary=母線（送り出しの開閉器の一次側） ／ bus-secondary=母線（送り出しの開閉器の二次側）｜条件：(linkGroundRelay=gr または linkGroundRelay=dgr)
 - link2Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：linkStageCount=2/2/3/3/4/4
+- link2DsRating：DSの定格｜文字｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Switch=ds/ds-vcb/ds-vcb-vcs
+- link2VcbRating：VCBの定格｜文字｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Switch=vcb/ds-vcb/ds-vcb-vcs/vcb-vcs
 - link2FuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Switch=lbs/lbs-vcs
 - link2Cable：この送り先へは、ケーブルでつなぎますか｜yes/no｜条件：linkStageCount=2/2/3/3/4/4
 - link2CableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Cable≠no
@@ -300,6 +304,8 @@
 - link2CableLength：長さは｜数字のみ（m）｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Cable≠no
 - link2CableLengthApprox：長さに「約」を付ける｜yes/no｜条件：linkStageCount=2/2/3/3/4/4 かつ link2Cable≠no かつ link2CableLength>0
 - link3Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：linkStageCount=3/3/4/4
+- link3DsRating：DSの定格｜文字｜条件：linkStageCount=3/3/4/4 かつ link3Switch=ds/ds-vcb/ds-vcb-vcs
+- link3VcbRating：VCBの定格｜文字｜条件：linkStageCount=3/3/4/4 かつ link3Switch=vcb/ds-vcb/ds-vcb-vcs/vcb-vcs
 - link3FuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkStageCount=3/3/4/4 かつ link3Switch=lbs/lbs-vcs
 - link3Cable：この送り先へは、ケーブルでつなぎますか｜yes/no｜条件：linkStageCount=3/3/4/4
 - link3CableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：linkStageCount=3/3/4/4 かつ link3Cable≠no
@@ -309,6 +315,8 @@
 - link3CableLength：長さは｜数字のみ（m）｜条件：linkStageCount=3/3/4/4 かつ link3Cable≠no
 - link3CableLengthApprox：長さに「約」を付ける｜yes/no｜条件：linkStageCount=3/3/4/4 かつ link3Cable≠no かつ link3CableLength>0
 - link4Switch：送り出しに開閉器はありますか｜none=なし ／ ds=DS ／ vcb=VCB ／ lbs=LBS ／ vcs=VCS ／ ds-vcb=DS＋VCB ／ ds-vcb-vcs=DS＋VCB＋VCS ／ vcb-vcs=VCB＋VCS ／ lbs-vcs=LBS＋VCS ／ as=AS（気中開閉器） ／ gs=GS（ガス開閉器）｜条件：linkStageCount=4/4
+- link4DsRating：DSの定格｜文字｜条件：linkStageCount=4/4 かつ link4Switch=ds/ds-vcb/ds-vcb-vcs
+- link4VcbRating：VCBの定格｜文字｜条件：linkStageCount=4/4 かつ link4Switch=vcb/ds-vcb/ds-vcb-vcs/vcb-vcs
 - link4FuseCurrent：LBSのパワーヒューズの容量（定格電流）｜数（10〜200）｜条件：linkStageCount=4/4 かつ link4Switch=lbs/lbs-vcs
 - link4Cable：この送り先へは、ケーブルでつなぎますか｜yes/no｜条件：linkStageCount=4/4
 - link4CableInstallation：ケーブルは｜buried=埋設（埋ケ） ／ overhead=架空（架ケ） ／ none=種類を書かない｜条件：linkStageCount=4/4 かつ link4Cable≠no
