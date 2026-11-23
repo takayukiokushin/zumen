@@ -792,6 +792,7 @@ export const fr: Dict = {
   'comp.kind.coil': 'Bobine',
   'comp.kind.note-above': 'Nom seul',
   'comp.kind.free': 'Isolé',
+  'comp.kind.lane-branch': 'Dérivation dans la colonne',
   'comp.kind.parallel': 'Dérivation du jeu de barres',
   'comp.kind.beside-left': 'À gauche',
   'editor.layoutShrink': 'Réduire la disposition',

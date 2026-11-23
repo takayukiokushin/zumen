@@ -122,6 +122,11 @@ export type PlacementKind =
    * 1台だけのときは母線を描かず、主回路にそのまま直列で入る。
    */
   | 'parallel'
+  /**
+   * 並列の列（変圧器の枝）の途中から、右へ分岐する（変圧器の手前のVT＋PF）。分かれる位置は、列の次の機器（CT・変圧器）の真上。
+   * 同じ列のなかの話なので、列（lane）は、変圧器と同じ
+   */
+  | 'lane-branch'
   /** 低圧母線から下へ出る回線（回線ごとに縦に並べる） */
   | 'feeder'
   /**
@@ -1095,6 +1100,18 @@ export const TRANSFORMER: Placement[] = [
     zeroOk: true,
   },
   {
+    // 変圧器の手前のCT（変圧器ごと）。LBSがあれば、LBSと変圧器のあいだ。線の上に乗せる記号
+    role: 'tr-ct',
+    symbolId: 'ct',
+    kind: 'parallel',
+    row: ROW.reactor,
+    when: { key: 'trHasCt', eq: 'yes' },
+    labelTemplate: ['CT', '{trCtRatioText}'],
+    props: { ratio: 'trCtRatioText' },
+    repeatCountKey: 'transformerCount',
+    zeroOk: true,
+  },
+  {
     role: 'transformer',
     // 結線方式が未入力のときは、円の中が空の記号になる（engine の trSymbol）
     symbolId: '{trSymbol}',
@@ -1102,6 +1119,24 @@ export const TRANSFORMER: Placement[] = [
     row: ROW.main,
     labelTemplate: ['{trUsageLine}', 'Tr', '{trCapacityLine}', '{trVoltageText}', '{trCurrentLine}', '{trComposition}'],
     props: { usage: 'trUsage', capacity: 'trCapacity', voltage: 'trVoltage', composition: 'trComposition' },
+    repeatCountKey: 'transformerCount',
+    zeroOk: true,
+  },  // 変圧器の手前のVT（PF付）：列の次の機器（CT・変圧器）の真上で、右へ分かれる。PFの文字は、VTの文字にまとめる
+  {
+    role: 'tr-vt-pf',
+    symbolId: 'pf',
+    kind: 'lane-branch',
+    when: { key: 'trHasVt', eq: 'yes' },
+    labelTemplate: ['VT＋PF', '{trVtRatio}'],
+    repeatCountKey: 'transformerCount',
+    zeroOk: true,
+  },
+  {
+    role: 'tr-vt',
+    symbolId: 'vt',
+    kind: 'lane-branch',
+    when: { key: 'trHasVt', eq: 'yes' },
+    props: { ratio: 'trVtRatio' },
     repeatCountKey: 'transformerCount',
     zeroOk: true,
   },

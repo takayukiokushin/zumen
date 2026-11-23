@@ -103,6 +103,11 @@ export const TRANSFORMER_QUESTIONS: Question[] = [
   { id: 'trComposition', group: 'transformer', label: '構成', type: 'text', placeholder: '単相変圧器×3', showIf: { key: 'trConnection', in: ['tr-3p-dd', 'tr-vv'] }, ask: 'always' },
   { id: 'trHasPc', group: 'transformer', label: '変圧器の手前にPC（高圧カットアウト）が入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
   { id: 'trHasLbs', group: 'transformer', label: '変圧器の手前にLBSが入りますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain' },
+  // 変圧器の枝の中の、VT・CT（第20弾・図面再現の診断から。受電側の開閉器が無いエリア（VEM）の、変圧器の手前のVT・CT）。付けた変圧器だけに付く
+  { id: 'trHasVt', group: 'transformer', label: 'この変圧器の手前にVT（PF付）を付けますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: 'この変圧器の枝の中に付ける。LBSがあれば、LBSの下で右へ分かれ、必ずPFが付く。主回路全体のVT（受電設備内のVT）とは別' },
+  { id: 'trVtRatio', group: 'transformer', label: 'VTの変圧比', type: 'text', placeholder: '6600/110V', autoValue: [{ value: '6600/110V' }], showIf: { key: 'trHasVt', eq: 'yes' }, ask: 'always' },
+  { id: 'trHasCt', group: 'transformer', label: 'この変圧器の手前にCTを付けますか？', type: 'select', options: YES_NO, defaultValue: 'no', ask: 'ai-uncertain', help: 'この変圧器の枝の中に付ける。LBSがあれば、LBSと変圧器のあいだに入る。主回路全体のCT（受電設備内のCT）とは別' },
+  { id: 'trCtRatio', group: 'transformer', label: 'CTの変流比', type: 'text', placeholder: '40/5A', showIf: { key: 'trHasCt', eq: 'yes' }, ask: 'always', help: '数字だけ（40）なら、「40/5A」と書く' },
 
 /* ---------------- 高圧進相設備 ---------------- */
   {

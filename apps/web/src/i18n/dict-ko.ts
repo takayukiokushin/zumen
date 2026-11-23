@@ -790,6 +790,7 @@ export const ko: Dict = {
   'comp.kind.coil': '코일',
   'comp.kind.note-above': '이름만',
   'comp.kind.free': '단독',
+  'comp.kind.lane-branch': '열 중간 분기',
   'comp.kind.parallel': '모선 분기',
   'comp.kind.beside-left': '왼쪽에 배치',
   'editor.layoutShrink': '레이아웃 축소',

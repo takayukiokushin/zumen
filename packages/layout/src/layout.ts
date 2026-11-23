@@ -189,6 +189,8 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   let cableHeadOverhang = 0;
   /** 同じ機器（VT）の二次側につなぐ継電器の積み上げ：1つ目の位置と、いまの下端 */
   const stacks = new Map<string, { railX: number; x: number; bottom: number }>();
+  /** 変圧器の枝の途中から右へ分かれるVT・PF（役割:何件目）。VTを、PFの出口につなぐのに使う */
+  const laneBranch = new Map<string, { sym: PlacedSymbol; def: SymbolDef }>();
   /** 名前だけの継電器を、置き先ごとに何個重ねたか */
   const noteCount = new Map<string, number>();
 
@@ -348,12 +350,22 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
     };
     /** 送り出しの並びを、その列の右に置くときの、列からの距離。変圧器の下に、低圧の回線が並ぶ列は、その幅と文字をよける */
     const devOffsetOf = (lane: number): number => Math.max(DEV_STACK_OFFSET, spanUnder(lane) / 2 + 130);
+    /** 列の右に、VT（PF付）の分岐を置くときの、列からの広さ（PF・VT・文字の幅。隣の列にかからないように） */
+    const laneBranchNeed = (lane: number): number => {
+      const vt = items.find((i) => i.kind === 'lane-branch' && i.lane === lane && i.role.endsWith('tr-vt'));
+      if (!vt) return 0;
+      const vd = findSymbol(vt.symbolId);
+      const pf = findSymbol('pf');
+      if (!vd || !pf) return 0;
+      const pfLabel = items.find((i) => i.kind === 'lane-branch' && i.lane === lane && i.role.endsWith('tr-vt-pf'))?.label ?? [];
+      return BRANCH_OFFSET + pf.box.h + 14 + vd.box.w + LABEL_GAP + labelWidth([...pfLabel, ...vt.label]) + 40;
+    };
     const colX: number[] = [0];
     for (let j = 1; j < lanes.length; j++) {
       const widen = LANE_GAP + spanUnder(lanes[j - 1]!) / 2 + spanUnder(lanes[j]!) / 2;
       // この列の開閉器の二次側から、別のエリアへ線を出すとき：すぐ右に、送り出しの並びを置く広さを空ける
       const linkOut = outCount.has(lanes[j - 1]!) ? devOffsetOf(lanes[j - 1]!) + DEV_STACK_WIDTH * outCount.get(lanes[j - 1]!)! : 0;
-      colX.push(colX[j - 1]! + Math.max(PARALLEL_GAP, widen, linkOut));
+      colX.push(colX[j - 1]! + Math.max(PARALLEL_GAP, widen, linkOut, laneBranchNeed(lanes[j - 1]!)));
     }
     // 横の位置は、母線から出る列（root）の真ん中を、主回路の縦線にそろえる（分かれて出る列は、元の列の右に並ぶ）
     const rootX0 = colX[lanes.indexOf(rootLanes[0]!)] ?? 0;
@@ -539,6 +551,46 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       if (!parallelDrawn) {
         drawParallelSection();
         parallelDrawn = true;
+      }
+      continue;
+    }
+
+    /* ---- 並列の列（変圧器の枝）の途中から、右へ分かれるVT（PF付）。列の次の機器（CT・変圧器）の真上で分かれる ---- */
+    if (item.kind === 'lane-branch') {
+      const unit = item.unit ?? 0;
+      // 台数が2台以上のときは、役割にも番号が付く（transformer-2）。その台の分だけを引く（別の台の記号に、取り違えない）
+      const find = (role: string) => (item.id === item.role ? placed.get(role) : placed.get(`${role}-${unit + 1}`));
+      const base = item.role.replace(/tr-vt(-pf)?$/, '');
+      const next = find(`${base}tr-ct`) ?? find(`${base}transformer`);
+      const nIn = next ? portOf(next.def, 'in') : undefined;
+      if (!next || !nIn) continue;
+      const laneX = next.sym.x + nIn.x;
+      const entry = portOf(def, 'in', 'l') ?? portOf(def, 'in') ?? def.ports[0]!;
+      const isPf = item.role.endsWith('-pf');
+      // PFは、上を列の側へ向けて、横に回す。VTは、そのまま（入口が左）
+      const rotate = isPf && entry.dir === 'up' && def.box.h > def.box.w ? -90 : 0;
+      const rb = rotatedBox(def.box, rotate);
+      const [erx, ery] = rotatedPort(def.box, entry.x, entry.y, rotate);
+      if (isPf) {
+        const tapY = next.sym.y + nIn.y - GAP / 2;
+        const x = laneX + BRANCH_OFFSET - rb.dx;
+        wires.push({ x1: laneX, y1: tapY, x2: x + erx, y2: tapY });
+        const sym = add(item, def, x, tapY - ery, rotate, 'right');
+        laneBranch.set(`${item.role}:${unit}`, { sym, def });
+      } else {
+        const pf = laneBranch.get(`${item.role}-pf:${unit}`);
+        if (!pf) continue;
+        const pOut = portOf(pf.def, 'out', 'sec') ?? pf.def.ports[pf.def.ports.length - 1]!;
+        const pr = rotatedPort(pf.def.box, pOut.x, pOut.y, pf.sym.rotate);
+        const px = pf.sym.x + pr[0]!;
+        const tapY = pf.sym.y + pr[1]!;
+        const x = px + 14 - rb.dx;
+        wires.push({ x1: px, y1: tapY, x2: x + erx, y2: tapY });
+        const sym = add(item, def, x, tapY - ery, rotate, 'right');
+        // PFの文字は、VTの文字にまとめ、いちばん端のVTの横に書く
+        sym.label = [...pf.sym.label, ...sym.label];
+        pf.sym.label = [];
+        sym.labelAt = { x: sym.x + rb.dx + rb.w + LABEL_GAP, y: sym.y + rb.dy + 10, anchor: 'start' };
       }
       continue;
     }

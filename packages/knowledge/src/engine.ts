@@ -594,6 +594,9 @@ export function withDerived(rawAnswers: Answers): Answers {
   // 2次側はふつう5Aなので、「100/5A」「40A/5A」のように、すでに書いてあるものは、そのまま使う
   const ct = String(answers.ctRatio ?? '').trim();
   d.ctRatioText = /^\d+(\.\d+)?$/.test(ct) ? `${ct}/5A` : ct;
+  // 変圧器の手前のCT（変圧器ごと）も、同じ書き方
+  const trCt = String(answers.trCtRatio ?? '').trim();
+  d.trCtRatioText = /^\d+(\.\d+)?$/.test(trCt) ? `${trCt}/5A` : trCt;
 
   // PC・LBSの定格の書き方
   //   PC  … 1行目「30A」／2行目「F:10A」
@@ -1498,7 +1501,7 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
           connectFrom: p.connectFrom,
           labelSide: p.labelSide,
           attachTo: p.attachTo,
-          lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' ? laneBase + i : undefined,
+          lane: p.kind === 'feeder' ? (p.laneBase ?? 0) + i : p.kind === 'parallel' || p.kind === 'lane-branch' ? laneBase + i : undefined,
           ...(p.kind === 'parallel' && feedKeyOf(p.role) && isAnswered(a[feedKeyOf(p.role)!]) && a[feedKeyOf(p.role)!] !== 'bus' ? { feedFrom: String(a[feedKeyOf(p.role)!]) } : {}),
           row: p.row,
           unit: countKey ? i : undefined,

@@ -791,6 +791,7 @@ export const en: Dict = {
   'comp.kind.coil': 'Coil',
   'comp.kind.note-above': 'Name only',
   'comp.kind.free': 'Standalone',
+  'comp.kind.lane-branch': 'Branch within column',
   'comp.kind.parallel': 'Branch from bus',
   'comp.kind.beside-left': 'Beside (left)',
   'editor.layoutShrink': 'Shrink layout',
