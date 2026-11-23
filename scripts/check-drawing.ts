@@ -32,6 +32,7 @@ import './check-drawing/part22.ts';
 import './check-drawing/part23.ts';
 import './check-drawing/part24.ts';
 import './check-drawing/part25.ts';
+import './check-drawing/part26.ts';
 
 console.log(state.failed === 0 ? '\n✓ すべて確認できました' : `\n✗ ${state.failed}件の問題があります`);
 process.exit(state.failed === 0 ? 0 : 1);

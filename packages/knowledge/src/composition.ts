@@ -662,7 +662,7 @@ export const CB_CHAIN: Placement[] = [
     role: 'main-breaker',
     symbolId: 'vcb',
     kind: 'series',
-    labelTemplate: ['VCB', '{vcbRating}'],
+    labelTemplate: ['VCB', '{vcbRating}', '{vcbCurrentLine}'],
   },
   {
     // 励磁突入電流抑制開閉器：VCBと並列に入るLBS（PF付）。VCBの左に並べ、上と下を主回路につなぐ
@@ -933,7 +933,7 @@ export const AREA_CHAIN: Placement[] = [
     symbolId: 'vcb',
     kind: 'series',
     when: { key: 'intakeVcb', eq: 'yes' },
-    labelTemplate: ['VCB', '{vcbRating}'],
+    labelTemplate: ['VCB', '{vcbRating}', '{vcbCurrentLine}'],
   },
   {
     // 励磁突入電流抑制開閉器：VCBと並列に入るLBS（PF付）。VCBの左に並べ、上と下を主回路につなぐ
@@ -1100,7 +1100,7 @@ export const TRANSFORMER: Placement[] = [
     symbolId: '{trSymbol}',
     kind: 'parallel',
     row: ROW.main,
-    labelTemplate: ['{trUsageLine}', 'Tr', '{trCapacityLine}', '{trVoltageText}', '{trComposition}'],
+    labelTemplate: ['{trUsageLine}', 'Tr', '{trCapacityLine}', '{trVoltageText}', '{trCurrentLine}', '{trComposition}'],
     props: { usage: 'trUsage', capacity: 'trCapacity', voltage: 'trVoltage', composition: 'trComposition' },
     repeatCountKey: 'transformerCount',
     zeroOk: true,
@@ -1159,7 +1159,7 @@ const MOTOR_SECONDARY: Condition = { all: [MOTOR_ON, { key: 'motorSource', eq: '
 const MOTOR_FREE: Condition = { all: [MOTOR_ON, { not: { key: 'motorSource', in: ['bus', 'secondary'] } }] };
 const MOTOR_VCS: Condition = { key: 'motorSwitch2', eq: 'vcs' };
 const MOTOR_CABLE: Condition = { key: 'motorCable', eq: 'yes' };
-const MOTOR_LABEL = ['{motorStartMethod}', '{motorCapacityText}'];
+const MOTOR_LABEL = ['{motorStartMethod}', '{motorCapacityText}', '{motorCurrentLine}'];
 const MOTOR_CABLE_LABEL = ['{motorCableInstallationLabel}', '{motorCableStructure}', '{motorCableSpecLine}'];
 const MOTOR_LANE_BASE = 1000;
 const MOTOR_ITEMS: Placement[] = [

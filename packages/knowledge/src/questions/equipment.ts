@@ -323,6 +323,30 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
     help: '図面には、容量の横に「6600V」のように書く。図面に描くのは、高圧（3300V・6600Vなど）の電動機だけ。分からなければ、空欄でよい',
   },
   {
+    // 電動機の定格電流の計算に使う力率（任意）。空欄なら 0.8。「変圧器の定格電流を記載する」を入れたときだけ出る
+    id: 'motorPowerFactor',
+    group: 'motor',
+    label: '力率',
+    type: 'number',
+    size: 's',
+    showIf: { key: 'showRatedCurrent', eq: 'yes' },
+    ask: 'always',
+    noAi: true,
+    help: '任意。電動機の定格電流の計算に使う（例：0.8）。空欄なら、標準の 0.8 で計算する。電動機ごとに変えられる',
+  },
+  {
+    // 電動機の定格電流の計算に使う効率（任意）。空欄なら 0.9
+    id: 'motorEfficiency',
+    group: 'motor',
+    label: '効率',
+    type: 'number',
+    size: 's',
+    showIf: { key: 'showRatedCurrent', eq: 'yes' },
+    ask: 'always',
+    noAi: true,
+    help: '任意。電動機の定格電流の計算に使う（例：0.9）。空欄なら、標準の 0.9 で計算する。電動機ごとに変えられる',
+  },
+  {
     id: 'motorPlace',
     group: 'motor',
     label: '設置場所',
@@ -538,4 +562,16 @@ export const EQUIPMENT_QUESTIONS: Question[] = [
       ? '任意。入れると、PCSの枠の真下のPVの下に「PV」と並べて、「100kW」のように書く。空欄なら「PV」だけ。変圧器が1台のときは、この1つだけ'
       : t >= 8 ? undefined : '任意。空欄なら「PV」だけ書く',
   })),
+
+  /* ---------------- 定格電流の記載（図面の一番下、表題欄の手前） ---------------- */
+  {
+    id: 'showRatedCurrent',
+    group: 'current',
+    label: '変圧器の定格電流を記載する',
+    type: 'boolean',
+    size: 'l',
+    ask: 'always',
+    noAi: true,
+    help: '入れると、変圧器（一次／二次）・電動機・VCB に、容量と電圧から計算した定格電流を書く（コンデンサ・発電機・蓄電池には書かない）。ふつうは入れない。直したいときは、図面の上で、文字を手で直す',
+  },
 ];

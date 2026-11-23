@@ -1304,10 +1304,135 @@ function arrangeFeeds(out: PlacedItem[]): PlacedItem[] {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* 定格電流（変圧器・電動機・VCB）。「変圧器の定格電流を記載する」を入れたときだけ、図面に書く     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 電流（A）を、図面に書く文字にする。有効数字4桁で、小数は1桁まで。
+ *   1000A未満：小数点以下1桁（小数第2位を四捨五入）。65.61 → 65.6A、9.46 → 9.5A、300.34 → 300.3A
+ *   1000A以上：整数（小数第1位を四捨五入）。2061.96 → 2062A
+ * 計算できないとき（容量・電圧が無いなど）は、空文字
+ */
+export function formatAmps(x: number): string {
+  if (!Number.isFinite(x) || x <= 0) return '';
+  if (x >= 1000) return `${Math.round(x)}A`;
+  const r = Math.round(x * 10) / 10;
+  return r >= 1000 ? `${Math.round(x)}A` : `${r.toFixed(1)}A`;
+}
+
+const num = (v: unknown): number => (v === undefined || v === null || String(v).trim() === '' ? NaN : Number(v));
+
+/** 「6600/210-105V」から、一次の電圧と、二次の電圧（V）。読み取れないほうは NaN */
+function trVoltages(text: unknown): { primary: number; secondary: number } {
+  const [a, b] = String(text ?? '').split('/');
+  const pick = (t: string | undefined) => {
+    const m = (t ?? '').match(/\d+(\.\d+)?/);
+    return m ? Number(m[0]) : NaN;
+  };
+  return { primary: pick(a), secondary: pick(b) };
+}
+
+/**
+ * 変圧器1台の定格電流（A）。一次・二次とも、容量と電圧から計算する。
+ *   単相：容量 ÷ 電圧　　三相：容量 ÷（√3 × 電圧）
+ *   V結線：三相として計算する。使える出力は、小さいほうの1台の容量 × √3（2台とも100kVAなら173.2kVA＝200kVAの86.6%）。
+ *          定格電流は、出力 ÷（√3 × 電圧）＝ 小さいほうの容量 ÷ 電圧
+ *   三巻線：一次は一次巻線の容量、二次は二次巻線の容量（無ければ一次巻線の容量）
+ * 容量・電圧のどちらかが分からないときは、NaN
+ */
+export function transformerCurrents(u: Answers): { primary: number; secondary: number } {
+  const v = trVoltages(u.trVoltage);
+  const conn = String(u.trConnection ?? '');
+  const SQ3 = Math.sqrt(3);
+  const amps = (kva: number, volts: number, phases: 1 | 3) => (kva > 0 && volts > 0 ? (kva * 1000) / (phases === 3 ? SQ3 * volts : volts) : NaN);
+  if (conn.startsWith('tr-1p')) {
+    const k = num(u.trCapacity);
+    return { primary: amps(k, v.primary, 1), secondary: amps(k, v.secondary, 1) };
+  }
+  if (conn === 'tr-vv') {
+    const mixed = u.trUsage === '電灯・動力';
+    const p1 = num(mixed ? u.trCapacityLight : u.trCapacity);
+    const p2 = num(mixed ? u.trCapacityPower : u.trCapacity2);
+    if (!(p1 > 0) || !(p2 > 0)) return { primary: NaN, secondary: NaN };
+    const three = Math.min(p1, p2) * SQ3;
+    return { primary: amps(three, v.primary, 3), secondary: amps(three, v.secondary, 3) };
+  }
+  if (conn === 'tr-3w-yyd' || conn === 'tr-3w-ddy') {
+    const w1 = num(u.trCapacityW1);
+    const w2 = num(u.trCapacityW2);
+    return { primary: amps(w1, v.primary, 3), secondary: amps(w2 > 0 ? w2 : w1, v.secondary, 3) };
+  }
+  const k = num(u.trCapacity);
+  return { primary: amps(k, v.primary, 3), secondary: amps(k, v.secondary, 3) };
+}
+
+/** 電動機のふつうの力率・効率（電動機ごとに、入力で変えられる） */
+export const MOTOR_POWER_FACTOR = 0.8;
+export const MOTOR_EFFICIENCY = 0.9;
+
+/**
+ * 電動機（三相）1台の定格電流（A）＝ 出力(kW) ÷（√3 × 電圧 × 力率 × 効率）。
+ * 電圧は、定格電圧。無ければ、二次側につないでいる変圧器の二次側の電圧（母線につないでいれば、1台目の変圧器の一次側の電圧）。
+ * 力率・効率は、入れてあればそれ（0〜1。90のように1を超えるときは、%として100で割る）、無ければ標準。計算できないときは NaN
+ */
+function motorCurrent(raw: Answers, i: number): number {
+  const u = viewAt(raw, i);
+  const kw = num(u.motorCapacity);
+  let volts = num(u.motorRatedVoltage);
+  if (!(volts > 0)) {
+    const t = u.motorSource === 'secondary' ? Math.max(1, Math.floor(num(u.motorSourceTr ?? '1')) || 1) - 1 : 0;
+    const v = trVoltages(viewAt(raw, t).trVoltage);
+    volts = u.motorSource === 'secondary' ? v.secondary : v.primary;
+  }
+  const ratio = (x: number, std: number) => (x > 1 && x <= 100 ? x / 100 : x > 0 && x <= 1 ? x : std);
+  const pf = ratio(num(u.motorPowerFactor), MOTOR_POWER_FACTOR);
+  const eff = ratio(num(u.motorEfficiency), MOTOR_EFFICIENCY);
+  return kw > 0 && volts > 0 ? (kw * 1000) / (Math.sqrt(3) * volts * pf * eff) : NaN;
+}
+
+/**
+ * 図面に書く、定格電流の文字（変圧器ごと・電動機ごと・VCB）。「変圧器の定格電流を記載する」が入っていないときは、すべて空。
+ *   変圧器：「65.6A/2062A」（一次／二次）　電動機：「12.3A」
+ *   VCB：その回路につながる、変圧器の一次電流と、母線から直接つなぐ電動機の電流の合計（コンデンサ・発電機・蓄電池は入れない。
+ *        二次側につなぐ電動機は、変圧器の電流にすでに含まれるので、入れない）。1つでも計算できないものがあれば、書かない
+ */
+export function ratedCurrentLines(raw: Answers): { tr: string[]; motor: string[]; vcb: string } {
+  const none = { tr: [] as string[], motor: [] as string[], vcb: '' };
+  const a = normalizeAnswers(raw);
+  if (a.showRatedCurrent !== 'yes') return none;
+  const trN = countOf(a.transformerCount, 0, maxCountOf('transformerCount'));
+  const moN = a.hasMotor === 'yes' ? countOf(a.motorCount, 1, maxCountOf('motorCount')) : 0;
+  const tr: string[] = [];
+  let total = 0;
+  let known = trN + moN > 0;
+  for (let i = 0; i < trN; i++) {
+    const c = transformerCurrents(viewAt(raw, i));
+    const p = formatAmps(c.primary);
+    const s = formatAmps(c.secondary);
+    tr.push(p && s ? `${p}/${s}` : '');
+    if (Number.isFinite(c.primary)) total += c.primary;
+    else known = false;
+  }
+  const motor: string[] = [];
+  for (let i = 0; i < moN; i++) {
+    const c = motorCurrent(raw, i);
+    motor.push(formatAmps(c));
+    if (viewAt(raw, i).motorSource === 'bus') {
+      if (Number.isFinite(c)) total += c;
+      else known = false;
+    }
+  }
+  return { tr, motor, vcb: known ? formatAmps(total) : '' };
+}
+
 /** 機器の並びの定義（chain）から、回答に合う機器の一覧を作る */
 function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
   const answers = withDerived(rawAnswers);
   const out: PlacedItem[] = [];
+  // 定格電流の文字（「変圧器の定格電流を記載する」を入れたときだけ。入れていなければ、空）
+  const currents = ratedCurrentLines(rawAnswers);
+  answers.vcbCurrentLine = currents.vcb;
 
   // 同じ件数で繰り返す機器が隣り合っているときは、件ごとにまとめて出す。
   // （コンデンサとそのリアクトルが SR1→SC1→SR2→SC2 の順に並ぶように）
@@ -1330,7 +1455,9 @@ function composeChain(rawAnswers: Answers, chain: Placement[]): PlacedItem[] {
     if (isParallel) parallelLane += count;
     for (let i = 0; i < count; i++) {
       // 2件目以降は、そのぶんの回答で文字と入力値を組み立てる
-      const a = countKey && i > 0 ? withDerived(viewAt(rawAnswers, i)) : answers;
+      let a = countKey && i > 0 ? withDerived(viewAt(rawAnswers, i)) : answers;
+      if (countKey === 'transformerCount' && currents.tr.length > 0) a = { ...a, trCurrentLine: currents.tr[i] ?? '' };
+      else if (countKey === 'motorCount' && currents.motor.length > 0) a = { ...a, motorCurrentLine: currents.motor[i] ?? '' };
       for (const p of run) {
         // 条件も件ごとに見る（4台あって1台だけリアクトル付き、のような現場があるため）
         if (!evaluate(p.when, a)) continue;

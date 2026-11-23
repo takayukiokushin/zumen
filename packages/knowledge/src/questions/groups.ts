@@ -83,5 +83,7 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     showIf: { key: 'hasAuxTr', eq: 'yes' },
   },
   { id: 'motor', stepWith: 'special', label: '電動機', repeatCountKey: 'motorCount', repeatUnit: '台', showIf: { key: 'hasMotor', eq: 'yes' }, perArea: true },
+  // 定格電流の記載（図面の一番下、表題欄の手前）。チェックを入れたときだけ、変圧器・電動機・VCB の定格電流を、図面に書く
+  { id: 'current', label: '定格電流の記載', description: '容量と電圧から計算した定格電流を、図面に書くかどうか' },
   { id: 'title', label: '表題欄' },
 ];
