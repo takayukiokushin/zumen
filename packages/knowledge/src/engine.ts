@@ -361,6 +361,25 @@ export function withDerived(rawAnswers: Answers): Answers {
   d.midPasZpdSymbol = answers.midBuiltinLa === 'yes' ? 'zpd-pas-boxed' : 'zpd-pas';
   d.midRatingText = [answers.midRatedVoltage ? `${answers.midRatedVoltage}V` : '', answers.midRatedCurrent ? `${answers.midRatedCurrent}A` : ''].filter(Boolean).join(' ');
 
+  // 行き止まりの分岐の、ケーブルのあとの開閉器（第20弾・図面再現の診断から）。PAS・PGSは、区分開閉器と同じ決まり（内蔵表記・図記号・ZPD・定格）。
+  // AS・GSは、GR・DGRやLAを内蔵するとき、区分開閉器と同じ「箱」の図記号で、名前だけ変わる。内蔵しないときは、ASとGSの図記号
+  {
+    const kind = String(answers.deKind ?? 'as');
+    d.deSwitchName = kind === 'pgs' ? 'PGS' : kind === 'gs' ? 'GS' : kind === 'pas' ? 'PAS' : 'AS';
+    const sog = answers.deControl === 'gr' || answers.deControl === 'dgr';
+    const builtin: string[] = [];
+    if (sog && answers.deBuiltinVt === 'yes') builtin.push('VT');
+    if (answers.deBuiltinLa === 'yes') builtin.push('LA');
+    d.deBuiltinText = builtin.length ? `${builtin.join(',')}内蔵型` : '';
+    const box = kind === 'pas' || kind === 'pgs' || sog || answers.deBuiltinLa === 'yes';
+    d.deBox = box ? 'yes' : 'no';
+    d.deSymbol = box ? (builtin.length ? 'pas-builtin' : 'pas') : kind === 'gs' ? 'gs' : 'as';
+    d.deZpdSymbol = answers.deBuiltinLa === 'yes' ? 'zpd-pas-boxed' : 'zpd-pas';
+    d.deRatingText = [answers.deRatedVoltage ? `${answers.deRatedVoltage}V` : '', answers.deRatedCurrent ? `${answers.deRatedCurrent}A` : ''].filter(Boolean).join(' ');
+    const dest = String(answers.deDestination ?? '').trim();
+    d.deDestinationText = dest;
+  }
+
   // 送り出しのLBSのパワーヒューズ（例: PF 30A）。定格電流が分からないときは、書かない
   d.linkFuseText = answers.linkFuseCurrent ? `PF ${answers.linkFuseCurrent}A` : '';
 
@@ -999,8 +1018,35 @@ export function areaView(answers: Answers, area: number): Answers {
     out[LINK_PART_CT_COUNT] = kinds.ct.length;
     out[LINK_PART_VT_COUNT] = kinds.vt.length;
   }
+  // 行き止まりの分岐（図面にない設備へ）のエリア：ケーブルのあとの開閉器の箱だけを描く。ほかの設備は、無いものとして見る
+  // （答えは消さない。「形態」を戻せば、元の答えが戻る）
+  if (out.areaForm === 'dead-end' && area >= 1) Object.assign(out, DEAD_END_AREA_VIEW);
   return normalizeAnswers(out);
 }
+
+/** 行き止まりの分岐のエリアで、無いものとして見る答え（変圧器・コンデンサ・特殊設備・受電側の開閉器・VT・CT・継電器など） */
+const DEAD_END_AREA_VIEW: Answers = {
+  transformerCount: 0,
+  hasCapacitor: 'no',
+  capacitorCount: 0,
+  hasPv: 'no',
+  hasGenerator: 'no',
+  hasBattery: 'no',
+  hasAuxTr: 'no',
+  hasMotor: 'no',
+  areaIntake: 'none',
+  areaPas: 'no',
+  areaAs: 'no',
+  hasSiteVt: 'no',
+  hasSiteCt: 'no',
+  hasZpd: 'no',
+  hasInrush: 'no',
+  hasOvgr: 'no',
+  mainGroundRelay: 'none',
+  vtSetCount: 0,
+  ctSetCount: 0,
+  relayCount: 0,
+};
 
 /** 送り出しの途中に、いま付けられる機器（VT・CT）の番号。種類ごと（個数の範囲内で、位置がいまの構成にあるものだけ） */
 export function linkPartsByKind(view: Answers): { ct: number[]; vt: number[] } {
@@ -1777,6 +1823,8 @@ export function totalTransformerKva(raw: Answers): { total: number; allKnown: bo
   const a = normalizeAnswers(raw);
   const num = (v: unknown) => (typeof v === 'number' ? v : Number(v));
   const areaKva = (v: Record<string, unknown>) => {
+    // 行き止まりの分岐（図面にない設備へ）のエリアには、変圧器は無い
+    if (v.areaForm === 'dead-end') return 0;
     const mixed = v.trConnection === 'tr-vv' && v.trUsage === '電灯・動力';
     const threeWinding = v.trConnection === 'tr-3w-yyd' || v.trConnection === 'tr-3w-ddy';
     const unit = mixed ? num(v.trCapacityLight) + num(v.trCapacityPower) : num(threeWinding ? v.trCapacityW1 : v.trCapacity);

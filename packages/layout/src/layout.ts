@@ -114,6 +114,8 @@ const BUS_CLEAR = 36;
 const BRANCH_GAP = 26;
 /** 分岐の記号を主回路から離す距離 */
 const BRANCH_OFFSET = 34;
+/** 行き先の名前（開閉器の箱の下に1行）を、箱の下の縦線の端から離す間隔 */
+const NOTE_BELOW_GAP = 6;
 /** 記号と、その脇に書く文字の間隔 */
 const LABEL_GAP = 10;
 /** 文字の上端から基準線までの高さ（labelRect と同じ値） */
@@ -615,6 +617,23 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
       wires.push({ x1: cx, y1: upY, x2: cx, y2: sym.y + inP.y });
       wires.push({ x1: cx, y1: sym.y + outP.y, x2: cx, y2: downY });
       wires.push({ x1: cx, y1: downY, x2: SPINE, y2: downY });
+      continue;
+    }
+
+    /* ---- 別の機器（行き止まりの分岐の開閉器の箱）の真下に、1行だけ文字を書く（行き先の名前）。線はつながない ---- */
+    if (item.kind === 'note-below') {
+      const target = item.attachTo ? placed.get(item.attachTo) : undefined;
+      if (!target) continue;
+      const out = portOf(target.def, 'out');
+      // 箱の下から出る縦線の先（端）の、少し下。線の端が、文字に触れない。縦線が無いときは、箱の下
+      const bottom = target.sym.y + (out ? out.y : target.def.box.h);
+      const nx = out ? target.sym.x + out.x - 4 : target.sym.x;
+      const sym = add(item, def, nx, bottom + NOTE_BELOW_GAP, 0, 'right');
+      // 文字は、箱の下の線の真下から、右へ書く
+      sym.labelAt = { x: nx, y: bottom + NOTE_BELOW_GAP + LABEL_ASCENT, anchor: 'start' };
+      // 下に伸びたぶんだけ、図面の高さを広げる（次に置くものが、文字にかからないように）
+      branchBottom = Math.max(branchBottom, bottom + NOTE_BELOW_GAP + LABEL_LINE);
+      pendingGap = Math.max(pendingGap, branchBottom - spineY + 10);
       continue;
     }
 

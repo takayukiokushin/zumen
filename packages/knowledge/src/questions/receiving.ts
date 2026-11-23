@@ -446,6 +446,8 @@ export const RECEIVING_QUESTIONS: Question[] = [
       { value: 'room-cubicle', label: '電気室（内にキュービクル）' },
       { value: 'room-open', label: 'オープンフレーム式' },
       { value: 'apartment-pole', label: '高圧マンション（電柱上構成）' },
+      // 2か所目以降だけ。図面にない設備へつながる、行き止まりの分岐（ケーブル → 開閉器の箱だけを描く）
+      { value: 'dead-end', label: '行き止まりの分岐（図面にない設備へ）', showIf: { key: 'unitNo', gt: 1 } },
     ],
     ask: 'ai-uncertain',
     required: true,

@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v1s8pbgg",
+  "version": "v5ycars",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v1s8pbgg）
+# 項目の一覧（版：v5ycars）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -265,7 +265,7 @@
 （か所ごとに繰り返す。件数は areaCount。2か所目以降は、項目IDの後ろに __2、__3 …（例：areaName__2））
 - areaCount：電気設備（受電設備）は何箇所に分かれていますか｜数（1〜10）
 - areaName：このエリアの名前（任意）｜文字
-- areaForm：形態は｜cubicle=キュービクル式 ／ room-cubicle=電気室（内にキュービクル） ／ room-open=オープンフレーム式 ／ apartment-pole=高圧マンション（電柱上構成）
+- areaForm：形態は｜cubicle=キュービクル式 ／ room-cubicle=電気室（内にキュービクル） ／ room-open=オープンフレーム式 ／ apartment-pole=高圧マンション（電柱上構成） ／ dead-end=行き止まりの分岐（図面にない設備へ）
 - areaPlacement：設置場所は｜indoor=屋内 ／ rooftop=屋上 ／ outdoor=屋外（地上） ／ semi-outdoor=半屋外 ／ ほかの値も可
 - areaFloor：階層｜文字
 - areaDetail：場所の補足｜文字
@@ -382,6 +382,17 @@
 - linkRelay2EAt：2Eは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelay2E=yes
 - linkRelay3EAt：3Eは、どこにつなぎますか｜part-1=途中の機器1（CT） ／ part-2=途中の機器2（CT） ／ part-3=途中の機器3（CT） ／ part-4=途中の機器4（CT） ／ part-5=途中の機器5（CT） ／ part-6=途中の機器6（CT） ／ none=置き場所は決まっていない（名前だけ書く）｜条件：linkTap=bus/tr-secondary かつ linkRelay3E=yes
 - linkRelayNoTest：試験端子を付けない｜yes/no｜条件：linkTap=bus/tr-secondary かつ (linkRelayOCR=yes または linkRelayUVR=yes または linkRelayRPR=yes または linkRelayOVR=yes または linkRelayUFR=yes または linkRelayOFR=yes または linkRelayDSR=yes または linkRelayUPR=yes または linkRelay2E=yes または linkRelay3E=yes)
+
+【行き止まりの分岐】
+（エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:deKind））
+（このまとまりを聞くのは areaForm=dead-end）
+- deKind：開閉器の種類は｜as=AS（気中開閉器） ／ pas=PAS ／ pgs=PGS ／ gs=GS（ガス開閉器）｜条件：areaForm=dead-end
+- deControl：GR・DGR（制御装置）は｜none=なし ／ gr=GR（無方向性） ／ dgr=DGR（方向性）｜条件：areaForm=dead-end
+- deBuiltinVt：VTは内蔵されていますか｜yes/no｜条件：areaForm=dead-end かつ deControl=gr/dgr
+- deBuiltinLa：LAは内蔵されていますか｜yes/no｜条件：areaForm=dead-end
+- deRatedVoltage：定格電圧は｜数（3300〜34500）｜条件：areaForm=dead-end
+- deRatedCurrent：定格電流は｜100=100A ／ 200=200A ／ 300=300A ／ 400=400A ／ ほかの値も可｜条件：areaForm=dead-end
+- deDestination：行き先の名前（任意）｜文字｜条件：areaForm=dead-end
 
 【受電設備の構成】
 （エリアが2か所以上のとき、2か所目以降は、項目IDの前に a2:（3か所目は a3:）（例：a2:mainBreakerForm））

@@ -1,6 +1,6 @@
 import type { Condition } from './condition.ts';
 import { COUNT_LIMITS, MAX_COUNT } from './counts.ts';
-import { MID_AS, MID_CABLE, MID_PAS, MID_POLE, MID_SOG, NO_SECTIONALIZER_SPLIT, PROPERTY_AT_DS, POLE_TOP, SPLIT_BOUNDARY } from './questions/common.ts';
+import { DEAD_END, MID_AS, MID_CABLE, MID_PAS, MID_POLE, MID_SOG, NO_SECTIONALIZER_SPLIT, PROPERTY_AT_DS, POLE_TOP, SPLIT_BOUNDARY } from './questions/common.ts';
 import { LINK_PARTS_TAP, LINK_PART_MAX, LINK_RELAYS, linkPartKey, linkPartOpen, linkRelayKey, linkRelayTtKey } from './link-parts.ts';
 
 /** 主遮断装置の地絡継電器が付くか。DGRはZPDが「ある」ときだけ、GR（ZCTのみ）はZPDに関わらず付く */
@@ -111,6 +111,8 @@ export type PlacementKind =
   | 'bypass'
   /** 別の機器の真上に、隙間を空けて、名前だけ書く（置き場所が決まっていない継電器） */
   | 'note-above'
+  /** 別の機器（attachTo）の真下に、1行だけ文字を書く（行き止まりの分岐の、行き先の名前） */
+  | 'note-below'
   /** ほかの機器（VCB）の横に置き、別の機器（OCR）と線でつなぐ（トリップコイル） */
   | 'coil'
   /** 2か所目以降のエリアを、前のエリアにつなぐケーブル（記号ではなく、つなぎ方を表す） */
@@ -881,7 +883,8 @@ export const AREA_CHAIN: Placement[] = [
     role: 'area-frame',
     symbolId: 'enclosure-cubicle',
     kind: 'frame',
-    when: { not: { key: 'areaForm', eq: 'apartment-pole' } },
+    // 行き止まりの分岐（図面にない設備へ）も、枠は描かない
+    when: { not: { key: 'areaForm', in: ['apartment-pole', 'dead-end'] } },
     labelTemplate: ['{areaLabel}'],
     // 枠から、その下の上向きの三角（ケーブルを受ける端末）までの線。ケーブルが埋設のときは点線（前のエリアからの線の続き）
     dashedAfter: { all: [{ key: 'linkCable', ne: 'no' }, { key: 'linkCableInstallation', eq: 'buried' }] },
@@ -931,6 +934,33 @@ export const AREA_CHAIN: Placement[] = [
     kind: 'series',
     when: { key: 'areaAs', eq: 'yes' },
     labelTemplate: ['AS', '{areaAsRatingText}'],
+  },
+  /*
+   * 行き止まりの分岐（図面にない設備へ）：ケーブルのあとの開閉器の箱。PAS・PGSは、区分開閉器と同じ図記号・同じ中身。
+   * AS・GSは、GR・DGRやLAを内蔵するとき、同じ「箱」の図記号で、名前だけ変わる。行き先の名前は、箱の下に1行。
+   */
+  {
+    role: 'end-switch',
+    symbolId: '{deSymbol}',
+    kind: 'series',
+    when: DEAD_END,
+    labelTemplate: ['{deSwitchName}', '{deRatingText}', '{deBuiltinText}'],
+    note: '行き止まりの分岐の開閉器。この先には、何も描かない',
+  },
+  { role: 'end-switch-zct', symbolId: 'zct-pas', kind: 'inside', parent: 'end-switch', slot: 'zct', when: { all: [DEAD_END, { key: 'deBox', eq: 'yes' }, { key: 'deControl', in: ['gr', 'dgr'] }] } },
+  { role: 'end-switch-vt', symbolId: 'vt-pas', kind: 'inside', parent: 'end-switch', slot: 'vt', when: { all: [DEAD_END, { key: 'deBox', eq: 'yes' }, { key: 'deControl', in: ['gr', 'dgr'] }, { key: 'deBuiltinVt', eq: 'yes' }] } },
+  { role: 'end-switch-la', symbolId: 'la-pas', kind: 'inside', parent: 'end-switch', slot: 'la', when: { all: [DEAD_END, { key: 'deBox', eq: 'yes' }, { key: 'deBuiltinLa', eq: 'yes' }] } },
+  { role: 'end-switch-zpd', symbolId: '{deZpdSymbol}', kind: 'inside', parent: 'end-switch', slot: 'zpd', when: { all: [DEAD_END, { key: 'deBox', eq: 'yes' }, { key: 'deControl', eq: 'dgr' }] } },
+  { role: 'end-switch-relay', symbolId: 'relay-gr', kind: 'branch-right', when: { all: [DEAD_END, { key: 'deBox', eq: 'yes' }, { key: 'deControl', eq: 'gr' }] }, connectFrom: ['end-switch-zct'] },
+  { role: 'end-switch-relay', symbolId: 'relay-dgr', kind: 'branch-right', when: { all: [DEAD_END, { key: 'deBox', eq: 'yes' }, { key: 'deControl', eq: 'dgr' }] }, connectFrom: ['end-switch-zct', 'end-switch-vt', 'end-switch-zpd'] },
+  {
+    role: 'end-name',
+    symbolId: 'note-text',
+    kind: 'note-below',
+    attachTo: 'end-switch',
+    when: { all: [DEAD_END, { key: 'deDestinationText', ne: '' }] },
+    labelTemplate: ['{deDestinationText}'],
+    note: '行き止まりの分岐の、行き先の名前（開閉器の箱の下に1行）',
   },
   { role: 'ds', symbolId: 'ds', kind: 'series', when: { key: 'intakeDs', eq: 'yes' }, labelTemplate: ['DS', '{dsRating}'] },
   {

@@ -1,6 +1,6 @@
 import type { QuestionGroup } from './types.ts';
 import { CT_SHOWN, VT_SHOWN } from '../composition.ts';
-import { MID_ASK } from './common.ts';
+import { DEAD_END, MID_ASK, notDeadEnd } from './common.ts';
 
 export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'customer', label: 'お客様・現場', description: '表題欄と図面の基本情報' },
@@ -26,7 +26,15 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
   { id: 'area', label: '受電設備エリア', repeatCountKey: 'areaCount', repeatUnit: 'か所' },
   // ここから下の perArea のグループは、エリアが2か所以上のとき、エリアごとに入力する
   { id: 'link', label: 'エリア間の接続（送り出し）', description: 'このエリアから、後ろのエリアへ送り出す線ごとに、分岐する位置・ケーブル・開閉器を入力する', perArea: true },
-  { id: 'receiving', label: '受電設備の構成', perArea: true },
+  {
+    // 「行き止まりの分岐（図面にない設備へ）」のエリアだけ。ケーブルの先の、開閉器の箱（AS・PAS・PGS・GS）と、行き先の名前
+    id: 'deadend',
+    label: '行き止まりの分岐',
+    description: '図面にない設備へつながる分岐。ケーブルのあとの開閉器の箱と、行き先の名前だけを描く',
+    perArea: true,
+    showIf: DEAD_END,
+  },
+  { id: 'receiving', label: '受電設備の構成', perArea: true, showIf: notDeadEnd() },
   {
     id: 'vtset',
     label: 'VT（計器用変圧器）',
@@ -55,7 +63,7 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     // PFS形（LBS）は、CT・VTが無くても、保護継電器があるかどうかを聞く（CT・VTの有無が決まっていないときは、置き場所を聞き返す）
     showIf: { any: [VT_SHOWN, CT_SHOWN, { key: 'intakeLbs', eq: 'yes' }] },
   },
-  { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台', perArea: true },
+  { id: 'transformer', label: '変圧器', repeatCountKey: 'transformerCount', repeatUnit: '台', perArea: true, showIf: notDeadEnd() },
   {
     id: 'compensation',
     label: '高圧進相設備',
@@ -63,8 +71,9 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     repeatCountKey: 'capacitorCount',
     repeatUnit: '台',
     perArea: true,
+    showIf: notDeadEnd(),
   },
-  { id: 'special', label: '特殊設備', perArea: true },
+  { id: 'special', label: '特殊設備', perArea: true, showIf: notDeadEnd() },
   // 特殊設備の、細かい入力の枠（あり／なしの並びと同じ順：発電機・太陽光・蓄電池・補助変圧器・電動機）。
   // 順番に1つずつ開く表示では、特殊設備の段と一緒に開く（「あり」を押した直後に出る。stepWith）
   { id: 'generator', stepWith: 'special', label: '発電機', repeatCountKey: 'generatorCount', repeatUnit: '台', showIf: { key: 'hasGenerator', eq: 'yes' }, perArea: true },

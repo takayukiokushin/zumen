@@ -8,6 +8,7 @@ import { COMPOSITION_QUESTIONS } from './questions/composition.ts';
 import { TRANSFORMER_QUESTIONS } from './questions/transformer.ts';
 import { EQUIPMENT_QUESTIONS } from './questions/equipment.ts';
 import { AREAS_QUESTIONS } from './questions/areas.ts';
+import { DEADEND_QUESTIONS } from './questions/deadend.ts';
 import { BREAKER_QUESTIONS } from './questions/breakers.ts';
 import { withDeviceCableQuestions } from './questions/devcable.ts';
 
@@ -30,6 +31,7 @@ export const QUESTIONS: Question[] = withDeviceCableQuestions([
   ...TRANSFORMER_QUESTIONS,
   ...EQUIPMENT_QUESTIONS,
   ...AREAS_QUESTIONS,
+  ...DEADEND_QUESTIONS,
   ...BREAKER_QUESTIONS,
 ]);
 

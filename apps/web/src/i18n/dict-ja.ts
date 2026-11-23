@@ -793,6 +793,7 @@ export const ja = {
   'comp.kind.note-above': '名前のみ',
   'comp.kind.free': '単独',
   'comp.kind.lane-branch': '列の途中から分岐',
+  'comp.kind.note-below': '真下に文字',
   'comp.kind.parallel': '母線から分岐',
   'comp.kind.beside-left': '左に添える',
   'editor.layoutShrink': 'レイアウトを縮小',

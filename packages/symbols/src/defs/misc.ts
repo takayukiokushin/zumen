@@ -309,4 +309,21 @@ export const miscSymbols: SymbolDef[] = [
     statusNote: '一点鎖線で確定。',
     note: '受電設備が2箇所以上ある場合のみ、各エリアをこの枠で囲う。1箇所の場合は描かない。',
   },
+  {
+    // 文字だけを書く印（行き止まりの分岐の、行き先の名前など）。線はつながない。「記号を追加」の一覧には出さない（作図が使う）
+    id: 'note-text',
+    abbr: '文字',
+    nameJa: '文字だけの印',
+    category: 'wiring',
+    tags: ['文字', '名前', '行き先'],
+    box: { w: 2, h: 14 },
+    shapes: [],
+    ports: [],
+    decorative: true,
+    fields: [{ key: 'text', label: '文字', type: 'text', defaultValue: '' }],
+    labelLines: ['{text}'],
+    status: 'confirmed',
+    statusNote: '文字だけを書く印。行き止まりの分岐の、行き先の名前（開閉器の箱の下の1行）に使う。',
+    note: '線はつながない。「記号を追加」の一覧には出ない。',
+  },
 ];

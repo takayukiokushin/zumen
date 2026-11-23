@@ -789,6 +789,7 @@ export const zh: Dict = {
   'comp.kind.note-above': '仅名称',
   'comp.kind.free': '独立',
   'comp.kind.lane-branch': '列内分支',
+  'comp.kind.note-below': '下方文字',
   'comp.kind.parallel': '母线分支',
   'comp.kind.beside-left': '放在左侧',
   'editor.layoutShrink': '缩小布局',

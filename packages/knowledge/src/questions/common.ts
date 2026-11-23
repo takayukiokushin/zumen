@@ -276,6 +276,14 @@ export const RELAY_CHOICES: Choice[] = [
  *   MID_CABLE … 区分開閉器との間に、新しいケーブルを描くとき（同じ柱以外）
  *   MID_POLE  … 構内柱（客柱の記号を添える）
  */
+/**
+ * 2か所目以降のエリアで、「行き止まりの分岐（図面にない設備へ）」を選んだとき（第20弾・図面再現の診断から）。
+ * 図面には、ケーブル → 開閉器の箱（AS・PAS・PGS・GS）だけを描く。エリアの枠・変圧器などは、描かない
+ */
+export const DEAD_END: Condition = { key: 'areaForm', eq: 'dead-end' };
+/** 行き止まりの分岐のエリアでは、聞かない・描かない（ほかの条件があれば、それも満たすとき） */
+export const notDeadEnd = (c?: Condition): Condition => (c ? { all: [{ not: DEAD_END }, c] } : { not: DEAD_END });
+
 export const MID_ASK: Condition = { all: [{ key: 'midSwitch', eq: 'yes' }, { key: 'sectionalizer', in: ['pas', 'ugs', 'pgs'] }] };
 export const MID_DRAW: Condition = { all: [MID_ASK, { key: 'midKind', answered: true }, { key: 'midPlace', answered: true }] };
 export const MID_PAS: Condition = { all: [MID_DRAW, { key: 'midKind', in: ['pas', 'pgs'] }] };

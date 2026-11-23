@@ -431,7 +431,7 @@ console.log('\n■ 受電設備エリア：高圧マンション（電柱上構�
 {
   const form = QUESTIONS.find((q) => q.id === 'areaForm');
   const vals = form?.options?.map((o) => o.value) ?? [];
-  if (JSON.stringify(vals) !== JSON.stringify(['cubicle', 'room-cubicle', 'room-open', 'apartment-pole'])) {
+  if (JSON.stringify(vals) !== JSON.stringify(['cubicle', 'room-cubicle', 'room-open', 'apartment-pole', 'dead-end'])) {
     fail(`形態の選択肢が違います（${vals.join('・')}）`);
   } else console.log(`  形態の選択肢：${form?.options?.map((o) => o.label).join(' ／ ')}`);
   const shown = (a: Answers) => new Set(visibleQuestions(a, {}).map((q) => q.id));
@@ -529,7 +529,8 @@ console.log('\n■ 編集画面で記号を足したときの文字（定格電�
     if (unknown.length > 0) fail(`${d.id}：文字の雛形に、入力欄のない項目 ${unknown.join('、')} があります`);
     const blank = fillLabelLines(d, initialLabelValues(d));
     // 客柱は、名称を基本的に空白にする決まり（「中電柱」「客柱」などの文字も付けない）
-    if (blank.length === 0 && d.id !== 'pole-customer') fail(`${d.id}：足した直後に何も書かれません`);
+    // 文字だけの印（note-text）も、足した直後は空（行き先の名前などは、作図が入れる）
+    if (blank.length === 0 && d.id !== 'pole-customer' && d.id !== 'note-text') fail(`${d.id}：足した直後に何も書かれません`);
     if (blank.some((l) => l.includes('{'))) fail(`${d.id}：足した直後の文字に {…} が残っています`);
     if (labelFields(d).length !== used.length) fail(`${d.id}：入力欄の数が雛形と合いません`);
   }
