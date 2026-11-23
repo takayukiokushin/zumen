@@ -337,7 +337,7 @@ console.log('\n■ 主遮断装置「それ以外（高圧マンション・電�
   const opts = (id: string) => QUESTIONS.find((q) => q.id === id)?.options?.map((o) => o.value) ?? [];
   const same = (a: string[], b: string[]) => JSON.stringify(a) === JSON.stringify(b);
   const pcFuse = ['5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A', '-A'];
-  const pcBody = ['30A', '50A', '100A', '200A'];
+  const pcBody = ['30A', '50A', '100A'];
   const pf = ['5A', '7.5A', '10A', '15A', '20A', '30A', '40A', '50A', '60A', '75A', '100A', '-A'];
   for (const prefix of ['tr', 'cap']) {
     if (!same(opts(`${prefix}PcRating`), pcBody)) fail(`${prefix}：PC本体の定格電流の選択肢が違います（${opts(`${prefix}PcRating`).join('・')}）`);

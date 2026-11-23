@@ -150,7 +150,8 @@ export const YES_NO_Q: Choice[] = [
 export const amps = (...vals: string[]): Choice[] => vals.map((v) => ({ value: v, label: v }));
 /** 図面に電流が「-A」と書かれている（まだ決まっていない・未記入）ときの選択肢。図面には「T-A」「F:-A」のように、そのまま出る */
 export const UNFILLED_AMP: Choice = { value: '-A', label: '-A（未記入）' };
-export const PC_RATINGS = amps('30A', '50A', '100A', '200A');
+/** PC本体の定格電流。実際に使われるのは、30A・50A・100A（200Aは、選択肢に入れない。必要なときは、手で入力できる） */
+export const PC_RATINGS = amps('30A', '50A', '100A');
 export const PC_FUSES = [...amps('5A', '7.5A', '10A', '12.5A', '15A', '20A', '25A', '30A', '50A', '60A', '75A', '100A'), UNFILLED_AMP];
 /** GS（ガス開閉器）の定格電圧・定格電流の選択肢。電流が不明なときは「-A」（図面には「7200V -A」のように書く） */
 export const GS_VOLTAGES: Choice[] = [{ value: '7200', label: '7200V' }, { value: '6600', label: '6600V' }];

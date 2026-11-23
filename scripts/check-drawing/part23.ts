@@ -9,11 +9,12 @@ import { fromLayout } from '../../apps/web/src/editor/doc.ts';
 import { inspectDrawing } from '../../apps/web/src/editor/inspect.ts';
 import { answersSpread, fail } from './common.ts';
 
-console.log('\n■ PC：定格電流に200A・ヒューズの本数（空欄は自動）');
+console.log('\n■ PC：定格電流の選択肢（30A・50A・100A）・ヒューズの本数（空欄は自動）');
 {
   const bad: string[] = [];
   const opts = (id: string) => QUESTIONS.find((q) => q.id === id)?.options?.map((o) => String(o.value)) ?? [];
-  for (const id of ['trPcRating', 'capPcRating']) if (!opts(id).includes('200A')) bad.push(`${id} の選択肢に、200Aがありません`);
+  for (const id of ['trPcRating', 'capPcRating']) if (opts(id).includes('200A')) bad.push(`${id} の選択肢に、200Aが残っています（PCの定格電流は、30A・50A・100Aだけ）`);
+  for (const id of ['trPcRating', 'capPcRating']) if (!QUESTIONS.find((q) => q.id === id)?.allowFreeInput) bad.push(`${id}：200Aなどを手で入力できません`);
   for (const id of ['trPcFuseCount', 'capPcFuseCount']) if (opts(id).join() !== '1,2,3') bad.push(`${id} の選択肢が、1・2・3ではありません（${opts(id).join()}）`);
   const make = (extra: Answers): ReturnType<typeof buildComposition> => {
     const raw: Answers = {
@@ -50,5 +51,5 @@ console.log('\n■ PC：定格電流に200A・ヒューズの本数（空欄は�
   const problems = inspectDrawing(doc, 'A3', 'landscape').filter((i) => ['overlap', 'through', 'floating', 'skew', 'stray'].includes(i.kind));
   if (problems.length > 0) bad.push(`PCの文字が増えた図面に、点検の問題が ${problems.length}件あります`);
   if (bad.length > 0) fail(`PCの定格・本数に問題が ${bad.length}件あります（例：${bad.slice(0, 3).join(' ／ ')}）`);
-  else console.log('  PCの定格電流に200Aが選べる。ヒューズの本数は、空欄なら自動（電灯2本・動力3本・コンデンサ3本）、答えがあればそれ（台ごと）');
+  else console.log('  PCの定格電流は、30A・50A・100Aから選べる（200Aなどは、手で入力できる）。ヒューズの本数は、空欄なら自動（電灯2本・動力3本・コンデンサ3本）、答えがあればそれ（台ごと）');
 }
