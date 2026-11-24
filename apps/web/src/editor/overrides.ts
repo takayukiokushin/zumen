@@ -290,10 +290,35 @@ export function rebuildWithOverrides(
           for (const n of owners.get(root(i)) ?? []) extraLinks.set(n, (extraLinks.get(n) ?? new Set()).add(sameName(o.id)));
         }
       });
+      // 各組が、記号につないである線で、つながっているもとからある機器（変圧器など）
+      const directOld = new Map<string, Set<string>>();
+      for (const it of generated.items) {
+        if (it.kind !== 'wire' || !it.at1 || !it.at2) continue;
+        const a = topName(sameName(it.at1.item));
+        const b = topName(sameName(it.at2.item));
+        for (const [n, o] of [[a, b], [b, a]] as const) {
+          if (group.has(n) && known.has(o)) directOld.set(n, (directOld.get(n) ?? new Set()).add(o));
+        }
+      }
+      const directOf = (rootName: string): Set<string> => {
+        const out = new Set<string>();
+        for (const n of group.keys()) if (find(n) === rootName) for (const o of directOld.get(n) ?? []) out.add(o);
+        return out;
+      };
       for (const [r, names] of owners) {
         if (touchesOld.has(r) || names.size < 2) continue;
         const [first, ...rest] = [...names];
-        for (const n of rest) group.set(find(n), find(first!));
+        for (const n of rest) {
+          const ra = find(first!);
+          const rb = find(n);
+          if (ra === rb) continue;
+          // 両方の組が、それぞれ別のもとからある機器（別の変圧器など）に、すでにつながっているときは、1つにしない
+          // （1つにして、同じ量だけ動かすと、片方の機器とのあいだの縦の線が、斜めになる。共通の母線などは、あとで、線を動かし直す処理が、のばす）
+          const da = directOf(ra);
+          const db = directOf(rb);
+          if (da.size > 0 && db.size > 0 && ![...da].some((o) => db.has(o))) continue;
+          group.set(rb, ra);
+        }
       }
     }
     // 組に、線でつながっているもとからある機器（主回路の上下の機器など）があれば、その機器の動きに合わせる
