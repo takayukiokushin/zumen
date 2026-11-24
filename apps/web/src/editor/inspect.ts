@@ -228,7 +228,7 @@ const BRIDGE_REACH = 400;
 /** 向かい合う2本が「同じ直線の上」とみなす、横（縦）のずれ */
 const BRIDGE_SKEW = 1.5;
 
-interface FreeEnd {
+export interface FreeEnd {
   wire: DocWire;
   end: 1 | 2;
   x: number;
@@ -239,7 +239,7 @@ interface FreeEnd {
 }
 
 /** 宙に浮いている線の端（縦横のまっすぐな線だけ）。どこにもつながっていないもの */
-function freeEnds(doc: Doc): FreeEnd[] {
+export function freeEnds(doc: Doc): FreeEnd[] {
   const all = wiresOf(doc);
   const out: FreeEnd[] = [];
   for (const w of all) {

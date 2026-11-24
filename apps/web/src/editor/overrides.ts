@@ -1,5 +1,5 @@
 import { rotatedBox } from '@zumen/layout';
-import { nudgeSymbolLabel, throughPairs } from './inspect.ts';
+import { freeEnds, nudgeSymbolLabel, throughPairs } from './inspect.ts';
 import { alignSkewedColumns, skewKeys } from './alignSkew.ts';
 import { followAutoWires } from './wireFollow.ts';
 import { applyAnchors, seatOnWire, baselineOf, defOf, freshId, moveItem, moveItems, removeItem, replaceSymbol, sameName, wireKey } from './doc.ts';
@@ -176,6 +176,14 @@ export function rebuildWithOverrides(
     const g = gen.get(id);
     if (g) work = removeItem(work, g.id);
     else dormant++;
+  }
+  // 消した機器につながっていた線のうち、片方がまだ別の線につながっていて、もう片方の端が、何にもつながらず、宙に浮いているもの
+  // （消したZPDへの枝線など）は、消す。ただし、1本ずつ判断して、その先につながっている線は、巻き込まない
+  // （上の機器を消したときに、下の母線や変圧器への線まで、連鎖して消えてしまわないように）
+  if (ov.removed.length > 0) {
+    const free = freeEnds(work);
+    const stub = new Set(free.filter((e) => e.wire.orphan).map((e) => e.wire.id));
+    if (stub.size > 0) work = { ...work, items: work.items.filter((it) => !stub.has(it.id)) };
   }
   // 手で消した線
   const goneKeys = new Set(ov.wiresRemoved);
