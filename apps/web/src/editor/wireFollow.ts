@@ -161,6 +161,18 @@ export function followAutoWires(generated: Doc, work: Doc): Doc {
     const k = `${Math.round(e.x * 2)}:${Math.round(e.y * 2)}`;
     buckets.set(k, [...(buckets.get(k) ?? []), i]);
   });
+  // 同じ向きの線どうし（縦と縦・横と横）が、一直線に続いている点を、先にそろえる。
+  // 直角に出ている線は、あとで、のばして届かせられるが、一直線に続く線は、のばせない（離れると、間がつながらずに、端が浮く）。
+  // 先に、直角の線とそろえてしまうと、動き量が食い違う、つなぎ先（記号につないである、下の線）と、そろえられなくなる
+  // そのうち、直角に出ている線が無い点（ただの継ぎ目）を、いちばん先に。直角の線がある点は、そこで折れ曲がれる（のばして届かせられる）ので、あとにする
+  for (const strict of [true, false]) {
+    for (const list of buckets.values()) {
+      const vs = list.filter((e) => isV(wires[e >> 1]!));
+      const hs = list.filter((e) => isH(wires[e >> 1]!));
+      if (!strict || hs.length === 0) for (let a = 1; a < vs.length; a++) joinIfCompatible(ufx, 'x', vs[0]!, vs[a]!);
+      if (!strict || vs.length === 0) for (let a = 1; a < hs.length; a++) joinIfCompatible(ufy, 'y', hs[0]!, hs[a]!);
+    }
+  }
   for (const list of buckets.values()) {
     for (let a = 1; a < list.length; a++) {
       joinIfCompatible(ufx, 'x', list[0]!, list[a]!);
