@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { ANALYZE_STAGE_NO, ANALYZE_STAGE_TOTAL, analyze, validateImages } from './analyze.ts';
+import { ANALYZE_STAGE_NO, ANALYZE_STAGE_TOTAL, MAX_IMAGES, analyze, validateImages } from './analyze.ts';
 import { cancelJob, getJob, purgeAnalyzeJobs, runningJobOf, startJob } from './analyze-jobs.ts';
 import { describeAnalyzeFailure } from './analyze-errors.ts';
 import { startAutoBackup } from './backup.ts';
@@ -116,13 +116,13 @@ app.post('/api/analyze', requireAuth, async (c) => {
     );
   }
   const body = (await c.req.json().catch(() => null)) as {
-    images?: { mediaType: string; data: string }[];
+    images?: { mediaType: string; data: string; caption?: string }[];
     answers?: Answers;
     lang?: string;
   } | null;
   if (!body) return c.json({ error: 'うまく受け取れませんでした。もう一度お試しください。' }, 400);
   if (!body.images?.length) return c.json({ error: '画像が選ばれていません。画像を1枚以上選んでから、もう一度お試しください。' }, 400);
-  if (body.images.length > 10) return c.json({ error: '画像は一度に10枚までです。何回かに分けて、読み取ってください。' }, 400);
+  if (body.images.length > MAX_IMAGES) return c.json({ error: `画像は一度に${MAX_IMAGES}枚までです。何回かに分けて、読み取ってください。` }, 400);
 
   // 送る前の確認（形式・大きさ・PDFのページ数）。問題があれば、AI に送らず、すぐ断る
   try {
@@ -140,7 +140,8 @@ app.post('/api/analyze', requireAuth, async (c) => {
   // 裏で読み取りを始めて、すぐ「受け付けました」と返す（外から入る設定の、約100秒の制限に、引っかからないように）。
   // 結果は、画面が、GET /api/analyze/:id で受け取る
   const answers = body.answers ?? {};
-  const images = body.images;
+  // 説明の文は、文字だけ・長すぎないものだけ受け付ける
+  const images = body.images.map((i) => ({ mediaType: i.mediaType, data: i.data, ...(typeof i.caption === 'string' && i.caption ? { caption: i.caption.slice(0, 400) } : {}) }));
   // 画面の言葉（決まった5つだけ受け付ける）
   const lang = ['ja', 'en', 'fr', 'zh', 'ko'].includes(String(body.lang)) ? String(body.lang) : undefined;
   const job = startJob(who, (signal, setStage) => analyze(images, answers, signal, setStage, lang));

@@ -9,12 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@zumen/ai": "workspace:*",
     "@zumen/knowledge": "workspace:*",
-    "@zumen/symbols": "workspace:*",
     "@zumen/layout": "workspace:*",
-    "@zumen/ai": "workspace:*"
+    "@zumen/symbols": "workspace:*",
+    "pdfjs-dist": "4.10.38",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

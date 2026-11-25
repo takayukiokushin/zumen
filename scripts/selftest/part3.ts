@@ -906,7 +906,7 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
     const { ROOT, sleep, freePort } = await import('./common.ts');
     // 疑似の AI サーバー（Anthropic の messages API のふりをする）
     type Mode = 'ok' | 'slow' | 'hang' | 'cut' | 'overloaded' | 'maxtokens' | 'staged';
-    const fake = { mode: 'ok' as Mode, slowMs: 600, hits: 0, aborted: 0 };
+    const fake = { mode: 'ok' as Mode, slowMs: 600, hits: 0, aborted: 0, lastBody: '' };
     // 本物の AI と同じ、少しずつ届く形（SSE）。アプリは、この形で受け取る（段階の表示のため）
     const sse = (ev: string, data: unknown) => `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`;
     const answerText = JSON.stringify({ answers: [], evidence: [], uncertain: [], notes: ['試験'], questions: [] });
@@ -926,8 +926,10 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
       req.on('close', () => {
         if (!done) fake.aborted++;
       });
-      req.resume();
+      const chunks: Buffer[] = [];
+      req.on('data', (ch: Buffer) => chunks.push(ch));
       req.on('end', () => {
+        fake.lastBody = Buffer.concat(chunks).toString();
         const send = (code: number, body: string) => {
           done = true;
           res.writeHead(code, { 'content-type': 'application/json' });
@@ -1157,8 +1159,20 @@ export async function part3(c: Awaited<ReturnType<typeof part2>>) {
 
       // 9. 大きすぎる・多すぎる：AI に送る前に、すぐ断る（待たされない・料金がかからない）
       reset('ok');
-      const eleven = await post(c1, body(Array.from({ length: 11 }, () => ({ mediaType: 'image/png', data: png }))));
-      check('画像が11枚以上のとき、すぐ断る', eleven.status === 400 && /10枚/.test(eleven.error) && fake.hits === 0, `${eleven.status}`);
+      const tooMany = await post(c1, body(Array.from({ length: 61 }, () => ({ mediaType: 'image/png', data: png }))));
+      check('画像が61枚以上のとき、すぐ断る', tooMany.status === 400 && /60枚/.test(tooMany.error) && fake.hits === 0, `${tooMany.status}`);
+      // 大きな図面は、画面が、拡大して分けて送る。12枚（全体図＋拡大図）は、受け付けて、説明の文を、画像の前に添えて、AI に渡す
+      reset('ok');
+      const split = await post(
+        c1,
+        body(Array.from({ length: 12 }, (_, i) => ({ mediaType: 'image/png', data: png, caption: `【試験：${i === 0 ? '全体' : `拡大図${i}`}】` })) as { mediaType: string; data: string }[]),
+      );
+      const sentBody = JSON.parse(fake.lastBody || '{}') as { messages?: { content?: { type: string; text?: string }[] }[] };
+      const sent = sentBody.messages?.[0]?.content ?? [];
+      const textAt = sent.findIndex((b) => b.type === 'text' && /試験：拡大図3/.test(b.text ?? ''));
+      check('画像が12枚（大きな図面を分けたもの）でも受け付ける', split.status === 200 && fake.hits === 1, `${split.status}`);
+      check('分けた画像には、「何の画像か」の説明の文が、画像の前に添えて、AI に渡る', textAt >= 0 && sent[textAt + 1]?.type === 'image' && sent.filter((b) => b.type === 'image').length === 12, `説明の位置 ${textAt}・画像 ${sent.filter((b) => b.type === 'image').length}枚`);
+      reset('ok');
       const pages = '/Type /Page '.repeat(11);
       const pdf = await post(c1, body([{ mediaType: 'application/pdf', data: Buffer.from(pages).toString('base64') }]));
       check('PDF が11ページ以上のとき、AI に送らず、すぐ断る', pdf.status === 400 && /ページ数が多すぎ/.test(pdf.error) && fake.hits === 0 && pdf.ms < 3000, `${pdf.status}・${pdf.ms}ms`);
