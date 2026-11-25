@@ -508,6 +508,14 @@ export function rebuildWithOverrides(
   // 手で足した記号・手で動かした記号の文字が、作り直しで新しく置かれた記号（入力で足した LA など）に重なったときだけ、重ならない場所へ逃がす
   // （重なっていなければ、何も変えない。手で動かした文字の位置も、そのまま）
   for (const id of touched) if (work.items.some((it) => it.kind === 'symbol' && it.id === id)) work = nudgeSymbolLabel(work, id);
+  // 手で動かしていない文字（標準の位置にある文字）も、作り直しで、まわりの記号が動いて、記号に重なったときは、重ならない場所へ逃がす
+  // （重なっていなければ、何も変えない。手で動かした文字は、そのまま）
+  for (const it of work.items) {
+    if (it.kind !== 'symbol' || it.label.length === 0 || touched.has(it.id)) continue;
+    const e = ov.moved[sameName(it.id)];
+    if (e && (e.dLabelDx !== undefined || e.dLabelDy !== undefined || e.label)) continue;
+    work = nudgeSymbolLabel(work, it.id);
+  }
   const all = work.items.filter((it): it is DocSymbol => it.kind === 'symbol' && !it.parent);
   let overlaps = 0;
   const overlapIds = new Set<string>();
