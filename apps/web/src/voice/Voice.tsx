@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import type { Answers } from '@zumen/knowledge';
+import type { Answers, Value } from '@zumen/knowledge';
 import { VOICE_VERSION, buildReview, buildVoiceInstruction, parseVoiceResult } from '@zumen/ai';
 import type { ReviewItem, VoiceParse } from '@zumen/ai';
-import { AnalysisReview } from '../analyze/AnalysisReview.tsx';
+import type { AiApplied } from '../analyze/applied.ts';
+import { VoiceReview } from './VoiceReview.tsx';
 import { useT } from '../i18n/useT.ts';
 import { Rich } from '../i18n/Rich.tsx';
 import { translateByTemplate } from '../session/serverMessages.ts';
@@ -18,8 +19,11 @@ import { getCurrentLang } from '../i18n/index.ts';
 
 interface Props {
   answers: Answers;
-  onApply: (patch: Answers) => void;
+  onApply: (patch: Answers) => AiApplied;
+  onUndo: (applied: AiApplied) => void;
+  onSetAnswer: (key: string, value: Value) => void;
   onGoToHearing: () => void;
+  onGoToDrawing: () => void;
 }
 
 /** 文字をコピーする。https でない画面（社内のアドレス）では、新しい方法が使えないので、古い方法も試す */
@@ -51,7 +55,7 @@ async function copyText(text: string): Promise<boolean> {
 /** 取り込みの結果の文（packages/ai が日本語で作る）を、選んでいる言葉にする。型に合わなければ、そのまま */
 const vp = (m: string): string => (getCurrentLang() === 'ja' ? m : (translateByTemplate('vp.', m) ?? m));
 
-export function Voice({ answers, onApply, onGoToHearing }: Props) {
+export function Voice({ answers, onApply, onUndo, onSetAnswer, onGoToHearing, onGoToDrawing }: Props) {
   const t = useT();
   const [text, setText] = useState('');
   const [parsed, setParsed] = useState<{ id: number; parse: VoiceParse; review: ReviewItem[] } | null>(null);
@@ -123,16 +127,16 @@ export function Voice({ answers, onApply, onGoToHearing }: Props) {
       </section>
 
       {parsed?.parse.result && (
-        <AnalysisReview
+        <VoiceReview
           key={parsed.id}
           result={parsed.parse.result}
           review={parsed.review}
-          evidenceLabel={t('voice.evidence')}
-          notesLabel={t('voice.notes')}
-          onApply={(patch) => {
-            onApply(patch);
-            onGoToHearing();
-          }}
+          answers={answers}
+          onApply={onApply}
+          onUndo={onUndo}
+          onSetAnswer={onSetAnswer}
+          onGoToHearing={onGoToHearing}
+          onGoToDrawing={onGoToDrawing}
         />
       )}
 

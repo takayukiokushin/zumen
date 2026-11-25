@@ -1529,6 +1529,7 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 .ai-q dl { margin: 0 0 calc(8px * var(--text-scale)); display: grid; grid-template-columns: max-content 1fr; gap: calc(4px * var(--text-scale)) calc(12px * var(--text-scale)); }
 .ai-q dt { font-weight: 600; opacity: 0.8; }
 .ai-q dd { margin: 0; overflow-wrap: anywhere; }
+.ai-q.error { border-left-color: #b3261e; }
 .ai-q-ack { display: flex; align-items: center; gap: calc(10px * var(--text-scale)); margin-top: calc(9px * var(--text-scale)); min-height: 48px; padding: calc(6px * var(--text-scale)) calc(12px * var(--text-scale)); border: 2px solid var(--line, #d0d4da); border-radius: 8px; font-weight: 700; cursor: pointer; }
 .ai-q-ack input { width: calc(20px * var(--text-scale)); height: calc(20px * var(--text-scale)); flex: none; accent-color: #1a7f37; cursor: pointer; }
 .ai-q-ack:has(input:checked) { border-color: #1a7f37; background: color-mix(in srgb, #1a7f37 14%, transparent); }

@@ -942,7 +942,10 @@ export function App() {
             <Voice
               answers={effective}
               onApply={applyFromAi}
+              onUndo={undoAiApply}
+              onSetAnswer={setAnswer}
               onGoToHearing={() => setTab('hearing')}
+              onGoToDrawing={() => setTab('drawing')}
             />
           ) : tab === 'analyze' ? null : (
             <KeepScroll store={hearingScroll.current} projectId={projectId} className="hearing-pane">

@@ -26,6 +26,8 @@ export interface ReviewItem {
   /** メモのどこから読み取ったか */
   evidence?: string;
   message: string;
+  /** 「未回答の必須項目」から作った確認事項（画面は、答える欄の一覧に、まとめて出す） */
+  source?: 'missing';
 }
 
 const labelOf = (id: string): string => QUESTIONS.find((q) => q.id === id)?.label ?? id;
@@ -74,6 +76,7 @@ export function buildReview(result: AnalysisResult, current: Answers): ReviewIte
       questionId: q.id,
       label: q.label,
       message: 'メモから読み取れませんでした。入力してください。',
+      source: 'missing',
     });
   }
 

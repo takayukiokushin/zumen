@@ -1,13 +1,12 @@
-import { useMemo, useRef, useState } from 'react';
-import { missingRequiredFields, requiredFields } from '@zumen/knowledge';
-import { missingTitle } from '../missingLabel.ts';
+import { useState } from 'react';
+import { missingRequiredFields } from '@zumen/knowledge';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
-import { Field } from '../Field.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
 import { displayValue, labelOf } from './AnalysisReview.tsx';
 import type { AiApplied } from './applied.ts';
 import { SketchQuestions } from './SketchQuestions.tsx';
+import { RequiredList } from './RequiredList.tsx';
 
 /**
  * スケッチの読み取りが終わったあとの画面（読み取った内容は、終わったときに、自動で反映してある。第14弾 項目6）。
@@ -41,28 +40,9 @@ export function SketchResult({
   const tx = useTx();
   const [showChanges, setShowChanges] = useState(false);
 
-  // 読み取った内容を足したうえで、必須なのに答えが無いものを、確認事項にする（最初に出たものは、答えたあとも出したままにする）
-  const firstMissing = useMemo(() => missingRequiredFields({ ...current, ...(result.answers as Answers) }), []); // eslint-disable-line react-hooks/exhaustive-deps
-  const nowMissing = missingRequiredFields(current);
-  // 出た項目（最初から出ていたものと、答えたあとに新しく出たもの）を覚えておく。答えても、一覧から消さない
-  // （答えた瞬間に項目が消えると、選んだ内容が見えず、次にどこを答えればよいか、見失うため）
-  const shown = useRef<Set<string>>(new Set(firstMissing.map((m) => m.key)));
-  for (const m of nowMissing) shown.current.add(m.key);
+  const stillMissing = missingRequiredFields(current).length > 0;
   // AIが質問した項目は、「AIからの質問」のほうに出すので、ここからは外す（二重に聞かない）
   const asked = new Set(result.questions.filter((q) => q.questionId).map((q) => q.questionId));
-  // 並びは入力画面と同じ。答えを変えて、条件に合わなくなった項目（別の選択で要らなくなったもの）は、一覧から外れる
-  const rows = requiredFields(current).filter((f) => shown.current.has(f.key) && !asked.has(f.key));
-  const stillMissing = nowMissing.length > 0;
-  // 入力画面と同じ、エリアごとのまとまりにする（1か所目と、全体の項目は、1つ目。2か所目以降は、それぞれ別）
-  const groups = (() => {
-    const m = new Map<number, typeof rows>();
-    for (const r of rows) m.set(r.areaNo ?? 1, [...(m.get(r.areaNo ?? 1) ?? []), r]);
-    return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([no, list]) => ({ no, rows: list }));
-  })();
-  const isAnswered = (v: unknown) => v !== undefined && v !== null && v !== '';
-  const doneCount = rows.filter((r) => isAnswered(current[r.key])).length;
-  // 項目が少ないときは、ぜんぶ開いておく。多いとき（複数エリア）は、1か所目だけ開いて、残りは、見出しを押して開く
-  const openAll = rows.length <= 12;
 
   return (
     <>
@@ -105,47 +85,14 @@ export function SketchResult({
 
       <SketchQuestions result={result} current={current} onSetAnswer={onSetAnswer} onGoToHearing={onGoToHearing} />
 
-      {rows.length > 0 && (
-        <section className="panel">
-          <h2>{t('sketch.answer')}</h2>
-          <p className="sketch-count" role="status">
-            {t('sketch.count', { total: rows.length, done: doneCount })}
-            {groups.length > 1 && (
-              <button type="button" className="btn" onClick={onGoToHearing}>
-                {t('sketch.continueHearing')}
-              </button>
-            )}
-          </p>
-          {groups.map((g) => {
-            const done = g.rows.filter((r) => isAnswered(current[r.key])).length;
-            const fields = (
-              <div className="fields">
-                {g.rows.map((r) => (
-                  <Field
-                    key={r.key}
-                    question={{ ...r.question, label: missingTitle(r, t, tx) }}
-                    fieldKey={r.key}
-                    value={current[r.key]}
-                    onChange={onSetAnswer}
-                    context={{ ...r.context, ...current }}
-                  />
-                ))}
-              </div>
-            );
-            // エリアが1か所だけのときは、見出しも折りたたみも付けない
-            if (groups.length === 1) return <div key={g.no}>{fields}</div>;
-            return (
-              <details key={g.no} className="sketch-group" open={openAll || g.no === 1}>
-                <summary>
-                  <b>{g.no === 1 ? t('sketch.groupFirst') : t('hearing.areaNth', { n: g.no })}</b>
-                  <span className={done === g.rows.length ? 'done' : ''}>{done === g.rows.length ? t('sketch.groupDone') : t('sketch.groupCount', { done, total: g.rows.length })}</span>
-                </summary>
-                {fields}
-              </details>
-            );
-          })}
-        </section>
-      )}
+      <RequiredList
+        title={t('sketch.answer')}
+        current={current}
+        initial={{ ...current, ...(result.answers as Answers) }}
+        exclude={asked}
+        onSetAnswer={onSetAnswer}
+        onGoToHearing={onGoToHearing}
+      />
     </>
   );
 }
