@@ -167,16 +167,22 @@ export interface MissingField {
   context: Answers;
 }
 
+/** 必須項目の1行ぶん（答えがあるか、いまの時点の表示と同じ行の並びで） */
+export interface RequiredField extends MissingField {
+  /** もう答えているか */
+  answered: boolean;
+}
+
 /**
- * 未回答の必須項目の一覧。入力画面と同じ行の並びから数える（2台目以降・2か所目以降も含む）。
- * 白紙で始めた案件は、初期値を足さない（実際に効いている回答 effectiveAnswers で見る）。
+ * 必須の項目の一覧（答えたものも、まだのものも）。入力画面と同じ行の並びから数える（2台目以降・2か所目以降も含む）。
+ * いま、表示される（条件に合っている）必須の項目だけ。白紙で始めた案件は、初期値を足さない（実際に効いている回答 effectiveAnswers で見る）。
  */
-export function missingRequiredFields(rawAnswers: Answers, opts: AskOptions = {}): MissingField[] {
+export function requiredFields(rawAnswers: Answers, opts: AskOptions = {}): RequiredField[] {
   const effective = effectiveAnswers(rawAnswers);
   const ctx = rowsContext(effective, opts.resolvedByAi ?? new Set());
-  const out: MissingField[] = [];
+  const out: RequiredField[] = [];
   for (const r of allInputRows(ctx)) {
-    if (!r.question.required || !isUnanswered(effective[r.key])) continue;
+    if (!r.question.required) continue;
     const group = QUESTION_GROUPS.find((g) => g.id === r.question.group);
     const repeating = group?.repeatCountKey !== undefined;
     // 2か所目以降のエリアの項目：エリアごとのグループは area、エリア自体の質問（形態・設置場所…）は unit が「何か所目か」
@@ -191,9 +197,20 @@ export function missingRequiredFields(rawAnswers: Answers, opts: AskOptions = {}
       ...(areaNo ? { areaNo } : {}),
       ...(unitNo ? { unitNo, unitName } : {}),
       context: viewAt(ctx.views[r.area]!, r.unit),
+      answered: !isUnanswered(effective[r.key]),
     });
   }
   return out;
+}
+
+/**
+ * 未回答の必須項目の一覧。入力画面と同じ行の並びから数える（2台目以降・2か所目以降も含む）。
+ * 白紙で始めた案件は、初期値を足さない（実際に効いている回答 effectiveAnswers で見る）。
+ */
+export function missingRequiredFields(rawAnswers: Answers, opts: AskOptions = {}): MissingField[] {
+  return requiredFields(rawAnswers, opts)
+    .filter((f) => !f.answered)
+    .map(({ answered: _answered, ...f }) => f);
 }
 
 /** 未回答の必須項目（名前つきの質問の形）。2か所目以降・2件目以降は、名前の前に「2か所目：」「2台目：」が付く */

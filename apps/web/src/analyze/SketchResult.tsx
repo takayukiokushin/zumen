@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { missingRequiredFields } from '@zumen/knowledge';
+import { useMemo, useRef, useState } from 'react';
+import { missingRequiredFields, requiredFields } from '@zumen/knowledge';
 import { missingLabel } from '../missingLabel.ts';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
@@ -44,9 +44,14 @@ export function SketchResult({
   // 読み取った内容を足したうえで、必須なのに答えが無いものを、確認事項にする（最初に出たものは、答えたあとも出したままにする）
   const firstMissing = useMemo(() => missingRequiredFields({ ...current, ...(result.answers as Answers) }), []); // eslint-disable-line react-hooks/exhaustive-deps
   const nowMissing = missingRequiredFields(current);
+  // 出た項目（最初から出ていたものと、答えたあとに新しく出たもの）を覚えておく。答えても、一覧から消さない
+  // （答えた瞬間に項目が消えると、選んだ内容が見えず、次にどこを答えればよいか、見失うため）
+  const shown = useRef<Set<string>>(new Set(firstMissing.map((m) => m.key)));
+  for (const m of nowMissing) shown.current.add(m.key);
   // AIが質問した項目は、「AIからの質問」のほうに出すので、ここからは外す（二重に聞かない）
   const asked = new Set(result.questions.filter((q) => q.questionId).map((q) => q.questionId));
-  const rows = [...firstMissing, ...nowMissing.filter((m) => !firstMissing.some((f) => f.key === m.key))].filter((m) => !asked.has(m.key));
+  // 並びは入力画面と同じ。答えを変えて、条件に合わなくなった項目（別の選択で要らなくなったもの）は、一覧から外れる
+  const rows = requiredFields(current).filter((f) => shown.current.has(f.key) && !asked.has(f.key));
   const stillMissing = nowMissing.length > 0;
   // 入力画面と同じ、エリアごとのまとまりにする（1か所目と、全体の項目は、1つ目。2か所目以降は、それぞれ別）
   const groups = (() => {
