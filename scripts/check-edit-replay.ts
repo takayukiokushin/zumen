@@ -244,7 +244,8 @@ for (let id = 0; id < N; id++) {
       // 線の上に乗せる記号（VCT・CT・ZCT）は、乗っている線が横に動いたとき、その線の真上へついていく（横の動きは、数えない）
       const g = syms(g2).find((x) => sameName(x.id) === n);
       const onWire = !!g && !!getSymbol(g.symbolId).onWire;
-      if (!o || (!onWire && Math.abs(o.dx - pm[n]!.dx) > 2) || Math.abs(o.dy - pm[n]!.dy) > 2) lost++;
+      // （線の上に乗せる記号を、横にだけ動かしていたときは、作り直しで、線の真上に戻って、動かした記録そのものが無くなる。数えない）
+      if (!o ? !(onWire && Math.abs(pm[n]!.dy) <= 2) : (!onWire && Math.abs(o.dx - pm[n]!.dx) > 2) || Math.abs(o.dy - pm[n]!.dy) > 2) lost++;
     }
     runs++;
     const isBad = after > before + auto;
