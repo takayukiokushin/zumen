@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { missingRequiredFields, requiredFields } from '@zumen/knowledge';
-import { missingLabel } from '../missingLabel.ts';
+import { missingTitle } from '../missingLabel.ts';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
 import { Field } from '../Field.tsx';
@@ -123,7 +123,7 @@ export function SketchResult({
                 {g.rows.map((r) => (
                   <Field
                     key={r.key}
-                    question={{ ...r.question, label: missingLabel(r, t, tx) }}
+                    question={{ ...r.question, label: missingTitle(r, t, tx) }}
                     fieldKey={r.key}
                     value={current[r.key]}
                     onChange={onSetAnswer}

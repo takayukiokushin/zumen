@@ -5,6 +5,7 @@ import type { AnalysisResult } from '@zumen/ai';
 import { Field } from '../Field.tsx';
 import { useT, useTx } from '../i18n/useT.ts';
 import { labelOf } from './AnalysisReview.tsx';
+import { keyTitle } from '../missingLabel.ts';
 
 /**
  * スケッチを読み取ったあとの、AIからの質問と、自信がない読み取りの確認（第18弾 E-②）。
@@ -73,7 +74,7 @@ export function SketchQuestions({
                 <li key={x.key} data-q={x.key} className={`ai-q${done ? ' done' : ''}`}>
                   <header>
                     <span className="no">{t('sketch.ai.cardNo', { n: x.no, total: qs.length })}</span>
-                    <b>{x.questionId ? labelOf(x.questionId, t, tx) : t('sketch.ai.untitled')}</b>
+                    <b>{x.questionId ? (keyTitle(x.questionId, t, tx) ?? labelOf(x.questionId, t, tx)) : t('sketch.ai.untitled')}</b>
                     {done && <span className="ok">{t('sketch.ai.answered')}</span>}
                   </header>
                   <dl>
@@ -130,7 +131,7 @@ export function SketchQuestions({
                 <li key={k} className={`ai-q${done ? ' done' : ''}`}>
                   <header>
                     <span className="no">{t('sketch.ai.cardNo', { n: i + 1, total: sure.length })}</span>
-                    <b>{labelOf(k, t, tx)}</b>
+                    <b>{keyTitle(k, t, tx) ?? labelOf(k, t, tx)}</b>
                     {done && <span className="ok">{t('sketch.confirm.checked')}</span>}
                   </header>
                   {result.evidence[k] && (
