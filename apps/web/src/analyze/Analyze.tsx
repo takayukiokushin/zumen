@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Answers, Value } from '@zumen/knowledge';
 import type { AnalysisResult } from '@zumen/ai';
+import { prepareImages } from './prepare.ts';
 import { api } from '../session/api.ts';
 import { SketchResult } from './SketchResult.tsx';
 import { AnalyzeProgress } from './Progress.tsx';
@@ -132,9 +133,12 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
       mine.ctl.abort();
     }, CLIENT_WAIT_MS);
     try {
+      // 大きな図面は、文字が読める大きさに、分けて渡す（ブラウザの中で、自動で。小さい図面・写真は、そのまま）
+      const prepared = await prepareImages(images.map((i) => ({ file: i.file, mediaType: i.mediaType, data: i.data })));
+      if (mine.ctl.signal.aborted) throw new DOMException('aborted', 'AbortError');
       const json = await api.analyze(
         {
-          images: images.map((i) => ({ mediaType: i.mediaType, data: i.data })),
+          images: prepared.map((i) => ({ mediaType: i.mediaType, data: i.data, ...(i.caption ? { caption: i.caption } : {}) })),
           answers,
           // 画面の言葉。AIが書く質問・注意書きを、この言葉にしてもらう
           lang: settings.lang,

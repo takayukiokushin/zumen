@@ -31,7 +31,12 @@ export interface SketchImage {
   mediaType: string;
   /** base64（データURLの接頭辞は付けない） */
   data: string;
+  /** この画像が何かを、AI に伝える文（大きな図面を、拡大して分けたときの、「何段目・何列目」など）。画像の前に添える */
+  caption?: string;
 }
+
+/** 1回に AI へ送る、画像の枚数の上限（大きな図面は、画面が、拡大して分けるので、1つのファイルが何枚にもなる） */
+export const MAX_IMAGES = 60;
 
 /** 読み取りの返事。確認の一覧（「確認してほしいこと」）は、スケッチ読み取りの画面では使わないので、返さない（音声入力は、画面側で作る） */
 export interface AnalyzeResponse {
@@ -126,12 +131,14 @@ export async function analyze(
   validateImages(images);
 
   const content: Anthropic.ContentBlockParam[] = [
-    ...images.map(
-      (img): Anthropic.ContentBlockParam =>
+    ...images.flatMap((img): Anthropic.ContentBlockParam[] => {
+      const block: Anthropic.ContentBlockParam =
         img.mediaType === 'application/pdf'
           ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: img.data } }
-          : { type: 'image', source: { type: 'base64', media_type: img.mediaType as 'image/png', data: img.data } },
-    ),
+          : { type: 'image', source: { type: 'base64', media_type: img.mediaType as 'image/png', data: img.data } };
+      // 説明の文は、画像の前に置く（どの画像かを、AI が取り違えないように）
+      return img.caption ? [{ type: 'text', text: img.caption }, block] : [block];
+    }),
     { type: 'text', text: buildUserPrompt(answers, lang) },
   ];
 
