@@ -82,7 +82,10 @@ const MANUAL: { name: string; run: (d: Doc, r: Rnd) => Doc }[] = [
   { name: 'まとめて動かす', run: (d, r) => { const s = syms(d); if (s.length < 2) return d; const i = Math.floor(r() * (s.length - 1)); return moveItems(d, s.slice(i, i + 2).map((x) => x.id), step4((r() - 0.5) * 40), step4((r() - 0.5) * 40)); } },
   { name: '記号を足す', run: (d, r) => { const b = docBounds(d); return addSymbol(d, pick(SYMS, r), b.x0 + r() * (b.x1 - b.x0), b.y0 + r() * (b.y1 - b.y0)).doc; } },
   { name: '記号を消す', run: (d, r) => { const s = syms(d); return s.length < 4 ? d : removeItem(d, pick(s, r).id); } },
-  { name: '記号を差し替える', run: (d, r) => { const s = syms(d); if (!s.length) return d; try { return replaceSymbol(d, pick(s, r).id, pick(SYMS, r)); } catch { return d; } } },
+  { name: '記号を差し替える', run: (d, r) => { const s = syms(d); if (!s.length) return d; const t = pick(s, r); const to = pick(SYMS, r);
+      // 画面と同じく、線の上に乗せる記号（VCT・CT・ZCT）と、ほかの記号は、差し替えない（形のつなぎ方が違う。画面が断る操作は、試さない）
+      if (!!getSymbol(t.symbolId).onWire !== !!getSymbol(to).onWire) return d;
+      try { return replaceSymbol(d, t.id, to); } catch { return d; } } },
   { name: '線の端を動かす', run: (d, r) => { const w = wiresOf(d); return w.length ? moveWireEnd(d, pick(w, r).id, r() < 0.5 ? 1 : 2, step4((r() - 0.5) * 40), step4((r() - 0.5) * 40)) : d; } },
   { name: '線の種類を変える', run: (d, r) => { const w = wiresOf(d); if (!w.length) return d; const t = pick(w, r); return setWireKind(d, [t.id], !t.dashed); } },
   { name: '線を足す', run: (d, r) => { const b = docBounds(d); const x = b.x0 + r() * (b.x1 - b.x0); const y = b.y0 + r() * (b.y1 - b.y0); return addWire(d, x, y, x + Math.round((r() - 0.5) * 100), y).doc; } },
