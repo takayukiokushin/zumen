@@ -573,6 +573,8 @@ export const ko: Dict = {
   'voice.notice': '<b>고객명·사업장명·도면명은 음성으로 말하지 않습니다.</b> 앱의 “설비를 입력해 만들기”에서 직접 입력하세요(정보 유출을 막기 위해서입니다. Claude에게는 전달하지 않습니다).',
   'voice.pasteTitle': 'Claude가 내놓은 문장 붙여 넣기',
   'voice.placeholder': 'Claude가 내놓은 문서(코드 블록)를 여기에 붙여 넣습니다',
+  'voice.clear': '입력한 내용 삭제',
+  'voice.clearHint': '붙여넣은 글과 읽은 결과를 모두 지웁니다 (이미 설비 입력에 반영한 내용은 그대로 남습니다)',
   'voice.read': '읽기',
   'voice.rejected': '<b>다음 {n}건은 가져오지 않았습니다:</b>',
   'voice.rejectedHint': 'Claude에게 “다음 항목은 가져오지 못했습니다”라고 전하고 수정한 문장을 내 달라고 하세요.',

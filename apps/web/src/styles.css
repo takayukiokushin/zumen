@@ -311,6 +311,7 @@ button.trend-chip:hover { text-decoration: underline; }
 .voice .rejected { background: var(--need-soft); border: 1px solid var(--need); }
 .voice .rejected ul { margin: 6px 0; padding-left: 1.3em; }
 .voice .rejected code { font-size: calc(12px * var(--text-scale)); }
+.voice-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--gap, 10px); }
 .voice-actions { display: flex; flex-wrap: wrap; gap: var(--gap, 10px); margin-bottom: 10px; }
 .ok-note-inline { margin: 0 0 10px; font-size: calc(12.5px * var(--text-scale)); color: var(--ok); }
 /* 「Claudeのプロジェクトを用意する」：見出しの左に矢印（閉じているときは▶、開いているときは▼） */

@@ -571,6 +571,8 @@ export const zh: Dict = {
   'voice.notice': '<b>客户名称、场所名称、图纸名称，请不要用语音说出。</b>请在应用的“输入设备并生成”中手动输入（为防止信息泄露，不会告知 Claude）。',
   'voice.pasteTitle': '粘贴 Claude 给出的文本',
   'voice.placeholder': '把 Claude 给出的文档（代码块）粘贴到这里',
+  'voice.clear': '删除已输入的内容',
+  'voice.clearHint': '清除粘贴的文字和读取结果（已应用到设备输入的内容会保留）',
   'voice.read': '读取',
   'voice.rejected': '<b>以下 {n} 项未导入：</b>',
   'voice.rejectedHint': '请告诉 Claude“以下项目无法导入”，让它给出修正后的文本。',

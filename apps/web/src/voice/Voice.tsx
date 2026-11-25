@@ -69,6 +69,11 @@ export function Voice({ answers, onApply, onUndo, onSetAnswer, onGoToHearing, on
     setCopied(ok ? t('voice.copied', { what }) : t('voice.copyFailed', { what }));
   };
 
+  const clear = () => {
+    setText('');
+    setParsed(null);
+  };
+
   const read = () => {
     const parse = parseVoiceResult(text);
     setParsed({ id: ++seq.current, parse, review: parse.result ? buildReview(parse.result, answers) : [] });
@@ -101,9 +106,15 @@ export function Voice({ answers, onApply, onUndo, onSetAnswer, onGoToHearing, on
           placeholder={t('voice.placeholder')}
           onChange={(e) => setText(e.target.value)}
         />
-        <button type="button" className="primary" disabled={text.trim() === ''} onClick={read}>
-          {t('voice.read')}
-        </button>
+        <div className="voice-row">
+          <button type="button" className="primary" disabled={text.trim() === ''} onClick={read}>
+            {t('voice.read')}
+          </button>
+          {/* 一撃で消す（確認の窓は出さない）。貼り付けた文章と、読み取った結果を、すべて消す。反映ずみの内容は、そのまま残る */}
+          <button type="button" className="btn danger" title={t('voice.clearHint')} disabled={text === '' && !parsed} onClick={clear}>
+            {t('voice.clear')}
+          </button>
+        </div>
 
         {parsed?.parse.error && <p className="err">{vp(parsed.parse.error)}</p>}
         {parsed?.parse.warnings.map((w, i) => (

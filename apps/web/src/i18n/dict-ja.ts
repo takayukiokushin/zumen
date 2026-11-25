@@ -575,6 +575,8 @@ export const ja = {
   'voice.notice': '<b>お客様名称・事業場名称・図面名称は、声では話しません。</b>アプリの「設備を入力して作成」で、手で入力してください（情報漏えいを防ぐためです。Claude には伝えません）。',
   'voice.pasteTitle': 'Claude が出した文章を貼り付ける',
   'voice.placeholder': 'Claudeから出てきた文書（コードブロック）を、ここに貼り付けます',
+  'voice.clear': '入力した内容を削除',
+  'voice.clearHint': '貼り付けた文章と、読み取った結果を、すべて消します（すでに設備入力に反映した内容は、そのまま残ります）',
   'voice.read': '読み取る',
   'voice.rejected': '<b>次の{n}件は、取り込みませんでした：</b>',
   'voice.rejectedHint': 'Claude に「次の項目は取り込めませんでした」と伝えて、直した文章を出してもらってください。',

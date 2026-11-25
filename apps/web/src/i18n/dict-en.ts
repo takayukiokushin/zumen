@@ -574,6 +574,8 @@ export const en: Dict = {
   'voice.notice': '<b>Do not say the customer name, site name or drawing name aloud.</b> Enter them by hand in “Enter equipment” in the app (to prevent information leaks; they are not given to Claude).',
   'voice.pasteTitle': 'Paste the text Claude produced',
   'voice.placeholder': 'Paste the document Claude produced (the code block) here',
+  'voice.clear': 'Delete what I entered',
+  'voice.clearHint': 'Clears the pasted text and the read result (what was already applied to the equipment inputs stays)',
   'voice.read': 'Read',
   'voice.rejected': '<b>The following {n} items were not imported:</b>',
   'voice.rejectedHint': 'Tell Claude “The following items could not be imported”, and ask it to produce a corrected text.',

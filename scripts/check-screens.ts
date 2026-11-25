@@ -24,6 +24,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answersSpread } from './check-drawing/common.ts';
+import { VOICE_FORMAT, VOICE_VERSION } from '../packages/ai/src/index.ts';
 import { digest, fromLayout, moveItem, replaceSymbol } from '../apps/web/src/editor/doc.ts';
 import { buildComposition, dropHiddenChoices, effectiveAnswers } from '../packages/knowledge/src/index.ts';
 import { hvStretches } from '../apps/web/src/editor/hvCable.ts';
@@ -698,6 +699,70 @@ try {
     } catch (e) {
       failed++;
       problems.push(`読み取りの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
+  // 音声入力から作成：貼り付けた文章と、読み取った結果は、別のタブに移っても消えない。「入力した内容を削除」で、一撃で消せる（第21弾 項目4）
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(() => {
+      try {
+        localStorage.setItem('zumen.helpSeen', '1');
+        localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+      } catch {}
+    });
+    const page = await ctx.newPage();
+    page.setDefaultTimeout(8000);
+    screens++;
+    try {
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '読み取りの検査' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      const tabBtn = (i: number) => page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(i);
+      await tabBtn(1).click({ force: true, timeout: 1500 });
+      await sleep(400);
+      const pasted = '```json\n' + JSON.stringify({ format: VOICE_FORMAT, version: VOICE_VERSION, answers: { sourceType: 'pole', sectionalizer: 'pas', transformerCount: '2' }, uncertain: ['sectionalizer'], evidence: { sectionalizer: '電柱の上のPAS' }, notes: [] }) + '\n```';
+      await page.fill('textarea.voice-paste >> nth=0', pasted);
+      await page.locator('.voice-row button.primary').click();
+      await page.waitForSelector('button.primary:has-text("設備入力に反映")', { timeout: 6000 });
+      // 別のタブに移って、戻る
+      await tabBtn(2).click({ force: true, timeout: 1500 });
+      await sleep(500);
+      await tabBtn(1).click({ force: true, timeout: 1500 });
+      await sleep(500);
+      const kept = await page.locator('textarea.voice-paste').first().inputValue();
+      const stillResult = await page.locator('button.primary:has-text("設備入力に反映")').count();
+      if (kept !== pasted || stillResult !== 1) {
+        failed++;
+        problems.push(`音声入力の検査：別のタブに移って戻ると、貼り付けた文章か読み取った結果が消えています（文章 ${kept === pasted ? '残っている' : '消えた'}・結果 ${stillResult ? '残っている' : '消えた'}）`);
+      }
+      // 「入力した内容を削除」：1回で消える（確認の窓は出ない）。右端に置いてある
+      const del = page.locator('.voice-row button.danger');
+      const pos = await page.evaluate(() => {
+        const row = document.querySelector('.voice-row') as HTMLElement | null;
+        const a = row?.querySelector('button.primary')?.getBoundingClientRect();
+        const b = row?.querySelector('button.danger')?.getBoundingClientRect();
+        return a && b ? { readX: a.left, delX: b.left, rowRight: row!.getBoundingClientRect().right, delRight: b.right } : null;
+      });
+      await del.click({ timeout: 2000 });
+      await sleep(300);
+      const after = await page.locator('textarea.voice-paste').first().inputValue();
+      const modal = await page.locator('.modal').count();
+      const resultAfter = await page.locator('button.primary:has-text("設備入力に反映")').count();
+      if (after !== '' || modal !== 0 || resultAfter !== 0 || !pos || pos.delX <= pos.readX || pos.rowRight - pos.delRight > 4) {
+        failed++;
+        problems.push(`音声入力の検査：「入力した内容を削除」が、1回で消せない・窓が出る・右端にありません（文章 ${after === '' ? '消えた' : '残っている'}・窓 ${modal}個・結果 ${resultAfter ? '残っている' : '消えた'}）`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`音声入力の検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
     }
     await ctx.close();
   }

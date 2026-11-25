@@ -575,6 +575,8 @@ export const fr: Dict = {
   'voice.notice': '<b>Le nom du client, le nom du site et le nom du schéma ne se disent pas à voix haute.</b> Saisissez-les à la main dans « Saisir les équipements » (pour éviter les fuites d’informations ; ils ne sont pas transmis à Claude).',
   'voice.pasteTitle': 'Coller le texte fourni par Claude',
   'voice.placeholder': 'Collez ici le document produit par Claude (le bloc de code)',
+  'voice.clear': 'Supprimer ce que j’ai saisi',
+  'voice.clearHint': 'Efface le texte collé et le résultat de la lecture (ce qui a déjà été appliqué aux entrées de l’équipement reste)',
   'voice.read': 'Lire',
   'voice.rejected': '<b>Les {n} éléments suivants n’ont pas été importés :</b>',
   'voice.rejectedHint': 'Dites à Claude « Les éléments suivants n’ont pas pu être importés » et demandez-lui un texte corrigé.',

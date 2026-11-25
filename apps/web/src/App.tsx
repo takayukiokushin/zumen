@@ -938,16 +938,7 @@ export function App() {
               }}
               heavy={heavyJob.api}
             />
-          ) : tab === 'voice' ? (
-            <Voice
-              answers={effective}
-              onApply={applyFromAi}
-              onUndo={undoAiApply}
-              onSetAnswer={setAnswer}
-              onGoToHearing={() => setTab('hearing')}
-              onGoToDrawing={() => setTab('drawing')}
-            />
-          ) : tab === 'analyze' ? null : (
+          ) : tab === 'analyze' || tab === 'voice' ? null : (
             <KeepScroll store={hearingScroll.current} projectId={projectId} className="hearing-pane">
               {!short && <div className="panel-bar">{panelToggles}</div>}
               <div
@@ -1012,6 +1003,22 @@ export function App() {
                 onAnalyzed={() => setSketchRead(true)}
                 onStatus={setAnalyzeStatus}
                 onGoToHearing={() => setTab('hearing')}
+              />
+              </ErrorBoundary>
+            </div>
+          )}
+          {/* 音声入力から作成：スケッチ読み取りと同じに、別のタブ・図面一覧を見ているあいだは、見えないだけで、作ったまま（貼り付けた文章も、読み取った結果も、消えない。利用者が「入力した内容を削除」を押すまで残る） */}
+          {projectId && (
+            <div className="analyze-keep" hidden={listing || tab !== 'voice'}>
+              <ErrorBoundary scope="screen" resetKey={projectId}>
+              <Voice
+                key={projectId}
+                answers={effective}
+                onApply={applyFromAi}
+                onUndo={undoAiApply}
+                onSetAnswer={setAnswer}
+                onGoToHearing={() => setTab('hearing')}
+                onGoToDrawing={() => setTab('drawing')}
               />
               </ErrorBoundary>
             </div>
