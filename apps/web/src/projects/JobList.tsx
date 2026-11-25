@@ -1,3 +1,4 @@
+import { lockIsMine } from '../session/place.ts';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../session/api.ts';
 import { makeOnce } from '../session/once.ts';
@@ -377,8 +378,8 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave, onRemo
                     <span className="name">
                       <Highlight text={p.name} needle={query} />
                     </span>
-                    {p.lock && p.lock.userId !== meId && (
-                      <b className="editing">　{t('project.editingBy', { user: p.lock.userName })}</b>
+                    {p.lock && !lockIsMine(p.lock, meId) && (
+                      <b className="editing">　{p.lock.userId === meId ? (p.lock.device ? t('lock.otherPlace', { device: p.lock.device }) : t('lock.otherPlaceUnknown')) : t('project.editingBy', { user: p.lock.userName })}</b>
                     )}
                     {/* 事業場名称・お客様番号があれば、名前の下に小さく添える（探して見つかった理由が分かる） */}
                     {(p.site_name || p.customer_no) && (
@@ -412,7 +413,7 @@ export function JobList({ meId, role, currentId, onOpen, onNew, canLeave, onRemo
                     <button
                       type="button"
                       className="btn danger job-delete"
-                      disabled={p.lock !== null && p.lock.userId !== meId}
+                      disabled={p.lock !== null && !lockIsMine(p.lock, meId)}
                       onClick={() => void remove(p)}
                       aria-label={t('project.deleteLabel', { name: p.name })}
                     >

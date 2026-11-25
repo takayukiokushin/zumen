@@ -160,6 +160,42 @@ export async function part2(c: Awaited<ReturnType<typeof part1>>) {
   check('横取りで名前が変わっていない', stillOriginal.name === '診断用の案件', stillOriginal.name);
   await call(b, `/api/projects/${created.id}/lock`, { method: 'DELETE' });
 
+  /* ---------- 7a. 同じアカウントの、別の場所（別のタブ・端末）でも、同時に編集させない（第21弾 項目6） ---------- */
+  say('\n■ 同時編集の排他（同じアカウントの、別の場所）');
+  {
+    const here = { 'x-zumen-client': 'tab-aaaaaaaa-1111' };
+    const there = { 'x-zumen-client': 'tab-bbbbbbbb-2222' };
+    const lockUrl = `/api/projects/${created.id}/lock`;
+    const put = (h: Record<string, string>, name: string) => call(a, `/api/projects/${created.id}`, { method: 'PUT', headers: h, body: JSON.stringify({ name }) });
+    const first = await call(a, lockUrl, { method: 'POST', headers: here, body: JSON.stringify({ device: 'Mac (Chrome)' }) });
+    const firstJson = (await first.json()) as { lock?: { clientId?: string; device?: string | null } };
+    check('編集を始めると、印に、場所の番号と、場所の名前が付く', first.ok && firstJson.lock?.clientId === 'tab-aaaaaaaa-1111' && firstJson.lock?.device === 'Mac (Chrome)', `${first.status}・${JSON.stringify(firstJson.lock ?? {})}`);
+    const sameAgain = await call(a, lockUrl, { method: 'POST', headers: here, body: '{}' });
+    check('同じ場所は、編集を続けられる（1分ごとの更新）', sameAgain.ok, `${sameAgain.status}`);
+    const other = await call(a, lockUrl, { method: 'POST', headers: there, body: JSON.stringify({ device: 'iPad (Safari)' }) });
+    const otherJson = (await other.json()) as { error?: string; lock?: { device?: string | null } };
+    check('同じアカウントでも、別の場所は、編集を始められない（409）', other.status === 409 && /別の場所/.test(otherJson.error ?? '') && otherJson.lock?.device === 'Mac (Chrome)', `${other.status}・${otherJson.error ?? ''}`);
+    check('別の場所は、保存できない（409）', (await put(there, '別の場所から')).status === 409);
+    check('別の場所は、「戻す」もできない', [409, 423].includes((await call(a, `/api/projects/${created.id}/restore-previous`, { method: 'POST', headers: there, body: '{}' })).status));
+    check('別の場所は、下書きも預けられない', (await call(a, `/api/projects/${created.id}/draft`, { method: 'PUT', headers: there, body: JSON.stringify({ name: 'x', answers: {}, drawing: null, sketchRead: false, baseUpdatedAt: null }) })).status === 409);
+    check('別の場所は、案件を消せない', (await call(a, `/api/projects/${created.id}`, { method: 'DELETE', headers: there })).status === 409);
+    check('同じ場所は、保存できる', (await put(here, '診断用の案件')).ok);
+    check('場所の番号を送らない古い画面は、これまでどおり、人だけで決める（保存できる）', (await put({}, '診断用の案件')).ok);
+    const listing = (await (await call(a, '/api/projects')).json()) as { projects: { id: string; lock: { device?: string | null } | null }[] };
+    check('一覧にも、編集中の場所の名前が出る', listing.projects.find((p) => p.id === created.id)?.lock?.device === 'Mac (Chrome)');
+    const release = await call(a, lockUrl, { method: 'DELETE', headers: there });
+    const stillHeld = await call(a, lockUrl, { method: 'POST', headers: there, body: '{}' });
+    check('別の場所からは、印を外せない', release.ok && stillHeld.status === 409, `${stillHeld.status}`);
+    const takeover = await call(a, lockUrl, { method: 'POST', headers: there, body: JSON.stringify({ force: true, device: 'iPad (Safari)' }) });
+    check('「編集を引き継ぐ」で、別の場所から引き継げる', takeover.ok, `${takeover.status}`);
+    check('引き継がれた元の場所は、保存できなくなる（409）', (await put(here, '元の場所から')).status === 409);
+    const stillOriginal2 = (await (await call(a, `/api/projects/${created.id}`)).json()) as { name: string };
+    check('別の場所の保存で、名前が変わっていない', stillOriginal2.name === '診断用の案件', stillOriginal2.name);
+    await call(a, lockUrl, { method: 'DELETE', headers: there });
+    const freed = (await (await call(a, `/api/projects/${created.id}`)).json()) as { lock: unknown };
+    check('編集をやめると、印が外れて、ほかの場所が編集を始められる', freed.lock === null);
+  }
+
   /* ---------- 7b. アカウントの種類ごとの振る舞い ---------- */
   say('\n■ アカウントの種類');
   const kanri = await login('kanri');

@@ -1,3 +1,4 @@
+import { placeId, placeName } from './place.ts';
 import type { Answers, TrendEntry } from '@zumen/knowledge';
 import type { Doc } from '../editor/doc.ts';
 import { describeFailure, isGateway, networkTimeout } from './messages.ts';
@@ -57,6 +58,10 @@ export interface Lock {
   userId: string;
   userName: string;
   since: string;
+  /** 印を付けた「場所」（タブ・端末）の番号。古い画面から付けた印は、空 */
+  clientId?: string;
+  /** その場所の名前（「Mac (Chrome)」など） */
+  device?: string | null;
 }
 
 /** ログインに失敗したときのエラー。あと何回で止まるか、止まっていればあと何秒かを持つ */
@@ -207,7 +212,8 @@ async function call<T>(path: string, init?: RequestInit, retried = false): Promi
   try {
     res = await fetch(path, {
       credentials: 'include',
-      headers: init?.body ? { 'content-type': 'application/json' } : undefined,
+      // 「この場所」（タブ・端末）の番号を、毎回伝える（同じアカウントの別の場所が、同時に編集しないように。編集ロック）
+      headers: { 'x-zumen-client': placeId(), ...(init?.body ? { 'content-type': 'application/json' } : {}) },
       ...init,
       ...(ctl ? { signal: ctl.signal } : {}),
     });
@@ -336,7 +342,7 @@ export const api = {
   takeLock: (id: string, force = false) =>
     call<{ lock: Lock | null }>(`/api/projects/${id}/lock`, {
       method: 'POST',
-      body: JSON.stringify({ force }),
+      body: JSON.stringify({ force, device: placeName() }),
     }),
   releaseLock: (id: string) => call<{ ok: true }>(`/api/projects/${id}/lock`, { method: 'DELETE' }),
 
@@ -419,5 +425,14 @@ async function waitForJob(jobId: string, signal?: AbortSignal, onStage?: (stageN
   } catch (e) {
     if ((e as { name?: string })?.name === 'AbortError') stop();
     throw e;
+  }
+}
+
+/** タブ・ブラウザを閉じるときに、編集中の印を、すぐ外す（閉じる途中でも送れる形。返事は待たない） */
+export function releaseLockOnClose(id: string): void {
+  try {
+    void fetch(`/api/projects/${id}/lock`, { method: 'DELETE', credentials: 'include', keepalive: true, headers: { 'x-zumen-client': placeId() } });
+  } catch {
+    // 送れなくても、3分で、自動で外れる
   }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, ConnectionError, LockedError, NotFoundError, setReauthHandler, StaleError } from './session/api.ts';
+import { api, ConnectionError, LockedError, NotFoundError, releaseLockOnClose, setReauthHandler, StaleError } from './session/api.ts';
+import { lockIsMine } from './session/place.ts';
 import { saveRetry } from './session/messages.ts';
 import { sameContent } from './session/saveRecovery.ts';
 import { makeOnce } from './session/once.ts';
@@ -222,6 +223,14 @@ export function App() {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [dirty]);
+
+  /** タブ・ブラウザを閉じるときは、編集中の印を、すぐ外す（待たずに、別の場所で続きが開ける）。外せなくても、3分で自動で外れる */
+  useEffect(() => {
+    if (!projectId || readOnly) return;
+    const onHide = () => releaseLockOnClose(projectId);
+    window.addEventListener('pagehide', onHide);
+    return () => window.removeEventListener('pagehide', onHide);
+  }, [projectId, readOnly]);
 
   /** 編集中であることを伝え続ける。途切れると数分で他の人が編集できるようになる */
   useEffect(() => {
@@ -482,7 +491,7 @@ export function App() {
         await leaveCurrent();
         const p = await api.getProject(id);
         // 保存していない入力を、自動で控えた下書きがあれば、復元するか尋ねる（他の人が編集中で、自分は見るだけのときは、尋ねない）
-        const busyByOther = p.lock && user && p.lock.userId !== user.id && user.role !== 'admin';
+        const busyByOther = p.lock && user && !lockIsMine(p.lock, user.id) && !(user.role === 'admin' && p.lock.userId !== user.id);
         const draft = !busyByOther && p.draft ? p.draft : null;
         const restore = draft
           ? await ask({
@@ -865,8 +874,12 @@ export function App() {
       {lockedBy && !listing && (
         <p className="bar-lock">
           <b>
-            {lockedBy.userName}
-            {t('lock.editingNow')}
+            {/* 同じアカウントの、別の場所（別のタブ・端末）が編集中のときは、「別の場所（Mac (Chrome) など）」と言う */}
+            {user && lockedBy.userId === user.id
+              ? lockedBy.device
+                ? t('lock.otherPlace', { device: lockedBy.device })
+                : t('lock.otherPlaceUnknown')
+              : `${lockedBy.userName}${t('lock.editingNow')}`}
           </b>
           {t('lock.viewOnly')}（{new Date(lockedBy.since).toLocaleTimeString(lang)}）
           {dirty && <b className="warn">{t('lock.cannotSave')}</b>}
@@ -874,13 +887,20 @@ export function App() {
             type="button"
             onClick={() => {
               const warning = dirty ? [t('lock.takeoverDiscard')] : [];
+              const samePerson = !!user && lockedBy.userId === user.id;
               void ask({
                 title: t('lock.takeover'),
-                message: [
-                  t('lock.takeoverFrom', { name: lockedBy.userName }),
-                  ...warning,
-                  t('lock.takeoverLose', { name: lockedBy.userName }),
-                ],
+                message: samePerson
+                  ? [
+                      lockedBy.device ? t('lock.takeoverFromPlace', { device: lockedBy.device }) : t('lock.takeoverFromPlaceUnknown'),
+                      ...warning,
+                      t('lock.takeoverLosePlace'),
+                    ]
+                  : [
+                      t('lock.takeoverFrom', { name: lockedBy.userName }),
+                      ...warning,
+                      t('lock.takeoverLose', { name: lockedBy.userName }),
+                    ],
                 confirmLabel: t('lock.takeover'),
               }).then((yes) => {
                 if (yes) void openProject(projectId!, true);

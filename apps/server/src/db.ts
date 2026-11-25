@@ -108,6 +108,9 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
 
 addColumnIfMissing('projects', 'locked_by', 'TEXT');
 addColumnIfMissing('projects', 'locked_at', 'TEXT');
+// 編集中の印を付けた「場所」（タブ・端末）の番号と、その名前（「Mac（Chrome）」など）。同じアカウントの別の場所でも、止めるため
+addColumnIfMissing('projects', 'locked_client', 'TEXT');
+addColumnIfMissing('projects', 'locked_device', 'TEXT');
 addColumnIfMissing('projects', 'owner', 'TEXT');
 // 消した日時と、消した人。入っている案件は「ごみ箱」にあり、一覧には出ない（一定期間は戻せる）
 addColumnIfMissing('projects', 'deleted_at', 'TEXT');

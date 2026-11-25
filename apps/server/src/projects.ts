@@ -78,6 +78,10 @@ export interface Lock {
   userId: string;
   userName: string;
   since: string;
+  /** 印を付けた「場所」（タブ・端末）の番号。古い画面から付けた印は、空 */
+  clientId: string;
+  /** その場所の名前（「Mac（Chrome）」など）。分からなければ null */
+  device: string | null;
 }
 
 /**
@@ -87,16 +91,74 @@ export interface Lock {
 function currentLock(projectId: string): Lock | null {
   const row = db
     .prepare(
-      `SELECT p.locked_by, p.locked_at, u.name AS user_name
+      `SELECT p.locked_by, p.locked_at, p.locked_client, p.locked_device, u.name AS user_name
        FROM projects p LEFT JOIN users u ON u.id = p.locked_by
        WHERE p.id = ?`,
     )
-    .get(projectId) as { locked_by: string | null; locked_at: string | null; user_name: string | null } | undefined;
+    .get(projectId) as
+    | { locked_by: string | null; locked_at: string | null; locked_client: string | null; locked_device: string | null; user_name: string | null }
+    | undefined;
   if (!row?.locked_by || !row.locked_at) return null;
   if (Date.now() - Date.parse(row.locked_at) > LOCK_TIMEOUT_MS) return null;
   // 編集中の印を付けた人が、消されていたら、その人は編集していない。印は無かったことにする
   if (row.user_name === null) return null;
-  return { userId: row.locked_by, userName: row.user_name, since: row.locked_at };
+  return { userId: row.locked_by, userName: row.user_name, since: row.locked_at, clientId: row.locked_client ?? '', device: row.locked_device };
+}
+
+/** 画面が送ってくる、「場所」（タブ・端末）の番号。形が合わなければ、空（古い画面と同じ扱い） */
+function clientOf(c: { req: { header: (name: string) => string | undefined } }): string {
+  const v = c.req.header('x-zumen-client') ?? '';
+  return /^[A-Za-z0-9_-]{8,64}$/.test(v) ? v : '';
+}
+
+/** その場所の名前。画面が決めて送ってくる（iPad の Safari は、Mac と見分けがつかないため）。長さと文字を絞る */
+function deviceOf(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const v = raw.trim().slice(0, 40);
+  return v === '' || /[\u0000-\u001f<>]/.test(v) ? null : v;
+}
+
+/**
+ * この印は、いまの呼び出し（この人・この場所）のものか。
+ * 場所の番号が、印・呼び出しのどちらかに無いとき（古い画面）は、これまでどおり、人だけで決める。
+ */
+function isMine(lock: Lock, user: User, client: string): boolean {
+  return lock.userId === user.id && (lock.clientId === '' || client === '' || lock.clientId === client);
+}
+
+/**
+ * この印が、いまの呼び出しを止めるか。
+ * ・別の人の印：止める。ただし、管理用のアカウントは、確認なしで上書きできる（これまでどおり）
+ * ・同じ人でも、別の場所（別のタブ・端末）の印：止める（管理用でも止める。引き継ぐときは、「編集を引き継ぐ」で、確かめてから）
+ */
+function blocks(lock: Lock | null, user: User, client: string): Lock | null {
+  if (!lock || isMine(lock, user, client)) return null;
+  if (lock.userId !== user.id && user.role === 'admin') return null;
+  return lock;
+}
+
+/** 止めるときの、利用者への案内。同じ人の別の場所のときは、「○○さん」ではなく、「別の場所」と言う（場所の名前は、画面の帯に出す） */
+function lockedMessage(lock: Lock, user: User, kind: 'busy' | 'save' | 'restore' | 'delete' | 'add'): string {
+  if (lock.userId === user.id) {
+    const place = '別の場所';
+    const m = {
+      busy: `このアカウントの、${place}で編集中です。そちらの編集が終わるのを待つか、「編集を引き継ぐ」を押してください。`,
+      save: `このアカウントの、${place}で編集中のため保存できません。そちらの編集が終わるのを待つか、「編集を引き継ぐ」を押してください。`,
+      restore: `このアカウントの、${place}で編集中のため戻せません。そちらの編集が終わるのを待つか、「編集を引き継ぐ」を押してください。`,
+      delete: `このアカウントの、${place}で編集中のため削除できません。そちらの編集が終わってから、もう一度お試しください。`,
+      add: `このアカウントの、${place}で編集中のため追加できません。そちらの編集が終わってから、もう一度お試しください。`,
+    };
+    return m[kind];
+  }
+  const n = lock.userName;
+  const m = {
+    busy: `${n}さんが編集中です。${n}さんの編集が終わるのを待つか、${n}さんに連絡してください。`,
+    save: `${n}さんが編集中のため保存できません。${n}さんの編集が終わるのを待つか、${n}さんに連絡してください。`,
+    restore: `${n}さんが編集中のため戻せません。${n}さんの編集が終わるのを待つか、${n}さんに連絡してください。`,
+    delete: `${n}さんが編集中のため削除できません。${n}さんの編集が終わってから、もう一度お試しください。`,
+    add: `${n}さんが編集中のため追加できません。${n}さんの編集が終わってから、もう一度お試しください。`,
+  };
+  return m[kind];
 }
 
 /**
@@ -112,9 +174,20 @@ function canTouch(user: User, projectId: string): boolean {
   return row?.owner_role !== 'sandbox';
 }
 
-/** 編集中の印を自分のものにする（すでに自分のものなら時刻だけ更新する） */
-function takeLock(projectId: string, userId: string): void {
-  db.prepare('UPDATE projects SET locked_by = ?, locked_at = ? WHERE id = ?').run(userId, now(), projectId);
+/**
+ * 編集中の印を自分のものにする（すでに自分のものなら時刻だけ更新する）。
+ * device：この場所の名前。渡さないとき（保存など）は、同じ場所の印なら、前の名前のまま
+ */
+function takeLock(projectId: string, userId: string, client: string, device?: string | null): void {
+  const prev = db.prepare('SELECT locked_by, locked_client, locked_device FROM projects WHERE id = ?').get(projectId) as
+    | { locked_by: string | null; locked_client: string | null; locked_device: string | null }
+    | undefined;
+  // 場所の番号を送らない古い画面からの呼び出しは、同じ人の印なら、すでに付いている場所の番号・名前を、消さずに残す（時刻だけ更新する）
+  const keepPrev = client === '' && prev?.locked_by === userId && !!prev.locked_client;
+  const place = keepPrev ? prev!.locked_client! : client;
+  const same = place !== '' && prev?.locked_client === place;
+  const name = device === undefined ? (same ? (prev?.locked_device ?? null) : null) : device;
+  db.prepare('UPDATE projects SET locked_by = ?, locked_at = ?, locked_client = ?, locked_device = ? WHERE id = ?').run(userId, now(), place === '' ? null : place, name, projectId);
 }
 
 /** 練習用のアカウントは自分のものだけ。ほかの人には練習用のものを見せない（一覧・ごみ箱で共通） */
@@ -462,7 +535,7 @@ projects.post('/practice/copy', async (c) => {
     }
   }
   refreshSearch(id);
-  takeLock(id, user.id);
+  takeLock(id, user.id, clientOf(c));
   return c.json({ id, name, updatedAt: t }, 201);
 });
 
@@ -541,7 +614,7 @@ projects.post('/:id/duplicate', async (c) => {
     ).run(id, name, t, t, user.id, JSON.stringify(withCompanyPolePrefix(clearForDuplicate(answers as never))), keepOnlyLayers(withoutHandwrittenMemos(src.drawing), layerIds), user.id);
     refreshSearch(id);
   });
-  takeLock(id, user.id);
+  takeLock(id, user.id, clientOf(c));
   return c.json({ id, name, updatedAt: t }, 201);
 });
 
@@ -576,7 +649,7 @@ projects.post('/', async (c) => {
     ).run(id, name, t, t, c.get('user').id, JSON.stringify(initial), c.get('user').id);
     refreshSearch(id);
   });
-  takeLock(id, c.get('user').id);
+  takeLock(id, c.get('user').id, clientOf(c));
   return c.json({ id, updatedAt: t }, 201);
 });
 
@@ -626,11 +699,11 @@ projects.put('/:id', async (c) => {
   // ただし管理用のアカウントは、編集中でも上書きできる
   const user = c.get('user');
   if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
-  const lock = currentLock(id);
-  if (lock && lock.userId !== user.id && user.role !== 'admin') {
-    return c.json({ error: `${lock.userName}さんが編集中のため保存できません。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 409);
+  const lock = blocks(currentLock(id), user, clientOf(c));
+  if (lock) {
+    return c.json({ error: lockedMessage(lock, user, 'save'), lock }, 409);
   }
-  takeLock(id, user.id);
+  takeLock(id, user.id, clientOf(c));
 
   const body = (await c.req.json().catch(() => null)) as
     | { name?: string; answers?: unknown; drawing?: unknown; sketchRead?: boolean; baseUpdatedAt?: string; force?: boolean }
@@ -727,9 +800,9 @@ projects.post('/:id/restore-previous', async (c) => {
   const exists = db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(id);
   const user = c.get('user');
   if (!exists || !canTouch(user, id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
-  const lock = currentLock(id);
-  if (lock && lock.userId !== user.id && user.role !== 'admin') {
-    return c.json({ error: `${lock.userName}さんが編集中のため戻せません。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 423);
+  const lock = blocks(currentLock(id), user, clientOf(c));
+  if (lock) {
+    return c.json({ error: lockedMessage(lock, user, 'restore'), lock }, 423);
   }
   const body = (await c.req.json().catch(() => null)) as { baseUpdatedAt?: string } | null;
   const prev = previousOf(id);
@@ -739,7 +812,7 @@ projects.post('/:id/restore-previous', async (c) => {
   if (body?.baseUpdatedAt !== undefined && cur.updated_at !== body.baseUpdatedAt) {
     return c.json({ error: 'この案件は、この画面で読み込んだあとに、ほかの端末や画面で更新されています。最新を読み込み直してから、もう一度お試しください。', stale: true, updatedAt: cur.updated_at }, 409);
   }
-  takeLock(id, user.id);
+  takeLock(id, user.id, clientOf(c));
   const t = now();
   inTransaction(() => {
     db.prepare('UPDATE projects SET answers = ?, drawing = ?, updated_at = ?, updated_by = ?, content_updated_at = ? WHERE id = ?').run(prev.answers, prev.drawing, t, user.id, t, id);
@@ -763,9 +836,9 @@ projects.put('/:id/draft', async (c) => {
   const NOT_FOUND = { error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' };
   if (!db.prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL').get(id)) return c.json(NOT_FOUND, 404);
   if (!canTouch(user, id)) return c.json(NOT_FOUND, 404);
-  const lock = currentLock(id);
-  if (lock && lock.userId !== user.id && user.role !== 'admin') {
-    return c.json({ error: `${lock.userName}さんが編集中のため保存できません。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 409);
+  const lock = blocks(currentLock(id), user, clientOf(c));
+  if (lock) {
+    return c.json({ error: lockedMessage(lock, user, 'save'), lock }, 409);
   }
   const body = (await c.req.json().catch(() => null)) as
     | { name?: unknown; answers?: unknown; drawing?: unknown; sketchRead?: unknown; baseUpdatedAt?: unknown }
@@ -806,13 +879,14 @@ projects.post('/:id/lock', async (c) => {
   }
   const user = c.get('user');
   if (!canTouch(user, id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
-  const { force } = (await c.req.json().catch(() => ({}))) as { force?: boolean };
-  const lock = currentLock(id);
-  // 管理用のアカウントは、確認なしで編集を引き継げる
-  if (lock && lock.userId !== user.id && !force && user.role !== 'admin') {
-    return c.json({ error: `${lock.userName}さんが編集中です。${lock.userName}さんの編集が終わるのを待つか、${lock.userName}さんに連絡してください。`, lock }, 409);
+  const { force, device } = (await c.req.json().catch(() => ({}))) as { force?: boolean; device?: unknown };
+  const client = clientOf(c);
+  // 別の人の印は、管理用のアカウントなら、確認なしで引き継げる（これまでどおり）。同じ人の別の場所の印は、force（「編集を引き継ぐ」）のときだけ
+  const lock = blocks(currentLock(id), user, client);
+  if (lock && !force) {
+    return c.json({ error: lockedMessage(lock, user, 'busy'), lock }, 409);
   }
-  takeLock(id, user.id);
+  takeLock(id, user.id, client, device === undefined ? undefined : deviceOf(device));
   return c.json({ lock: currentLock(id) });
 });
 
@@ -820,8 +894,9 @@ projects.post('/:id/lock', async (c) => {
 projects.delete('/:id/lock', (c) => {
   const id = c.req.param('id');
   const lock = currentLock(id);
-  if (lock && lock.userId === c.get('user').id) {
-    db.prepare('UPDATE projects SET locked_by = NULL, locked_at = NULL WHERE id = ?').run(id);
+  // 外せるのは、自分の印（この人の、この場所）だけ。同じ人の別の場所の印は、外さない
+  if (lock && isMine(lock, c.get('user'), clientOf(c))) {
+    db.prepare('UPDATE projects SET locked_by = NULL, locked_at = NULL, locked_client = NULL, locked_device = NULL WHERE id = ?').run(id);
   }
   return c.json({ ok: true });
 });
@@ -829,13 +904,13 @@ projects.delete('/:id/lock', (c) => {
 projects.delete('/:id', (c) => {
   const id = c.req.param('id');
   if (!canTouch(c.get('user'), id)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
-  const held = currentLock(id);
-  if (held && held.userId !== c.get('user').id && c.get('user').role !== 'admin') {
-    return c.json({ error: `${held.userName}さんが編集中のため削除できません。${held.userName}さんの編集が終わってから、もう一度お試しください。`, lock: held }, 409);
+  const held = blocks(currentLock(id), c.get('user'), clientOf(c));
+  if (held) {
+    return c.json({ error: lockedMessage(held, c.get('user'), 'delete'), lock: held }, 409);
   }
   // 本当には消さず、ごみ箱へ入れる（30日間は戻せる）。写真もそのまま残す
   const r = db
-    .prepare('UPDATE projects SET deleted_at = ?, deleted_by = ?, locked_by = NULL, locked_at = NULL WHERE id = ? AND deleted_at IS NULL')
+    .prepare('UPDATE projects SET deleted_at = ?, deleted_by = ?, locked_by = NULL, locked_at = NULL, locked_client = NULL, locked_device = NULL WHERE id = ? AND deleted_at IS NULL')
     .run(now(), c.get('user').id, id);
   if (Number(r.changes) === 0) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   return c.json({ ok: true });
@@ -849,9 +924,9 @@ projects.post('/:id/files', async (c) => {
     return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
   }
   if (!canTouch(c.get('user'), projectId)) return c.json({ error: '案件が見つかりません。すでに消されたか、見られない案件です。「図面一覧」から選び直してください。' }, 404);
-  const held = currentLock(projectId);
-  if (held && held.userId !== c.get('user').id && c.get('user').role !== 'admin') {
-    return c.json({ error: `${held.userName}さんが編集中のため追加できません。${held.userName}さんの編集が終わってから、もう一度お試しください。`, lock: held }, 409);
+  const held = blocks(currentLock(projectId), c.get('user'), clientOf(c));
+  if (held) {
+    return c.json({ error: lockedMessage(held, c.get('user'), 'add'), lock: held }, 409);
   }
   const body = (await c.req.json().catch(() => null)) as
     | { fileName?: string; mediaType?: string; data?: string }

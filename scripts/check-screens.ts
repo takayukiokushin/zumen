@@ -18,6 +18,7 @@
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -67,6 +68,19 @@ const runNode = (args: string[], env: NodeJS.ProcessEnv) =>
 /* ---------- 試験用のサーバー ---------- */
 const dataDir = mkdtempSync(join(tmpdir(), 'zumen-screens-'));
 const env = { DATA_DIR: dataDir, ANTHROPIC_API_KEY: '' };
+/**
+ * 編集中の印を、全部外す。この検査は、同じアカウントで、画面（ブラウザの窓）を、次々に開いては閉じる。
+ * 本当の画面は、閉じるときに印を外すが、この検査の窓は、外す前に閉じてしまうことがある。
+ * 同じアカウントの別の場所が編集中のときは、閲覧のみになる決まり（編集ロック）なので、次の窓を開く前に、外しておく。
+ */
+const freeLocks = () => {
+  const sdb = new DatabaseSync(join(dataDir, 'zumen.db'));
+  try {
+    sdb.exec('UPDATE projects SET locked_by = NULL, locked_at = NULL, locked_client = NULL, locked_device = NULL');
+  } finally {
+    sdb.close();
+  }
+};
 const USER = 'screens';
 const PASS = 'Zq7-kelp-orbit-93';
 let server: ChildProcess | null = null;
@@ -167,6 +181,7 @@ try {
 
   let screens = 0;
   for (const c of combos) {
+    freeLocks();
     const ctx = await browser.newContext({ viewport: { width: c.w, height: c.h }, hasTouch: c.touch, isMobile: false });
     await ctx.addInitScript(([lang, theme, scale]: [string, string, number]) => {
       try {
@@ -408,6 +423,7 @@ try {
     const tops = gen3.items.filter((i) => i.kind === 'symbol' && !i.parent && i.y > 100) as { id: string; x: number; y: number }[];
     const moved3 = { ...moveItem(gen3, tops[0]!.id, tops[1]!.x - tops[0]!.x, tops[1]!.y - tops[0]!.y), edited: true, base: gen3.base };
     const pr3 = await fetch(`${base}/api/projects/${created3.id}`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '重なりの検査', answers: answersSpread, drawing: moved3, baseUpdatedAt: created3.updatedAt, force: true }) });
+    freeLocks();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     await ctx.addInitScript(() => {
       try {
@@ -455,6 +471,7 @@ try {
   {
     const ans = dropHiddenChoices({ ...answersSpread, areaCount: '1', transformerCount: '2', trHasCable: 'yes', trCableUp1: 'ds', trCableUp2: 'vcb' } as typeof answersSpread);
     await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '接続元の検査', answers: ans }) });
+    freeLocks();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript(() => {
       try {
@@ -503,6 +520,7 @@ try {
   {
     const ans = dropHiddenChoices({ ...answersSpread, areaCount: '2', transformerCount: '2', trHasCable: 'yes', trCableUp1: 'ds', trCableUp2: 'vcb', 'a2:linkTap': 'device' } as typeof answersSpread);
     await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '送り元の開閉器の検査', answers: ans }) });
+    freeLocks();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript(() => {
       try {
@@ -559,6 +577,7 @@ try {
     const basis4 = digest(JSON.stringify(buildComposition(eff).map((i) => [i.role, i.symbolId, i.label, i.unit ?? 0])));
     const stuck = { ...replaceSymbol({ ...g4, basis: basis4 }, zid ?? '', 'ct'), edited: true, base: g4.base };
     const pr4 = await fetch(`${base}/api/projects/${created4.id}`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'ケーブルの検査', answers: ans, drawing: stuck, baseUpdatedAt: created4.updatedAt, force: true }) });
+    freeLocks();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     await ctx.addInitScript(() => {
       try {
@@ -611,6 +630,7 @@ try {
       await fetch(`${base}/api/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: '読み取りの検査', answers: { startMode: 'sketch' } }) })
     ).json() as { id: string };
     void proj;
+    freeLocks();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript(() => {
       try {
@@ -704,6 +724,7 @@ try {
   }
   // 音声入力から作成：貼り付けた文章と、読み取った結果は、別のタブに移っても消えない。「入力した内容を削除」で、一撃で消せる（第21弾 項目4）
   {
+    freeLocks();
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.addInitScript(() => {
       try {
@@ -765,6 +786,57 @@ try {
       problems.push(`音声入力の検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
     }
     await ctx.close();
+  }
+  // 編集ロック：同じアカウントでも、別の場所（別のタブ・端末）が編集中なら、閲覧のみ。帯に出て、「編集を引き継ぐ」で引き継げる（第21弾 項目6）
+  {
+    freeLocks();
+    const mk = async () => {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      await ctx.addInitScript(() => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+        } catch {}
+      });
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '読み取りの検査' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      return { ctx, page };
+    };
+    screens++;
+    try {
+      const one = await mk();
+      const noBar = await one.page.locator('.bar-lock').count();
+      const two = await mk();
+      const bar = await two.page.locator('.bar-lock').first().innerText({ timeout: 3000 }).catch(() => '');
+      if (noBar !== 0 || !/別の場所/.test(bar) || !/閲覧のみ/.test(bar)) {
+        failed++;
+        problems.push(`編集ロックの検査：同じアカウントの別の場所が編集中なのに、閲覧のみの帯が出ていません（先の窓の帯 ${noBar}個・あとの窓の帯「${bar.replace(/\s+/g, ' ').slice(0, 60)}」）`);
+      } else {
+        await two.page.locator('.bar-lock button', { hasText: '編集を引き継ぐ' }).click({ timeout: 2000 });
+        await two.page.locator('.modal button', { hasText: '編集を引き継ぐ' }).click({ timeout: 3000 });
+        await sleep(900);
+        const after = await two.page.locator('.bar-lock').count();
+        if (after !== 0) {
+          failed++;
+          problems.push('編集ロックの検査：「編集を引き継ぐ」を押しても、閲覧のみのままです');
+        }
+      }
+      await one.ctx.close();
+      await two.ctx.close();
+    } catch (e) {
+      failed++;
+      problems.push(`編集ロックの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
   }
   await browser.close();
   console.log(`  ${combos.length}通り・${screens}画面を調べた（${FULL ? 'たくさん' : 'ふつう'}の検査）`);
