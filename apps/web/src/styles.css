@@ -589,6 +589,8 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]) .tabbar .tab-wrap button { width: 100%; }
   :where(html[data-uw~="700"]) .tabbar > .tabbar-toggle { display: block; flex: 1 1 100%; padding: calc(7px * var(--text-scale)) 4px; font-size: calc(11px * var(--text-scale)); color: var(--ink-2); background: transparent; border: 0; border-top: 1px solid var(--rule-soft); border-radius: 0; text-align: center; min-height: 0; }
   :where(html[data-uw~="700"]) .tabbar-right[data-open="false"] { display: none; }
+  /* 上の帯の上下の余白と、行どうしのすきまを詰める（第21弾 項目13）。隠したとき、上の帯が177px→161pxになる（幅390px）。押す部品の高さ（44px）は、そのまま */
+  :where(html[data-uw~="700"]) .tabbar, :where(html[data-short="on"]) .tabbar { padding-top: calc(3px * var(--text-scale)); padding-bottom: calc(3px * var(--text-scale)); row-gap: 0; }
   /* タブの名前は、2行にするとき、決まった位置（例：「スケッチ」／「読み取り」）で改行する */
   :where(html[data-uw~="700"]) .tabbar .tab-l2 { display: block; }
   :where(html[data-uw~="700"]) .tabbar > button, :where(html[data-uw~="700"]) .tabbar .tab-wrap button { min-width: 0; padding-left: 4px; padding-right: 4px; white-space: normal; line-height: 1.3; }
