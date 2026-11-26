@@ -853,6 +853,105 @@ try {
       problems.push(`編集ロックの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
     }
   }
+  // スマホの「記号・設定」の枠（下から出る枠）：上端のつまみで高さを変えられる。下へ大きく引き下げると閉じる。覚える。倍率があっても、同じ割合（第21弾 項目15）
+  for (const scale of [1, 1.3]) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: false });
+    let stage = '準備';
+    try {
+      await ctx.addInitScript((s: number) => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.phoneBarOpen', 'off');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: s, bold: false }));
+        } catch {}
+      }, scale);
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(3).click({ force: true, timeout: 1500 });
+      await sleep(1200);
+      await page.locator('.edit-toggle').evaluate((e: HTMLElement) => e.click());
+      await sleep(500);
+      const openSheet = async () => {
+        await page.locator('button.tools-toggle').filter({ hasText: /記号|設定/ }).last().evaluate((e: HTMLElement) => e.click());
+        await sleep(400);
+      };
+      const state = () =>
+        page.evaluate(() => {
+          const s = document.querySelector('aside.side.open') as HTMLElement | null;
+          if (!s) return null;
+          const r = s.getBoundingClientRect();
+          return { pct: (r.height / innerHeight) * 100, over: document.documentElement.scrollWidth > innerWidth + 1, closeBottom: Math.round(r.bottom - (s.querySelector('.side-close') as HTMLElement).getBoundingClientRect().bottom) };
+        });
+      // steps回に分けて、stepMsずつ待ちながらドラッグする（ふつうのドラッグは、ゆっくり。払う動きは、短い時間で）
+      const drag = async (dy: number, steps = 20, stepMs = 25) => {
+        const b = (await page.locator('.sheet-handle').boundingBox())!;
+        const x = b.x + b.width / 2;
+        const y = b.y + b.height / 2;
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        for (let i = 1; i <= steps; i++) {
+          await page.mouse.move(x, y + (dy * i) / steps);
+          await sleep(stepMs);
+        }
+        await page.mouse.up();
+        await sleep(350);
+      };
+      const bad: string[] = [];
+      stage = '開く';
+      await openSheet();
+      const s0 = await state();
+      if (!s0 || Math.abs(s0.pct - 55) > 1.5) bad.push(`開いたときの高さが画面の55%ではありません（${s0 ? s0.pct.toFixed(1) : '開かない'}%）`);
+      if (s0 && s0.closeBottom > 1) bad.push(`「閉じる」が、枠の下端に固定されていません（下端から ${s0.closeBottom}px）`);
+      stage = '上へドラッグ';
+      await drag(-150);
+      const s1 = await state();
+      if (!s1 || s1.pct < (s0?.pct ?? 0) + 10) bad.push(`つまみを上へドラッグしても、枠が高くなりません（${s0?.pct.toFixed(1)}% → ${s1?.pct.toFixed(1)}%）`);
+      stage = '下へドラッグ';
+      await drag(300);
+      const s2 = await state();
+      if (!s2 || s2.pct > (s1?.pct ?? 100) - 20) bad.push(`つまみを下へドラッグしても、枠が低くなりません（${s1?.pct.toFixed(1)}% → ${s2?.pct.toFixed(1)}%）`);
+      const remembered = s2?.pct ?? 0;
+      stage = '大きく下へ';
+      await drag(600);
+      if ((await state()) !== null) bad.push('つまみを下へ大きく引き下げても、枠が閉じません');
+      await openSheet();
+      const s3 = await state();
+      if (!s3 || Math.abs(s3.pct - remembered) > 1.5) bad.push(`閉じたあとに開き直したとき、引き下げる前の高さ（${remembered.toFixed(1)}%）で開きません（${s3 ? s3.pct.toFixed(1) : '開かない'}%）`);
+      stage = '下へ払う';
+      await drag(150, 3, 0);
+      if ((await state()) !== null) bad.push('つまみを下へ素早く払っても、枠が閉じません');
+      if ((await state()) === null) await openSheet();
+      stage = 'ダブルクリック';
+      {
+        const hb = (await page.locator('.sheet-handle').boundingBox())!;
+        await page.mouse.dblclick(hb.x + hb.width / 2, hb.y + hb.height / 2);
+      }
+      await sleep(300);
+      const s4 = await state();
+      if (!s4 || Math.abs(s4.pct - 55) > 1.5) bad.push(`ダブルクリックで、元の高さ（55%）に戻りません（${s4 ? s4.pct.toFixed(1) : '開かない'}%）`);
+      if ((s0?.over || s1?.over || s2?.over) === true) bad.push('枠の高さを変えたとき、画面が横にはみ出しました');
+      if (bad.length > 0) {
+        failed++;
+        problems.push(`記号の枠の高さの検査（画面の倍率 ${Math.round(scale * 100)}%）：${bad.join('／')}`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`記号の枠の高さの検査（画面の倍率 ${Math.round(scale * 100)}%）：途中で止まりました（${stage}：${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   await browser.close();
   console.log(`  ${combos.length}通り・${screens}画面を調べた（${FULL ? 'たくさん' : 'ふつう'}の検査）`);
 } catch (e) {

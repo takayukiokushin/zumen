@@ -22,6 +22,7 @@ import type { Doc, DocSymbol } from './doc.ts';
 import { rebuildWithOverrides } from './overrides.ts';
 import { convertDocOnWire, migrateBattery, migrateOnWire, needsBatteryMigration, needsOnWireMigration } from './onwireMigrate.ts';
 import { addSectionalizerSet, isSectionalizer, setThumb, swapSectionalizerSet } from './sectionalizerSets.ts';
+import { SheetHandle, rememberedSheetPct } from './SheetHandle.tsx';
 import { SideResizer, rememberedSideWidth, sideVars } from './SideResizer.tsx';
 import { LayerMenu } from './LayerMenu.tsx';
 import { addExtraCross, addLayerCrossOnWire, addLayer, addLayerArea, addLayerArrow, addLayerCross, addLayerDot, addLayerGround, carryOver, confirmLayerReview, layerNeedsReview, addLayerLink, canAddLayerLink, editLink, linkBetween, resolveLinks, addLayerText, arrowOn, canAddLayerArea, canAddLayerArrow, canAddLayerDot, canAddLayerGround, editArea, editArrow, moveLayerDots, resolveArrows, resolveDots, setArrowTail, setDotPoint, editGround, flipGround, moveAreas, resolveAreas, resolveGrounds, setGroundTip, toggleGroundLead, moveLayerCrosses, resetCross, canAddLayerCross, canAddLayerText, canMark, crossOn, resolveCrosses, setCrossSize, carryLayers, customCount, layerInfos, layerItemsAsDocItems, layerNameProblem, layerOf, layerTitle, moveLayerItems, removeLayer, removeLayerItems, renameLayer, setLayerItems, setLayerOrientation, updateLayerText } from './layers.ts';
@@ -193,6 +194,8 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const [sideOpen, setSideOpen] = useState(false);
   /** 右の「記号を追加・差し替え」の枠の幅（ドラッグで変える。画面を開いているあいだは覚えている） */
   const [sideW, setSideW] = useState(rememberedSideWidth);
+  /** スマホの「記号・設定」の枠（下から出る枠）の高さ（画面の高さに対する%）。つまみで変えて、覚える */
+  const [sheetPct, setSheetPct] = useState(rememberedSheetPct);
   /** 「結線を整える」で直しきれなかったところ */
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [tidyNote, setTidyNote] = useState<string | null>(null);
@@ -1482,7 +1485,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         />
       )}
 
-      <div className={`editor-body${touchDevice && !viewOnly && !sheetView ? ' editing-frame' : ''}`} style={sideVars(sideW) as React.CSSProperties}>
+      <div className={`editor-body${touchDevice && !viewOnly && !sheetView ? ' editing-frame' : ''}${sideOpen && !viewOnly ? ' sheet-open' : ''}`} style={{ ...sideVars(sideW), '--sheet-pct': String(sheetPct) } as React.CSSProperties}>
         <div className={`canvas-wrap${!sheetView && activeId === null && viewDoc.items.length === 0 ? ' is-blank' : ''}`} ref={canvasWrapRef}>
           {sheetView ? (
             <div
@@ -1588,9 +1591,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
 
         <SideResizer width={sideW} onChange={setSideW} />
         <aside className={`side${sideOpen && !viewOnly ? ' open' : ''}`} inert={sheetView || viewOnly}>
-          <button type="button" className="btn side-close" onClick={() => setSideOpen(false)}>
-            {t('common.close')}
-          </button>
+          <SheetHandle pct={sheetPct} onChange={setSheetPct} onClose={() => setSideOpen(false)} sheet={(h) => h.closest('aside')} />
           <section inert={locked}>
             <h3>{t('editor.palette')}</h3>
             <p className="hint">
@@ -2046,6 +2047,10 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
               )}
             </section>
           )}
+          {/* スマホ：「閉じる」は、枠の下端に固定する（スクロールしても、いつも押せる。広い画面では出さない） */}
+          <button type="button" className="btn side-close" onClick={() => setSideOpen(false)}>
+            {t('common.close')}
+          </button>
         </aside>
       </div>
     </div>

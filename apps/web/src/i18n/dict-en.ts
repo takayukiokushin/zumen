@@ -157,6 +157,7 @@ export const en: Dict = {
   'editor.zoomOut': 'Zoom out',
   'editor.wireHint': 'Draw a line: click the start, then the end. Keep drawing as many as you like; press Esc or press “Draw a line” again to stop. It snaps to vertical or horizontal, and gently to nearby terminals, line ends and lines (hold Alt / option to turn this off).',
   'editor.sideResize': 'Drag to change the width of this panel (double-click to restore the original width)',
+  'editor.sheetResize': 'Drag to change the height of this panel. Drag it far down to close it (double-tap to reset the height).',
   'editor.palette': 'Add or replace a symbol',
   'editor.palette.replace':
     'A symbol is selected. Pick one below to replace it — the lines stay connected and resize themselves.',

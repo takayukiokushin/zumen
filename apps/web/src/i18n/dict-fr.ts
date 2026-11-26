@@ -157,6 +157,7 @@ export const fr: Dict = {
   'editor.zoomOut': 'Réduire',
   'editor.wireHint': 'Tracer : cliquez le départ, puis l’arrivée. Vous pouvez enchaîner les traits ; Échap ou un nouveau clic sur « Tracer » pour arrêter. Le trait se met à l’horizontale ou à la verticale et s’accroche aux bornes, extrémités et traits proches (Alt / option pour désactiver).',
   'editor.sideResize': 'Faites glisser pour changer la largeur de ce panneau (double-clic pour revenir à la largeur d’origine)',
+  'editor.sheetResize': 'Faites glisser pour changer la hauteur du panneau. Tirez-le loin vers le bas pour le fermer (double appui pour rétablir la hauteur).',
   'editor.palette': 'Ajouter ou remplacer un symbole',
   'editor.palette.replace':
     'Un symbole est sélectionné. Choisissez-en un ci-dessous pour le remplacer : les traits restent reliés et s’ajustent.',
