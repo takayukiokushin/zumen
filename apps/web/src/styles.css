@@ -600,6 +600,7 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
      日本語・中国語・韓国語だけ（英語・フランス語は、文字が長く、行ごと下の段へ回ると、かえって高くなるため、文字を割る従来のまま） */
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar > .tabbar-right:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar > .tabbar-right:not(#_) { flex-wrap: wrap; row-gap: 0; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button:not(#_) { flex: 0 0 auto; min-width: max-content; white-space: nowrap; }
+  :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_) { min-width: 44px; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > .who:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > .who:not(#_) { flex: 0 0 auto; max-width: none; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar .who-name:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar .who-name:not(#_) { display: block; white-space: nowrap; overflow: visible; }
   /* タブの名前は、2行にするとき、決まった位置（例：「スケッチ」／「読み取り」）で改行する */
