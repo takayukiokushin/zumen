@@ -660,7 +660,6 @@ export const fr: Dict = {
   'editor.blankNote': 'Il n’y a pas encore de pièces. Ajoutez-les une à une avec « Ajouter ou remplacer un symbole » à droite, ou saisissez-les dans « Saisir les équipements ». Reliez les symboles avec « Tracer un trait ».',
   'editor.blankNoteNarrow': 'Il n’y a pas encore de pièces. Ajoutez-les une à une avec le bouton « Symboles et réglages », ou saisissez-les dans « Saisir les équipements ». Reliez les symboles avec « Tracer un trait ».',
   'editor.editStart': 'Commencer la modification',
-  'editor.editing': 'Modification du schéma en cours',
   'editor.editDone': 'Terminer la modification',
   'editor.editStartHelp': 'Tant que vous n’appuyez pas ici, le schéma est en lecture seule (pincez à deux doigts pour zoomer, glissez pour déplacer l’écran). Ensuite, vous pouvez déplacer, ajouter et supprimer des symboles.',
   'editor.blankNoteView': 'Il n’y a pas encore de pièces. Appuyez sur « Commencer la modification » pour ajouter des symboles.',

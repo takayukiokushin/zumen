@@ -659,7 +659,6 @@ export const en: Dict = {
   'editor.blankNote': 'There are no parts yet. Add them one at a time from “Add or replace a symbol” on the right, or enter them in “Enter equipment”. Connect symbols with “Draw a line”.',
   'editor.blankNoteNarrow': 'There are no parts yet. Add them one at a time with the “Symbols & settings” button, or enter them in “Enter equipment”. Connect symbols with “Draw a line”.',
   'editor.editStart': 'Start editing',
-  'editor.editing': 'Editing the drawing',
   'editor.editDone': 'Finish editing',
   'editor.editStartHelp': 'Until you press this, the drawing is view-only (pinch with two fingers to zoom, drag to move the screen). After pressing, you can move, add and delete symbols.',
   'editor.blankNoteView': 'There are no parts yet. Press “Start editing” to add symbols.',

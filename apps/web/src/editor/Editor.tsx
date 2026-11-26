@@ -172,7 +172,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
   const [sheetView, setSheetView] = useState(false);
   /**
    * 指で操作する端末（スマホ・タブレット）では、図面タブを開いた直後は「見るだけ」。
-   * 「編集を開始する」を押すと編集でき、「編集を完了する」で見るだけに戻る（パソコンは、いつも編集できる）
+   * 「編集を開始」を押すと編集でき（同じボタンが、「編集を終了」に変わる）、「編集を終了」で見るだけに戻る（パソコンは、いつも編集できる）
    */
   const touchDevice = useTouchDevice();
   const [editing, setEditing] = useState(false);
@@ -828,31 +828,27 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
       <div className={`editor-bar${moreOpen ? ' more-open' : ''}`}>
         <div className="tools">
           {/* ボタンは、用途ごとに、見出し付きのグループにまとめる。スマホでは、見出しを消し、「sec」の付いたものを「ほかの操作」の中にしまう */}
-          {/* 指で操作する端末：「編集を開始する」を押すまでは、見るだけ（押すと、編集のボタンが出る） */}
+          {/* 指で操作する端末：「編集を開始」を押すまでは、見るだけ（押すと、編集のボタンが出る）。ボタンは1つで、押すと、同じ位置で「編集を終了」に変わる。編集中は、図面の外枠を、オレンジ色の線で囲む（editing-frame） */}
           {touchDevice && (
             <div className="tool-group edit-mode-group">
               <div className="tool-row">
-                {viewOnly ? (
-                  <button type="button" className="btn primary edit-start" title={t('editor.editStartHelp')} onClick={() => setEditing(true)}>
-                    {t('editor.editStart')}
-                  </button>
-                ) : (
-                  <>
-                    <span className="edit-badge" role="status">{t('editor.editing')}</span>
-                    <button
-                      type="button"
-                      className="btn edit-done"
-                      onClick={() => {
-                        setEditing(false);
-                        setSelection([]);
-                        setMode('select');
-                        setFanPicks([]);
-                      }}
-                    >
-                      {t('editor.editDone')}
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  className={`btn edit-toggle${viewOnly ? ' primary' : ''}`}
+                  title={viewOnly ? t('editor.editStartHelp') : undefined}
+                  onClick={() => {
+                    if (viewOnly) {
+                      setEditing(true);
+                      return;
+                    }
+                    setEditing(false);
+                    setSelection([]);
+                    setMode('select');
+                    setFanPicks([]);
+                  }}
+                >
+                  {viewOnly ? t('editor.editStart') : t('editor.editDone')}
+                </button>
               </div>
             </div>
           )}
@@ -1486,7 +1482,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
         />
       )}
 
-      <div className="editor-body" style={sideVars(sideW) as React.CSSProperties}>
+      <div className={`editor-body${touchDevice && !viewOnly && !sheetView ? ' editing-frame' : ''}`} style={sideVars(sideW) as React.CSSProperties}>
         <div className={`canvas-wrap${!sheetView && activeId === null && viewDoc.items.length === 0 ? ' is-blank' : ''}`} ref={canvasWrapRef}>
           {sheetView ? (
             <div
