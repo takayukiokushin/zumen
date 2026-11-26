@@ -1521,9 +1521,19 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 .canvas.view-only *, .canvas.view-only { cursor: default; }
 .canvas.view-only * { pointer-events: none; }
 .tools .edit-toggle { font-weight: var(--weight-strong); min-width: calc(120px * var(--ctl-scale, 1)); }
-/* 編集中（指で操作する端末）：図面を表示するエリアの外枠を、選択中のタブの下線と同じ太さ（4px）・同じ色（--accent）で囲む。
-   レイアウトを動かさない・図面の操作を邪魔しない（outline は、中の操作を通す。内側に描く）。印刷プレビュー中は、編集できないので、出さない */
-.editor-body.editing-frame { outline: 4px solid var(--accent); outline-offset: -4px; }
+/* 編集中（指で操作する端末）：図面を表示するエリアの外枠を、明るいオレンジ色の線（太さ4px）で囲む。
+   色は、濃いオレンジ→明るいオレンジ→淡い黄みのオレンジが、枠に沿って、7秒かけて、ゆっくり流れる（第21弾 項目14。動画の案2）。
+   レイアウトを動かさない・図面の操作（ドラッグ・範囲選択）を邪魔しない（pointer-events: none）。印刷プレビュー中は、編集できないので、出さない。
+   「動きを減らす」の設定の端末では、動かさず、明るいオレンジの静止した枠にする */
+.editor-body.editing-frame { position: relative; }
+.editor-body.editing-frame::before {
+  content: ""; position: absolute; inset: 0; padding: 4px; pointer-events: none; z-index: 10;
+  background: linear-gradient(90deg, #ff8a00, #ffb347, #ffd98a, #ffb347, #ff8a00); background-size: 300% 100%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: edit-frame-flow 7s linear infinite;
+}
+@keyframes edit-frame-flow { from { background-position: 0% 0; } to { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) { .editor-body.editing-frame::before { animation: none; background: #ff9f1c; } }
 
 /* ------------------------------------------------------------------ */
 /* 指で押す端末（スマホ・タブレット）：押す部品は、縦も横も44px以上（実機の見直し・全体デバッグ 4）  */
