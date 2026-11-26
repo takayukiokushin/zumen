@@ -82,7 +82,7 @@ export const ja = {
   'project.save': '保存',
   'project.unsaved': '未保存',
   'project.editing': '編集中',
-  'project.updated': '更新',
+  'project.updated': '最終更新日時',
 
   'settings.title': '表示の設定',
   'settings.tab.basic': '基本設定',

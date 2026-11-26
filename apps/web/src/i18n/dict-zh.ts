@@ -81,7 +81,7 @@ export const zh: Dict = {
   'project.save': '保存',
   'project.unsaved': '未保存',
   'project.editing': '编辑中',
-  'project.updated': '更新',
+  'project.updated': '最后更新时间',
 
   'settings.title': '显示设置',
   'settings.tab.basic': '基本设置',

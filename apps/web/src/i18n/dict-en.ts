@@ -81,7 +81,7 @@ export const en: Dict = {
   'project.save': 'Save',
   'project.unsaved': 'Unsaved',
   'project.editing': 'Being edited',
-  'project.updated': 'Updated',
+  'project.updated': 'Last updated',
 
   'settings.title': 'Display settings',
   'settings.tab.basic': 'Basic',

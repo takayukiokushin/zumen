@@ -81,7 +81,7 @@ export const ko: Dict = {
   'project.save': '저장',
   'project.unsaved': '저장 안 됨',
   'project.editing': '편집 중',
-  'project.updated': '갱신',
+  'project.updated': '최종 갱신 일시',
 
   'settings.title': '화면 설정',
   'settings.tab.basic': '기본 설정',
