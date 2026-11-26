@@ -447,14 +447,20 @@ export function withDerived(rawAnswers: Answers): Answers {
   {
     const kinds = countOf(answers.batteryPcsGroupCount);
     const lines: string[] = [];
+    const parts: { kw: unknown; n: number }[] = [];
     for (let i = 0; i < kinds; i++) {
       const kw = answers[indexedKey('batteryPcsKw', i)];
       if (kw === undefined || kw === null || kw === '') continue;
-      lines.push(`${kw}kW×${countOf(answers[indexedKey('batteryPcsUnits', i)] ?? 1, 1, maxCountOf('pcsCount'))}台`);
+      const n = countOf(answers[indexedKey('batteryPcsUnits', i)] ?? 1, 1, maxCountOf('pcsCount'));
+      lines.push(`${kw}kW×${n}台`);
+      parts.push({ kw, n });
     }
+    // 容量の行の、いちばん下に、合計を書く（容量の行は10行まで。合計は、その次の行）
+    const batteryTotal = kwTotalLine(parts);
     // 以前の案件：「蓄電池のPCSの容量」の文字が残っていて、容量ごとの入力が無いときは、その文字をそのまま書く
     if (lines.length === 0 && answers.batteryPcsCapacity !== undefined && String(answers.batteryPcsCapacity).trim() !== '') lines.push(String(answers.batteryPcsCapacity).trim());
     for (let i = 0; i < 10; i++) d[`batteryPcsLine${i + 1}`] = lines[i] ?? '';
+    d.batteryPcsLine11 = batteryTotal;
   }
 
   // PCSの注記（例: 100kW×15台、50kW×7台）。同じ容量はまとめて書く
@@ -477,6 +483,8 @@ export function withDerived(rawAnswers: Answers): Answers {
    */
   const trCount = countOf(answers.transformerCount, 1, maxCountOf('transformerCount'));
   const perTransformer: string[][] = Array.from({ length: trCount }, () => []);
+  /** 変圧器ごとの、容量と台数（合計の行を書くため） */
+  const partsByTr: { kw: unknown; n: number }[][] = Array.from({ length: trCount }, () => []);
   /** PCSごとにPVの容量を入れたときの、変圧器ごとの合計（kW） */
   const pvByPcs: number[] = Array.from({ length: trCount }, () => 0);
   const perPcsMode = pcsInputMode(answers) === 'perPcs';
@@ -486,7 +494,10 @@ export function withDerived(rawAnswers: Answers): Answers {
     const total = countOf(answers[indexedKey('pcsCount', i)] ?? 1, 0, maxCountOf('pcsCount'));
     const share = pcsShares(answers, i, total, trCount);
     for (let t = 0; t < trCount; t++) {
-      if ((share.counts[t] ?? 0) > 0) perTransformer[t]!.push(`${kw}kW×${share.counts[t]}台`);
+      if ((share.counts[t] ?? 0) > 0) {
+        perTransformer[t]!.push(`${kw}kW×${share.counts[t]}台`);
+        partsByTr[t]!.push({ kw, n: share.counts[t]! });
+      }
     }
     // PCSごとのPVの容量（数として読めるものだけ。同じ変圧器につなぐものは足す）
     if (share.perPcs) {
@@ -497,7 +508,8 @@ export function withDerived(rawAnswers: Answers): Answers {
     }
   }
   for (let t = 0; t < Math.max(8, trCount); t++) {
-    d[`pcsAtTr${t + 1}`] = perTransformer[t]?.join('\n') ?? '';
+    // 容量の行のいちばん下に、合計を書く（種類が複数のとき、または2台以上のとき）
+    d[`pcsAtTr${t + 1}`] = [...(perTransformer[t] ?? []), kwTotalLine(partsByTr[t] ?? [])].filter(Boolean).join('\n');
     d[`pcsTrNo${t + 1}`] = String(t + 1);
     // PCSの枠の真下のPVの容量（任意）。入れてあれば「100kW」と書く。空欄なら書かない
     // PCSごとに入れる入れ方のときは、PCSごとの値を足した合計。変圧器ごとの入れ方のときは、その変圧器の欄の値
@@ -932,6 +944,39 @@ function legacySiteSets(answers: Answers): Answers {
     }
   }
   return out;
+}
+
+/**
+ * kW の文字を、ちょうどの数（整数と小数の桁数）として読む。「50」「12.499」「50kW」。読めなければ null。
+ * 太陽光・蓄電池の合計は、法令で厳密に決まることがあるので、小数の計算誤差（0.1＋0.2＝0.30000000000000004 など）が出ない、整数での計算にする
+ */
+function parseKw(v: unknown): { int: bigint; scale: number } | null {
+  const m = /^(\d+)(?:\.(\d+))?\s*(?:kw)?$/i.exec(String(v ?? '').normalize('NFKC').trim());
+  if (!m) return null;
+  const frac = m[2] ?? '';
+  return { int: BigInt(m[1]! + frac), scale: frac.length };
+}
+/**
+ * 「容量×台数」の合計（kW）を、丸めずに、そのまま書く。例：12.499kW×3台 → 「37.497」、12.5kW×3台 → 「37.5」、50kW×4台＋25kW×2台 → 「250」。
+ * どれか1つでも数として読めないとき、または、1つも無いときは、null（間違った合計を書かない）
+ */
+export function exactKwTotal(parts: { kw: unknown; n: number }[]): string | null {
+  if (parts.length === 0) return null;
+  const read = parts.map((p) => ({ k: parseKw(p.kw), n: BigInt(Math.max(0, Math.trunc(p.n))) }));
+  if (read.some((r) => r.k === null)) return null;
+  const scale = Math.max(...read.map((r) => r.k!.scale));
+  let sum = 0n;
+  for (const r of read) sum += r.k!.int * 10n ** BigInt(scale - r.k!.scale) * r.n;
+  const digits = sum.toString().padStart(scale + 1, '0');
+  const whole = digits.slice(0, digits.length - scale);
+  const frac = digits.slice(digits.length - scale).replace(/0+$/, '');
+  return frac ? `${whole}.${frac}` : whole;
+}
+/** 合計の行（「(合計:250kW)」）。種類が複数あるときと、1種類でも2台以上のときだけ書く（1台のときは、定格と同じなので書かない） */
+function kwTotalLine(parts: { kw: unknown; n: number }[]): string {
+  if (parts.length === 0 || (parts.length === 1 && parts[0]!.n < 2)) return '';
+  const total = exactKwTotal(parts);
+  return total === null ? '' : `(合計:${total}kW)`;
 }
 
 /** 変圧器の結線が、単相か（単相の変圧器の手前のPF・PCは2本、三相は3本）。結線が未入力なら、null */

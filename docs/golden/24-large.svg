@@ -6,10 +6,10 @@
   </g>
   <text x="760" y="45" font-size="14" font-weight="700" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">見本工場　キュービクル式高圧受電設備単線結線図</text>
   <text x="1488" y="1045" font-size="9" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="#000">株式会社フジエレックス</text>
-  <g transform="translate(788.18 271.87) scale(0.4858)">
+  <g transform="translate(775.21 271.87) scale(0.4858)">
     <g stroke="#000" fill="none" stroke-linecap="round" stroke-linejoin="round" color="#000">
-    <path d="M -1568.8 328 L 1452.8 328 M -1568.8 328 L -1568.8 354 M 1452.8 328 L 1452.8 354" fill="none" stroke-width="1" />
-    <text x="-1568.8" y="322" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
+    <path d="M -1542.1000000000001 328 L 1479.5000000000002 328 M -1542.1000000000001 328 L -1542.1000000000001 354 M 1479.5000000000002 328 L 1479.5000000000002 354" fill="none" stroke-width="1" />
+    <text x="-1542.1000000000001" y="322" font-size="10" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">キュービクル式（地上）</text>
     <line x1="0" y1="48" x2="0" y2="64" stroke-width="1" />
     <line x1="0" y1="108" x2="0" y2="124" stroke-width="1" />
     <line x1="0" y1="148" x2="0" y2="164" stroke-width="1" />
@@ -35,30 +35,30 @@
     <line x1="0" y1="846" x2="0" y2="883" stroke-width="1" />
     <line x1="0" y1="883" x2="-69" y2="883" stroke-width="1" />
     <line x1="0" y1="883" x2="0" y2="939" stroke-width="1" />
-    <line x1="-1370" y1="939" x2="1370" y2="939" stroke-width="1" />
-    <line x1="-1370" y1="939" x2="-1370" y2="955" stroke-width="1" />
-    <line x1="-1190" y1="939" x2="-1190" y2="955" stroke-width="1" />
-    <line x1="-1030" y1="939" x2="-1030" y2="955" stroke-width="1" />
-    <line x1="-870" y1="939" x2="-870" y2="955" stroke-width="1" />
-    <line x1="-710" y1="939" x2="-710" y2="955" stroke-width="1" />
-    <line x1="-550" y1="939" x2="-550" y2="955" stroke-width="1" />
-    <line x1="-390" y1="939" x2="-390" y2="955" stroke-width="1" />
-    <line x1="-230" y1="939" x2="-230" y2="955" stroke-width="1" />
-    <line x1="-70" y1="939" x2="-70" y2="955" stroke-width="1" />
-    <line x1="90" y1="939" x2="90" y2="955" stroke-width="1" />
-    <line x1="250" y1="939" x2="250" y2="955" stroke-width="1" />
-    <line x1="410" y1="939" x2="410" y2="955" stroke-width="1" />
-    <line x1="570" y1="939" x2="570" y2="955" stroke-width="1" />
-    <line x1="730" y1="939" x2="730" y2="955" stroke-width="1" />
-    <line x1="890" y1="939" x2="890" y2="955" stroke-width="1" />
-    <line x1="1050" y1="939" x2="1050" y2="955" stroke-width="1" />
-    <line x1="1210" y1="939" x2="1210" y2="955" stroke-width="1" />
-    <line x1="1370" y1="939" x2="1370" y2="955" stroke-width="1" />
-    <line x1="-1370" y1="1022.5" x2="-1370" y2="1038.5" stroke-width="1" />
-    <line x1="-1430" y1="1038.5" x2="-1310" y2="1038.5" stroke-width="1" />
-    <line x1="-1310" y1="1076.5" x2="-1310" y2="1092.5" stroke-width="1" />
-    <line x1="-1190" y1="1022.5" x2="-1190" y2="1038.5" stroke-width="1" />
-    <line x1="-1190" y1="1076.5" x2="-1190" y2="1092.5" stroke-width="1" />
+    <line x1="-1396.7" y1="939" x2="1396.7" y2="939" stroke-width="1" />
+    <line x1="-1396.7" y1="939" x2="-1396.7" y2="955" stroke-width="1" />
+    <line x1="-1163.3" y1="939" x2="-1163.3" y2="955" stroke-width="1" />
+    <line x1="-1003.3000000000002" y1="939" x2="-1003.3000000000002" y2="955" stroke-width="1" />
+    <line x1="-843.3000000000001" y1="939" x2="-843.3000000000001" y2="955" stroke-width="1" />
+    <line x1="-683.3000000000001" y1="939" x2="-683.3000000000001" y2="955" stroke-width="1" />
+    <line x1="-523.3000000000001" y1="939" x2="-523.3000000000001" y2="955" stroke-width="1" />
+    <line x1="-363.29999999999995" y1="939" x2="-363.29999999999995" y2="955" stroke-width="1" />
+    <line x1="-203.29999999999995" y1="939" x2="-203.29999999999995" y2="955" stroke-width="1" />
+    <line x1="-43.299999999999955" y1="939" x2="-43.299999999999955" y2="955" stroke-width="1" />
+    <line x1="116.70000000000005" y1="939" x2="116.70000000000005" y2="955" stroke-width="1" />
+    <line x1="276.70000000000005" y1="939" x2="276.70000000000005" y2="955" stroke-width="1" />
+    <line x1="436.70000000000005" y1="939" x2="436.70000000000005" y2="955" stroke-width="1" />
+    <line x1="596.7" y1="939" x2="596.7" y2="955" stroke-width="1" />
+    <line x1="756.7" y1="939" x2="756.7" y2="955" stroke-width="1" />
+    <line x1="916.7" y1="939" x2="916.7" y2="955" stroke-width="1" />
+    <line x1="1076.7" y1="939" x2="1076.7" y2="955" stroke-width="1" />
+    <line x1="1236.7" y1="939" x2="1236.7" y2="955" stroke-width="1" />
+    <line x1="1396.7" y1="939" x2="1396.7" y2="955" stroke-width="1" />
+    <line x1="-1396.7" y1="1022.5" x2="-1396.7" y2="1038.5" stroke-width="1" />
+    <line x1="-1510.1000000000001" y1="1038.5" x2="-1283.3000000000002" y2="1038.5" stroke-width="1" />
+    <line x1="-1283.3000000000002" y1="1076.5" x2="-1283.3000000000002" y2="1092.5" stroke-width="1" />
+    <line x1="-1163.3" y1="1022.5" x2="-1163.3" y2="1038.5" stroke-width="1" />
+    <line x1="-1163.3" y1="1076.5" x2="-1163.3" y2="1092.5" stroke-width="1" />
     <line x1="0" y1="556" x2="0" y2="380" stroke-width="1" />
     <line x1="0" y1="846" x2="0" y2="760" stroke-width="1" />
     <g transform="translate(-16 0)">
@@ -237,7 +237,7 @@
       <circle cx="37.5" cy="13" r="4" fill="none" stroke-width="1" />
     </g>
     <text x="-94" y="893" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-94" dy="0">ZPD</tspan></text>
-    <g transform="translate(-1394 955)">
+    <g transform="translate(-1420.7 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -246,8 +246,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-1336" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1336" dy="0">動力</tspan><tspan x="-1336" dy="12.5">Tr</tspan><tspan x="-1336" dy="12.5">3φ300kVA</tspan><tspan x="-1336" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-1214 955)">
+    <text x="-1362.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1362.7" dy="0">動力</tspan><tspan x="-1362.7" dy="12.5">Tr</tspan><tspan x="-1362.7" dy="12.5">3φ300kVA</tspan><tspan x="-1362.7" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-1187.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -256,8 +256,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-1156" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1156" dy="0">動力</tspan><tspan x="-1156" dy="12.5">Tr</tspan><tspan x="-1156" dy="12.5">3φ300kVA</tspan><tspan x="-1156" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-1054 955)">
+    <text x="-1129.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1129.3" dy="0">動力</tspan><tspan x="-1129.3" dy="12.5">Tr</tspan><tspan x="-1129.3" dy="12.5">3φ300kVA</tspan><tspan x="-1129.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-1027.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -266,8 +266,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-996" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-996" dy="0">動力</tspan><tspan x="-996" dy="12.5">Tr</tspan><tspan x="-996" dy="12.5">3φ300kVA</tspan><tspan x="-996" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-894 955)">
+    <text x="-969.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-969.3" dy="0">動力</tspan><tspan x="-969.3" dy="12.5">Tr</tspan><tspan x="-969.3" dy="12.5">3φ300kVA</tspan><tspan x="-969.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-867.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -276,8 +276,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-836" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-836" dy="0">動力</tspan><tspan x="-836" dy="12.5">Tr</tspan><tspan x="-836" dy="12.5">3φ300kVA</tspan><tspan x="-836" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-734 955)">
+    <text x="-809.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-809.3" dy="0">動力</tspan><tspan x="-809.3" dy="12.5">Tr</tspan><tspan x="-809.3" dy="12.5">3φ300kVA</tspan><tspan x="-809.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-707.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -286,8 +286,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-676" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-676" dy="0">動力</tspan><tspan x="-676" dy="12.5">Tr</tspan><tspan x="-676" dy="12.5">3φ300kVA</tspan><tspan x="-676" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-574 955)">
+    <text x="-649.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-649.3" dy="0">動力</tspan><tspan x="-649.3" dy="12.5">Tr</tspan><tspan x="-649.3" dy="12.5">3φ300kVA</tspan><tspan x="-649.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-547.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -296,8 +296,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-516" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-516" dy="0">動力</tspan><tspan x="-516" dy="12.5">Tr</tspan><tspan x="-516" dy="12.5">3φ300kVA</tspan><tspan x="-516" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-414 955)">
+    <text x="-489.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-489.3" dy="0">動力</tspan><tspan x="-489.3" dy="12.5">Tr</tspan><tspan x="-489.3" dy="12.5">3φ300kVA</tspan><tspan x="-489.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-387.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -306,8 +306,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-356" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-356" dy="0">動力</tspan><tspan x="-356" dy="12.5">Tr</tspan><tspan x="-356" dy="12.5">3φ300kVA</tspan><tspan x="-356" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-254 955)">
+    <text x="-329.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-329.3" dy="0">動力</tspan><tspan x="-329.3" dy="12.5">Tr</tspan><tspan x="-329.3" dy="12.5">3φ300kVA</tspan><tspan x="-329.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-227.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -316,8 +316,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-196" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-196" dy="0">動力</tspan><tspan x="-196" dy="12.5">Tr</tspan><tspan x="-196" dy="12.5">3φ300kVA</tspan><tspan x="-196" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(-94 955)">
+    <text x="-169.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-169.3" dy="0">動力</tspan><tspan x="-169.3" dy="12.5">Tr</tspan><tspan x="-169.3" dy="12.5">3φ300kVA</tspan><tspan x="-169.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(-67.3 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -326,8 +326,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="-36" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-36" dy="0">動力</tspan><tspan x="-36" dy="12.5">Tr</tspan><tspan x="-36" dy="12.5">3φ300kVA</tspan><tspan x="-36" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(66 955)">
+    <text x="-9.3" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-9.3" dy="0">動力</tspan><tspan x="-9.3" dy="12.5">Tr</tspan><tspan x="-9.3" dy="12.5">3φ300kVA</tspan><tspan x="-9.3" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(92.7 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -336,8 +336,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="124" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="124" dy="0">動力</tspan><tspan x="124" dy="12.5">Tr</tspan><tspan x="124" dy="12.5">3φ300kVA</tspan><tspan x="124" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(226 955)">
+    <text x="150.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="150.7" dy="0">動力</tspan><tspan x="150.7" dy="12.5">Tr</tspan><tspan x="150.7" dy="12.5">3φ300kVA</tspan><tspan x="150.7" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(252.7 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -346,8 +346,8 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="284" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="284" dy="0">動力</tspan><tspan x="284" dy="12.5">Tr</tspan><tspan x="284" dy="12.5">3φ300kVA</tspan><tspan x="284" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(386 955)">
+    <text x="310.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="310.7" dy="0">動力</tspan><tspan x="310.7" dy="12.5">Tr</tspan><tspan x="310.7" dy="12.5">3φ300kVA</tspan><tspan x="310.7" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(412.7 955)">
       <line x1="24" y1="0" x2="24" y2="4.5" stroke-width="1" />
       <circle cx="24" cy="22.5" r="18" fill="none" stroke-width="1" />
       <circle cx="24" cy="49.5" r="18" fill="none" stroke-width="1" />
@@ -356,89 +356,89 @@
       <line x1="24" y1="54" x2="31.794" y2="58.5" stroke-width="1" />
       <line x1="24" y1="54" x2="16.206" y2="58.5" stroke-width="1" />
     </g>
-    <text x="444" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="444" dy="0">動力</tspan><tspan x="444" dy="12.5">Tr</tspan><tspan x="444" dy="12.5">3φ300kVA</tspan><tspan x="444" dy="12.5">6600/440-254V</tspan></text>
-    <g transform="translate(546 955)">
+    <text x="470.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="470.7" dy="0">動力</tspan><tspan x="470.7" dy="12.5">Tr</tspan><tspan x="470.7" dy="12.5">3φ300kVA</tspan><tspan x="470.7" dy="12.5">6600/440-254V</tspan></text>
+    <g transform="translate(572.7 955)">
       <rect x="9" y="21" width="30" height="30" fill="none" stroke-width="1" />
       <line x1="24" y1="0" x2="24" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="31.8" x2="31.65" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="39" x2="31.65" y2="39" stroke-width="1" />
       <line x1="24" y1="39" x2="24" y2="45.6" stroke-width="1" />
     </g>
-    <text x="604" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="604" dy="0">SC</tspan><tspan x="604" dy="12.5">30kvar</tspan></text>
-    <g transform="translate(706 955)">
+    <text x="630.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="630.7" dy="0">SC</tspan><tspan x="630.7" dy="12.5">30kvar</tspan></text>
+    <g transform="translate(732.7 955)">
       <rect x="9" y="21" width="30" height="30" fill="none" stroke-width="1" />
       <line x1="24" y1="0" x2="24" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="31.8" x2="31.65" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="39" x2="31.65" y2="39" stroke-width="1" />
       <line x1="24" y1="39" x2="24" y2="45.6" stroke-width="1" />
     </g>
-    <text x="764" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="764" dy="0">SC</tspan><tspan x="764" dy="12.5">30kvar</tspan></text>
-    <g transform="translate(866 955)">
+    <text x="790.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="790.7" dy="0">SC</tspan><tspan x="790.7" dy="12.5">30kvar</tspan></text>
+    <g transform="translate(892.7 955)">
       <rect x="9" y="21" width="30" height="30" fill="none" stroke-width="1" />
       <line x1="24" y1="0" x2="24" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="31.8" x2="31.65" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="39" x2="31.65" y2="39" stroke-width="1" />
       <line x1="24" y1="39" x2="24" y2="45.6" stroke-width="1" />
     </g>
-    <text x="924" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="924" dy="0">SC</tspan><tspan x="924" dy="12.5">30kvar</tspan></text>
-    <g transform="translate(1026 955)">
+    <text x="950.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="950.7" dy="0">SC</tspan><tspan x="950.7" dy="12.5">30kvar</tspan></text>
+    <g transform="translate(1052.7 955)">
       <rect x="9" y="21" width="30" height="30" fill="none" stroke-width="1" />
       <line x1="24" y1="0" x2="24" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="31.8" x2="31.65" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="39" x2="31.65" y2="39" stroke-width="1" />
       <line x1="24" y1="39" x2="24" y2="45.6" stroke-width="1" />
     </g>
-    <text x="1084" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1084" dy="0">SC</tspan><tspan x="1084" dy="12.5">30kvar</tspan></text>
-    <g transform="translate(1186 955)">
+    <text x="1110.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1110.7" dy="0">SC</tspan><tspan x="1110.7" dy="12.5">30kvar</tspan></text>
+    <g transform="translate(1212.7 955)">
       <rect x="9" y="21" width="30" height="30" fill="none" stroke-width="1" />
       <line x1="24" y1="0" x2="24" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="31.8" x2="31.65" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="39" x2="31.65" y2="39" stroke-width="1" />
       <line x1="24" y1="39" x2="24" y2="45.6" stroke-width="1" />
     </g>
-    <text x="1244" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1244" dy="0">SC</tspan><tspan x="1244" dy="12.5">30kvar</tspan></text>
-    <g transform="translate(1346 955)">
+    <text x="1270.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1270.7" dy="0">SC</tspan><tspan x="1270.7" dy="12.5">30kvar</tspan></text>
+    <g transform="translate(1372.7 955)">
       <rect x="9" y="21" width="30" height="30" fill="none" stroke-width="1" />
       <line x1="24" y1="0" x2="24" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="31.8" x2="31.65" y2="31.8" stroke-width="1" />
       <line x1="16.35" y1="39" x2="31.65" y2="39" stroke-width="1" />
       <line x1="24" y1="39" x2="24" y2="45.6" stroke-width="1" />
     </g>
-    <text x="1404" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1404" dy="0">SC</tspan><tspan x="1404" dy="12.5">30kvar</tspan></text>
-    <g transform="translate(-1450 1038.5)">
+    <text x="1430.7" y="965" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="1430.7" dy="0">SC</tspan><tspan x="1430.7" dy="12.5">30kvar</tspan></text>
+    <g transform="translate(-1530.1 1038.5)">
       <line x1="20" y1="0" x2="20" y2="10" stroke-width="1" />
       <circle cx="20" cy="24" r="14" fill="none" stroke-width="1" />
       <text x="20" y="24" font-size="13" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">G</text>
     </g>
-    <text x="-1460" y="1048.5" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1460" dy="0">G</tspan><tspan x="-1460" dy="12.5">非常用 500kVA 軽油</tspan></text>
-    <g transform="translate(-1338 1038.5)">
+    <text x="-1480.1" y="1052.5" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1480.1" dy="0">G</tspan><tspan x="-1480.1" dy="12.5">非常用 500kVA 軽油</tspan></text>
+    <g transform="translate(-1311.3 1038.5)">
       <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
       <rect x="9" y="10" width="38" height="28" fill="none" stroke-width="1" />
       <text x="28" y="24" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">PCS</text>
     </g>
-    <text x="-1281" y="1057" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1281" dy="0">50kW×5台</tspan></text>
-    <g transform="translate(-1339 1092.5)">
+    <text x="-1312.3" y="1057" font-size="10" text-anchor="end" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1312.3" dy="0">50kW×5台</tspan><tspan x="-1312.3" dy="12.5">(合計:250kW)</tspan></text>
+    <g transform="translate(-1312.3 1092.5)">
       <line x1="29" y1="0" x2="29" y2="12" stroke-width="1" />
       <polygon points="10,34 22,12 48,12 36,34" fill="none" stroke-width="1" />
       <line x1="16.5" y1="34" x2="28.5" y2="12" stroke-width="1" />
       <line x1="23" y1="34" x2="35" y2="12" stroke-width="1" />
       <line x1="29.5" y1="34" x2="41.5" y2="12" stroke-width="1" />
     </g>
-    <text x="-1313" y="1144.5" font-size="10" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1313" dy="0">PV</tspan></text>
-    <g transform="translate(-1218 1038.5)">
+    <text x="-1286.3" y="1144.5" font-size="10" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1286.3" dy="0">PV</tspan></text>
+    <g transform="translate(-1191.3 1038.5)">
       <line x1="28" y1="0" x2="28" y2="10" stroke-width="1" />
       <rect x="9" y="10" width="38" height="28" fill="none" stroke-width="1" />
       <text x="28" y="24" font-size="9" text-anchor="middle" dominant-baseline="central" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none">PCS</text>
     </g>
-    <text x="-1161" y="1057" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1161" dy="0">50kW×5台</tspan></text>
-    <g transform="translate(-1219 1092.5)">
+    <text x="-1134.3" y="1057" font-size="10" text-anchor="start" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1134.3" dy="0">50kW×5台</tspan><tspan x="-1134.3" dy="12.5">(合計:250kW)</tspan></text>
+    <g transform="translate(-1192.3 1092.5)">
       <line x1="29" y1="0" x2="29" y2="12" stroke-width="1" />
       <polygon points="10,34 22,12 48,12 36,34" fill="none" stroke-width="1" />
       <line x1="16.5" y1="34" x2="28.5" y2="12" stroke-width="1" />
       <line x1="23" y1="34" x2="35" y2="12" stroke-width="1" />
       <line x1="29.5" y1="34" x2="41.5" y2="12" stroke-width="1" />
     </g>
-    <text x="-1193" y="1144.5" font-size="10" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1193" dy="0">PV</tspan></text>
+    <text x="-1166.3" y="1144.5" font-size="10" text-anchor="middle" font-family="IPAGothic, 'IPAゴシック', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif" fill="currentColor" stroke="none"><tspan x="-1166.3" dy="0">PV</tspan></text>
     </g>
   </g>
 </svg>

@@ -2,7 +2,7 @@
  * ナレッジベースの検証（check-knowledge）の3つ目：複数エリアの構成・設備容量・励磁突入電流抑制開閉器・ZPD・LA・変圧器の初期値・継電器・説明文の整理・読み取りの指示文。
  * 共有するものは common.ts。scripts/check-knowledge.ts から、part1 → part2 → part3 の順に呼ばれる。
  */
-import { QUESTION_GROUPS, inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, rowsContext, allInputRows, withDerived, isYesNoQuestion, startsWithYesOnly, keysToUnset, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
+import { QUESTION_GROUPS, exactKwTotal, inputNotices, areaCountOf, countOf, limitCountText, maxCountOf, MAX_COUNT, buildComposition, evaluate, missingRequired, QUESTIONS, areaView, normalizeAnswers, dropHiddenChoices, visibleQuestions, withAutoValues, clearForDuplicate, effectiveAnswers, openStartMode, isStepStart, QUESTION_DEFAULTS, missingRequiredFields, rowsContext, allInputRows, withDerived, isYesNoQuestion, startsWithYesOnly, keysToUnset, TREND_MIN_COUNT, TREND_QUESTION_IDS, baseQuestionId, isTrendQuestion, tallyTrends } from '../../packages/knowledge/src/index.ts';
 import type { Answers } from '../../packages/knowledge/src/index.ts';
 import { DOWNSTREAM, EXTRAS, UPSTREAM } from '../../packages/knowledge/src/composition.ts';
 import * as COMPOSITION_DATA from '../../packages/knowledge/src/composition.ts';
@@ -1203,4 +1203,33 @@ console.log('\n■ VT・CTの有無の質問を無くして、組数だけにし
   const rel = (extra: Answers) => withAutoValues({ ...base, mainBreakerForm: 'pfs', relayCount: '1', ...extra });
   ok(rel({ relayType: 'OCR', ctSetCount: '1' }).relayAt === 'ct-1' && rel({ relayType: 'UVR', vtSetCount: '1' }).relayAt === 'vt-1', 'PFS形で、組数を1にしたとき、継電器の置き場所が、CT・VTになっていません');
   ok(rel({ relayType: 'OCR' }).relayAt === 'none' && rel({ relayType: 'UVR' }).relayAt === 'none', 'PFS形で、組数が0のとき、継電器の置き場所が「決まっていない」になっていません');
+}
+
+// PCSの定格の下に、合計（kW）を書く（第21弾 項目9）。太陽光・蓄電池は、法令で厳密に決まることがあるので、小数も、丸めずに、最後まで書く
+console.log('\n■ PCSの合計（kW）：丸めずに、きっちり書く（第21弾 項目9）');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  // 計算：ちょうどの数で足す（小数の誤差が出ない）
+  const t = (...p: [unknown, number][]) => exactKwTotal(p.map(([kw, n]) => ({ kw, n })));
+  ok(t([12.5, 3]) === '37.5', `12.5kW×3台が「37.5」になっていません（${t([12.5, 3])}）`);
+  ok(t(['12.499', 3]) === '37.497', `12.499kW×3台が「37.497」になっていません（${t(['12.499', 3])}）`);
+  ok(t(['0.1', 3]) === '0.3', `0.1kW×3台が「0.3」になっていません（${t(['0.1', 3])}）`);
+  ok(t(['0.1', 1], ['0.2', 1]) === '0.3', `0.1＋0.2が「0.3」になっていません（${t(['0.1', 1], ['0.2', 1])}）`);
+  ok(t(['33.3', 3]) === '99.9', `33.3kW×3台が「99.9」になっていません（${t(['33.3', 3])}）`);
+  ok(t([50, 4], [25, 2]) === '250', `50kW×4台＋25kW×2台が「250」になっていません（${t([50, 4], [25, 2])}）`);
+  ok(t(['12.345678', 7]) === '86.419746', `小数6桁が、最後まで出ていません（${t(['12.345678', 7])}）`);
+  ok(t(['1000000.001', 100]) === '100000000.1', `大きな数・小数が、正しく足されていません（${t(['1000000.001', 100])}）`);
+  ok(t(['50kW', 2]) === '100' && t(['５０', 2]) === '100', '「50kW」「全角の50」が、数として読まれていません');
+  ok(t(['abc', 2]) === null && t(['', 2]) === null && t([50, 2], ['12.5.1', 1]) === null, '数として読めないものがあるのに、合計を書こうとしています');
+  // 図面の文字：種類が複数なら、いつも書く。1種類は、2台以上のときだけ。1台のときは、書かない
+  const pv = (extra: Answers) => buildComposition({ ...answers, hasPv: 'yes', transformerCount: 1, trCapacity: 300, ...extra } as Answers).find((i) => i.role === 'pcs-tr1')?.label.join('|');
+  ok(pv({ pvGroupCount: '1', pcsCapacity: '12.499', pcsCount: '3' }) === '12.499kW×3台|(合計:37.497kW)', `太陽光のPCS（12.499kW×3台）の文字が違います（${pv({ pvGroupCount: '1', pcsCapacity: '12.499', pcsCount: '3' })}）`);
+  ok(pv({ pvGroupCount: '1', pcsCapacity: '50', pcsCount: '1' }) === '50kW×1台', `1台のとき、合計を書いています（${pv({ pvGroupCount: '1', pcsCapacity: '50', pcsCount: '1' })}）`);
+  ok(pv({ pvGroupCount: '2', pcsCapacity: '50', pcsCount: '4', pcsCapacity__2: '25', pcsCount__2: '2' }) === '50kW×4台|25kW×2台|(合計:250kW)', '容量が2種類のとき、いちばん下に、全体の合計が書かれていません');
+  ok(pv({ pvGroupCount: '2', pcsCapacity: '50', pcsCount: '4', pcsCapacity__2: '25', pcsCount__2: '1' }) === '50kW×4台|25kW×1台|(合計:225kW)', '種類が複数で、1台の種類があるとき、合計が書かれていません');
+  ok(pv({ pvGroupCount: '1', pcsCapacity: 'ひみつ', pcsCount: '3' }) === 'ひみつkW×3台', '数として読めない容量のとき、間違った合計を書いています');
+  // 蓄電池のPCS：別々に合計を書く
+  const bat = (extra: Answers) => buildComposition({ ...answers, hasBattery: 'yes', ...extra } as Answers).find((i) => i.role === 'battery-pcs')?.label.join('|');
+  ok(bat({ batteryPcsGroupCount: '1', batteryPcsKw: '12.499', batteryPcsUnits: '3' }) === '12.499kW×3台|(合計:37.497kW)', `蓄電池のPCSの文字が違います（${bat({ batteryPcsGroupCount: '1', batteryPcsKw: '12.499', batteryPcsUnits: '3' })}）`);
+  ok(bat({ batteryPcsGroupCount: '1', batteryPcsKw: '100', batteryPcsUnits: '1' }) === '100kW×1台', '蓄電池のPCSが1台のとき、合計を書いています');
 }

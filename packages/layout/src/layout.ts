@@ -273,9 +273,17 @@ function layoutArea(items: PlacedItem[], answers: Answers): AreaLayout {
   const feederLaneGaps = (laneIds: number[]): number[] => {
     const inLane = (lane: number) => items.filter((f) => f.kind === 'feeder' && (f.lane ?? 0) === lane && findSymbol(f.symbolId));
     const rightExtent = (lane: number): number =>
-      Math.max(0, ...inLane(lane).filter((f) => f.role.startsWith('motor') && f.label.length > 0).map((f) => getSymbol(f.symbolId).box.w / 2 + LABEL_GAP + labelWidth(f.label)));
+      Math.max(0, ...inLane(lane).filter((f) => (f.role.startsWith('motor') || f.role === 'battery-pcs') && f.label.length > 0).map((f) => getSymbol(f.symbolId).box.w / 2 + LABEL_GAP + labelWidth(f.label)));
     const halfWidth = (lane: number): number => Math.max(12, ...inLane(lane).map((f) => getSymbol(f.symbolId).box.w / 2));
-    return laneIds.slice(1).map((id, k) => Math.max(LANE_GAP, rightExtent(laneIds[k]!) + halfWidth(id) + 16));
+    // PCSの文字（容量・台数・合計）は、記号の左に書くことがある。左隣の列の、記号と文字（右に書く）に、触れないよう、間隔を広げる
+    // （縮小のとき、文字の枠が重なっていると、近づきすぎて、文字が記号にかかってしまうため。重ならないように、余裕を足す）
+    const leftExtent = (lane: number): number =>
+      Math.max(0, ...inLane(lane).filter((f) => f.role.startsWith('pcs') && f.label.length > 0).map((f) => getSymbol(f.symbolId).box.w / 2 + 1 + labelWidth(f.label)));
+    const rightFull = (lane: number): number =>
+      Math.max(12, ...inLane(lane).map((f) => getSymbol(f.symbolId).box.w / 2 + (f.label.length > 0 ? LABEL_GAP + labelWidth(f.label) : 0)));
+    return laneIds.slice(1).map((id, k) =>
+      Math.max(LANE_GAP, rightExtent(laneIds[k]!) + halfWidth(id) + 16, leftExtent(id) > 0 ? rightFull(laneIds[k]!) + leftExtent(id) + 6 : 0),
+    );
   };
 
   /** 高圧母線を引き、変圧器や高圧進相設備をそこから下へ並列にぶら下げる */

@@ -1024,8 +1024,8 @@ export const AREA_CHAIN: Placement[] = [
   ...GC_ITEMS,
 ];
 
-/** 蓄電池のPCSの右に書く文字：容量ごとに1行（例：100kW×5台）。容量を答えていなければ、文字は無い */
-const BATTERY_PCS_LABEL: string[] = Array.from({ length: 10 }, (_, i) => `{batteryPcsLine${i + 1}}`);
+/** 蓄電池のPCSの右に書く文字：容量ごとに1行（例：100kW×5台）。いちばん下に、合計（例：(合計:500kW)）。容量を答えていなければ、文字は無い */
+const BATTERY_PCS_LABEL: string[] = Array.from({ length: 11 }, (_, i) => `{batteryPcsLine${i + 1}}`);
 
 /**
  * 1か所目のエリアから、2か所目以降のエリアへ送り出す点の開閉器（送り出しの開閉器）。

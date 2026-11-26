@@ -146,7 +146,7 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
     const boxes = buildComposition(spreadUnits(a)).filter((i) => i.role.startsWith('pcs-tr'));
     const first = boxes.find((i) => i.role === 'pcs-tr1');
     if (boxes.length !== 2) fail(`PCSの枠が ${boxes.length}個 です（2個のはず）`);
-    else if (first?.label.join(' / ') !== '50kW×2台 / 5kW×1台') {
+    else if (first?.label.join(' / ') !== '50kW×2台 / 5kW×1台 / (合計:105kW)') {
       fail(`1台目のPCSの枠の文字が「${first?.label.join(' / ')}」になっています`);
     } else {
       console.log(`  2種類をまとめた枠：1台目「${first.label.join(' / ')}」／2台目「${boxes.find((i) => i.role === 'pcs-tr2')?.label.join(' / ')}」`);
@@ -194,7 +194,7 @@ console.log('\n■ PCS・発電機を、選んだ変圧器につなぐ');
     const tr1 = same.find((i) => i.role === 'pcs-tr1')?.label.join('/');
     const tr2 = same.find((i) => i.role === 'pcs-tr2')?.label.join('/');
     const pv2 = same.find((i) => i.role === 'pv-tr2')?.label.join(' ');
-    if (tr1 !== '50kW×1台' || tr2 !== '50kW×2台' || pv2 !== 'PV 30kW') fail(`同じ変圧器に2台：1台目「${tr1}」・2台目「${tr2}」・PV「${pv2}」`);
+    if (tr1 !== '50kW×1台' || tr2 !== '50kW×2台/(合計:100kW)' || pv2 !== 'PV 30kW') fail(`同じ変圧器に2台：1台目「${tr1}」・2台目「${tr2}」・PV「${pv2}」`);
     else console.log('  選んでいないPCSは1台目の変圧器につながる／同じ変圧器の2台のPVは足して「30kW」と書く');
 
     // 同じつなぎ方なら、PCSごとに選んでも、変圧器ごとの台数で入れても、同じ図面になる

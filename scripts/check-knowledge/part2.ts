@@ -229,17 +229,17 @@ console.log('\n■ 発電機・太陽光発電設備：「なし」のときは�
   if (pcsOf({})?.label.length !== 0) fail('PCSの容量を答えていないのに、PCSの文字があります');
   // PCSの容量：容量ごとに1行（100kW×5台）。以前の案件の「PCSの容量」の文字は、容量ごとの入力が無いときだけ、そのまま出る
   const kinds = { batteryPcsGroupCount: '2', batteryPcsKw: 100, batteryPcsUnits: '5', batteryPcsKw__2: 50, batteryPcsUnits__2: '2' };
-  if (pcsOf(kinds)?.label.join('|') !== '100kW×5台|50kW×2台') fail(`PCSの容量の文字が違います（${pcsOf(kinds)?.label.join('|')}）`);
+  if (pcsOf(kinds)?.label.join('|') !== '100kW×5台|50kW×2台|(合計:600kW)') fail(`PCSの容量の文字が違います（${pcsOf(kinds)?.label.join('|')}）`);
   if (pcsOf({ batteryPcsGroupCount: '1', batteryPcsKw: 100 })?.label.join('|') !== '100kW×1台') fail(`台数を答えていないとき、1台と書くはずです（${pcsOf({ batteryPcsGroupCount: '1', batteryPcsKw: 100 })?.label.join('|')}）`);
   if (pcsOf({ batteryPcsCapacity: '100kW×5' })?.label.join('|') !== '100kW×5') fail('以前の案件の「PCSの容量」の文字が、そのまま出ていません');
-  if (pcsOf({ batteryPcsCapacity: '100kW×5', ...kinds })?.label.join('|') !== '100kW×5台|50kW×2台') fail('容量ごとの入力があるとき、以前の文字は使わないはずです');
+  if (pcsOf({ batteryPcsCapacity: '100kW×5', ...kinds })?.label.join('|') !== '100kW×5台|50kW×2台|(合計:600kW)') fail('容量ごとの入力があるとき、以前の文字は使わないはずです');
   if (!shown({ hasBattery: 'yes' }).some((q) => q.id === 'batteryPcsKw') || shown({ hasBattery: 'no' }).some((q) => q.id === 'batteryPcsKw') || QUESTIONS.some((q) => q.id === 'batteryPcsCapacity')) fail('PCSの容量の質問（容量ごと）は、蓄電池があるときだけ出て、「蓄電池のPCSの容量」の質問は無いはずです');
   // 蓄電ユニットの右の文字：名前／出力・容量／台数。以前の案件の「規模」の文字は、出力・容量として読む。太陽光のPCSとは別
   const unit = (a: Answers) => comp(a).find((i) => i.role === 'battery')?.label.join('|');
   if (unit({ batteryUnitRating: '2,000kW', batteryUnitCount: 5 }) !== '蓄電池ユニット|2,000kW|×5台') fail(`蓄電ユニットの文字が違います（${unit({ batteryUnitRating: '2,000kW', batteryUnitCount: 5 })}）`);
   if (unit({ batteryCapacity: '2,000kW' }) !== '蓄電池ユニット|2,000kW') fail(`以前の案件の「蓄電ユニットの規模」が、出力・容量として読まれていません（${unit({ batteryCapacity: '2,000kW' })}）`);
   const withPv = comp({ hasPv: 'yes', pvGroupCount: '1', pcsCapacity: 50, pcsCount: '3', batteryPcsGroupCount: '1', batteryPcsKw: 100, batteryPcsUnits: '2' });
-  if (withPv.find((i) => i.role === 'battery-pcs')?.label.join('|') !== '100kW×2台') fail('蓄電池のPCSが、太陽光のPCSと混ざっています');
+  if (withPv.find((i) => i.role === 'battery-pcs')?.label.join('|') !== '100kW×2台|(合計:200kW)') fail('蓄電池のPCSが、太陽光のPCSと混ざっています');
   else console.log('  蓄電池のPCS：必ず入る（変圧器→PCS→蓄電池ユニット）。容量は、答えたときだけ、PCSの右横に書く');
 }
 
