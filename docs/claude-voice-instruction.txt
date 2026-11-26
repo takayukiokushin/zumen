@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "vj6oqc6",
+  "version": "v1k2a8qg",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：vj6oqc6）
+# 項目の一覧（版：v1k2a8qg）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -432,8 +432,6 @@
 - inrushRatedCurrent：励突抑制開閉器の定格電流｜数字のみ（A）｜条件：hasInrush=yes
 - inrushFuseCount：励突抑制開閉器のヒューズ本数｜数字のみ（本）｜条件：hasInrush=yes
 - inrushFuseSpec：励突抑制開閉器のヒューズ定格｜文字｜条件：hasInrush=yes
-- hasSiteVt：受電設備内にVTはありますか｜yes/no
-- hasSiteCt：受電設備内にCTはありますか｜yes/no
 - hasZpd：ZPDはありますか｜yes/no
 - hasGc：接地コンデンサ（GC）はありますか｜yes/no
 - zpdTap：ZPDをつなぐ位置は｜ds-vcb=DSとVCBの間 ／ vcb-ct=VCBとCTの間 ／ lbs-ct=LBSの次（LBSとCTの間） ／ ct-bus=変圧器の手前（CTの下・高圧母線の上）｜条件：hasZpd=yes

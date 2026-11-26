@@ -759,7 +759,7 @@ console.log('\n■ 継電器（OCR・UVR・OVR）・トリップコイル・補�
     ['VT2組・UVR・OVR・名前だけの継電器・励突抑制開閉器', multi],
     ['蓄電所（補助変圧器2台）', battery],
     ['2か所（2か所目にもOCRとトリップコイル）', twoAreas],
-    ['PFS形（継電器なし）', { ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no' }],
+    ['PFS形（継電器なし）', { ...answers, mainBreakerForm: 'pfs', vtSetCount: '0', ctSetCount: '0' }],
   ];
   for (const [name, a] of cases) {
     const d = layout(buildComposition(a), a);

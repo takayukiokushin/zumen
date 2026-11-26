@@ -125,6 +125,7 @@ export function normalizeAnswers(answers: Answers): Answers {
   // 受電側の開閉器から決まる目印（質問の出し分けに使う）。
   // 1か所目は「主遮断装置の形式」、2か所目以降は「このエリアの受電側の開閉器」で決まる
   out = { ...out, ...intakeFlags(out), pcsMode: pcsInputMode(out) };
+  out = legacySiteSets(out);
   const cabinet = out.sourceType === 'cabinet';
   // 引込元が地上キャビネットのときは、PAS・PGS（電柱上）は無い。未回答（または古い回答）のときはUGSにする
   // （白紙で始めた案件は、自動で決めない。区分開閉器の有無（UGS か なし）を、自分で選ぶまで、未回答のまま。
@@ -907,6 +908,32 @@ export interface PlacedItem {
  * 繰り返し入力するグループ（受電設備エリア・変圧器）の n 件目のキー。
  * 1件目は基本のキーのままにして、2件目以降だけ接尾辞を付ける。
  */
+/**
+ * 以前の「受電設備内にVT・CTはありますか？」（hasSiteVt・hasSiteCt）を、組数（vtSetCount・ctSetCount）に読み替える（第21弾 項目8）。
+ * 標準構成（DS＋VCB）以外だけ：「あり」→ 1組、「なし」・未回答 → 0組。組数が答えてあれば、組数を優先する。
+ * 標準構成は、以前から答えを使っていないので、読み替えない（VTは、PFS形など「有無を聞いていた構成」だけ読み替える）。
+ * 古い答えは消さずに残す（組数が答えてあれば、組数が優先されるので、残っていても、あとから組数を変えられる）。
+ * エリアごとの答え（a2:hasSiteVt など）も同じ
+ */
+const LEGACY_SITE = /^((?:a\d+:)?)hasSite(Vt|Ct)$/;
+function legacySiteSets(answers: Answers): Answers {
+  let out = answers;
+  for (const key of Object.keys(answers)) {
+    const m = LEGACY_SITE.exec(key);
+    if (!m) continue;
+    const prefix = m[1];
+    const vt = m[2] === 'Vt';
+    const countKey = `${prefix}${vt ? 'vtSetCount' : 'ctSetCount'}`;
+    const standard = prefix === '' ? answers.intakeStandard === 'yes' : String(answers[`${prefix}areaIntake`] ?? 'ds-vcb') === 'ds-vcb';
+    const used = !standard && (!vt || prefix !== '' || answers.intakeOptional === 'yes');
+    if (used && (out[countKey] === undefined || out[countKey] === null || out[countKey] === '')) {
+      if (out === answers) out = { ...answers };
+      out[countKey] = answers[key] === 'yes' ? '1' : '0';
+    }
+  }
+  return out;
+}
+
 /** 変圧器の結線が、単相か（単相の変圧器の手前のPF・PCは2本、三相は3本）。結線が未入力なら、null */
 const SINGLE_PHASE_CONNECTIONS = new Set(['tr-1p', 'tr-1p-2w', 'tr-1p-parallel']);
 /**
@@ -1058,8 +1085,6 @@ const DEAD_END_AREA_VIEW: Answers = {
   areaIntake: 'none',
   areaPas: 'no',
   areaAs: 'no',
-  hasSiteVt: 'no',
-  hasSiteCt: 'no',
   hasZpd: 'no',
   hasInrush: 'no',
   hasOvgr: 'no',

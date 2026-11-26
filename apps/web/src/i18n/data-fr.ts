@@ -218,8 +218,6 @@ const data: Record<string, string> = {
   "励突抑制開閉器の定格電流": "Courant nominal de l’interrupteur de limitation d’appel",
   "励突抑制開閉器のヒューズ本数": "Nombre de fusibles de l’interrupteur de limitation d’appel",
   "励突抑制開閉器のヒューズ定格": "Calibre des fusibles de l’interrupteur de limitation d’appel",
-  "受電設備内にVTはありますか？": "Y a-t-il un VT dans l’installation de réception ?",
-  "受電設備内にCTはありますか？": "Y a-t-il un CT dans l’installation de réception ?",
   "VTの組数": "Nombre de jeux de VT",
   "VTの位置": "Emplacement du VT",
   "主遮断装置（VCB・LBS）の一次側（DSがあれば、DSの次）": "Côté primaire du dispositif de coupure principal (VCB / LBS) (après le DS, s’il y en a un)",

@@ -359,7 +359,7 @@ console.log('\n■ 縦方向のバランス（母線と手前の機器の間隔�
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr',
     vctLocation: 'indoor', vctCount: 1, areaCount: 1, areaForm: 'cubicle',
     mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A',
-    hasSiteCt: 'yes', ctRatio: '100/5A', hasZpd: 'yes', hasLa: 'yes',
+    ctSetCount: '1', ctRatio: '100/5A', hasZpd: 'yes', hasLa: 'yes',
     trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300,
   };
   const bottomOf = (s: { symbolId: string; y: number; rotate: number }) => {
@@ -403,7 +403,7 @@ console.log('\n■ 縦方向のバランス（母線と手前の機器の間隔�
 console.log('\n■ 励磁突入電流抑制開閉器（VCBと並列）');
 {
   const base: Answers = {
-    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 600A', hasSiteCt: 'yes', ctRatio: '300A/5A',
+    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 600A', ctSetCount: '1', ctRatio: '300A/5A',
     hasInrush: 'yes', inrushRatedVoltage: '7200', inrushRatedCurrent: 200, inrushFuseCount: 3, inrushFuseSpec: '7200V G75A 40kA',
     transformerCount: 1, feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no', hasZpd: 'no', hasLa: 'no',
   };
@@ -453,7 +453,7 @@ console.log('\n■ 励磁突入電流抑制開閉器（VCBと並列）');
 console.log('\n■ ZPD・LAの位置（別々の記号・母線に重ならない）');
 {
   const base: Answers = {
-    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A', hasSiteCt: 'yes', ctRatio: '100/5A',
+    ...answers, mainBreakerForm: 'cb', dsRating: '7200V 400A', vcbRating: '7200V 400A', ctSetCount: '1', ctRatio: '100/5A',
     hasZpd: 'yes', hasLa: 'yes', transformerCount: 2, trConnection: 'tr-3p-yd', trCapacity: 100, feederCount: 0, hasCapacitor: 'no', hasPv: 'no', hasGenerator: 'no',
   };
   const at = (a: Answers) => {
@@ -499,7 +499,7 @@ console.log('\n■ ZPD・LAの位置（別々の記号・母線に重ならな�
     ['ZPD：DSとVCBの間／LA：VCBとCTの間', { ...base, zpdTap: 'ds-vcb', laTap: 'vcb-ct' }],
     ['ZPD：VCBとCTの間／LA：DSとVCBの間', { ...base, zpdTap: 'vcb-ct', laTap: 'ds-vcb' }],
     ['ZPD・LAとも、DSとVCBの間', { ...base, zpdTap: 'ds-vcb', laTap: 'ds-vcb' }],
-    ['PFS形：LBSの次', { ...base, mainBreakerForm: 'pfs', zpdTap: 'lbs-ct', laTap: 'lbs-ct', hasSiteCt: 'yes' }],
+    ['PFS形：LBSの次', { ...base, mainBreakerForm: 'pfs', zpdTap: 'lbs-ct', laTap: 'lbs-ct', ctSetCount: '1' }],
   ] as [string, Answers][]) {
     const d = layout(buildComposition(a), a);
     const doc = fromLayout(d);
@@ -679,7 +679,7 @@ console.log('\n■ 図面を整える');
   const common: Answers = {
     siteName: 'x', receivingVoltage: 6600,
     sourceType: 'pole', boundaryPattern: 'coincident', hasPas: 'yes', pasControl: 'dgr', pasBuiltinVt: 'yes',
-    vctLocation: 'indoor', vctCount: 2, areaCount: 1, areaForm: 'cubicle', hasSiteCt: 'yes',
+    vctLocation: 'indoor', vctCount: 2, areaCount: 1, areaForm: 'cubicle', ctSetCount: '1',
   };
   const patterns: [string, Answers][] = ([
     ['PFS形・変圧器1台', { ...common, mainBreakerForm: 'pfs', transformerCount: 1, trConnection: 'tr-3p-dy', trUsage: '動力', trCapacity: 300 }],

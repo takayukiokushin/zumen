@@ -645,9 +645,9 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   const intakeQs = (kind: string) => ids(areaView({ areaCount: 2, 'a2:areaIntake': kind }, 1));
   ok(intakeQs('lbs-pf').has('lbsRatedCurrent') && intakeQs('lbs-pf').has('lbsFuseCount') && !intakeQs('lbs-pf').has('dsRating'), 'LBS（PF付）のとき、LBSの定格だけを聞いていません');
   ok(intakeQs('lbs').has('lbsRatedCurrent') && !intakeQs('lbs').has('lbsFuseCount'), 'LBS（PFなし）のとき、ヒューズの質問が出ています');
-  ok(intakeQs('vcb').has('vcbRating') && !intakeQs('vcb').has('dsRating') && intakeQs('vcb').has('hasSiteVt'), 'VCBのみのとき、VCBの定格だけを聞いて、VTの有無を聞いていません');
-  ok(intakeQs('ds-vcb').has('dsRating') && intakeQs('ds-vcb').has('vcbRating') && intakeQs('ds-vcb').has('vtRatio') && !intakeQs('ds-vcb').has('hasSiteVt'), 'DS＋VCBのとき、標準構成の質問になっていません');
-  ok(intakeQs('none').has('hasSiteVt') && !intakeQs('none').has('dsRating') && !intakeQs('none').has('lbsRatedCurrent'), '開閉器なしのとき、開閉器の質問が出ています');
+  ok(intakeQs('vcb').has('vcbRating') && !intakeQs('vcb').has('dsRating') && intakeQs('vcb').has('vtSetCount') && intakeQs('vcb').has('ctSetCount') && !intakeQs('vcb').has('hasSiteVt'), 'VCBのみのとき、VCBの定格だけを聞いて、VT・CTの組数を聞いていません（「VTはありますか？」は、もう無いはずです）');
+  ok(intakeQs('ds-vcb').has('dsRating') && intakeQs('ds-vcb').has('vcbRating') && intakeQs('ds-vcb').has('vtRatio') && intakeQs('ds-vcb').has('vtSetCount') && !intakeQs('ds-vcb').has('hasSiteVt'), 'DS＋VCBのとき、標準構成の質問になっていません');
+  ok(intakeQs('none').has('vtSetCount') && !intakeQs('none').has('dsRating') && !intakeQs('none').has('lbsRatedCurrent'), '開閉器なしのとき、開閉器の質問が出ています');
   // 2か所目以降は、分岐元のエリアを選べる（3か所目から）。分岐の位置も、選ぶ
   const link2 = ids(areaView({ areaCount: 3 }, 1));
   const link3 = ids(areaView({ areaCount: 3 }, 2));
@@ -738,7 +738,7 @@ console.log('\n■ 受電設備エリアごとの入力（2か所以上のとき
   // 以前の案件（1か所）の、主遮断装置のあとの質問は、これまでと同じ
   const pfs = ids({ mainBreakerForm: 'pfs' });
   const cbq = ids({ mainBreakerForm: 'cb' });
-  ok(pfs.has('lbsRatedCurrent') && pfs.has('lbsFuseCount') && pfs.has('hasSiteVt') && !pfs.has('dsRating') && !pfs.has('vtRatio'), 'PFS形（1か所）の質問が、これまでと違います');
+  ok(pfs.has('lbsRatedCurrent') && pfs.has('lbsFuseCount') && pfs.has('vtSetCount') && pfs.has('ctSetCount') && !pfs.has('hasSiteVt') && !pfs.has('dsRating'), 'PFS形（1か所）の質問が、これまでと違います');
   ok(cbq.has('dsRating') && cbq.has('vcbRating') && cbq.has('vtRatio') && cbq.has('ctRatio') && !cbq.has('hasSiteVt') && !cbq.has('lbsRatedCurrent'), 'CB形（1か所）の質問が、これまでと違います');
   console.log('  2か所目の答えは「a2:〜」で別に持ち、1か所目・以前の案件とは混ざらない');
   console.log('  受電側の開閉器（DS＋VCB／VCBのみ／LBS（PF付）／LBS／DSのみ／なし）で、聞く質問が変わる');

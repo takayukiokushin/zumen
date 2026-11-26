@@ -1,5 +1,5 @@
 import type { QuestionGroup } from './types.ts';
-import { CT_SHOWN, VT_SHOWN } from '../composition.ts';
+import { CT_ASKED, CT_SHOWN, VT_ASKED, VT_SHOWN } from '../composition.ts';
 import { DEAD_END, MID_ASK, notDeadEnd } from './common.ts';
 
 export const QUESTION_GROUPS: QuestionGroup[] = [
@@ -42,7 +42,7 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     repeatCountKey: 'vtSetCount',
     repeatUnit: '組',
     perArea: true,
-    showIf: VT_SHOWN,
+    showIf: { all: [VT_ASKED, notDeadEnd()] },
   },
   {
     id: 'ctset',
@@ -51,7 +51,7 @@ export const QUESTION_GROUPS: QuestionGroup[] = [
     repeatCountKey: 'ctSetCount',
     repeatUnit: '組',
     perArea: true,
-    showIf: CT_SHOWN,
+    showIf: { all: [CT_ASKED, notDeadEnd()] },
   },
   {
     id: 'relay',

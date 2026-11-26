@@ -224,8 +224,6 @@ const data: Record<string, string> = {
   "励突抑制開閉器の定格電流": "Inrush suppression switch rated current",
   "励突抑制開閉器のヒューズ本数": "Number of inrush suppression switch fuses",
   "励突抑制開閉器のヒューズ定格": "Inrush suppression switch fuse rating",
-  "受電設備内にVTはありますか？": "Is there a VT in the receiving equipment?",
-  "受電設備内にCTはありますか？": "Is there a CT in the receiving equipment?",
   "VTの組数": "Number of VT sets",
   "VTの位置": "VT position",
   "主遮断装置（VCB・LBS）の一次側（DSがあれば、DSの次）": "Primary side of the main breaking device (VCB / LBS) (after the DS, if there is one)",

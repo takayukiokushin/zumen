@@ -61,8 +61,8 @@ const BASE: Answers = {
   lbsFuseCount: 3,
   lbsPfG: '50A',
   lbsPfKa: '40kA',
-  hasSiteVt: 'yes',
-  hasSiteCt: 'yes',
+  vtSetCount: '1',
+  ctSetCount: '1',
   ctRatio: '40A/5A',
   vtRatio: '6600/110V',
   hasZpd: 'yes',
@@ -85,8 +85,8 @@ const CB: Answers = {
   mainBreakerForm: 'cb',
   dsRating: '7200V 200A',
   vcbRating: '7200V 600A',
-  hasSiteVt: 'yes',
-  hasSiteCt: 'yes',
+  vtSetCount: '1',
+  ctSetCount: '1',
 };
 
 const mk = (id: string, title: string, mustHave: string[], ...parts: Answers[]): GoldenCase => ({
@@ -270,7 +270,7 @@ export const GOLDEN_CASES: GoldenCase[] = [
     generatorCapacity: '500kVA',
     generatorTransformer: '1',
   }),
-  mk('25-minimal', '最小構成：低圧回線なし', ['pas', 'lbs-pf'], { feederCount: 0, hasSiteVt: 'no', hasSiteCt: 'no', hasZpd: 'no', pasBuiltinVt: 'no', pasBuiltinLa: 'no' }),
+  mk('25-minimal', '最小構成：低圧回線なし', ['pas', 'lbs-pf'], { feederCount: 0, vtSetCount: '0', ctSetCount: '0', hasZpd: 'no', pasBuiltinVt: 'no', pasBuiltinLa: 'no' }),
   mk('26-long-title', '表題が長く2行になる（事業場名・表題欄への記載名・図面名称が長い）', ['lbs-pf'], {
     siteName: '架空の株式会社 第二製造工場 敷地内高圧受電設備（北側・南側）',
     customerNameForTitleBlock: '架空の株式会社 第二製造工場 敷地内高圧受電設備（北側・南側）',

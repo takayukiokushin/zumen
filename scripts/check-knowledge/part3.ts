@@ -227,27 +227,31 @@ console.log('\n■ ZPD・LAをつなぐ位置');
   }
   ok(buildComposition({ ...answers, areaCount: 2, mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasZpd': 'yes', 'a2:hasOvgr': 'yes', 'a2:mainGroundRelay': 'dgr' }).filter((i) => i.area === 1).map((i) => i.role.replace('a2:', '')).filter((r) => /ovgr|zct|ground/.test(r)).join() === 'main-zct,main-ground-relay,ovgr', '2か所目のOVGR・DGRが入っていません');
   // 主遮断装置がLBSのとき：保護継電器の有無・種類を聞く。CT・VTの有無が決まっていなければ、置き場所は推測しない
-  const lbsBase: Answers = { ...answers, mainBreakerForm: 'pfs', hasSiteCt: undefined, hasSiteVt: undefined };
+  const lbsBase: Answers = { ...answers, mainBreakerForm: 'pfs', vtSetCount: undefined, ctSetCount: undefined };
   ok(gq(lbsBase).has('relayCount') && gq(lbsBase).has('relayType'), 'LBSのとき、継電器の個数の質問が出ていません（CT・VTが無くても出るはず）');
   ok(buildComposition(lbsBase).every((i) => i.role !== 'relay' && i.role !== 'relay-note'), 'LBSで継電器0個のとき、継電器を描いています');
   const lbsRelay = (a: Answers) => buildComposition({ ...lbsBase, relayCount: '1', relayType: 'OCR', ...a }).map((i) => i.role).filter((r) => ['relay', 'relay-tt', 'relay-note', 'trip-coil', 'ct'].includes(r)).join();
-  ok(lbsRelay({}) === '', `LBSでOCRを選んだのに、CTの有無が未回答のまま、描いています（${lbsRelay({})}）`);
-  ok(lbsRelay({ hasSiteCt: 'no' }) === 'relay-note', `CTが「なし」のとき、OCRは名前だけのはずです（${lbsRelay({ hasSiteCt: 'no' })}）`);
-  ok(lbsRelay({ hasSiteCt: 'yes' }) === 'ct,relay-tt,relay,trip-coil', `CTが「あり」のとき、CT→試験端子→OCR、OCRからTCのはずです（${lbsRelay({ hasSiteCt: 'yes' })}）`);
-  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR' }).relayAt === undefined, 'CTの有無が未回答のとき、置き場所が自動で入っています');
-  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR', hasSiteCt: 'yes' }).relayAt === 'ct-1', 'CTが「あり」のとき、OCRの置き場所がCT1組目になっていません');
-  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', hasSiteCt: 'yes' }).relayAt === undefined, 'VTの有無が未回答なのに、UVRの置き場所が決まっています');
+  // （第21弾 項目8：「CTはありますか？」は、CTの組数に一本化した。PFS形は、初めは0組＝CTなし）
+  ok(lbsRelay({}) === 'relay-note', `LBSで、CTの組数が初めの状態（0組）のとき、OCRは名前だけのはずです（${lbsRelay({})}）`);
+  ok(lbsRelay({ ctSetCount: '0' }) === 'relay-note', `CTが0組のとき、OCRは名前だけのはずです（${lbsRelay({ ctSetCount: '0' })}）`);
+  ok(lbsRelay({ ctSetCount: '1' }) === 'ct,relay-tt,relay,trip-coil', `CTが1組のとき、CT→試験端子→OCR、OCRからTCのはずです（${lbsRelay({ ctSetCount: '1' })}）`);
+  // 以前の案件（「CTはありますか？」に答えてあるもの）は、組数に読み替えて、同じ図面になる
+  ok(lbsRelay({ hasSiteCt: 'no' }) === lbsRelay({ ctSetCount: '0' }), '以前の「CTなし」が、0組として読まれていません');
+  ok(lbsRelay({ hasSiteCt: 'yes' }) === lbsRelay({ ctSetCount: '1' }), '以前の「CTあり」が、1組として読まれていません');
+  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR' }).relayAt === 'none', 'CTが0組のとき、置き場所が「決まっていない」になっていません');
+  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'OCR', ctSetCount: '1' }).relayAt === 'ct-1', 'CTが1組のとき、OCRの置き場所がCT1組目になっていません');
+  ok(withAutoValues({ ...lbsBase, relayCount: '1', relayType: 'UVR', ctSetCount: '1' }).relayAt === 'none', 'VTが0組なのに、UVRの置き場所が決まっています');
   // 継電器の置き場所の初期値（第13弾 項目55 修正10／B-4）：OCR・2E・3E＝CT／UVR・OVR・RPR・UPR・DSR・UFR・OFR＝VT（何個目でも）。OCGRは、1個目＝CT・2個目以降＝VT（これまでどおり）
   {
-    const both = { ...lbsBase, hasSiteCt: 'yes', hasSiteVt: 'yes' } as Answers;
+    const both = { ...lbsBase, ctSetCount: '1', vtSetCount: '1' } as Answers;
     const at = (type: string, unit: 1 | 2) =>
       withAutoValues({ ...both, relayCount: '2', ...(unit === 1 ? { relayType: type } : { relayType: 'OCR', relayType__2: type }) } as Answers)[unit === 1 ? 'relayAt' : 'relayAt__2'];
     for (const ty of ['OCR', '2E', '3E']) for (const u of [1, 2] as const) ok(at(ty, u) === 'ct-1', `${ty}（${u}個目）の置き場所が、CT1組目になっていません（${at(ty, u)}）`);
     for (const ty of ['UVR', 'OVR', 'RPR', 'UPR', 'DSR', 'UFR', 'OFR']) for (const u of [1, 2] as const) ok(at(ty, u) === 'vt-1', `${ty}（${u}個目）の置き場所が、VT1組目になっていません（${at(ty, u)}）`);
     ok(!(QUESTIONS.find((q) => q.id === 'relayType')?.options ?? []).some((o) => o.value === 'OCGR'), 'OCGRは、継電器の種類の選択肢から消えているはずです（GRで足りる）');
   }
-  ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
-  ok(buildComposition({ ...lbsBase, hasSiteCt: 'yes', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
+  ok(buildComposition({ ...lbsBase, ctSetCount: '1', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).filter((i) => i.role === 'trip-coil').length === 1, 'LBSで、OCRとDGRのTCが1つに共有されていません');
+  ok(buildComposition({ ...lbsBase, ctSetCount: '1', relayCount: '1', relayType: 'OCR', hasZpd: 'yes', mainGroundRelay: 'dgr' }).find((i) => i.role === 'trip-coil')?.connectFrom?.length === 2, 'LBSのTCが、OCRとDGRの両方につながっていません');
   // 新規作成は、完全に白紙から始める（第14弾 項目3）。初期値（質問の既定値・条件の無い自動入力）を使わない。印が無い案件（以前の案件）は、これまでどおり
   {
     const blank = effectiveAnswers({ startMode: 'blank' });
@@ -346,7 +350,7 @@ console.log('\n■ ZPD・LAをつなぐ位置');
       const both = yn.filter((q) => q.required || q.bothChoices).map((q) => q.id);
       const yesOnly = yn.filter(startsWithYesOnly);
       ok(yn.length >= 35 && yesOnly.length >= 20, `あり／なしの質問の数が、想定と違います（全部 ${yn.length}・最初は「あり」だけ ${yesOnly.length}）`);
-      for (const id of ['groundCabinet', 'hasSiteCt', 'hasSiteVt', 'linkCable', 'link2Cable', 'link3Cable', 'link4Cable', 'relayTest', 'hasCapacitor']) ok(both.includes(id), `${id}：最初から両方のボタンを出すはずです`);
+      for (const id of ['groundCabinet', 'linkCable', 'link2Cable', 'link3Cable', 'link4Cable', 'relayTest', 'hasCapacitor']) ok(both.includes(id), `${id}：最初から両方のボタンを出すはずです`);
       for (const id of ['hasZpd', 'hasLa', 'pasBuiltinVt', 'pasBuiltinLa', 'trHasLbs', 'trHasPc', 'hasOvgr']) ok(yesOnly.some((q) => q.id === id), `${id}：最初は「あり」だけのはずです`);
       // 「なし」と答えること自体が意味を持つ質問（条件に eq:'no'・ne:'no' で出てくるもの）は、必ず、最初から両方出す。
       // （「あり」だけだと、「なし」を選べず、続きの質問・描き方に進めなくなる。新しい質問を足したときの、うっかり防止）
@@ -767,7 +771,7 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   const zero = ids({ ...base, relayCount: '0' });
   ok(!zero.includes('relay') && !zero.includes('trip-coil'), '継電器0個なのに、OCRまたはトリップコイルが入っています');
   // PFS形（CTもVTも無し）：継電器は入らない（これまでと同じ）
-  const pfs = buildComposition({ ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no' }).map((i) => i.role);
+  const pfs = buildComposition({ ...answers, mainBreakerForm: 'pfs', vtSetCount: '0', ctSetCount: '0' }).map((i) => i.role);
   ok(!pfs.includes('relay') && !pfs.includes('trip-coil') && !pfs.includes('ct'), 'PFS形（VT・CTなし）に、継電器やCTが入っています');
   // 継電器の個数・種類・どこについているか
   const multi: Answers = {
@@ -806,7 +810,7 @@ console.log('\n■ VT・CTの組／保護継電器／トリップコイル／補
   ok(auto.relayType === 'OCR' && auto.relayType__2 === 'UVR' && auto.relayType__3 === 'OVR', '継電器の種類の初期値（OCR・UVR・OVR）が違います');
   ok(auto.relayAt === 'ct-1' && auto.relayAt__2 === 'vt-1' && auto.relayAt__3 === 'vt-1' && auto.relayTest === 'yes' && auto.relayTest__2 === 'yes', '継電器の置き場所（OCR→CT、UVR・OVR→VT）・試験端子の初期値が違います');
   // VTが無い構成では、OVRも「置き場所は決まっていない」
-  const noVt = withAutoValues(normalizeAnswers({ ...answers, mainBreakerForm: 'pfs', hasSiteVt: 'no', hasSiteCt: 'no', relayCount: '3' }));
+  const noVt = withAutoValues(normalizeAnswers({ ...answers, mainBreakerForm: 'pfs', vtSetCount: '0', ctSetCount: '0', relayCount: '3' }));
   ok(noVt.relayAt__3 !== 'vt-1', 'VTが無いのに、OVRがVTにつく初期値になっています');
   // 継電器の記号が、すべての種類にある
   for (const c of ['OCR', 'UVR', 'OVR', 'UFR', 'OFR', 'RPR', 'UPR', 'DSR', '2E', '3E']) {
@@ -1159,4 +1163,44 @@ console.log('\n■ 区分開閉器なし＋電力会社のケーブルでは、V
   const withMid = tallyTrends(blank(20, { midSwitch: 'yes', midKind: 'pas', midPlace: 'pole' }));
   if (withMid.midBuiltinLa?.top[0]?.value !== 'no') fail('開閉器が「ある」案件では、答えていない途中のLAの内蔵を、「なし」として数えるはずです');
   else console.log('  傾向：出ない質問は数えない（出る案件の、答えの無いものだけ「なし」）');
+}
+
+// 「VTはありますか？」「CTはありますか？」は、組数の「0（なし）」と同じなので、無くした（第21弾 項目8）
+console.log('\n■ VT・CTの有無の質問を無くして、組数だけにした（第21弾 項目8）');
+{
+  const ok = (cond: boolean | undefined, msg: string) => (cond ? undefined : fail(msg));
+  const roles = (a: Answers) => buildComposition(a).map((i) => i.role);
+  const base = { areaCount: '1', sectionalizer: 'pas' } as Answers;
+  ok(!QUESTIONS.some((q) => q.id === 'hasSiteVt' || q.id === 'hasSiteCt'), '「VTはありますか？」「CTはありますか？」の質問が、残っています');
+  ok(!('hasSiteVt' in AI_HINTS) && !('hasSiteCt' in AI_HINTS), 'AIへの指示文に、無くした質問（hasSiteVt・hasSiteCt）が残っています');
+  // 初めの状態：PFS形は、VT・CTなし（0組）。DS＋VCBの標準構成は、1組ずつ
+  const pfs = withAutoValues({ ...base, mainBreakerForm: 'pfs' });
+  const cb = withAutoValues({ ...base, mainBreakerForm: 'cb' });
+  ok(pfs.vtSetCount === '0' && pfs.ctSetCount === '0', `PFS形の、VT・CTの組数の初めの値が、0になっていません（${pfs.vtSetCount}・${pfs.ctSetCount}）`);
+  ok(cb.vtSetCount === '1' && cb.ctSetCount === '1', `CB形の、VT・CTの組数の初めの値が、1になっていません（${cb.vtSetCount}・${cb.ctSetCount}）`);
+  ok(!roles({ ...base, mainBreakerForm: 'pfs' }).some((r) => /site-vt|^ct$/.test(r)), 'PFS形の初めの状態に、VT・CTが入っています');
+  ok(roles({ ...base, mainBreakerForm: 'pfs', vtSetCount: '1', ctSetCount: '1' }).filter((r) => /site-vt$|^ct$/.test(r)).length === 2, 'PFS形で、組数を1にしても、VT・CTが入りません');
+  ok(roles({ ...base, mainBreakerForm: 'cb', vtSetCount: '0', ctSetCount: '0' }).every((r) => !/site-vt$|ds-vt$|^ct$/.test(r)), 'CB形で、組数を0にしても、VT・CTが残っています');
+  // 2か所目以降のエリア
+  const area2 = (kind: string, extra: Answers = {}) => withAutoValues({ ...base, areaCount: '2', mainBreakerForm: 'cb', 'a2:areaIntake': kind, ...extra });
+  ok(area2('lbs-pf')['a2:vtSetCount'] === '0' && area2('ds-vcb')['a2:vtSetCount'] === '1', '2か所目のVT組数の初めの値が、受電側の開閉器で決まっていません');
+  // 以前の案件：答えてあった「あり／なし」を、組数に読み替えて、同じ図面になる
+  const same = (legacy: Answers, now: Answers, form: string) => {
+    const a = roles({ ...base, mainBreakerForm: form, ...legacy }).join();
+    const b = roles({ ...base, mainBreakerForm: form, ...now }).join();
+    return a === b;
+  };
+  ok(same({ hasSiteVt: 'yes', hasSiteCt: 'yes' }, { vtSetCount: '1', ctSetCount: '1' }, 'pfs'), '以前のPFS形の「VT・CTあり」が、1組ずつとして読まれていません');
+  ok(same({ hasSiteVt: 'no', hasSiteCt: 'no' }, { vtSetCount: '0', ctSetCount: '0' }, 'pfs'), '以前のPFS形の「VT・CTなし」が、0組として読まれていません');
+  ok(same({}, { vtSetCount: '0', ctSetCount: '0' }, 'pfs'), '以前のPFS形の未回答が、0組として読まれていません');
+  ok(same({ hasSiteVt: 'no', hasSiteCt: 'no' }, {}, 'cb'), '以前のCB形の「なし」（使っていなかった答え）で、図面が変わりました');
+  ok(same({ hasSiteVt: 'yes', hasSiteCt: 'yes', vtSetCount: '2', ctSetCount: '2' }, { vtSetCount: '2', ctSetCount: '2' }, 'pfs'), '組数が答えてあるとき、組数が優先されていません');
+  const legacyArea = normalizeAnswers({ ...base, areaCount: '2', mainBreakerForm: 'cb', 'a2:areaIntake': 'lbs-pf', 'a2:hasSiteVt': 'yes', 'a2:hasSiteCt': 'no' });
+  ok(legacyArea['a2:vtSetCount'] === '1' && legacyArea['a2:ctSetCount'] === '0', '以前の2か所目の「あり／なし」が、組数に読み替えられていません');
+  const std = normalizeAnswers({ ...base, areaCount: '2', mainBreakerForm: 'cb', 'a2:areaIntake': 'ds-vcb', 'a2:hasSiteVt': 'no' });
+  ok(std['a2:vtSetCount'] === undefined, '2か所目が標準構成のとき、使っていなかった答えで、組数が決まりました');
+  // 継電器の置き場所：組数が0のときは「決まっていない」。1以上なら、CT・VTにつく
+  const rel = (extra: Answers) => withAutoValues({ ...base, mainBreakerForm: 'pfs', relayCount: '1', ...extra });
+  ok(rel({ relayType: 'OCR', ctSetCount: '1' }).relayAt === 'ct-1' && rel({ relayType: 'UVR', vtSetCount: '1' }).relayAt === 'vt-1', 'PFS形で、組数を1にしたとき、継電器の置き場所が、CT・VTになっていません');
+  ok(rel({ relayType: 'OCR' }).relayAt === 'none' && rel({ relayType: 'UVR' }).relayAt === 'none', 'PFS形で、組数が0のとき、継電器の置き場所が「決まっていない」になっていません');
 }

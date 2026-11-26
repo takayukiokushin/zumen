@@ -689,11 +689,20 @@ export const CB_CHAIN: Placement[] = [
 const SET_NOS = [1, 2, 3, 4, 5, 6];
 export const CT_AT_VALUES = SET_NOS.map((n) => `ct-${n}`);
 export const VT_AT_VALUES = SET_NOS.map((n) => `vt-${n}`);
-/** VT・CTが入る構成か（DS＋VCBの標準構成は必ず入る。それ以外は「ありますか？」の答え） */
+/**
+ * VT・CTの組数を聞く構成か（DS＋VCBの標準構成も、PFS形などの構成も、どちらでも聞く）。
+ * 「VTはありますか？」「CTはありますか？」の質問は、組数の「0（なし）」と同じことなので、無くした（第21弾 項目8）
+ */
+export const VT_ASKED: Condition = { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'intakeOptional', eq: 'yes' }] };
+export const CT_ASKED: Condition = VT_ASKED;
+/**
+ * VT・CTが入る構成か。DS＋VCBの標準構成は、必ず入る（組数を0にしても、入る構成として見る。「CTが0組なのに継電器がある」を知らせるため）。
+ * それ以外（PFS形など）は、組数が1以上のときだけ入る（初めは0組＝なし）。VTは、PFS形など（有無を聞いていた構成）だけ
+ */
 export const VT_SHOWN: Condition = {
-  any: [{ key: 'intakeStandard', eq: 'yes' }, { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'hasSiteVt', eq: 'yes' }] }],
+  any: [{ key: 'intakeStandard', eq: 'yes' }, { all: [{ key: 'intakeOptional', eq: 'yes' }, { key: 'vtSetCount', gt: 0 }] }],
 };
-export const CT_SHOWN: Condition = { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'hasSiteCt', eq: 'yes' }] };
+export const CT_SHOWN: Condition = { any: [{ key: 'intakeStandard', eq: 'yes' }, { key: 'ctSetCount', gt: 0 }] };
 const RELAY_ON_SET: Condition = { key: 'relayAt', in: [...CT_AT_VALUES, ...VT_AT_VALUES] };
 
 /**

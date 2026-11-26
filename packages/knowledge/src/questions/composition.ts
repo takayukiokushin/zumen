@@ -180,26 +180,6 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     showIf: { all: [{ key: 'intakeVcb', eq: 'yes' }, { key: 'hasInrush', eq: 'yes' }] },
     ask: 'always',
   },
-  {
-    id: 'hasSiteVt',
-    bothChoices: true,
-    group: 'receiving', section: 'VT（計器用変圧器）',
-    label: '受電設備内にVTはありますか？',
-    type: 'select',
-    options: YES_NO,
-    showIf: { key: 'intakeOptional', eq: 'yes' },
-    ask: 'ai-uncertain',
-  },
-  {
-    id: 'hasSiteCt',
-    bothChoices: true,
-    group: 'receiving', section: 'CT（変流器）',
-    label: '受電設備内にCTはありますか？',
-    type: 'select',
-    options: YES_NO,
-    showIf: { key: 'intakeOptional', eq: 'yes' },
-    ask: 'ai-uncertain',
-  },
   // ---- VT（組ごと）。1組目は、これまでの答え（vtCount・vtRatio）をそのまま使う ----
   {
     id: 'vtSetCount',
@@ -210,9 +190,9 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     options: [{ value: '0', label: '0（なし）' }, ...COUNT_OPTIONS.slice(0, 6)],
     allowFreeInput: true,
     unit: '組',
-    defaultValue: '1',
-    // 何も答えていないときは1組（0組は、「0（なし）」と答えたときだけ）
-    autoValue: [{ value: '1' }],
+    // 何も答えていないときは、DS＋VCBの標準構成は1組、PFS形などは0組（なし）。VTがあるときだけ、組数を選ぶ
+    // （白紙で始めた案件は、自動では入れず、自分で選んでもらう。afterAnswered が、自分自身なので、白紙のときは使われない）
+    autoValue: [{ when: { not: { key: 'intakeStandard', eq: 'yes' } }, value: '0', afterAnswered: 'vtSetCount' }, { value: '1' }],
     ask: 'ai-uncertain',
     help: '1組＝「VT＋PF」のひとまとまり。位置が違うVTがあるときは、組を増やす。VTが無いときは「0（なし）」',
     required: true,
@@ -302,9 +282,9 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     options: [{ value: '0', label: '0（なし）' }, ...COUNT_OPTIONS.slice(0, 6)],
     allowFreeInput: true,
     unit: '組',
-    defaultValue: '1',
-    // 何も答えていないときは1組（0組は、「0（なし）」と答えたときだけ）
-    autoValue: [{ value: '1' }],
+    // 何も答えていないときは、DS＋VCBの標準構成は1組、PFS形などは0組（なし）。CTがあるときだけ、組数を選ぶ
+    // （白紙で始めた案件は、自動では入れず、自分で選んでもらう。afterAnswered が、自分自身なので、白紙のときは使われない）
+    autoValue: [{ when: { not: { key: 'intakeStandard', eq: 'yes' } }, value: '0', afterAnswered: 'ctSetCount' }, { value: '1' }],
     ask: 'ai-uncertain',
     help: '位置が違うCTがあるときは、組を増やす。CTが無いときは「0（なし）」',
     required: true,
@@ -406,9 +386,9 @@ export const COMPOSITION_QUESTIONS: Question[] = [
       { when: { all: [{ key: 'relayType', in: RELAY_ON_VT_TYPES }, VT_SHOWN] }, value: 'vt-1' },
       { when: { all: [{ key: 'unitNo', eq: 1 }, CT_SHOWN, { not: { key: 'relayType', in: RELAY_ON_VT_TYPES } }] }, value: 'ct-1' },
       { when: { all: [{ key: 'unitNo', gt: 1 }, VT_SHOWN, { not: { key: 'relayType', in: RELAY_ON_CT_TYPES } }] }, value: 'vt-1' },
-      // CT・VTが「ない」と答えてあるときだけ、置き場所は「決まっていない」にする。
-      // CT・VTの有無を答えていないときは、推測で決めず、置き場所を聞き返す（答えるまで、その継電器は描かない）
-      { when: { any: [{ all: [{ key: 'relayType', in: RELAY_ON_VT_TYPES }, { key: 'hasSiteVt', eq: 'no' }] }, { all: [{ not: { key: 'relayType', in: RELAY_ON_VT_TYPES } }, { key: 'hasSiteCt', eq: 'no' }] }] }, value: 'none' },
+      // CT・VTの組数が0（なし）のときだけ、置き場所は「決まっていない」にする。
+      // 組数をまだ答えていないときは、推測で決めず、置き場所を聞き返す（答えるまで、その継電器は描かない）
+      { when: { any: [{ all: [{ key: 'relayType', in: RELAY_ON_VT_TYPES }, { key: 'vtSetCount', in: ['0', 0] }] }, { all: [{ not: { key: 'relayType', in: RELAY_ON_VT_TYPES } }, { key: 'ctSetCount', in: ['0', 0] }] }] }, value: 'none' },
       { when: { key: 'intakeStandard', eq: 'yes' }, value: 'none' },
     ],
     ask: 'always',

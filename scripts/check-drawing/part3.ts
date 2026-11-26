@@ -563,7 +563,7 @@ console.log('\n■ DGRの遮断（TC）');
 
 /* ---------- VTと継電器が重なるとき：VT（とUVR・OVR）を左へ。OCRは右のまま ---------- */
 {
-  const lbs: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasLa: 'no', hasZpd: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', hasSiteCt: 'yes', hasSiteVt: 'yes', relayCount: '1', relayType: 'OCR' };
+  const lbs: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasLa: 'no', hasZpd: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', ctSetCount: '1', vtSetCount: '1', relayCount: '1', relayType: 'OCR' };
   const cases: [string, Answers][] = [
     ['LBS：VT＋OCR', {}],
     ['LBS：VT＋OCR＋UVR・OVR', { relayCount: '3', relayType__2: 'UVR', relayAt__2: 'vt-1', relayType__3: 'OVR', relayAt__3: 'vt-1', relayTest__3: 'no' }],
@@ -1037,7 +1037,7 @@ console.log('\n■ 範囲選択・複数選択');
     check(`主遮断装置VCB（${name}）`, { ...base, ...rated, ...extra }, () => 'main-breaker', 'trip-coil');
   }
   for (const [name, extra] of [['OCR', {}], ['OCR＋DGR', { mainGroundRelay: 'dgr' }]] as [string, Answers][]) {
-    check(`主遮断装置LBS（${name}）`, { ...base, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasSiteCt: 'yes', hasSiteVt: 'no', relayCount: '1', relayType: 'OCR', ...extra }, () => 'main-breaker', 'trip-coil');
+    check(`主遮断装置LBS（${name}）`, { ...base, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, ctSetCount: '1', vtSetCount: '0', relayCount: '1', relayType: 'OCR', ...extra }, () => 'main-breaker', 'trip-coil');
   }
   for (const [name, sw] of [['VCB', 'vcb'], ['DS＋VCB', 'ds-vcb'], ['LBS', 'lbs']] as const) {
     for (const pos of ['cable', 'bus-primary', 'bus-secondary']) {
@@ -1049,7 +1049,7 @@ console.log('\n■ 範囲選択・複数選択');
 /* ---------- GR・DGR → TC の線：曲がりは1回だけ（右へ、下へ）。TC → OCR は、真っすぐ縦（第17弾 項目3） ---------- */
 {
   const b0: Answers = { ...answers, mainBreakerForm: 'cb', hasZpd: 'yes', hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', vcbRatedVoltage: '7200', vcbRatedCurrent: 600 };
-  const lbs0: Answers = { ...b0, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasSiteCt: 'yes', hasSiteVt: 'no', relayCount: '1', relayType: 'OCR' };
+  const lbs0: Answers = { ...b0, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, ctSetCount: '1', vtSetCount: '0', relayCount: '1', relayType: 'OCR' };
   const eq = (p: number, q: number) => Math.abs(p - q) < 0.5;
   let n = 0;
   for (const [fname, fb] of [['VCB', b0], ['LBS', lbs0]] as const) {
@@ -1315,7 +1315,7 @@ console.log('\n■ 電動機（母線から・変圧器の二次側から。1〜
 
 /* ---------- 主遮断装置がLBSのとき：OCR・DGRの保護継電器とTC ---------- */
 {
-  const lbs: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', hasSiteCt: 'yes', hasSiteVt: 'no', relayCount: '1', relayType: 'OCR' };
+  const lbs: Answers = { ...answers, mainBreakerForm: 'pfs', lbsRatedVoltage: '7200', lbsRatedCurrent: 200, lbsFuseCount: 3, hasLa: 'no', transformerCount: 1, trCapacity: 100, trConnection: 'tr-3p-dy', ctSetCount: '1', vtSetCount: '0', relayCount: '1', relayType: 'OCR' };
   for (const [name, extra] of [['OCRだけ', {}], ['OCR＋DGR', { hasZpd: 'yes', mainGroundRelay: 'dgr' }], ['DGRだけ', { relayCount: '0', hasZpd: 'yes', mainGroundRelay: 'dgr' }]] as [string, Answers][]) {
     const a: Answers = { ...lbs, ...extra };
     const d = layout(buildComposition(a), a);
