@@ -36,7 +36,7 @@ export const en: Dict = {
   'nav.logout.confirmUnsaved': 'You have unsaved changes. Signing out will discard them. Sign out anyway?',
 
   'project.list': 'All drawings',
-  'project.nameLabel': 'Job: ',
+  'project.nameLabel': 'Job name: ',
   'project.new': 'New job',
   'project.newName': 'Enter a name for the job.',
   'project.search': 'Search by job name, site name or customer number',

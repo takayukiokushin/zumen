@@ -36,7 +36,7 @@ export const zh: Dict = {
   'nav.logout.confirmUnsaved': '有尚未保存的更改。退出登录后这些更改将丢失。仍要退出登录吗？',
 
   'project.list': '图纸一览',
-  'project.nameLabel': '项目：',
+  'project.nameLabel': '项目名称：',
   'project.new': '新建项目',
   'project.newName': '请输入项目名称。',
   'project.search': '按项目名称、场所名称或客户编号查找',

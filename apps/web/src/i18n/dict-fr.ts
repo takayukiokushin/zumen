@@ -36,7 +36,7 @@ export const fr: Dict = {
   'nav.logout.confirmUnsaved': 'Des modifications ne sont pas enregistrées. Vous les perdrez en vous déconnectant. Se déconnecter quand même ?',
 
   'project.list': 'Tous les schémas',
-  'project.nameLabel': 'Affaire : ',
+  'project.nameLabel': 'Nom de l’affaire : ',
   'project.new': 'Nouvelle affaire',
   'project.newName': 'Saisissez un nom pour l’affaire.',
   'project.search': 'Rechercher par nom d’affaire, de site ou numéro de client',
