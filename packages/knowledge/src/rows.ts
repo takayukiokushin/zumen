@@ -90,11 +90,12 @@ export function sectionRows(ctx: RowsContext, group: QuestionGroup, area: number
         ? repeated
         : visibleQuestions(viewAt(view, i), { resolvedByAi: ctx.resolvedByAi }).filter((q) => q.group === group.id && q.id !== countKey && !q.shared);
     const rows: InputRow[] = unitQuestions.flatMap((q): InputRow[] => {
-      // 接続元（ほかの機器の開閉器の二次側から分かれるか）：選べる開閉器があるときだけ出し、選択肢は、入力の内容から作る（第18弾 F-②）
+      // 接続元（ほかの機器の開閉器の二次側から分かれるか）：選択肢は、入力の内容から作る（第18弾 F-②）。
+      // 選べる開閉器が1つも無いとき（1台目など）も、「母線から」だけの質問として、必ず出す
+      // （台ごとに、同じ質問が、同じ順番で、そろって並ぶ。1台目だけ、質問が1つ少ない、ということが無いように。第21弾 項目7）
       const fm = /^(tr|cap|gen|motor)From$/.exec(q.id);
       if (fm) {
         const choices = feedChoices(view, fm[1]!, i);
-        if (choices.length === 0) return [];
         return [{ key: keyOf(q.id, i), question: { ...q, options: [...(q.options ?? []), ...choices] }, unit: i, area }];
       }
       // 送り出しの分岐元（ほかの機器の開閉器の二次側）：選択肢は、送り出す側のエリアに入力した、すべての機器の開閉器から作る（第18弾 F-③）

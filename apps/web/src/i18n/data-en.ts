@@ -3,7 +3,7 @@
 // 図面に印刷される文字は、ここでは訳さない（日本語のまま）。足りないものは、検査（check-i18n）が見つける。
 const data: Record<string, string> = {
   "どこから接続しますか？": "Where is it connected from?",
-  "ふつうは「母線から」。ほかの機器の開閉器の二次側から分かれて出ているときだけ、その開閉器を選ぶ（自分より前に入力した機器の開閉器だけ選べる。たとえば、1台のVCBの二次側から、3台の変圧器へ、ケーブルで分かれる場合）。選べる開閉器が無いときは、この質問は出ない": "Normally “From the busbar”. Choose a switch only when this equipment branches off from the secondary side of another equipment’s switch (only switches of equipment entered before this one can be chosen; for example, three transformers branching by cable from the secondary side of one VCB). When there is no switch to choose, this question does not appear.",
+  "ふつうは「母線から」。ほかの機器の開閉器の二次側から分かれて出ているときだけ、その開閉器を選ぶ（自分より前に入力した機器の開閉器だけ選べる。たとえば、1台のVCBの二次側から、3台の変圧器へ、ケーブルで分かれる場合）。選べる開閉器が無いとき（1台目など）は、「母線から」だけが出る": "Normally “From the busbar”. Choose a switch only when this equipment branches off from the secondary side of another equipment’s switch (only switches of equipment entered before this one can be chosen; for example, three transformers branching by cable from the secondary side of one VCB). When there is no switch to choose (for example, the first unit), only “From the busbar” appears.",
   "母線から": "From the busbar",
   "2つ目の次に付く開閉器。付かないときは「なし」": "A switch after the 2nd one. Choose “None” if there is no switch.",
   "ケーブルの電動機側の端末から、電動機までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」など）。付かないときは「なし」。母線から接続するときだけ": "A switch between the cable terminal on the motor side and the motor. They are drawn from the top in the order you choose (for example DS + LBS, LBS + VCS). Choose “None” if there is no switch. Only when connected from the busbar.",

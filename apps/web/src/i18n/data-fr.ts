@@ -3,7 +3,7 @@
 // 図面に印刷される文字は、ここでは訳さない（日本語のまま）。足りないものは、検査（check-i18n）が見つける。
 const data: Record<string, string> = {
   "どこから接続しますか？": "D’où est-il raccordé ?",
-  "ふつうは「母線から」。ほかの機器の開閉器の二次側から分かれて出ているときだけ、その開閉器を選ぶ（自分より前に入力した機器の開閉器だけ選べる。たとえば、1台のVCBの二次側から、3台の変圧器へ、ケーブルで分かれる場合）。選べる開閉器が無いときは、この質問は出ない": "Normalement « Depuis le jeu de barres ». Ne choisissez un appareil que si cet équipement part du secondaire d’un appareil d’un autre équipement (seuls les appareils des équipements saisis avant celui-ci peuvent être choisis ; par exemple, trois transformateurs raccordés par câble au secondaire d’un seul VCB). S’il n’y a aucun appareil à choisir, cette question n’apparaît pas.",
+  "ふつうは「母線から」。ほかの機器の開閉器の二次側から分かれて出ているときだけ、その開閉器を選ぶ（自分より前に入力した機器の開閉器だけ選べる。たとえば、1台のVCBの二次側から、3台の変圧器へ、ケーブルで分かれる場合）。選べる開閉器が無いとき（1台目など）は、「母線から」だけが出る": "Normalement « Depuis le jeu de barres ». Ne choisissez un appareil que si cet équipement part du secondaire d’un appareil d’un autre équipement (seuls les appareils des équipements saisis avant celui-ci peuvent être choisis ; par exemple, trois transformateurs raccordés par câble au secondaire d’un seul VCB). S’il n’y a aucun appareil à choisir (par exemple pour la première unité), seul « Depuis le jeu de barres » apparaît.",
   "母線から": "Depuis le jeu de barres",
   "2つ目の次に付く開閉器。付かないときは「なし」": "Appareil placé après le 2e. Choisissez « Aucun » s’il n’y en a pas.",
   "ケーブルの電動機側の端末から、電動機までの間に付く開閉器。上から、選んだ順に並ぶ（「DS＋LBS」「LBS＋VCS」など）。付かないときは「なし」。母線から接続するときだけ": "Appareil placé entre l’extrémité du câble côté moteur et le moteur. Ils sont dessinés de haut en bas dans l’ordre choisi (par exemple DS + LBS, LBS + VCS). Choisissez « Aucun » s’il n’y en a pas. Seulement pour un raccordement depuis le jeu de barres.",

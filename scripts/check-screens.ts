@@ -498,9 +498,11 @@ try {
       const second = await page.locator('select[id="trFrom__2"]').count();
       const first = await page.locator('select[id="trFrom"]').count();
       const opts = second > 0 ? await page.locator('select[id="trFrom__2"] option').allInnerTexts() : [];
-      if (second !== 1 || first !== 0 || !opts.some((o: string) => /VCBの二次側/.test(o)) || !opts.some((o: string) => /DSの二次側/.test(o))) {
+      // 1台目にも、同じ質問が出る（選べる開閉器は無いので、「母線から」だけ）。台ごとに、同じ質問がそろって並ぶ（第21弾 項目7）
+      const firstOpts = first > 0 ? (await page.locator('select[id="trFrom"] option').allInnerTexts()).filter((o: string) => !/選択してください|Select/.test(o)) : [];
+      if (second !== 1 || first !== 1 || firstOpts.length !== 1 || !/母線から/.test(firstOpts[0] ?? '') || !opts.some((o: string) => /VCBの二次側/.test(o)) || !opts.some((o: string) => /DSの二次側/.test(o))) {
         failed++;
-        problems.push(`接続元の検査：入力画面の「どこから接続しますか？」が、2台目だけに、開閉器の選択肢つきで出ていません（2台目 ${second}・1台目 ${first}・選択肢「${opts.join(' / ')}」）`);
+        problems.push(`接続元の検査：入力画面の「どこから接続しますか？」が、1台目（母線からだけ）にも、2台目（開閉器の選択肢つき）にも、出ていません（2台目 ${second}・1台目 ${first}・1台目の選択肢「${firstOpts.join(' / ')}」・2台目の選択肢「${opts.join(' / ')}」）`);
       } else {
         await page.locator('select[id="trFrom__2"]').selectOption({ label: opts.find((o: string) => /VCBの二次側/.test(o))! });
         await sleep(300);
