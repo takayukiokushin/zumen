@@ -291,8 +291,11 @@ export function DrawingCanvas({ zoomRef, doc, selectedIds, onSelect, onFanPick, 
     // 拡大縮小のあとの図面の位置を測り、中心にした点が、もとの画面の位置に戻るよう、スクロールをずらす
     // （余白・左右の中央寄せ・はみ出しがあっても、ずれない。図面の大きさの比だけで決めると、余白のぶん、ずれる）
     const r = sv.getBoundingClientRect();
-    sc.scrollLeft += r.left + a.u * r.width - a.cx;
-    sc.scrollTop += r.top + a.v * r.height - a.cy;
+    // 画面全体の大きさ（設定の130%など）で拡大していると、画面の位置（getBoundingClientRect）の1pxと、スクロールの1pxは、同じ長さでない。
+    // その比（枠の見た目の幅 ÷ 枠の中の幅）で割って、スクロールの量に直す（等倍のときは、比が1で、これまでどおり）
+    const k = sc.offsetWidth > 0 && sc.getBoundingClientRect().width > 0 ? sc.getBoundingClientRect().width / sc.offsetWidth : 1;
+    sc.scrollLeft += (r.left + a.u * r.width - a.cx) / k;
+    sc.scrollTop += (r.top + a.v * r.height - a.cy) / k;
     anchor.current = null;
   }, [zoom]);
 
