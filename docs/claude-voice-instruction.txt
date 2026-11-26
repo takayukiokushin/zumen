@@ -38,7 +38,7 @@
 ```json
 {
   "format": "zumen-voice",
-  "version": "v1386kaw",
+  "version": "vj6oqc6",
   "answers": {
     "sourceType": "pole",
     "sectionalizer": "pas",
@@ -192,7 +192,7 @@
 - **小数点が見えにくい数字に注意します。** 手書きでは、「4.95kW」が「495kW」、「45.0kW」が「450kW」に見えることがあります。
   PCS の容量が、つながる変圧器の容量より大きいときなど、常識に合わない数字は、そのまま答えず、uncertain に入れて、questions で確認してください。
 
-# 項目の一覧（版：v1386kaw）
+# 項目の一覧（版：vj6oqc6）
 
 項目の書き方：`- 項目ID：名前｜値の書き方｜条件：その項目を答えるとき`。「条件」が無い項目は、いつでも答えてよい項目です。
 
@@ -447,7 +447,7 @@
 - laDischargeCurrent：LAの公称放電電流｜文字｜条件：hasLa=yes
 - laPcRating：LAの上位のPC本体の定格電流｜30A ／ 50A ／ 100A ／ ほかの値も可｜条件：hasLa=yes かつ laSwitch=pc
 - laPcFuse：LAの上位のPCのヒューズの定格電流｜5A ／ 7.5A ／ 10A ／ 12.5A ／ 15A ／ 20A ／ 25A ／ 30A ／ 50A ／ 60A ／ 75A ／ 100A ／ -A=-A（未記入） ／ ほかの値も可｜条件：hasLa=yes かつ laSwitch=pc
-- laPcFuseCount：LAの上位のPCのヒューズの本数｜1 ／ 2 ／ 3｜条件：hasLa=yes かつ laSwitch=pc
+- laPcFuseCount：LAの上位のPCのヒューズの本数｜2 ／ 3｜条件：hasLa=yes かつ laSwitch=pc
 - gcTap：GCをつなぐ位置は｜zct-source=ZCTの電源側（ZCTのすぐ上） ／ ds-source=DS（断路器）の一次側 ／ ds-vcb=DSとVCBの間 ／ vcb-ct=VCBとCTの間 ／ lbs-ct=LBSの次（LBSとCTの間） ／ ct-bus=変圧器の手前（CTの下・高圧母線の上）｜条件：hasGc=yes
 - gcSwitch：GCの上位（上側）に開閉器はありますか｜none=なし ／ ds=DS（断路器） ／ pc=PC（高圧カットアウト） ／ lbs=LBS（高圧交流負荷開閉器）｜条件：hasGc=yes
 - earthingNotes：接地方式・接地抵抗値等の特記事項｜文字
@@ -515,7 +515,7 @@
 - trCtRatio：CTの変流比｜文字｜条件：trHasCt=yes
 - trPcRating：PC本体の定格電流｜30A ／ 50A ／ 100A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasPc=yes
 - trPcFuse：PCのヒューズの定格電流｜5A ／ 7.5A ／ 10A ／ 12.5A ／ 15A ／ 20A ／ 25A ／ 30A ／ 50A ／ 60A ／ 75A ／ 100A ／ -A=-A（未記入） ／ ほかの値も可｜条件：transformerCount>0 かつ trHasPc=yes
-- trPcFuseCount：PCのヒューズの本数｜1 ／ 2 ／ 3｜条件：transformerCount>0 かつ trHasPc=yes
+- trPcFuseCount：PCのヒューズの本数｜2 ／ 3｜条件：transformerCount>0 かつ trHasPc=yes
 - trLbsVoltage：LBS本体の定格電圧｜7200=7200V ／ 6600=6600V ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 - trLbsRating：LBS本体の定格電流｜100A ／ 200A ／ 300A ／ 400A ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
 - trPfG：パワーヒューズ（PF）の定格電流（G）｜5A ／ 7.5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 60A ／ 75A ／ 100A ／ -A=-A（未記入） ／ ほかの値も可｜条件：transformerCount>0 かつ trHasLbs=yes
@@ -553,7 +553,7 @@
 - reactorCapacity：リアクトルの容量｜文字｜条件：hasReactor=yes
 - capPcRating：PC本体の定格電流｜30A ／ 50A ／ 100A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasPc=yes
 - capPcFuse：PCのヒューズの定格電流｜5A ／ 7.5A ／ 10A ／ 12.5A ／ 15A ／ 20A ／ 25A ／ 30A ／ 50A ／ 60A ／ 75A ／ 100A ／ -A=-A（未記入） ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasPc=yes
-- capPcFuseCount：PCのヒューズの本数｜1 ／ 2 ／ 3｜条件：hasCapacitor=yes かつ capHasPc=yes
+- capPcFuseCount：PCのヒューズの本数｜2 ／ 3｜条件：hasCapacitor=yes かつ capHasPc=yes
 - capLbsVoltage：LBS本体の定格電圧｜7200=7200V ／ 6600=6600V ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 - capLbsRating：LBS本体の定格電流｜100A ／ 200A ／ 300A ／ 400A ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes
 - capPfG：パワーヒューズ（PF）の定格電流（G）｜5A ／ 7.5A ／ 10A ／ 15A ／ 20A ／ 30A ／ 40A ／ 50A ／ 60A ／ 75A ／ 100A ／ -A=-A（未記入） ／ ほかの値も可｜条件：hasCapacitor=yes かつ capHasLbs=yes

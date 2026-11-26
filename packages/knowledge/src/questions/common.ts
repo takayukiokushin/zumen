@@ -167,6 +167,16 @@ export const PF_LOAD_KIND: Choice[] = [
   { value: 'M', label: 'M（モーター）' },
 ];
 
+/** 変圧器の手前のPCのヒューズの本数の、自動入力。単相系の結線は2本、三相系は3本。結線が無いときは用途から（電灯は2本、動力・電灯および動力は3本） */
+const SINGLE_PHASE_CONNS = ['tr-1p', 'tr-1p-2w', 'tr-1p-parallel'];
+const THREE_PHASE_CONNS = ['tr-3p-dy', 'tr-3p-yd', 'tr-3p-dd', 'tr-3p-dd-1p3', 'tr-3p-yy', 'tr-vv', 'tr-3w-yyd', 'tr-3w-ddy'];
+const TR_FUSE_AUTO = [
+  { when: { key: 'trConnection', in: SINGLE_PHASE_CONNS }, value: '2' },
+  { when: { key: 'trConnection', in: THREE_PHASE_CONNS }, value: '3' },
+  { when: { key: 'trUsage', eq: '電灯' }, value: '2' },
+  { when: { key: 'trUsage', in: ['動力', '電灯・動力'] }, value: '3' },
+];
+
 /**
  * PC と LBS の定格を聞く質問を作る。
  * 変圧器の手前・コンデンサの手前で同じことを聞くので、ひな形から作る。
@@ -193,11 +203,14 @@ export function breakerRatings(
       help: '図面には「F:10A」のように、先頭にF:を付けて書く',
     },
     {
-      // 空欄のときは、自動で決める（変圧器：電灯（単相）は2本、ほかは3本。コンデンサ：3本）。決まらないときだけ、選ぶ（第20弾・図面再現の診断から）
+      // ヒューズは、必ず2本か3本（1本はない）。変圧器は、結線方式（なければ用途）から、自動で入る：単相は2本、三相・動力・V結線は3本。コンデンサは、空欄なら3本
       id: P('PcFuseCount'), group, label: 'PCのヒューズの本数', type: 'select',
-      options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }],
+      options: [{ value: '2', label: '2' }, { value: '3', label: '3' }],
+      ...(prefix === 'tr' ? { autoValue: TR_FUSE_AUTO } : {}),
       showIf: hasPc, ask: 'always',
-      help: '図面には「F×2」のように書く。空欄のときは、自動で決める（変圧器の電灯（単相）は2本、動力は3本。コンデンサは3本）',
+      help: prefix === 'tr'
+        ? '図面には「F×2」のように書く。結線方式から自動で入る（単相は2本、三相・動力・V結線は3本）。違うときだけ、選び直す'
+        : '図面には「F×2」のように書く。空欄のときは、3本',
     },
     {
       id: P('LbsVoltage'), group, label: 'LBS本体の定格電圧', type: 'select',

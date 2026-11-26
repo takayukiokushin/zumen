@@ -31,7 +31,7 @@ console.log('\n■ 引込みの LA・PC の定格（空欄でもよい）');
   // 本数の答え
   const c = make({ laPcFuseCount: '2' });
   if (label(c.items, 'la-switch') !== 'PC/F×2') bad.push('PCの本数の答え（2）が、使われていません');
-  if (label(make({ laPcFuseCount: '9' }).items, 'la-switch') !== 'PC/F×3') bad.push('1〜3以外の本数が、3本になっていません');
+  for (const v of ['9', '1']) if (label(make({ laPcFuseCount: v }).items, 'la-switch') !== 'PC/F×3') bad.push(`2・3以外の本数（${v}）が、3本になっていません`);
   // PC 以外（DS・LBS）：これまでどおり（定格の入力は、出ない）
   for (const [sw, txt] of [['ds', 'DS'], ['lbs', 'LBS']] as const) {
     const d = make({ laSwitch: sw, laPcRating: '30A' });

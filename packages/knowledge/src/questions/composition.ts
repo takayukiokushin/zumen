@@ -605,7 +605,7 @@ export const COMPOSITION_QUESTIONS: Question[] = [
     group: 'receiving', section: 'ZPD・LA・接地',
     label: 'LAの上位のPCのヒューズの本数',
     type: 'select',
-    options: [{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }],
+    options: [{ value: '2', label: '2' }, { value: '3', label: '3' }],
     showIf: { all: [{ key: 'hasLa', eq: 'yes' }, { key: 'laSwitch', eq: 'pc' }] },
     ask: 'always',
     help: '図面には「F×3」のように書く。空欄のときは、3本',

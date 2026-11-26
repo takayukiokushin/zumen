@@ -664,7 +664,7 @@ export function withDerived(rawAnswers: Answers): Answers {
     {
       const given = String(answers[`${prefix}PcFuseCount`] ?? '').trim();
       const auto = prefix === 'tr' ? (transformerFuseCount(answers) ?? 3) : 3;
-      const n = /^[123]$/.test(given) ? Number(given) : auto;
+      const n = /^[23]$/.test(given) ? Number(given) : auto;
       d[`${prefix}PcFuseCountLine`] = `F×${n}`;
     }
     // LBSの2行目：「7200V 200A」（定格電圧と定格電流。入れてあるものだけ）
@@ -681,7 +681,7 @@ export function withDerived(rawAnswers: Answers): Answers {
   // LAの上位のPCの、ヒューズの本数（「F×3」の行）。答え（1〜3）があればそれ。空欄は3本（第20弾・図面再現の診断から）
   {
     const given = String(answers.laPcFuseCount ?? '').trim();
-    d.laPcFuseCountLine = `F×${/^[123]$/.test(given) ? given : '3'}`;
+    d.laPcFuseCountLine = `F×${/^[23]$/.test(given) ? given : '3'}`;
   }
 
   /*
