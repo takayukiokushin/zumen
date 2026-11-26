@@ -128,14 +128,14 @@ try {
 
   /* ---------- 検査する組み合わせ ---------- */
   type Combo = { dev: string; w: number; h: number; touch: boolean; theme: 'light' | 'dark'; lang: string; scale: number };
-  const DEV: Record<string, [number, number, boolean]> = { phone: [390, 844, true], phoneS: [360, 740, true], phoneL: [844, 390, true], tablet: [820, 1180, true], tabletL: [1180, 820, true], pc: [1280, 800, false] };
+  const DEV: Record<string, [number, number, boolean]> = { phone: [390, 844, true], phoneS: [360, 740, true], phoneL: [844, 390, true], tablet: [820, 1180, true], tabletL: [1180, 820, true], pc: [1280, 800, false], pcW: [1600, 900, false] };
   const mk = (dev: string, lang: string, scale: number, theme: 'light' | 'dark' = 'light'): Combo => ({ dev, w: DEV[dev]![0], h: DEV[dev]![1], touch: DEV[dev]![2], theme, lang, scale });
   let combos: Combo[] = [
     mk('phone', 'ja', 1), mk('phone', 'ja', 1.3), mk('phone', 'en', 1.3), mk('phone', 'fr', 1.3, 'dark'), mk('phone', 'zh', 1), mk('phone', 'ko', 1.3),
     mk('phoneS', 'ja', 1), mk('phone', 'ja', 1.6),
     mk('tablet', 'ja', 1), mk('tablet', 'en', 1.3), mk('tabletL', 'ja', 1, 'dark'), mk('tablet', 'fr', 1.6),
     mk('phoneL', 'ja', 1), mk('phoneL', 'ja', 1.3), mk('phoneL', 'fr', 1.6),
-    mk('pc', 'ja', 1), mk('pc', 'en', 1.6),
+    mk('pc', 'ja', 1), mk('pc', 'en', 1.6), mk('pcW', 'ja', 1), mk('pcW', 'ja', 0.6), mk('pcW', 'fr', 1.3),
   ];
   if (FULL) {
     const langs = ['ja', 'en', 'fr', 'zh', 'ko'];
@@ -215,6 +215,17 @@ try {
       await sleep(1100);
       await page.locator('button', { hasText: /閉じる|Close|Fermer|关闭|닫기/ }).first().click({ timeout: 400 }).catch(() => {});
       rec('一覧', await measure(page, c.touch));
+      // 図面一覧の枠の幅（第21弾 項目12）：PCの広い画面（実効幅1200超）は1150px（1000の15%増）まで広がる。iPad・スマホは、いまのまま（1000px以下）。広げても、横にはみ出さない
+      {
+        const pw = (await page.evaluate(() => (document.querySelector('.joblist .panel') as HTMLElement | null)?.getBoundingClientRect().width ?? 0)) / c.scale;
+        const eff = c.w / c.scale;
+        const room = Math.min(1150, eff - 56 - 2);
+        const wantMax = eff > 1200 ? 1150 : 1000;
+        if (pw > wantMax + 1 || (eff > 1200 && eff >= 1300 && pw < Math.min(room, 1150) - 2)) {
+          failed++;
+          problems.push(`${name}／一覧：枠の幅が ${Math.round(pw)}px です（実効幅 ${Math.round(eff)}px のとき、${eff > 1200 ? 'できるだけ1150px' : '1000px以下'}のはず）`);
+        }
+      }
       // 複数エリアの案件を、名前で開く（一覧の先頭は、あとから作った「余白の検査」の案件になるため）
       await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true }).catch(() => {});
       await sleep(900);

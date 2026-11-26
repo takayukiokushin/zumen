@@ -753,6 +753,9 @@ table.jobs .hit { background: var(--accent-soft); border-radius: 2px; }
 .projectbar .saved { color: var(--muted); font-size: calc(11.5px * var(--text-scale)); }
 .projectbar button.need-save { background: var(--accent-soft); border-color: var(--accent); }
 .joblist .panel { max-width: 1000px; }
+/* パソコンの大きな画面（実効幅が1200pxより広い）だけ、図面一覧の枠を、15%広げる（1000→1150）。案件名などの欄が広く使え、文字が途中で切れにくい。
+   iPad・スマホ（実効幅1200px以下）は、いまのまま。広げても上限は1150pxで、大きなモニターでも、広がりすぎない */
+html:not([data-uw~="1200"]) .joblist .panel { max-width: 1150px; }
 .joblist .row-actions { justify-content: flex-end; }
 .joblist .job-notice { display: flex; align-items: center; gap: 12px; margin: 10px 0; padding: 8px 12px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 2px; font-size: calc(13px * var(--text-scale)); }
 .joblist .trash { margin-top: 28px; border-top: 1px solid var(--rule); padding-top: 12px; }
