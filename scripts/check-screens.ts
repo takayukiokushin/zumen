@@ -165,7 +165,9 @@ try {
         const t = (el as HTMLInputElement).type;
         const label = ((el.textContent || el.getAttribute('aria-label') || el.getAttribute('title') || el.id || el.tagName) + '').trim().slice(0, 14);
         if ((r.right > vw + 1 || r.left < -1) && !inScroller(el)) out.over.push(`${label}@${Math.round(r.left)}-${Math.round(r.right)}`);
-        if (touch && (r.height < 43.5 || r.width < 43.5) && el.tagName !== 'A' && !['checkbox', 'radio', 'file', 'range'].includes(t) && !el.closest('svg') && el.tagName !== 'TEXTAREA') out.small.push(`${label}:${Math.round(r.width)}x${Math.round(r.height)}`);
+        // 上の帯の「出す・隠す」（36px）と、右の行（40px）は、押しやすさの最低の高さを、少し下げてある（第21弾 項目13 案A）。そのほかは、44px
+        const minH = el.classList.contains('tabbar-toggle') ? 35.5 : el.parentElement?.classList.contains('tabbar-right') ? 39.5 : 43.5;
+        if (touch && (r.height < minH || r.width < 43.5) && el.tagName !== 'A' && !['checkbox', 'radio', 'file', 'range'].includes(t) && !el.closest('svg') && el.tagName !== 'TEXTAREA') out.small.push(`${label}:${Math.round(r.width)}x${Math.round(r.height)}`);
       }
       for (const el of Array.from(document.querySelectorAll('button, label, h1, h2, h3, th, td, p'))) {
         const r = el.getBoundingClientRect();
