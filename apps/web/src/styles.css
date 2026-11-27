@@ -607,6 +607,21 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_), :where(html[data-short="on"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_) { min-width: 44px; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > .who:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > .who:not(#_) { flex: 0 0 auto; max-width: none; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar .who-name:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar .who-name:not(#_) { display: block; white-space: nowrap; overflow: visible; }
+  /* 右の行が、4つしか入らないほど狭いとき（幅320pxで画面全体100%など）：利用者名と権限を、上下に重ねて幅を詰める。「ログアウト」だけが下の段に回らないように（第21弾 項目18の7）。
+     行の幅（container）で決めるので、同じスマホでも、幅に余裕があるときは、いつもどおり横に並ぶ */
+  :where(html[data-uw~="700"]) .tabbar > .tabbar-right { container-type: inline-size; container-name: trow; }
+  @container trow (max-width: 340px) {
+    .tabbar-right > .who:not(#_) { flex: 0 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+    .tabbar-right > .who .role:not(#_) { margin-left: 0; padding: 0 5px; font-size: calc(9.5px * var(--text-scale)); line-height: 1.3; }
+    .tabbar-right > .who .who-name:not(#_) { font-size: calc(10.5px * var(--text-scale)); line-height: 1.2; }
+  }
+  /* 英語・フランス語は、名前が少し長いので、もう少し広い幅から */
+  @container trow (max-width: 400px) {
+
+    html:not(:lang(ja), :lang(zh), :lang(ko)) .tabbar-right > .who:not(#_) { flex: 0 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+    html:not(:lang(ja), :lang(zh), :lang(ko)) .tabbar-right > .who .role:not(#_) { margin-left: 0; padding: 0 5px; font-size: calc(9.5px * var(--text-scale)); line-height: 1.3; }
+    html:not(:lang(ja), :lang(zh), :lang(ko)) .tabbar-right > .who .who-name:not(#_) { font-size: calc(10.5px * var(--text-scale)); line-height: 1.2; }
+  }
   /* タブの名前は、2行にするとき、決まった位置（例：「スケッチ」／「読み取り」）で改行する */
   :where(html[data-uw~="700"]) .tabbar .tab-l2 { display: block; }
   :where(html[data-uw~="700"]) .tabbar > button, :where(html[data-uw~="700"]) .tabbar .tab-wrap button { min-width: 0; padding-left: 4px; padding-right: 4px; white-space: normal; line-height: 1.3; }
