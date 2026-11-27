@@ -1007,6 +1007,78 @@ try {
     }
     await ctx.close();
   }
+  // 初めて使うときの、端末に合ったおすすめの大きさ（第21弾 項目17）。スマホ・iPad：文字100%・画面全体80%。パソコン：どちらも100%。保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」で、おすすめに戻る
+  {
+    const readSaved = (page: any) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('zumen.display') ?? 'null'); } catch { return null; } });
+    const kinds: [string, Record<string, unknown>, number][] = [
+      ['スマホ（縦）', { viewport: { width: 390, height: 844 }, screen: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, 0.8],
+      ['スマホ（横）', { viewport: { width: 844, height: 390 }, screen: { width: 844, height: 390 }, isMobile: true, hasTouch: true }, 0.8],
+      ['iPad（縦）', { viewport: { width: 820, height: 1180 }, screen: { width: 820, height: 1180 }, isMobile: true, hasTouch: true }, 0.8],
+      ['iPad mini（縦）', { viewport: { width: 744, height: 1133 }, screen: { width: 744, height: 1133 }, isMobile: true, hasTouch: true }, 0.8],
+      ['iPad（パソコン用サイトの表示）', { viewport: { width: 980, height: 1180 }, screen: { width: 820, height: 1180 }, isMobile: false, hasTouch: true }, 0.8],
+      ['パソコン', { viewport: { width: 1366, height: 800 }, screen: { width: 1366, height: 800 } }, 1],
+      ['大きなモニター', { viewport: { width: 2560, height: 1300 }, screen: { width: 2560, height: 1440 } }, 1],
+    ];
+    for (const [name, opt, ui] of kinds) {
+      screens++;
+      const ctx = await browser.newContext(opt);
+      try {
+        const page = await ctx.newPage();
+        await page.goto(base);
+        await sleep(600);
+        const s = await readSaved(page);
+        if (!s || s.textScale !== 1 || s.uiScale !== ui) {
+          failed++;
+          problems.push(`おすすめの大きさの検査（${name}）：初めて開いたとき、文字100%・画面全体${Math.round(ui * 100)}%になっていません（保存された値：文字 ${s?.textScale}・画面全体 ${s?.uiScale}）`);
+        }
+      } finally {
+        await ctx.close();
+      }
+    }
+    // 保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」を押すと、おすすめに戻る
+    {
+      freeLocks();
+      screens++;
+      const ctx = await browser.newContext({ viewport: { width: 820, height: 1180 }, screen: { width: 820, height: 1180 }, isMobile: true, hasTouch: true });
+      try {
+        await ctx.addInitScript(() => {
+          try {
+            if (localStorage.getItem('zumen.display') === null) localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1.2, uiScale: 1.3, bold: false, hideHelp: false, scrollbar: 'normal' }));
+            localStorage.setItem('zumen.helpSeen', '1');
+            localStorage.setItem('zumen.phoneBarOpen', 'on');
+          } catch {}
+        });
+        const page = await ctx.newPage();
+        page.setDefaultTimeout(8000);
+        await page.goto(base);
+        await sleep(500);
+        const kept = await readSaved(page);
+        if (!kept || kept.textScale !== 1.2 || kept.uiScale !== 1.3) {
+          failed++;
+          problems.push(`おすすめの大きさの検査：すでに保存してある設定が、上書きされました（文字 ${kept?.textScale}・画面全体 ${kept?.uiScale}。1.2・1.3のはず）`);
+        }
+        await page.fill('#login-id', USER);
+        await page.fill('#login-pw', PASS);
+        await page.click('button[type=submit]');
+        await sleep(1100);
+        await page.locator('button', { hasText: /閉じる|Close/ }).first().click({ timeout: 400 }).catch(() => {});
+        await page.locator('.tabbar-right .icon-btn').nth(1).evaluate((e: HTMLElement) => e.click());
+        await sleep(500);
+        await page.locator('button', { hasText: 'おすすめの設定に戻す' }).first().evaluate((e: HTMLElement) => e.click());
+        await sleep(400);
+        const after = await readSaved(page);
+        if (!after || after.textScale !== 1 || after.uiScale !== 0.8) {
+          failed++;
+          problems.push(`おすすめの大きさの検査：「おすすめの設定に戻す」を押しても、この端末のおすすめ（文字100%・画面全体80%）に戻りません（文字 ${after?.textScale}・画面全体 ${after?.uiScale}）`);
+        }
+      } catch (e) {
+        failed++;
+        problems.push(`おすすめの大きさの検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+      } finally {
+        await ctx.close();
+      }
+    }
+  }
   await browser.close();
   console.log(`  ${combos.length}通り・${screens}画面を調べた（${FULL ? 'たくさん' : 'ふつう'}の検査）`);
 } catch (e) {

@@ -110,7 +110,7 @@ export const zh: Dict = {
   'settings.uiSizePhoneNote': '在此屏幕（手机）上，“整个画面的大小”最大为{max}%（再大，画面就排不下了）。',
   'settings.sizeNote': '只想放大文字时请调整“文字大小”；想连按钮和间距一起放大时请调整“整体大小”。',
   'settings.preview': '示例：文字将以此大小显示',
-  'settings.reset': '恢复初始设置',
+  'settings.reset': '恢复推荐设置',
   'settings.version': '版本',
   'settings.version.screen': '界面',
   'settings.version.server': '服务器',

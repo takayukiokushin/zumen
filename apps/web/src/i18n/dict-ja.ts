@@ -112,7 +112,7 @@ export const ja = {
   'settings.sizeNote':
     '文字だけ大きくしたいときは「文字の大きさ」、ボタンや余白も含めて大きくしたいときは「画面全体の大きさ」を変えてください。',
   'settings.preview': '見本：この大きさで表示されます',
-  'settings.reset': '初期値に戻す',
+  'settings.reset': 'おすすめの設定に戻す',
   'settings.version': 'バージョン',
   'settings.version.screen': '画面',
   'settings.version.server': 'サーバー',

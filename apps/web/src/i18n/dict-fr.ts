@@ -111,7 +111,7 @@ export const fr: Dict = {
   'settings.sizeNote':
     'Utilisez « Taille du texte » pour agrandir seulement le texte, et « Taille générale » pour agrandir aussi les boutons et les marges.',
   'settings.preview': 'Exemple : le texte s’affiche à cette taille',
-  'settings.reset': 'Valeurs par défaut',
+  'settings.reset': 'Rétablir les réglages recommandés',
   'settings.version': 'Version',
   'settings.version.screen': 'Écran',
   'settings.version.server': 'Serveur',

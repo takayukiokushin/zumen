@@ -40,6 +40,43 @@ export const DEFAULT_SETTINGS: Settings = {
   scrollbar: 'normal',
 };
 
+/**
+ * 端末の種類（初めて使うときの、おすすめの大きさを決めるために見分ける。第21弾 項目17）。
+ *   1. 指で操作する端末か（主な入力が指）。iPadのSafariが「パソコン用サイト」で表示する設定のときも、タッチの有無（Macの名前でタッチが2点以上）で、iPadと見分ける
+ *   2. 指で操作する端末で、画面の実際の短い辺が600px未満 → スマホ。600px以上 → iPad（タブレット）
+ *   3. 指で操作する端末でなければ → パソコン（大きなモニターでも、パソコン）
+ * 短い辺は、ブラウザの表示幅（iPadの「パソコン用サイト」では980pxなどになる）ではなく、機種そのものの画面の大きさ（screen）を使う。
+ */
+export type DeviceKind = 'phone' | 'tablet' | 'pc';
+/** スマホとiPad（タブレット）を分ける、画面の短い辺（px） */
+export const TABLET_MIN_SHORT_SIDE = 600;
+export function detectDevice(): DeviceKind {
+  if (typeof window === 'undefined') return 'pc';
+  const mm = (q: string): boolean => {
+    try {
+      return window.matchMedia(q).matches;
+    } catch {
+      return false;
+    }
+  };
+  const nav = typeof navigator === 'undefined' ? null : navigator;
+  const iPadAsMac = !!nav && (nav.maxTouchPoints ?? 0) > 1 && /Macintosh|MacIntel/.test(`${nav.userAgent} ${nav.platform ?? ''}`);
+  const touch = mm('(pointer: coarse)') || (mm('(hover: none)') && mm('(any-pointer: coarse)')) || iPadAsMac;
+  if (!touch) return 'pc';
+  const s = window.screen;
+  const short = s && s.width > 0 && s.height > 0 ? Math.min(s.width, s.height) : Math.min(window.innerWidth, window.innerHeight);
+  return short < TABLET_MIN_SHORT_SIDE ? 'phone' : 'tablet';
+}
+
+/**
+ * この端末の、おすすめの設定（初めて使うとき・「おすすめの設定に戻す」で使う）。
+ *   スマホ・iPad：文字の大きさ 100%・画面全体の大きさ 80%（同じ画面に、1.25倍の内容が入る）
+ *   パソコン：どちらも 100%（画面が大きくても、自動では変えない。好みで、あとから変えてもらう）
+ */
+export function recommendedSettings(device: DeviceKind = detectDevice()): Settings {
+  return { ...DEFAULT_SETTINGS, textScale: 1, uiScale: device === 'pc' ? 1 : 0.8 };
+}
+
 /** 文字・画面の大きさの選べる段階。％で見せる */
 export const SIZE_MIN = 0.6;
 export const SIZE_MAX = 1.6;
@@ -83,7 +120,9 @@ const KEY = 'zumen.display';
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULT_SETTINGS;
+    // このブラウザに、保存された設定が無いとき（初めて）だけ、端末に合った、おすすめの設定にする（開いたときに保存される）。
+    // すでに保存してあるブラウザは、上書きしない
+    if (!raw) return recommendedSettings();
     const v = JSON.parse(raw) as Partial<Settings>;
     return {
       lang: v.lang ?? DEFAULT_SETTINGS.lang,
@@ -95,7 +134,7 @@ function load(): Settings {
       scrollbar: SCROLLBAR_SIZES.includes(v.scrollbar as ScrollbarSize) ? (v.scrollbar as ScrollbarSize) : DEFAULT_SETTINGS.scrollbar,
     };
   } catch {
-    return DEFAULT_SETTINGS;
+    return recommendedSettings();
   }
 }
 
@@ -238,7 +277,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const reset = useCallback(() => setSettings(DEFAULT_SETTINGS), []);
+  /** 「おすすめの設定に戻す」：この端末のおすすめの大きさに戻す（言語・明るさなどは、これまでの初期値） */
+  const reset = useCallback(() => setSettings(recommendedSettings()), []);
 
   const value = useMemo<Ctx>(() => ({ settings, set, reset }), [settings, set, reset]);
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

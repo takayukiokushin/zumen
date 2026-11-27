@@ -111,7 +111,7 @@ export const en: Dict = {
   'settings.sizeNote':
     'Use “Text size” to enlarge only the text, and “Overall size” to enlarge buttons and spacing as well.',
   'settings.preview': 'Sample: text appears at this size',
-  'settings.reset': 'Restore defaults',
+  'settings.reset': 'Restore recommended settings',
   'settings.version': 'Version',
   'settings.version.screen': 'Screen',
   'settings.version.server': 'Server',

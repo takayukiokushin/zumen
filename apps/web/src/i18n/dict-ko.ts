@@ -111,7 +111,7 @@ export const ko: Dict = {
   'settings.sizeNote':
     '글자만 크게 하려면 「글자 크기」를, 버튼과 여백까지 크게 하려면 「화면 전체 크기」를 바꾸세요.',
   'settings.preview': '보기: 이 크기로 표시됩니다',
-  'settings.reset': '초기값으로 되돌리기',
+  'settings.reset': '추천 설정으로 되돌리기',
   'settings.version': '버전',
   'settings.version.screen': '화면',
   'settings.version.server': '서버',
