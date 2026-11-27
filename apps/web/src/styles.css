@@ -601,6 +601,10 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar > .tabbar-right:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar > .tabbar-right:not(#_) { flex-wrap: wrap; row-gap: 0; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button:not(#_) { flex: 0 0 auto; min-width: max-content; white-space: nowrap; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_) { min-width: 44px; }
+  /* 英語・フランス語：ボタンの名前を短くしたので、1語が途中で割れないよう、幅を名前の長さに合わせる（名前が長いときは、利用者名のほうを「…」で縮める）。第21弾 項目18の9 */
+  :where(html[data-uw~="700"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button:not(#_), :where(html[data-short="on"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button:not(#_) { flex: 0 0 auto; min-width: max-content; white-space: nowrap; }
+  :where(html[data-uw~="700"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar > .tabbar-right:not(#_), :where(html[data-short="on"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar > .tabbar-right:not(#_) { flex-wrap: wrap; row-gap: 0; }
+  :where(html[data-uw~="700"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_), :where(html[data-short="on"]:not(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > button.icon-btn:not(#_) { min-width: 44px; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > .who:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar-right > .who:not(#_) { flex: 0 0 auto; max-width: none; }
   :where(html[data-uw~="700"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar .who-name:not(#_), :where(html[data-short="on"]:is(:lang(ja), :lang(zh), :lang(ko))) .tabbar .who-name:not(#_) { display: block; white-space: nowrap; overflow: visible; }
   /* タブの名前は、2行にするとき、決まった位置（例：「スケッチ」／「読み取り」）で改行する */

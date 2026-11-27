@@ -13,8 +13,8 @@ export const fr: Dict = {
   'tab.voice.l1': 'Créer ',
   'tab.voice.l2': 'par la voix',
   'tab.hearing.l1': 'Saisir les ',
-  'tab.hearing.l2': 'équipements',
-  'tab.hearing': 'Saisir les équipements',
+  'tab.hearing.l2': 'données',
+  'tab.hearing': 'Saisir les données',
   'tab.drawing': 'Schéma',
   'title.analyze': 'Lecture de croquis',
   'title.voice': 'Saisie vocale',
@@ -28,10 +28,10 @@ export const fr: Dict = {
 
   'nav.settings': 'Affichage',
   'nav.settings.label': 'Réglages',
-  'nav.users': 'Gérer les utilisateurs',
+  'nav.users': 'Comptes',
   'nav.menuHide': '▲ Masquer l’aide, les réglages…',
   'nav.menuShow': '▼ Afficher l’aide, les réglages…',
-  'nav.logout': 'Se déconnecter',
+  'nav.logout': 'Déconnexion',
   'nav.logout.confirm': 'Vous allez être déconnecté. Continuer ?',
   'nav.logout.confirmUnsaved': 'Des modifications ne sont pas enregistrées. Vous les perdrez en vous déconnectant. Se déconnecter quand même ?',
 
@@ -220,7 +220,7 @@ export const fr: Dict = {
   'project.discardYes': 'Oui, passer',
   'project.autoSaveTitle': 'Ouvrir une autre affaire',
 
-  'role.admin': 'Administrateur',
+  'role.admin': 'Admin',
   'role.member': 'Standard',
   'role.sandbox': 'Entraînement',
 
@@ -278,7 +278,7 @@ export const fr: Dict = {
   'dialog.ok': 'OK',
   'dialog.show': 'Afficher',
   'dialog.hide': 'Masquer',
-  'help.button': 'Mode d’emploi',
+  'help.button': 'Aide',
   'help.title': 'Mode d’emploi (boutons et comportement)',
   'help.lead': 'Explications des boutons les plus utilisés et du comportement de l’écran.',
   'help.firstTime': 'Première visite ? Lire le « Mode d’emploi » vous évitera bien des hésitations.',

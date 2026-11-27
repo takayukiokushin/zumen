@@ -1007,6 +1007,57 @@ try {
     }
     await ctx.close();
   }
+  // スマホの上の帯：英語・フランス語でも、右の行のボタンの名前が1行で、単語の途中で割れない。タブの名前は2行まで（第21弾 項目18の9）
+  for (const [w, lang, scale] of [[360, 'en', 0.8], [390, 'en', 1], [360, 'fr', 0.8], [390, 'fr', 1], [430, 'fr', 1]] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: w, height: 800 }, hasTouch: true, isMobile: false });
+    try {
+      await ctx.addInitScript(([l, sc]: [string, number]) => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.phoneBarOpen', 'on');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: l, theme: 'light', textScale: 1, uiScale: sc, bold: false }));
+        } catch {}
+      }, [lang, scale]);
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close|Fermer/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      const bad = await page.evaluate(() => {
+        const out: string[] = [];
+        const lines = (e: Element) => {
+          const r = document.createRange();
+          r.selectNodeContents(e);
+          return new Set(Array.from(r.getClientRects()).filter((q) => q.width > 0).map((q) => Math.round(q.top / 4))).size;
+        };
+        for (const b of Array.from(document.querySelectorAll('.tabbar-right > button'))) {
+          const label = b.querySelector('span') ?? b;
+          if (lines(label) > 1) out.push(`「${(label.textContent ?? '').trim()}」が2行に割れています`);
+        }
+        for (const t of Array.from(document.querySelectorAll('.tabbar > button:not(.tabbar-toggle), .tabbar .tab-wrap > button'))) {
+          if (lines(t) > 2) out.push(`タブ「${(t.textContent ?? '').trim()}」が3行以上に割れています`);
+        }
+        return out;
+      });
+      if (bad.length > 0) {
+        failed++;
+        problems.push(`スマホの上の帯の検査（幅 ${w}px・${lang}・倍率 ${Math.round(scale * 100)}%）：${bad.join('／')}`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`スマホの上の帯の検査（幅 ${w}px・${lang}）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   // 初めて使うときの、端末に合ったおすすめの大きさ（第21弾 項目17）。スマホ・iPad：文字100%・画面全体80%。パソコン：どちらも100%。保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」で、おすすめに戻る
   {
     const readSaved = (page: any) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('zumen.display') ?? 'null'); } catch { return null; } });
