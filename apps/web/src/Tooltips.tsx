@@ -108,25 +108,28 @@ export function TooltipLayer() {
   }, []);
 
   // 画面からはみ出さないように、位置を決める（右にはみ出すなら左へ、下にはみ出すなら要素の上へ）
+  // 画面全体の倍率（設定の130%など）があると、「画面の長さ（getBoundingClientRect・innerWidth）」と、吹き出しに指定する「CSSの長さ」は、
+  // 同じではない（倍率ぶん、違う）。吹き出しの見た目の幅 ÷ 中の幅 で、その比 z を測り、画面の長さで位置を決めてから、CSSの長さに直す。
+  // （これを混ぜると、倍率があるとき、右のタブほど、三角が左にずれ、吹き出しが画面の外に出た。第21弾 項目16）
   useLayoutEffect(() => {
     if (!shown || !box.current) {
       setPos(null);
       return;
     }
-    const w = box.current.offsetWidth;
-    const h = box.current.offsetHeight;
+    const el = box.current;
+    const shownW = el.getBoundingClientRect().width;
+    const z = el.offsetWidth > 0 && shownW > 0 ? shownW / el.offsetWidth : 1;
+    const w = shownW;
+    const h = el.getBoundingClientRect().height;
     const margin = 8;
     const centerX = (shown.rect.left + shown.rect.right) / 2;
     let left = Math.min(shown.rect.left, window.innerWidth - w - margin);
     left = Math.max(margin, left);
     const below = shown.rect.bottom + 6;
     const above = below + h > window.innerHeight - margin && shown.rect.top - 6 - h > margin;
-    setPos({
-      left,
-      top: above ? shown.rect.top - 6 - h : below,
-      arrow: Math.min(Math.max(centerX - left, 12), Math.max(12, w - 12)),
-      above,
-    });
+    const top = above ? shown.rect.top - 6 - h : below;
+    const arrowScreen = Math.min(Math.max(centerX - left, 12 * z), Math.max(12 * z, w - 12 * z));
+    setPos({ left: left / z, top: top / z, arrow: arrowScreen / z, above });
   }, [shown]);
 
   if (!shown) return null;

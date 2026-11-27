@@ -679,7 +679,7 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
 
 /* ㉘ タブにしばらくカーソルを置くと出る説明 */
 .tab-wrap { position: relative; display: inline-flex; }
-.tip { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: max-content; max-width: min(460px, 80vw); text-wrap: pretty;
+.tip { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: max-content; max-width: min(460px, calc(80vw / var(--ui-scale, 1))); text-wrap: pretty;
   background: var(--tip-bg); color: var(--tip-fg); padding: calc(8px * var(--text-scale)) calc(13px * var(--text-scale));
   border-radius: 5px; font-size: calc(14px * var(--text-scale)); line-height: 1.6;
   box-shadow: 0 4px 14px rgba(0,0,0,.3); pointer-events: none; }
