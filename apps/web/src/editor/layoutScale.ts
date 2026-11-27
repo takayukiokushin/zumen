@@ -2,6 +2,7 @@ import { labelRect } from '@zumen/layout';
 import { applyAnchors, seatOnWire, docBounds, groupRootOf, itemBounds } from './doc.ts';
 import { compactOneAxis } from './layoutCompact.ts';
 import type { Axis } from './layoutCompact.ts';
+import { inspectDrawing } from './inspect.ts';
 import type { Doc, DocItem, DocSymbol } from './doc.ts';
 
 /**
@@ -89,6 +90,11 @@ function axisMap(spans: Span[], factor: number, floorOf: (a: number, b: number) 
   };
 }
 
+/** 縮めて困ること（重なり・線の突き抜け・つながっていない端・斜め線）の数。用紙の大きさには関係しない数だけを数える */
+function troubleCount(d: Doc): number {
+  return inspectDrawing(d, 'A3', 'landscape').filter((i) => i.kind === 'overlap' || i.kind === 'through' || i.kind === 'floating' || i.kind === 'skew' || i.kind === 'gap').length;
+}
+
 /**
  * 図面全体のすきまを、factor 倍にする（1より小さければ縮小、大きければ拡大）。
  * changed：実際に動いたか（すきまが最小まで縮んでいて、これ以上縮められないときは false）。
@@ -98,6 +104,7 @@ export function scaleLayout(doc: Doc, factor: number): { doc: Doc; changed: bool
   // 縮小なら小さくなったほう、拡大なら大きくなったほうを選ぶ。どちらも、記号・文字の大きさと、線の向きは変えない
   let cur = doc;
   let changed = false;
+  let base: number | null = null;
   for (const axis of ['y', 'x'] as const) {
     const proj = scaleByProjection(cur, factor, axis);
     const comp = compactOneAxis(cur, axis, factor, { minGap: MIN_GAP, minBar: MIN_BAR });
@@ -108,9 +115,19 @@ export function scaleLayout(doc: Doc, factor: number): { doc: Doc; changed: bool
     const better = (a: Doc, b: Doc) => (factor < 1 ? extent(a) < extent(b) - 0.01 : extent(a) > extent(b) + 0.01);
     let pick: Doc | null = proj.changed ? proj.doc : null;
     if (comp && (!pick || better(comp, pick))) pick = comp;
+    // 縮めるときだけ：縮めた結果、記号・文字の重なりなどが「増える」ものは、使わない（もう一方の方式か、何もしない）。
+    // 列ごとの方式は、文字の四角が、もとから重なっているところで、順番が決まらず、近づきすぎることがあるため（第21弾 項目18-6）
+    if (pick && factor < 1) {
+      base ??= troubleCount(cur);
+      if (troubleCount(pick) > base) {
+        const other = pick === comp ? (proj.changed ? proj.doc : null) : comp;
+        pick = other && troubleCount(other) <= base ? other : null;
+      }
+    }
     if (pick) {
       cur = pick;
       changed = true;
+      base = null;
     }
   }
   return changed ? { doc: cur, changed: true } : { doc, changed: false };
