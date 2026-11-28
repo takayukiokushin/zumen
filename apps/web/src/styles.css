@@ -1016,6 +1016,15 @@ button.with-icon svg { flex: 0 0 auto; }
   /* 「編集を開始／終了」のボタンが、1行目に加わるので、ボタンの左右の余白を少し詰めて、2行に収める（幅390px。第21弾 項目14） */
   :where(html[data-uw~="700"]) .editor-bar .tools button:not(#_) { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); }
   :where(html[data-uw~="700"]) .editor-bar .tools .btn.danger:not(#_) { margin-inline: calc(3px * var(--ctl-scale)); }
+  /* 編集中のボタンが、2行に入りきらないほど狭いとき（幅360pxで画面全体100%など）：ボタンの余白・すきまを詰め、倍率の数字（100%）を隠して、2行に収める（第21弾 項目18の8）。
+     帯の幅（container）で決めるので、余裕のあるスマホでは、これまでどおり */
+  html[data-uw~="700"] .editor-bar { container-type: inline-size; container-name: ebar; }
+  @container ebar (max-width: 420px) {
+    .editor-bar .tools { gap: calc(6px * var(--text-scale)) calc(4px * var(--text-scale)); }
+    .tools button.with-icon:not(#_) { padding-left: calc(6px * var(--ctl-scale)); padding-right: calc(6px * var(--ctl-scale)); }
+    .editor-bar .tools .btn.danger:not(#_) { margin-inline: 0; }
+    .tools .zoom { display: none; }
+  }
   :where(html[data-uw~="700"]) .zoom-text { display: none; }
   :where(html[data-uw~="700"]) .tools button.with-icon { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
   :where(html[data-uw~="700"]) .editor { overflow-y: auto; }
