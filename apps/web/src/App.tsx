@@ -23,6 +23,7 @@ import { useNewVersion } from './session/useNewVersion.ts';
 import { useServerStatus } from './session/useServerStatus.ts';
 import { useWarningText } from './projects/ServerStatusPanel.tsx';
 import { Analyze } from './analyze/Analyze.tsx';
+import { HelpToggle } from './HelpToggle.tsx';
 import type { AiApplied } from './analyze/applied.ts';
 import { Voice } from './voice/Voice.tsx';
 import { JobList } from './projects/JobList.tsx';
@@ -132,6 +133,7 @@ export function App() {
       <button type="button" className="panel-toggle" aria-pressed={!showNav} onClick={() => setShowNav((v) => !v)}>
         {showNav ? `◀ ${t('hearing.hideNav')}` : `▶ ${t('hearing.showNav')}`}
       </button>
+      <HelpToggle />
       <button type="button" className="panel-toggle" aria-pressed={!showPreview} onClick={() => setShowPreview((v) => !v)}>
         {showPreview ? `${t('hearing.hidePreview')} ▶` : `◀ ${t('hearing.showPreview')}`}
       </button>

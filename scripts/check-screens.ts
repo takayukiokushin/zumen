@@ -1354,7 +1354,7 @@ try {
         problems.push(`上のタブの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：案件を開く前の（押せない）タブに、背景か枠が付いています`);
       }
       // 上の帯の右側の「利用者の管理」「ログアウト」は、枠つきのボタン（第21弾 項目19の11）
-      const rightLook = await page.evaluate(() => Array.from(document.querySelectorAll('.tabbar-right > button:not(.icon-btn)')).map((b) => { const cs = getComputedStyle(b); return { bg: cs.backgroundColor, border: cs.borderTopColor }; }));
+      const rightLook: { bg: string; border: string }[] = await page.evaluate(() => Array.from(document.querySelectorAll('.tabbar-right > button:not(.icon-btn)')).map((b) => { const cs = getComputedStyle(b); return { bg: cs.backgroundColor, border: cs.borderTopColor }; }));
       if (rightLook.length < 2 || rightLook.some((t) => clear(t.bg) || clear(t.border))) {
         failed++;
         problems.push(`上の帯の右側のボタンの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：「利用者の管理」「ログアウト」に、背景か枠がありません`);
@@ -1530,6 +1530,63 @@ try {
     } catch (e) {
       failed++;
       problems.push(`「使い方」の検索の検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
+  // 設備入力の「入力欄の説明を隠す／出す」ボタン：押すと、補助の説明が隠れ、ボタンの名前が変わり、もう一度押すと戻る。パソコンは上の帯、スマホは見出しの行（第21弾 項目19の12）
+  for (const [w, h, sc, touch] of [[1280, 800, 1, false], [390, 844, 0.8, true]] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch });
+    try {
+      await ctx.addInitScript((u: number) => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.phoneBarOpen', 'off');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: u, bold: false }));
+        } catch {}
+      }, sc);
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1200);
+      await page.locator('button', { hasText: /閉じる|Close|Fermer/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(2).click();
+      await sleep(1200);
+      const state = () =>
+        page.evaluate(() => {
+          const btn = Array.from(document.querySelectorAll('button')).find((b) => /入力欄の説明を(隠す|出す)/.test(b.textContent ?? '') && (b as HTMLElement).offsetWidth > 0) as HTMLElement | undefined;
+          return { label: (btn?.textContent ?? '').trim(), helps: Array.from(document.querySelectorAll('main.form .field .help')).filter((e) => (e as HTMLElement).offsetWidth > 0).length };
+        });
+      const s0 = await state();
+      const find = () => page.locator('button', { hasText: /入力欄の説明を(隠す|出す)/ }).filter({ visible: true }).first();
+      await find().click();
+      await sleep(300);
+      const s1 = await state();
+      await find().click();
+      await sleep(300);
+      const s2 = await state();
+      const bad: string[] = [];
+      if (s0.label !== '入力欄の説明を隠す') bad.push(`最初に「入力欄の説明を隠す」のボタンが出ません（${s0.label || '無し'}）`);
+      else {
+        if (s0.helps === 0) bad.push('最初から、補助の説明が出ていません');
+        if (s1.label !== '入力欄の説明を出す' || s1.helps !== 0) bad.push('押しても、補助の説明が隠れません');
+        if (s2.label !== '入力欄の説明を隠す' || s2.helps === 0) bad.push('もう一度押しても、補助の説明が戻りません');
+      }
+      if (bad.length > 0) {
+        failed++;
+        problems.push(`入力欄の説明の切り替えの検査（幅 ${w}px）：${bad.join('／')}`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`入力欄の説明の切り替えの検査（幅 ${w}px）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
     }
     await ctx.close();
   }

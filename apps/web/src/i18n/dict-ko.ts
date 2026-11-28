@@ -181,6 +181,8 @@ export const ko: Dict = {
   'editor.frameSelected': '테두리를 고른 상태입니다.',
 
   'hearing.hideNav': '목차 숨기기',
+  'hearing.hideHelp': '입력란 설명 숨기기',
+  'hearing.showHelp': '입력란 설명 보이기',
   'hearing.showNav': '목차 보이기',
   'hearing.hidePreview': '현재 구성 숨기기',
   'hearing.showPreview': '현재 구성 보이기',

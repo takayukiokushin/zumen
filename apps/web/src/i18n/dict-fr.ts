@@ -183,6 +183,8 @@ export const fr: Dict = {
   'editor.frameSelected': 'Un cadre est sélectionné.',
 
   'hearing.hideNav': 'Masquer le sommaire',
+  'hearing.hideHelp': 'Masquer les notes des champs',
+  'hearing.showHelp': 'Afficher les notes des champs',
   'hearing.showNav': 'Afficher le sommaire',
   'hearing.hidePreview': 'Masquer le récapitulatif',
   'hearing.showPreview': 'Afficher le récapitulatif',

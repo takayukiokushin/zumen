@@ -183,6 +183,8 @@ export const ja = {
   'editor.frameSelected': '枠を選んでいます。',
 
   'hearing.hideNav': '目次を隠す',
+  'hearing.hideHelp': '入力欄の説明を隠す',
+  'hearing.showHelp': '入力欄の説明を出す',
   'hearing.showNav': '目次を出す',
   'hearing.hidePreview': 'いまの構成を隠す',
   'hearing.showPreview': 'いまの構成を出す',

@@ -766,6 +766,9 @@ button.primary:hover:not(:disabled), .btn.primary:hover:not(:disabled), .project
 .panel-toggle { padding: calc(4px * var(--ctl-scale)) calc(10px * var(--ctl-scale));
   font-size: max(calc(11.5px * var(--ctl-scale)), var(--min-font)); min-height: calc(34px * var(--ctl-scale)); background: transparent; border-color: transparent; color: var(--muted); }
 .panel-toggle:hover { color: var(--ink); background: var(--alt); border-color: var(--rule); }
+/* 「入力欄の説明を隠す／出す」：上の帯が出る広い画面では、上の帯のボタンを使うので、見出しの行のものは出さない（第21弾 項目19の12） */
+.form-head .help-toggle-narrow { display: none; }
+:where(html[data-uw~="700"]) .form-head .help-toggle-narrow { display: inline-flex; align-items: center; min-width: 0; }
 .panel-bar { display: flex; gap: var(--gap, 10px); align-items: center; justify-content: space-between;
   padding: calc(5px * var(--text-scale)) calc(14px * var(--text-scale));
   background: var(--panel); border-bottom: 1px solid var(--rule-soft); }

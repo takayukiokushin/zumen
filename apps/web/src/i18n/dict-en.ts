@@ -182,6 +182,8 @@ export const en: Dict = {
   'editor.frameSelected': 'An enclosure is selected.',
 
   'hearing.hideNav': 'Hide contents',
+  'hearing.hideHelp': 'Hide field notes',
+  'hearing.showHelp': 'Show field notes',
   'hearing.showNav': 'Show contents',
   'hearing.hidePreview': 'Hide summary',
   'hearing.showPreview': 'Show summary',

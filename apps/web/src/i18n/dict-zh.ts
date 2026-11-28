@@ -179,6 +179,8 @@ export const zh: Dict = {
   'editor.frameSelected': '已选中外框。',
 
   'hearing.hideNav': '隐藏目录',
+  'hearing.hideHelp': '隐藏输入栏说明',
+  'hearing.showHelp': '显示输入栏说明',
   'hearing.showNav': '显示目录',
   'hearing.hidePreview': '隐藏当前构成',
   'hearing.showPreview': '显示当前构成',

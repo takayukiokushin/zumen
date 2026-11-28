@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { areaCountOf, areaRows, areaView, dropHiddenChoices, inputNotices, isUnanswered, linkFromOf, linkRows, QUESTION_GROUPS, QUESTIONS, sectionRows, viewAt, visibleQuestions } from '@zumen/knowledge';
 import type { Answers, InputRow, QuestionGroup, Value } from '@zumen/knowledge';
 import { Field } from './Field.tsx';
+import { HelpToggle } from './HelpToggle.tsx';
 import { useT, useTx } from './i18n/useT.ts';
 import { useTrends } from './trends.ts';
 
@@ -446,6 +447,8 @@ export function HearingForm({ answers, effective, onChange, showNav = true, sket
         <div className="form-head">
           <h2>{t('hearing.items')}</h2>
           {headExtra && <div className="panel-toggles">{headExtra}</div>}
+          {/* 狭い画面（スマホ）では、上の帯（目次・いまの構成）が出ないので、見出しの行に置く。広い画面では、上の帯にある */}
+          {!headExtra && <HelpToggle className="panel-toggle help-toggle-narrow" />}
           {stepwise && onOpenAll && (
             <button type="button" className="btn" title={t('hearing.stepOpenAllNote')} onClick={onOpenAll}>
               {t('hearing.stepOpenAll')}
