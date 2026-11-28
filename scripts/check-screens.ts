@@ -1353,6 +1353,12 @@ try {
         failed++;
         problems.push(`上のタブの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：案件を開く前の（押せない）タブに、背景か枠が付いています`);
       }
+      // 上の帯の右側の「利用者の管理」「ログアウト」は、枠つきのボタン（第21弾 項目19の11）
+      const rightLook = await page.evaluate(() => Array.from(document.querySelectorAll('.tabbar-right > button:not(.icon-btn)')).map((b) => { const cs = getComputedStyle(b); return { bg: cs.backgroundColor, border: cs.borderTopColor }; }));
+      if (rightLook.length < 2 || rightLook.some((t) => clear(t.bg) || clear(t.border))) {
+        failed++;
+        problems.push(`上の帯の右側のボタンの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：「利用者の管理」「ログアウト」に、背景か枠がありません`);
+      }
       await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
       await sleep(900);
       await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});

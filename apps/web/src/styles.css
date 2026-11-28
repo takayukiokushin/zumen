@@ -179,6 +179,8 @@ button.trend-chip:hover { text-decoration: underline; }
 .tabbar button { padding: 6px 14px; background: transparent; border: 1px solid transparent; border-radius: 2px;
   cursor: pointer; font-size: max(calc(13px * var(--ctl-scale)), var(--min-font)); color: var(--ink-2); }
 .tabbar button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+/* 上の帯の右側の「利用者の管理」「ログアウト」も、枠つきのボタンにする。文字だけだと、ボタンに見えなかった（第21弾 項目19の11） */
+.tabbar-right > button:not(.icon-btn):not(#_) { background: var(--field); border-color: var(--control-border); color: var(--ink); }
 /* 押せるタブ（選んでいないもの）は、白い背景と枠つきの、ふつうのボタンの見た目にする。押せないタブ（案件を開く前）は、枠も背景もなくして、薄い文字だけにする。
    以前は、押せる側が文字だけ、押せない側が灰色の四角で、手がかりが逆だった（第21弾 項目19の6）。選んでいるタブ（金色）は、そのまま */
 .tabbar > button:not(.tabbar-toggle):not(:disabled):not([aria-pressed="true"]), .tabbar .tab-wrap > button:not(:disabled):not([aria-pressed="true"]) { background: var(--field); border-color: var(--control-border); color: var(--ink); }
