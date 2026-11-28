@@ -1118,6 +1118,57 @@ try {
     }
     await ctx.close();
   }
+  // 主な操作のボタン（ログインなど）が、濃く塗りつぶされ、文字との色の差が4.5倍以上ある（明るい画面・暗い画面）。「選ばれている状態」（薄い金色）とは、別の色（第21弾 項目19の2）
+  for (const theme of ['light', 'dark'] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    try {
+      await ctx.addInitScript((th: string) => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: th, textScale: 1, uiScale: 1, bold: false }));
+        } catch {}
+      }, theme);
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await sleep(200);
+      const r = await page.evaluate(() => {
+        const rgb = (s: string) => (s.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const lum = (c: number[]) => {
+          const f = (v: number) => {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          };
+          return 0.2126 * f(c[0]!) + 0.7152 * f(c[1]!) + 0.0722 * f(c[2]!);
+        };
+        const b = document.querySelector('button.primary') as HTMLElement;
+        const cs = getComputedStyle(b);
+        const bg = rgb(cs.backgroundColor);
+        const fg = rgb(cs.color);
+        const l1 = lum(bg);
+        const l2 = lum(fg);
+        const sel = rgb(getComputedStyle(document.documentElement).getPropertyValue('--accent-soft').trim().startsWith('#') ? (() => { const h = getComputedStyle(document.documentElement).getPropertyValue('--accent-soft').trim().slice(1); return `rgb(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)})`; })() : 'rgb(0,0,0)');
+        const same = Math.abs(bg[0]! - sel[0]!) + Math.abs(bg[1]! - sel[1]!) + Math.abs(bg[2]! - sel[2]!) < 40;
+        return { ratio: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05), same };
+      });
+      if (r.ratio < 4.5) {
+        failed++;
+        problems.push(`主な操作のボタンの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：文字との色の差が ${r.ratio.toFixed(2)}倍しかありません（4.5倍以上にする）`);
+      } else if (r.same) {
+        failed++;
+        problems.push(`主な操作のボタンの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：「選ばれている状態」の色と、ほとんど同じです`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`主な操作のボタンの検査（${theme}）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   // 初めて使うときの、端末に合ったおすすめの大きさ（第21弾 項目17）。スマホ・iPad：文字100%・画面全体80%。パソコン：どちらも100%。保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」で、おすすめに戻る
   {
     const readSaved = (page: any) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('zumen.display') ?? 'null'); } catch { return null; } });

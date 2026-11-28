@@ -16,6 +16,8 @@
   --accent-soft: #f4ead0;
   /* 文字に使う金色。--accent は線や背景用で、文字にすると薄くて読みにくい */
   --accent-text: #775808;
+  /* 主な操作のボタン（塗りつぶし）。「選ばれている状態」の薄い金色と、見分けるための、濃い色（第21弾 項目19の2）。白い文字との差は 6.6倍 */
+  --pri-bg: #775808; --pri-fg: #ffffff;
   /* 入力欄やボタンの枠線。区切り線（--rule）より濃くして、どこを押せるか見えるようにする */
   --control-border: #7f8985;
   --ok: #2f6b45;
@@ -58,13 +60,13 @@
    以前：枠 #6b7773／補助の文字 #98a39f／区切り線 #3a4240。明るい画面は、変えていない */
 :root[data-theme="dark"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
   --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #a8b2ae; --rule: #48524f;
-  --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
+  --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --pri-bg: #d9b96c; --pri-fg: #161a18; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
   --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark;
   --area1-line: #F5A030; --area1-fill: #5A3A10; --area2-line: #4DBCF0; --area2-fill: #12445F; --area3-line: #F58AB8; --area3-fill: #5E2540; --area4-line: #9BD23A; --area4-fill: #3A4F12; --area5-line: #9A8CF5; --area5-fill: #2E2A66; }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] { --tip-bg: #ffffff; --tip-fg: #111111; --paper: #151817; --panel: #1f2423; --field: #171b1a; --alt: #232827;
     --alt-head: #2b3130; --ink: #e8ecea; --ink-2: #c3ccc8; --muted: #a8b2ae; --rule: #48524f;
-    --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
+    --rule-soft: #2b3130; --accent: #d9b96c; --accent-soft: #3b331d; --accent-text: #d9b96c; --pri-bg: #d9b96c; --pri-fg: #161a18; --control-border: #8a9692; --ok: #85c7a0; --ok-soft: #1f3228;
     --need: #e9a384; --need-soft: #3b2a21; --danger: #ff9a90; --danger-soft: #3d2220; --shade: rgba(0, 0, 0, .55); color-scheme: dark;
   --area1-line: #F5A030; --area1-fill: #5A3A10; --area2-line: #4DBCF0; --area2-fill: #12445F; --area3-line: #F58AB8; --area3-fill: #5E2540; --area4-line: #9BD23A; --area4-fill: #3A4F12; --area5-line: #9A8CF5; --area5-fill: #2E2A66; }
 }
@@ -565,6 +567,11 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   background: var(--accent-soft); border-color: var(--accent); color: var(--ink);
 }
 .btn.primary, button.primary { background: var(--accent-soft); border-color: var(--accent); font-weight: var(--weight-strong); }
+/* 主な操作は、濃く塗りつぶす。選ばれている状態（薄い金色＋✓）と、見分けがつくように（第21弾 項目19の2）。押せないときは、これまでの灰色 */
+button.primary:not(:disabled), .btn.primary:not(:disabled), .projectbar button.need-save:not(:disabled) { background: var(--pri-bg); color: var(--pri-fg); border-color: var(--pri-bg); }
+button.primary:hover:not(:disabled), .btn.primary:hover:not(:disabled), .projectbar button.need-save:hover:not(:disabled) { filter: brightness(1.15); border-color: var(--pri-bg); }
+/* 開く・閉じるの切り替え（目次・いまの構成・図面一覧）は、金色にしない。矢印と名前で、状態が分かる */
+.panel-toggle[aria-pressed="true"], .projectbar .picker[aria-pressed="true"] { background: var(--field); border-color: var(--control-border); }
 /* 消す・削除のボタンは、ほかのボタンと見分けがつくよう、赤い文字と赤い枠にする（押せないときは、ほかと同じ灰色） */
 .btn.danger { color: var(--danger); border-color: var(--danger); }
 .btn.danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
