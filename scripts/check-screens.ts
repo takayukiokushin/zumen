@@ -1099,6 +1099,15 @@ try {
         const vis = Array.from(document.querySelectorAll('.editor-bar .tools button')).filter((b) => b.getBoundingClientRect().width > 0);
         return new Set(vis.map((b) => Math.round(b.getBoundingClientRect().top / 6))).size;
       });
+      // 編集中のオレンジの枠の下の辺が、画面の中に見える（図面の表示エリアが、画面の残りに合っている。第21弾 項目18の10）
+      const over = await page.evaluate(() => {
+        const eb = document.querySelector('.editor-body') as HTMLElement;
+        return Math.round(eb.getBoundingClientRect().bottom - innerHeight);
+      });
+      if (over > 1) {
+        failed++;
+        problems.push(`スマホの編集中の枠の検査（幅 ${w}px・倍率 ${Math.round(sc * 100)}%）：図面の表示エリアの下の辺が、画面の下より ${over}px 外に出ています`);
+      }
       if (rows > 2) {
         failed++;
         problems.push(`スマホの編集中のボタンの検査（幅 ${w}px・倍率 ${Math.round(sc * 100)}%）：ボタンが ${rows} 行に分かれています（2行まで）`);

@@ -1034,8 +1034,10 @@ button.with-icon svg { flex: 0 0 auto; }
   :where(html[data-uw~="700"]) .zoom-text { display: none; }
   :where(html[data-uw~="700"]) .tools button.with-icon { min-width: 0; padding-left: calc(10px * var(--ctl-scale)); padding-right: calc(10px * var(--ctl-scale)); }
   :where(html[data-uw~="700"]) .editor { overflow-y: auto; }
-  :where(html[data-uw~="700"]) .editor-body { display: flex; flex-direction: column; flex: 1 0 auto; }
-  :where(html[data-uw~="700"]) .canvas-wrap { flex: 1 1 auto; min-height: max(320px, 50vh); padding: calc(10px * var(--text-scale)); }
+  /* 図面の表示エリアは、画面の残りにぴったり合わせる（編集中のオレンジの枠の下の辺が、いつも画面の中に見えるように。第21弾 項目18の10 案B）。
+     残りが320pxに足りないときだけ、これまでどおり、画面全体が上下に動く */
+  :where(html[data-uw~="700"]) .editor-body { display: flex; flex-direction: column; flex: 1 1 0; min-height: 320px; }
+  :where(html[data-uw~="700"]) .canvas-wrap { flex: 1 1 auto; min-height: 0; padding: calc(10px * var(--text-scale)); }
   /* 記号の一覧と、選んだものの設定は、ボタンで下から出す */
   :where(html[data-uw~="700"]) .side { display: none; }
   /* 高さは、上端のつまみで変える（--sheet-pct＝画面の高さに対する%。初めは55。画面全体の倍率で割って、倍率があっても、割合がずれないようにする）。最小120px・最大85%。下へ大きく引き下げると、閉じる（第21弾 項目15） */
