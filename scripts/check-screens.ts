@@ -656,6 +656,12 @@ try {
     });
     const page = await ctx.newPage();
     page.setDefaultTimeout(8000);
+    // 試験用のサーバーには利用券（APIキー）が無いので、「使える」状態として見せる（使えないときの画面は、別の検査で確かめる。第21弾 項目19の7）
+    await page.route('**/api/health', async (r: any) => {
+      const resp = await r.fetch();
+      const j = await resp.json();
+      await r.fulfill({ response: resp, json: { ...j, hasApiKey: true } });
+    });
     await page.route('**/api/analyze', (r: any) => (r.request().method() === 'POST' ? r.fulfill({ json: { jobId: 'job-x' } }) : r.continue()));
     await page.route('**/api/analyze/job-x', (r: any) => {
       const m = r.request().method();
@@ -1215,6 +1221,12 @@ try {
       await page.locator('.more-toggle').click();
       await sleep(300);
       const open = await info();
+      // 見た目の倍率の「縮小」「拡大」と、記号どうしのすきまのボタンが、別の言葉になっている（第21弾 項目19の4）
+      const labels: string[] = await page.evaluate(() => Array.from(document.querySelectorAll('.editor-bar .tools button')).map((b) => (b.textContent ?? '').trim()));
+      if (!labels.includes('間隔を詰める') || !labels.includes('間隔を広げる') || labels.some((l) => l.startsWith('レイアウトを'))) {
+        failed++;
+        problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：すきまのボタンの名前が、「間隔を詰める」「間隔を広げる」になっていません（${labels.join('／')}）`);
+      }
       if (!open.caps.includes('整える') || !open.caps.includes('レイヤーを変更する') || open.over > 1) {
         failed++;
         problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：「ほかの操作」を開いても、「整える」「レイヤーを変更する」の見出しつきのグループが出ません（${open.caps.join('／')}）`);
