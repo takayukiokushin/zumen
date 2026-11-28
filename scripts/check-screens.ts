@@ -1008,7 +1008,7 @@ try {
     await ctx.close();
   }
   // スマホの上の帯：英語・フランス語でも、右の行のボタンの名前が1行で、単語の途中で割れない。タブの名前は2行まで（第21弾 項目18の9）。幅320pxでも、「ログアウト」だけが下の段に回らない（項目18の7）
-  for (const [w, lang, scale] of [[360, 'en', 0.8], [390, 'en', 1], [360, 'fr', 0.8], [390, 'fr', 1], [430, 'fr', 1], [320, 'ja', 1], [320, 'ja', 0.8], [320, 'en', 1]] as const) {
+  for (const [w, lang, scale] of [[360, 'en', 0.8], [390, 'en', 1], [360, 'fr', 0.8], [390, 'fr', 1], [430, 'fr', 1], [320, 'ja', 1], [320, 'ja', 0.8], [320, 'en', 1], [360, 'ja', 1]] as const) {
     freeLocks();
     screens++;
     const ctx = await browser.newContext({ viewport: { width: w, height: 800 }, hasTouch: true, isMobile: false });
@@ -1043,13 +1043,16 @@ try {
           const label = b.querySelector('span') ?? b;
           if (lines(label) > 1) out.push(`「${(label.textContent ?? '').trim()}」が2行に割れています`);
         }
+        // 4つのタブが、1段に並ぶ（1つだけ下の段に回らない）。名前の途中で割れない（第21弾 項目18の8の続き：幅360pxで「設備を入力して作成」が3行に割れた）
+        const tabs = Array.from(document.querySelectorAll('.tabbar > button:not(.tabbar-toggle), .tabbar .tab-wrap > button')).map((t) => t.getBoundingClientRect());
+        if (new Set(tabs.map((r) => Math.round(r.top / 8))).size > 1) out.push('タブが、2段に分かれています');
         // 右の行の最後のボタン（ログアウト）が、先頭のボタンと同じ段にある（1つだけ下の段に回らない。第21弾 項目18の7）
         const rb = Array.from(document.querySelectorAll('.tabbar-right > button'));
         const first = rb[0]?.getBoundingClientRect();
         const last = rb[rb.length - 1]?.getBoundingClientRect();
         if (first && last && Math.abs(first.top + first.height / 2 - (last.top + last.height / 2)) > 8) out.push('最後のボタンだけが、下の段に回っています');
         for (const t of Array.from(document.querySelectorAll('.tabbar > button:not(.tabbar-toggle), .tabbar .tab-wrap > button'))) {
-          if (innerWidth >= 340 && lines(t) > 2) out.push(`タブ「${(t.textContent ?? '').trim()}」が3行以上に割れています`);
+          if (lines(t) > 2) out.push(`タブ「${(t.textContent ?? '').trim()}」が3行以上に割れています`);
         }
         return out;
       });

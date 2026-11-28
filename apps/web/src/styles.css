@@ -625,6 +625,12 @@ button[aria-pressed="true"], .btn[aria-pressed="true"], button.on {
   /* タブの名前は、2行にするとき、決まった位置（例：「スケッチ」／「読み取り」）で改行する */
   :where(html[data-uw~="700"]) .tabbar .tab-l2 { display: block; }
   :where(html[data-uw~="700"]) .tabbar > button, :where(html[data-uw~="700"]) .tabbar .tab-wrap button { min-width: 0; padding-left: 4px; padding-right: 4px; white-space: normal; line-height: 1.3; }
+  /* タブの名前は、決まった位置の改行（例：「設備を入力」／「して作成」）で、1行ずつにする。単語の途中では割らない。
+     幅は、4つ同じではなく、名前の長さに合わせる（短い「図面」を細く、長い名前を広く）（幅360pxで画面全体100%で、「設備を入力して作成」が3行に割れていた） */
+  html[data-uw~="700"] .tabbar > button:not(.tabbar-toggle):not(#_), html[data-uw~="700"] .tabbar > .tab-wrap:not(#_) { flex: 1 1 auto; min-width: 0; }
+  html[data-uw~="700"] .tabbar > button:not(.tabbar-toggle):not(#_), html[data-uw~="700"] .tabbar .tab-wrap button:not(#_) { white-space: nowrap; overflow-wrap: normal; }
+  html[data-uw~="400"] .tabbar > button:not(.tabbar-toggle):not(#_), html[data-uw~="400"] .tabbar .tab-wrap button:not(#_) { padding-left: 2px; padding-right: 2px; }
+  html[data-uw~="400"] .tabbar:not(#_) { gap: 2px; padding-left: calc(6px * var(--text-scale)); padding-right: calc(6px * var(--text-scale)); }
   /* 右側（使い方・設定・利用者の管理・氏名・ログアウト）は、2段目に、全部を1行で並べる（3段目に、ログアウトだけ回さない）。
      ボタンの余白を詰め、氏名は、足りなければ「…」で省く。幅が足りないほど大きい設定のときだけ、折り返す */
   :where(html[data-uw~="700"]) .tabbar > .tabbar-right { flex: 1 1 100%; margin-left: 0; justify-content: space-between; gap: calc(2px * var(--text-scale)); }
