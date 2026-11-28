@@ -1373,6 +1373,61 @@ try {
     }
     await ctx.close();
   }
+  // スマホの設備入力：入力欄の幅が、すべてそろい、欄と欄のあいだに、大きな空白が無い（第21弾 項目19の8）
+  for (const [w, h, sc] of [[390, 844, 0.8], [360, 740, 1], [430, 900, 0.8]] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: false });
+    try {
+      await ctx.addInitScript((u: number) => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.phoneBarOpen', 'off');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: u, bold: false }));
+        } catch {}
+      }, sc);
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close|Fermer/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(2).click();
+      await sleep(1200);
+      const r = await page.evaluate(() => {
+        const fields = Array.from(document.querySelectorAll('main.form .field:not([data-kind="buttons"])')).filter((f) => (f as HTMLElement).offsetWidth > 0).slice(0, 30) as HTMLElement[];
+        const widths = new Set(fields.map((f) => Math.round(f.getBoundingClientRect().width)));
+        let maxGap = 0;
+        for (const box of Array.from(document.querySelectorAll('main.form .fields'))) {
+          const kids = Array.from(box.children).filter((c) => (c as HTMLElement).offsetWidth > 0) as HTMLElement[];
+          for (let i = 1; i < kids.length; i++) {
+            const a = kids[i - 1]!.getBoundingClientRect();
+            const b = kids[i]!.getBoundingClientRect();
+            maxGap = Math.max(maxGap, b.top - a.bottom);
+          }
+        }
+        return { n: fields.length, widths: Array.from(widths), maxGap: Math.round(maxGap) };
+      });
+      if (r.n > 0 && Math.max(...r.widths) - Math.min(...r.widths) > 2) {
+        failed++;
+        problems.push(`スマホの入力欄の幅の検査（幅 ${w}px・倍率 ${Math.round(sc * 100)}%）：入力欄の幅が、そろっていません（${r.widths.join('・')}px）`);
+      }
+      if (r.maxGap > 40 * sc + 10) {
+        failed++;
+        problems.push(`スマホの入力欄の検査（幅 ${w}px・倍率 ${Math.round(sc * 100)}%）：欄と欄のあいだに、${r.maxGap}pxの大きな空白があります`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`スマホの入力欄の検査（幅 ${w}px）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   // 初めて使うときの、端末に合ったおすすめの大きさ（第21弾 項目17）。スマホ・iPad：文字100%・画面全体80%。パソコン：どちらも100%。保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」で、おすすめに戻る
   {
     const readSaved = (page: any) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('zumen.display') ?? 'null'); } catch { return null; } });

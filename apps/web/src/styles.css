@@ -1231,6 +1231,14 @@ main.form .field[data-kind="buttons"] .radio-row button { flex: 0 0 auto; white-
   main.form .field[data-kind="buttons"] { width: 100%; flex: 1 1 100%; }
   main.form .field[data-kind="buttons"] .radio-row button { flex: 1 1 0; min-width: 0; white-space: normal; line-height: 1.3; }
 }
+/* 入力欄の幅が、さらに狭いとき（スマホ）：すべての入力欄を、幅いっぱいにそろえる。パソコンで、入力する文字の長さに合わせていた幅の違いは、スマホでは不揃いに見えるだけのため。
+   1列になるので、横に並んだ欄の高さをそろえるための空白（説明文・過去の傾向のぶん）も、なくす（第21弾 項目19の8） */
+@container (max-width: 560px) {
+  main.form .field:not([data-kind="buttons"]) { flex: 1 1 100%; }
+  main.form .fields > .field::after { display: none; }
+  main.form .field .help { min-height: 0; }
+  main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bottom: 0; }
+}
 
 /* ------------------------------------------------------------------ */
 /* 選択ボタン（言語・明るさ・文字の大きさ・縦横・線の種類など）は、アプリ全体で、横一列に並べる（項目6） */
