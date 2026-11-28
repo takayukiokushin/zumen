@@ -1023,6 +1023,7 @@ export function App() {
                 onAnalyzed={() => setSketchRead(true)}
                 onStatus={setAnalyzeStatus}
                 onGoToHearing={() => setTab('hearing')}
+                isAdmin={user.role === 'admin'}
               />
               </ErrorBoundary>
             </div>

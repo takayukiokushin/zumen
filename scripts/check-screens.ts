@@ -99,6 +99,7 @@ const problems: string[] = [];
 
 try {
   if ((await runNode(['apps/server/src/cli.ts', 'add', USER, '画面検査', PASS, 'admin'], env)) !== 0) throw new Error('試験用の利用者を作れませんでした');
+  if ((await runNode(['apps/server/src/cli.ts', 'add', 'screens-member', '標準利用者', PASS, 'member'], env)) !== 0) throw new Error('試験用の利用者（標準）を作れませんでした');
   const port = await freePort();
   const base = `http://127.0.0.1:${port}`;
   server = spawn(process.execPath, ['--experimental-strip-types', '--disable-warning=ExperimentalWarning', 'apps/server/src/index.ts'], { cwd: ROOT, env: { ...process.env, ...env, PORT: String(port) }, stdio: 'ignore' });
@@ -1207,7 +1208,7 @@ try {
         failed++;
         problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：閉じているとき、ボタンの帯が ${closed.rows} 段に分かれています（1段にする）`);
       }
-      if (closed.caps.some((c) => c === '')) {
+      if (closed.caps.some((c: string) => c === '')) {
         failed++;
         problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：見出しの無いグループがあります（${closed.caps.join('／')}）`);
       }
@@ -1221,6 +1222,64 @@ try {
     } catch (e) {
       failed++;
       problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
+  // 「スケッチ読み取り」が使えないとき（試験用のサーバーには、利用券が無い）：灰色の短い案内。ファイルを選ぶ場所は出ない。管理者だけに、手順が折りたたんで出る（第21弾 項目19の7）
+  for (const [who, isAdmin] of [[USER, true], ['screens-member', false]] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    try {
+      await ctx.addInitScript(() => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+        } catch {}
+      });
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', who);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close|Fermer/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(0).click();
+      await sleep(1000);
+      const r = await page.evaluate(() => {
+        const n = document.querySelector('.analyze .notready') as HTMLElement | null;
+        const drop = document.querySelector('.analyze label.drop') as HTMLElement | null;
+        const det = n?.querySelector('details') as HTMLDetailsElement | null;
+        return {
+          has: !!n,
+          dropShown: !!drop && drop.offsetWidth > 0,
+          go: !!n?.querySelector('button.primary'),
+          details: !!det,
+          detailsOpen: !!det?.open,
+          muted: !!n?.querySelector('.muted'),
+          jargonVisible: !!n && /\.env/.test(n.innerText),
+          bg: n ? getComputedStyle(n).backgroundColor : '',
+        };
+      });
+      const bad: string[] = [];
+      if (!r.has) bad.push('使えないときの案内が出ません');
+      if (r.dropShown) bad.push('使えないのに、ファイルを選ぶ場所が出ています');
+      if (!r.go) bad.push('「設備を入力して作成へ」のボタンが出ません');
+      if (r.jargonVisible) bad.push('専門用語（.env）が、最初から見えています');
+      if (isAdmin && (!r.details || r.detailsOpen)) bad.push('管理者に、折りたたんだ手順が出ません');
+      if (!isAdmin && (r.details || !r.muted)) bad.push('一般の利用者に、手順が出ているか、「管理者にお知らせください」の一文がありません');
+      if (bad.length > 0) {
+        failed++;
+        problems.push(`スケッチ読み取りが使えないときの案内の検査（${isAdmin ? '管理者' : '標準の利用者'}）：${bad.join('／')}`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`スケッチ読み取りが使えないときの案内の検査（${isAdmin ? '管理者' : '標準の利用者'}）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
     }
     await ctx.close();
   }

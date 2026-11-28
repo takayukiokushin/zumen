@@ -423,11 +423,14 @@ table.picked tr.uncertain { background: var(--accent-soft); }
 .shield .app, .shield .editor { opacity: .9; }
 .picker-menu .editing { color: var(--accent-text); font-weight: 600; }
 
-/* ---- 手書きメモの読み取りがまだ使えないときの案内 ---- */
-.notready { border: 1px solid var(--need); background: var(--need-soft); border-radius: 3px;
-  padding: 14px 16px; margin: 0 0 16px; font-size: max(calc(12.5px * var(--text-scale)), var(--min-font)); line-height: 1.8; }
-.notready b { color: var(--need); }
+/* ---- 手書きメモの読み取りがまだ使えないときの案内 ----
+   故障ではなく「設定がまだ」の状態なので、エラーの色（赤）ではなく、灰色の枠にする。専門的な手順は、管理者にだけ、折りたたんで見せる（第21弾 項目19の7） */
+.notready { border: 1px solid var(--control-border); background: var(--alt); border-radius: 3px;
+  padding: 14px 16px; margin: 0 0 16px; font-size: max(calc(13px * var(--text-scale)), var(--min-font)); line-height: 1.8; }
 .notready p { margin: 8px 0 0; }
+.notready .muted { color: var(--muted); margin-top: 12px; }
+.notready .how-to { margin-top: 12px; }
+.notready .how-to > summary { cursor: pointer; color: var(--accent-text); }
 .notready .how { color: var(--ink); }
 .notready code { background: var(--field); border: 1px solid var(--rule); border-radius: 2px;
   padding: 1px 5px; font-size: max(calc(12px * var(--text-scale)), var(--min-font)); }

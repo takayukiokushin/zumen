@@ -25,6 +25,8 @@ interface Props {
   /** 読み取りの状態を、外（タブの表示）に知らせる。別のタブを見ているあいだも、読み取りは続く */
   onStatus?: (s: 'idle' | 'busy' | 'done') => void;
   onGoToHearing: () => void;
+  /** 管理者か（使えるようにする手順は、管理者にだけ見せる） */
+  isAdmin: boolean;
 }
 
 interface Picked {
@@ -50,7 +52,7 @@ function toBase64(file: File): Promise<string> {
  * 読み取り結果はそのまま採用せず、必ずこの画面で人が選んでから反映する
  * （電気設備図面は保安上の重要書類のため、最終責任は人に残す）。
  */
-export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onStatus, onGoToHearing, onGoToDrawing }: Props) {
+export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onStatus, onGoToHearing, onGoToDrawing, isAdmin }: Props) {
   const t = useT();
   const { settings } = useSettings();
   const [images, setImages] = useState<Picked[]>([]);
@@ -188,17 +190,32 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
           <div className="notready">
             <Rich text={t('an.notready.title')} />
             <p>
-              <Rich text={t('an.notready.p1')} />
-            </p>
-            <p className="how">
-              <Rich text={t('an.notready.how')} />
-            </p>
-            <p className="how">
               <Rich text={t('an.notready.other')} />
             </p>
+            <p>
+              <button type="button" className="btn primary" onClick={onGoToHearing}>
+                {t('an.notready.go')}
+              </button>
+            </p>
+            {isAdmin ? (
+              <details className="how-to">
+                <summary>{t('an.notready.adminSummary')}</summary>
+                <p>
+                  <Rich text={t('an.notready.p1')} />
+                </p>
+                <p className="how">
+                  <Rich text={t('an.notready.how')} />
+                </p>
+              </details>
+            ) : (
+              <p className="muted">{t('an.notready.member')}</p>
+            )}
           </div>
         )}
 
+        {/* 使えないときは、ファイルを選ぶ場所・説明を出さない（選んでも、あとでエラーになるだけのため）。第21弾 項目19の7 */}
+        {ready !== false && (
+        <>
         <p className="hint">{t('an.hint')}</p>
 
         <p className="privacy-note">
@@ -256,6 +273,8 @@ export function Analyze({ answers, onApply, onUndo, onSetAnswer, onAnalyzed, onS
         )}
 
         {error && <p className="err">{error}</p>}
+        </>
+        )}
       </section>
 
       {undone && <p className="ok-note" role="status">{t('sketch.undone')}</p>}
