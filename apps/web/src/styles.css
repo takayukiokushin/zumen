@@ -1560,6 +1560,17 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 
 /* サーバーの状態（管理者） */
 .status-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+/* スマホ（実効幅700以下）：サーバーの注意の帯を、1行にする。長い文章の代わりに、件数だけを出し、右に「状態を見る」と「✕」を並べる（第21弾 項目19の9） */
+.status-banner .status-short, .status-banner .lbl-short { display: none; }
+@media all {
+  :where(html[data-uw~="700"]) .status-banner { flex-wrap: nowrap; gap: 8px; padding-top: 4px; padding-bottom: 4px; }
+  :where(html[data-uw~="700"]) .status-banner > b, :where(html[data-uw~="700"]) .status-banner > .status-warns { display: none; }
+  :where(html[data-uw~="700"]) .status-banner > .status-short { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :where(html[data-uw~="700"]) .status-banner > button { flex: 0 0 auto; min-width: 0; white-space: nowrap; }
+  :where(html[data-uw~="700"]) .status-banner .status-close { min-width: 44px; }
+  :where(html[data-uw~="700"]) .status-banner .lbl-long { display: none; }
+  :where(html[data-uw~="700"]) .status-banner .lbl-short { display: inline; }
+}
 /* 画面の高さが低いとき（スマホを横向きにしたときなど）：サーバーの状態の知らせが、高さの大半を取って、下の一覧・図面を隠さないよう、高さの上限を決め、はみ出す分は、知らせの中でなぞって読む */
 @media (max-height: 500px) { .status-banner { max-height: 34vh; overflow-y: auto; } }
 .server-status .status-warn { margin: 0 0 10px; padding: 8px 12px 8px 28px; background: var(--need-soft); border: 1px solid var(--need); border-radius: 6px; color: var(--need); }

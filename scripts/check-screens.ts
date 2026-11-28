@@ -1340,7 +1340,7 @@ try {
       await page.click('button[type=submit]');
       await sleep(1100);
       await page.locator('button', { hasText: /閉じる|Close|Fermer/ }).first().click({ timeout: 400 }).catch(() => {});
-      const look = () =>
+      const look = (): Promise<{ pressed: boolean; disabled: boolean; bg: string; border: string }[]> =>
         page.evaluate(() =>
           Array.from(document.querySelectorAll('.tabbar > button:not(.tabbar-toggle), .tabbar .tab-wrap > button')).map((b) => {
             const cs = getComputedStyle(b);
@@ -1425,6 +1425,57 @@ try {
     } catch (e) {
       failed++;
       problems.push(`スマホの入力欄の検査（幅 ${w}px）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
+  // サーバーの注意の帯（管理者だけ）：スマホでは1行（件数だけ。右に「状態を見る」と「✕」）。パソコンでは、詳しい文章まで出る（第21弾 項目19の9）
+  for (const [w, h, sc, touch] of [[390, 844, 0.8, true], [360, 740, 1, true], [1280, 800, 1, false]] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch });
+    try {
+      await ctx.addInitScript((u: number) => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.phoneBarOpen', 'off');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: u, bold: false }));
+        } catch {}
+      }, sc);
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1700);
+      const r = await page.evaluate(() => {
+        const p = document.querySelector('.status-banner') as HTMLElement | null;
+        if (!p) return null;
+        const shown = (sel: string) => {
+          const e = p.querySelector(sel) as HTMLElement | null;
+          return !!e && e.offsetWidth > 0;
+        };
+        const close = p.querySelector('.status-close') as HTMLElement | null;
+        const cb = close?.getBoundingClientRect();
+        const ratio = close && close.offsetWidth > 0 ? cb!.width / close.offsetWidth : 1;
+        return { h: Math.round(p.getBoundingClientRect().height / ratio), warns: shown('.status-warns'), short: shown('.status-short'), closeW: Math.round((cb?.width ?? 0)), closeH: Math.round((cb?.height ?? 0)), over: document.documentElement.scrollWidth - innerWidth };
+      });
+      const bad: string[] = [];
+      if (!r) bad.push('サーバーの注意の帯が出ません');
+      else if (touch) {
+        if (r.warns || !r.short) bad.push('スマホで、帯が、件数だけの1行になっていません');
+        if (r.h > 60) bad.push(`スマホで、帯の高さが ${r.h}px あります（60px以下にする）`);
+        if (r.closeW / sc < 43.5 || r.closeH / sc < 43.5) bad.push(`「✕」の押す大きさが ${Math.round(r.closeW / sc)}×${Math.round(r.closeH / sc)}px です（画面全体の倍率を除いて、44px以上にする）`);
+        if (r.over > 1) bad.push('帯が、画面の横にはみ出しています');
+      } else if (!r.warns || r.short) bad.push('パソコンで、詳しい文章まで出る帯になっていません');
+      if (bad.length > 0) {
+        failed++;
+        problems.push(`サーバーの注意の帯の検査（幅 ${w}px）：${bad.join('／')}`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`サーバーの注意の帯の検査（幅 ${w}px）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
     }
     await ctx.close();
   }

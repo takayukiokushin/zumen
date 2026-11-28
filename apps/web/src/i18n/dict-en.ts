@@ -913,6 +913,7 @@ export const en: Dict = {
   'status.warn.disk-low': 'Free disk space is running low ({n}%).',
   'status.warn.backup-disk-low': 'Free disk space at the backup destination is running low ({n}%).',
   'status.banner.title': 'The server needs attention:',
+  'status.banner.short': 'The server needs attention ({n})',
   'status.banner.open': 'View status',
   'status.banner.close': 'Close',
   'srv.diskFull': 'The server’s disk is full, so saving and signing in are not possible. What you entered is still on this screen (it will be lost if you close or reload it). Please ask the server administrator to free up disk space.',

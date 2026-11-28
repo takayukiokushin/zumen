@@ -910,6 +910,7 @@ export const zh: Dict = {
   'status.warn.disk-low': '磁盘剩余空间不足（{n}%）。',
   'status.warn.backup-disk-low': '备份保存位置的磁盘剩余空间不足（{n}%）。',
   'status.banner.title': '服务器需要注意：',
+  'status.banner.short': '服务器需要注意（{n}项）',
   'status.banner.open': '查看状态',
   'status.banner.close': '关闭',
   'srv.diskFull': '服务器的磁盘已满，无法保存或登录。您输入的内容仍保留在本页面中（关闭页面或重新加载后将消失）。请告知服务器管理员腾出磁盘空间。',

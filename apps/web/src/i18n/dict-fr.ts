@@ -914,6 +914,7 @@ export const fr: Dict = {
   'status.warn.disk-low': 'L’espace disque libre devient faible ({n} %).',
   'status.warn.backup-disk-low': 'L’espace libre à la destination des sauvegardes devient faible ({n} %).',
   'status.banner.title': 'Le serveur demande de l’attention :',
+  'status.banner.short': 'Le serveur demande de l’attention ({n})',
   'status.banner.open': 'Voir l’état',
   'status.banner.close': 'Fermer',
   'srv.diskFull': 'Le disque du serveur est plein : il est impossible d’enregistrer ou de se connecter. Ce que vous avez saisi reste sur cet écran (cela sera perdu si vous le fermez ou le rechargez). Demandez à l’administrateur du serveur de libérer de l’espace disque.',

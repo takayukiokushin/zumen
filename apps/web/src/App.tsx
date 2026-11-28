@@ -818,12 +818,15 @@ export function App() {
       {statusBannerShown && serverStatus && (
         <p className="bar-warn status-banner" role="alert">
           <b>{t('status.banner.title')}</b>
-          {serverStatus.warnings.map(warnText).join(' ')}
+          <span className="status-warns">{serverStatus.warnings.map(warnText).join(' ')}</span>
+          {/* 狭い画面（スマホ）では、帯を1行にするため、長い文章の代わりに、件数だけを出す。中身は、「状態を見る」で見られる（第21弾 項目19の9） */}
+          <span className="status-short">{t('status.banner.short', { n: serverStatus.warnings.length })}</span>
           <button type="button" className="btn" onClick={() => setUsersOpen(true)}>
             {t('status.banner.open')}
           </button>
-          <button type="button" className="btn" onClick={() => setStatusBannerClosed(true)}>
-            {t('status.banner.close')}
+          <button type="button" className="btn status-close" aria-label={t('status.banner.close')} onClick={() => setStatusBannerClosed(true)}>
+            <span className="lbl-long">{t('status.banner.close')}</span>
+            <span className="lbl-short" aria-hidden="true">✕</span>
           </button>
         </p>
       )}
