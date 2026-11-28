@@ -1011,6 +1011,8 @@ html:not([data-uw~="700"]) .tools > .more-group { order: 2; }
 html:not([data-uw~="700"]) .tools > .more-only { order: 3; }
 html:not([data-uw~="700"]) .tools > .zoom-group { order: 4; }
 html:not([data-uw~="700"]) .editor-bar:not(.more-open) .more-only { display: none; }
+/* 「編集」グループの先頭の「削除」は、左のすきまをなくして、見出しと左端をそろえる（第21弾 項目19の5） */
+html:not([data-uw~="700"]) .editor-bar .tool-row > .btn.danger:first-child:not(#_) { margin-left: 0; }
 /* 広い画面でも、ボタンの帯が1段に収まるよう（幅1280px・1366pxのノートパソコン）、ボタンの左右の余白とグループのすきまを、少し詰める */
 html:not([data-uw~="700"]) .editor-bar .tools button:not(#_) { min-width: 0; padding-left: calc(9px * var(--ctl-scale)); padding-right: calc(9px * var(--ctl-scale)); }
 html:not([data-uw~="700"]) .editor-bar .tools .edit-toggle:not(#_) { min-width: calc(120px * var(--ctl-scale, 1)); }
@@ -1458,8 +1460,9 @@ main.form .fields:has(> .field .trend) > .field:not(:has(.trend)) { padding-bott
 .wb-list li { margin: calc(2px * var(--text-scale)) 0; }
 
 /* レイヤー（図面の種類）の切り替え。印刷のボタンの近くに置く */
-.layer-field { display: inline-flex; flex-direction: column; gap: calc(2px * var(--text-scale)); }
-.layer-field-cap { font-size: max(calc(11px * var(--text-scale)), var(--min-font)); color: var(--muted); }
+.layer-field { display: inline-flex; flex-direction: column; gap: calc(3px * var(--text-scale)); }
+/* 見出しの大きさ・字間・中身までのすきまを、ほかのグループの見出し（.tool-group > .cap）と同じにして、そろえる（第21弾 項目19の5） */
+.layer-field-cap { font-size: max(calc(11px * var(--text-scale)), var(--min-font)); color: var(--muted); letter-spacing: .04em; }
 .layer-menu { position: relative; display: inline-block; }
 .layer-trigger { display: inline-flex; align-items: center; gap: calc(6px * var(--text-scale)); max-width: 100%; }
 .layer-trigger-cap { font-size: max(calc(11px * var(--text-scale)), var(--min-font)); color: var(--muted); }

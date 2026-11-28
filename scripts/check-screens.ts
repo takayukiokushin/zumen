@@ -1221,6 +1221,30 @@ try {
       await page.locator('.more-toggle').click();
       await sleep(300);
       const open = await info();
+      // 各グループの見出しが、中身の真上にある（左端がそろい、すきまが同じ。同じ段の見出しの高さがそろう）（第21弾 項目19の5）
+      const aligns: string[] = await page.evaluate(() => {
+        const out: string[] = [];
+        const tops = new Map<number, number[]>();
+        for (const g of Array.from(document.querySelectorAll('.editor-bar .tools > .tool-group'))) {
+          if ((g as HTMLElement).offsetWidth === 0) continue;
+          const cap = g.querySelector('.cap, .layer-field-cap') as HTMLElement | null;
+          const ctl = g.querySelector('button, select') as HTMLElement | null;
+          if (!cap || !ctl) continue;
+          const c = cap.getBoundingClientRect();
+          const k = ctl.getBoundingClientRect();
+          const name = (cap.textContent ?? '').trim();
+          if (Math.abs(c.left - k.left) > 1.5) out.push(`「${name}」の見出しが、中身の左端から ${Math.round(c.left - k.left)}px ずれています`);
+          if (k.top - c.bottom > 5 || k.top - c.bottom < 1) out.push(`「${name}」の見出しと中身のすきまが ${Math.round(k.top - c.bottom)}px です`);
+          const row = Math.round(c.top / 40);
+          tops.set(row, [...(tops.get(row) ?? []), c.top]);
+        }
+        for (const arr of tops.values()) if (Math.max(...arr) - Math.min(...arr) > 1.5) out.push('同じ段の見出しの高さが、そろっていません');
+        return out;
+      });
+      if (aligns.length > 0) {
+        failed++;
+        problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：${aligns.join('／')}`);
+      }
       // 見た目の倍率の「縮小」「拡大」と、記号どうしのすきまのボタンが、別の言葉になっている（第21弾 項目19の4）
       const labels: string[] = await page.evaluate(() => Array.from(document.querySelectorAll('.editor-bar .tools button')).map((b) => (b.textContent ?? '').trim()));
       if (!labels.includes('間隔を詰める') || !labels.includes('間隔を広げる') || labels.some((l) => l.startsWith('レイアウトを'))) {
