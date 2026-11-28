@@ -492,6 +492,13 @@ table.picked tr.uncertain { background: var(--accent-soft); }
 .modal .err, .modal .ok-note { margin: 12px 20px 0; padding: 9px 12px; border-radius: 3px; font-size: max(calc(12.5px * var(--text-scale)), var(--min-font)); }
 .modal .ok-note { background: var(--ok-soft); border: 1px solid var(--ok); color: var(--ok); }
 .modal .help .hint { margin: 0 0 6px; color: var(--muted); font-size: max(calc(12.5px * var(--text-scale)), var(--min-font)); }
+/* 「使い方」の、言葉で探す欄と目次（第21弾 項目19の10） */
+.modal .help-search { margin: 10px 0 6px; }
+.modal .help-search input { width: 100%; }
+.modal .help-toc-cap { margin: 10px 0 4px; color: var(--muted); font-size: max(calc(12.5px * var(--text-scale)), var(--min-font)); }
+.modal .help-toc { margin: 0 0 12px; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 2px 16px; }
+.modal .help-toc .link-btn { background: none; border: 0; padding: 4px 0; min-width: 0; min-height: var(--control-h); display: flex; align-items: center; color: var(--accent-text); text-decoration: underline; text-align: left; cursor: pointer; font: inherit; line-height: 1.6; }
+.modal .help-nohit { margin: 14px 0; color: var(--muted); }
 .modal .help-item { padding: 12px 0; border-top: 1px solid var(--rule-soft); }
 .modal .help-item h3 { margin: 0 0 6px; font-size: calc(14px * var(--text-scale)); }
 .modal .help-item p { margin: 0; font-size: max(calc(13px * var(--text-scale)), var(--min-font)); line-height: 1.8; color: var(--ink-2); }

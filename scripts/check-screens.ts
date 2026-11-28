@@ -1479,6 +1479,54 @@ try {
     }
     await ctx.close();
   }
+  // 「使い方」：言葉で探す欄と目次がある。探すと、その言葉を含む説明だけが残る。見つからないときは、その旨が出る（第21弾 項目19の10）
+  {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    try {
+      await ctx.addInitScript(() => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+        } catch {}
+      });
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1200);
+      await page.locator('.tabbar-right .icon-btn').nth(0).evaluate((e: HTMLElement) => e.click());
+      await sleep(600);
+      const count = () => page.evaluate(() => ({ toc: document.querySelectorAll('.help-toc li').length, items: document.querySelectorAll('.help-item').length, none: !!document.querySelector('.help-nohit') }));
+      const all = await count();
+      await page.fill('.help-search input', '印刷');
+      await sleep(200);
+      const hit = await count();
+      await page.fill('.help-search input', '３ＺＺ＿ない言葉');
+      await sleep(200);
+      const none = await count();
+      await page.fill('.help-search input', '');
+      await sleep(200);
+      const back = await count();
+      const bad: string[] = [];
+      if (all.toc < 10 || all.toc !== all.items) bad.push(`目次（${all.toc}件）と説明（${all.items}件）の数が合いません`);
+      if (hit.items < 1 || hit.items >= all.items || hit.toc !== hit.items) bad.push(`「印刷」で探しても、絞り込まれません（${hit.items}件）`);
+      if (!none.none || none.items !== 0) bad.push('見つからないときの知らせが出ません');
+      if (back.items !== all.items) bad.push('探す言葉を消しても、全部に戻りません');
+      if (bad.length > 0) {
+        failed++;
+        problems.push(`「使い方」の検索の検査：${bad.join('／')}`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`「使い方」の検索の検査：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   // 初めて使うときの、端末に合ったおすすめの大きさ（第21弾 項目17）。スマホ・iPad：文字100%・画面全体80%。パソコン：どちらも100%。保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」で、おすすめに戻る
   {
     const readSaved = (page: any) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('zumen.display') ?? 'null'); } catch { return null; } });
