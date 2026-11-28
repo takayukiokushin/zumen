@@ -1078,10 +1078,16 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           </div>
           )}
 
-          {/* スマホ専用のボタン */}
-          <button type="button" className="tools-toggle" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
-            {moreOpen ? t('editor.moreClose') : t('editor.more')}
-          </button>
+          {/* 「ほかの操作」の出し入れ。スマホでは、ボタンだけ（グループの枠・見出しは出ない）。パソコンでも、よく使わないもの（整える・レイヤー）を、ここに入れる。
+              閉じているときも、中に何があるか分かるよう、見出しに「整える・レイヤー」と書く（第21弾 項目19の3 案C） */}
+          <div className="tool-group more-group">
+            <span className="cap">{t('editor.group.more')}</span>
+            <div className="tool-row">
+              <button type="button" className="tools-toggle more-toggle" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
+                {moreOpen ? t('editor.moreClose') : t('editor.more')}
+              </button>
+            </div>
+          </div>
           {!viewOnly && (
           <button type="button" className="tools-toggle" aria-expanded={sideOpen} onClick={() => setSideOpen((v) => !v)}>
             {t('editor.sideOpen')}
@@ -1089,7 +1095,7 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           )}
 
           {!viewOnly && (
-          <div className="tool-group sec">
+          <div className="tool-group sec more-only">
             <span className="cap">{t('editor.group.tidy')}</span>
             <div className="tool-row">
               <button
@@ -1126,10 +1132,9 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
           </div>
           )}
 
-          <div className="tool-group sec">
-            <span className="cap">{t('editor.group.print')}</span>
+          {/* レイヤー（図面の種類）の切り替え。パソコンでは「ほかの操作」の中。見出しは、一覧の上の説明の文字（第13弾 項目28）。 */}
+          <div className="tool-group sec more-only layer-group">
             <div className="tool-row print-row">
-              {/* レイヤーを切り替えられると分かるように、一覧の上に、説明の文字を置く（第13弾 項目28） */}
               <div className="layer-field">
                 <span className="layer-field-cap">{t('editor.layerChange')}</span>
               <LayerMenu
@@ -1144,6 +1149,12 @@ export function Editor({ answers, initialDoc, onDocChange, heavy }: EditorProps)
                 readOnly={viewOnly}
               />
               </div>
+            </div>
+          </div>
+
+          <div className="tool-group sec print-group">
+            <span className="cap">{t('editor.group.print')}</span>
+            <div className="tool-row">
               <button
                 type="button"
                 className="btn"

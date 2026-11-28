@@ -1169,6 +1169,61 @@ try {
     }
     await ctx.close();
   }
+  // パソコンの図面の画面：ボタンの帯が1段に収まり（幅1280px・1366px）、各グループに見出しがある。「ほかの操作」を開くと、整える・レイヤーが、見出しつきで出る（第21弾 項目19の3 案C）
+  for (const [w, h] of [[1366, 768], [1280, 800]] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+    try {
+      await ctx.addInitScript(() => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: 'light', textScale: 1, uiScale: 1, bold: false }));
+        } catch {}
+      });
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close|Fermer/ }).first().click({ timeout: 400 }).catch(() => {});
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await page.locator('.tabbar > button, .tabbar .tab-wrap > button').nth(3).click();
+      await sleep(1200);
+      const info = () =>
+        page.evaluate(() => {
+          const groups = Array.from(document.querySelectorAll('.editor-bar .tools > .tool-group')).filter((g) => (g as HTMLElement).offsetWidth > 0);
+          const rows = new Set(groups.map((g) => Math.round(g.getBoundingClientRect().top / 8))).size;
+          const caps = groups.map((g) => (g.querySelector('.cap, .layer-field-cap')?.textContent ?? '').trim());
+          return { rows, caps, over: document.documentElement.scrollWidth - innerWidth };
+        });
+      const closed = await info();
+      if (closed.rows !== 1) {
+        failed++;
+        problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：閉じているとき、ボタンの帯が ${closed.rows} 段に分かれています（1段にする）`);
+      }
+      if (closed.caps.some((c) => c === '')) {
+        failed++;
+        problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：見出しの無いグループがあります（${closed.caps.join('／')}）`);
+      }
+      await page.locator('.more-toggle').click();
+      await sleep(300);
+      const open = await info();
+      if (!open.caps.includes('整える') || !open.caps.includes('レイヤーを変更する') || open.over > 1) {
+        failed++;
+        problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：「ほかの操作」を開いても、「整える」「レイヤーを変更する」の見出しつきのグループが出ません（${open.caps.join('／')}）`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`パソコンの図面のボタンの検査（幅 ${w}px）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   // 初めて使うときの、端末に合ったおすすめの大きさ（第21弾 項目17）。スマホ・iPad：文字100%・画面全体80%。パソコン：どちらも100%。保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」で、おすすめに戻る
   {
     const readSaved = (page: any) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('zumen.display') ?? 'null'); } catch { return null; } });
