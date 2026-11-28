@@ -1319,6 +1319,60 @@ try {
     }
     await ctx.close();
   }
+  // 上のタブ：押せる（選んでいない）タブは、白い背景と枠つき。押せない（案件を開く前）タブは、枠も背景も無い。選んでいるタブとは、別の見た目（第21弾 項目19の6）
+  for (const theme of ['light', 'dark'] as const) {
+    freeLocks();
+    screens++;
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    try {
+      await ctx.addInitScript((th: string) => {
+        try {
+          localStorage.setItem('zumen.helpSeen', '1');
+          localStorage.setItem('zumen.display', JSON.stringify({ lang: 'ja', theme: th, textScale: 1, uiScale: 1, bold: false }));
+        } catch {}
+      }, theme);
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      await page.goto(base);
+      await sleep(400);
+      await page.fill('#login-id', USER);
+      await page.fill('#login-pw', PASS);
+      await page.click('button[type=submit]');
+      await sleep(1100);
+      await page.locator('button', { hasText: /閉じる|Close|Fermer/ }).first().click({ timeout: 400 }).catch(() => {});
+      const look = () =>
+        page.evaluate(() =>
+          Array.from(document.querySelectorAll('.tabbar > button:not(.tabbar-toggle), .tabbar .tab-wrap > button')).map((b) => {
+            const cs = getComputedStyle(b);
+            return { pressed: b.getAttribute('aria-pressed') === 'true', disabled: (b as HTMLButtonElement).disabled, bg: cs.backgroundColor, border: cs.borderTopColor };
+          }),
+        );
+      const clear = (c: string) => c === 'rgba(0, 0, 0, 0)' || c === 'transparent';
+      const before = await look();
+      if (before.some((t) => !t.disabled || !clear(t.bg) || !clear(t.border))) {
+        failed++;
+        problems.push(`上のタブの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：案件を開く前の（押せない）タブに、背景か枠が付いています`);
+      }
+      await page.locator('tr', { hasText: '画面検査の案件' }).first().locator('button.job-open').click({ timeout: 2000, force: true });
+      await sleep(900);
+      await page.locator('.modal button').first().click({ timeout: 300 }).catch(() => {});
+      await sleep(300);
+      const after = await look();
+      const plain = after.filter((t) => !t.pressed && !t.disabled);
+      const sel = after.find((t) => t.pressed);
+      if (plain.length === 0 || plain.some((t) => clear(t.bg) || clear(t.border))) {
+        failed++;
+        problems.push(`上のタブの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：押せる（選んでいない）タブに、背景か枠がありません`);
+      } else if (sel && plain.some((t) => t.bg === sel.bg)) {
+        failed++;
+        problems.push(`上のタブの検査（${theme === 'dark' ? '暗い' : '明るい'}画面）：選んでいるタブと、選んでいないタブの背景が、同じ色です`);
+      }
+    } catch (e) {
+      failed++;
+      problems.push(`上のタブの検査（${theme}）：途中で止まりました（${String((e as Error)?.message ?? e).slice(0, 100)}）`);
+    }
+    await ctx.close();
+  }
   // 初めて使うときの、端末に合ったおすすめの大きさ（第21弾 項目17）。スマホ・iPad：文字100%・画面全体80%。パソコン：どちらも100%。保存済みのブラウザは、上書きしない。「おすすめの設定に戻す」で、おすすめに戻る
   {
     const readSaved = (page: any) => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('zumen.display') ?? 'null'); } catch { return null; } });
