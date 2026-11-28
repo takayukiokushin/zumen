@@ -1,9 +1,9 @@
 import { labelRect } from '@zumen/layout';
-import { applyAnchors, seatOnWire, docBounds, groupRootOf, itemBounds } from './doc.ts';
+import { applyAnchors, seatOnWire, docBounds, groupRootOf, itemBounds, defOf, moveItem } from './doc.ts';
 import { compactOneAxis } from './layoutCompact.ts';
 import type { Axis } from './layoutCompact.ts';
 import { inspectDrawing } from './inspect.ts';
-import type { Doc, DocItem, DocSymbol } from './doc.ts';
+import type { Doc, DocItem, DocSymbol, DocWire } from './doc.ts';
 
 /**
  * 「レイアウトを縮小」「レイアウトを拡大」：図面全体の、記号どうしのすきまを、縮める・広げる。
@@ -96,6 +96,44 @@ function troubleCount(d: Doc): number {
 }
 
 /**
+ * 線の上に乗せる記号（VCT・CT・ZCT など。onWire のある記号）を、縮小・拡大の前に乗っていた縦線の上へ戻す。
+ * 縮小・拡大では、記号と線が、別々の列として動くので、記号が線から離れることがあった（以前の仕組み seatOnWire は、30px以内の線にしか戻せなかった）。
+ * 「前の図面で、どの線の上に乗っていたか」を覚えて、あとの図面の、同じ線（id が同じ線）の上へ、横に動かす。
+ */
+function reseatOnWires(before: Doc, after: Doc): Doc {
+  const wiresBefore = before.items.filter((w): w is DocWire => w.kind === 'wire' && Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y1 - w.y2) > 0.5);
+  if (wiresBefore.length === 0) return after;
+  const wireAfter = new Map<string, DocWire>();
+  for (const w of after.items) if (w.kind === 'wire' && Math.abs(w.x1 - w.x2) < 0.01 && Math.abs(w.y1 - w.y2) > 0.5) wireAfter.set(w.id, w);
+  const afterSym = new Map<string, DocSymbol>();
+  for (const it of after.items) if (it.kind === 'symbol') afterSym.set(it.id, it);
+  let out = after;
+  for (const it of before.items) {
+    if (it.kind !== 'symbol' || it.parent || it.rotate % 360 !== 0) continue;
+    const ow = defOf(it).onWire;
+    const now = afterSym.get(it.id);
+    if (!ow || !now || now.parent || now.rotate % 360 !== 0) continue;
+    // 前の図面で、この記号が乗っていた線（記号の軸が、線から1.5px以内で、記号の真ん中の高さが、線の上下の範囲に入る）
+    const ax = it.x + ow.x;
+    const ay = it.y + defOf(it).box.h / 2;
+    let on: DocWire | null = null;
+    for (const w of wiresBefore) {
+      if (ay < Math.min(w.y1, w.y2) - 1 || ay > Math.max(w.y1, w.y2) + 1) continue;
+      if (Math.abs(w.x1 - ax) > 1.5) continue;
+      if (!on || Math.abs(w.x1 - ax) < Math.abs(on.x1 - ax)) on = w;
+    }
+    if (!on) continue;
+    const w2 = wireAfter.get(on.id);
+    if (!w2) continue;
+    const cur = (out.items.find((x) => x.id === it.id) as DocSymbol | undefined) ?? now;
+    const dx = w2.x1 - (cur.x + ow.x);
+    if (Math.abs(dx) < 0.01) continue;
+    out = moveItem(out, it.id, dx, 0);
+  }
+  return out === after ? after : applyAnchors(out);
+}
+
+/**
  * 図面全体のすきまを、factor 倍にする（1より小さければ縮小、大きければ拡大）。
  * changed：実際に動いたか（すきまが最小まで縮んでいて、これ以上縮められないときは false）。
  */
@@ -113,14 +151,18 @@ export function scaleLayout(doc: Doc, factor: number): { doc: Doc; changed: bool
       return axis === 'y' ? b.y1 - b.y0 : b.x1 - b.x0;
     };
     const better = (a: Doc, b: Doc) => (factor < 1 ? extent(a) < extent(b) - 0.01 : extent(a) > extent(b) + 0.01);
-    let pick: Doc | null = proj.changed ? proj.doc : null;
-    if (comp && (!pick || better(comp, pick))) pick = comp;
-    // 縮めるときだけ：縮めた結果、記号・文字の重なりなどが「増える」ものは、使わない（もう一方の方式か、何もしない）。
-    // 列ごとの方式は、文字の四角が、もとから重なっているところで、順番が決まらず、近づきすぎることがあるため（第21弾 項目18-6）
-    if (pick && factor < 1) {
+    // 線の上に乗せる記号（VCT・CT・ZCT）は、縮小・拡大の前に乗っていた線へ、必ず戻す（第21弾 整合チェック 4）
+    const projDoc = proj.changed ? reseatOnWires(cur, proj.doc) : null;
+    const compDoc = comp ? reseatOnWires(cur, comp) : null;
+    let pick: Doc | null = projDoc;
+    if (compDoc && (!pick || better(compDoc, pick))) pick = compDoc;
+    // 縮小・拡大した結果、記号・文字の重なりなどが「増える」ものは、使わない（もう一方の方式か、何もしない）。
+    // 列ごとの方式は、文字の四角が、もとから重なっているところで、順番が決まらず、近づきすぎることがあるため（第21弾 項目18-6）。
+    // 線の上の記号を、線へ戻したことで、新しく重なるときも、同じく、使わない
+    if (pick) {
       base ??= troubleCount(cur);
       if (troubleCount(pick) > base) {
-        const other = pick === comp ? (proj.changed ? proj.doc : null) : comp;
+        const other = pick === compDoc ? projDoc : compDoc;
         pick = other && troubleCount(other) <= base ? other : null;
       }
     }
