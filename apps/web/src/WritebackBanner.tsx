@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useT, useTx } from './i18n/useT.ts';
-import type { Key } from './i18n/useT.ts';
+import type { Key } from './i18n/index.ts';
 import type { AppliedChange, Leftover, RejectedChange } from './editor/writeback.ts';
 
 /**
